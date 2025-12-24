@@ -10,6 +10,10 @@ I created this wrapper to quickly test models on my PC. Currently, it has only b
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
 
+## Disclaimer
+This project hasn’t been fully tested. I ran into VRAM limitations when trying larger models, so testing was pretty limited.
+
+I mostly developed and tested this on Windows. The first version did work on Ubuntu, but after the latest changes, I have no idea if it still works on Linux, since I haven’t tested it there again. Same goes for the build created by the GitHub Action, I haven’t tested it at all
 
 ##  Getting Started
 
