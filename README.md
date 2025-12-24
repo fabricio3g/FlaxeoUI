@@ -2,9 +2,9 @@
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-A wrapper for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**. Built with Electron and Node.js, I made it to be simple to interact with the stable difussion cpp cli
+A Front End for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**. Built with Electron and Node.js, I made it to be simple to interact with the stable difussion cpp cli
 
-I created this wrapper to quickly test models on my PC. Currently, it has only been tested using Vulkan on Linux and Windows.
+I created this Front End to quickly test models on my PC. Currently, it has only been tested using Vulkan on Linux and Windows.
 
 
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
