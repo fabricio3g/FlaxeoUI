@@ -1,0 +1,11 @@
+<svg viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <rect x="16" y="16" width="56" height="56" rx="1" fill="#EADEDA" stroke="#2E294E" stroke-width="1" stroke-linejoin="round" opacity="0.9"></rect>
+    <!-- Mountain landscape -->
+    <path d="M16 58 L44 30 L72 58" stroke="#2E294E" stroke-width="3" stroke-linejoin="round" opacity="0.9" fill="none"></path>
+    <!-- Main AI Sparkle (at the peak) -->
+    <path d="M44 20l-1.5 8.5L34 30l8.5 1.5L44 40l1.5-8.5L54 30l-8.5-1.5z" fill="#FFD405"></path>
+    <!-- Smaller sparkles around -->
+    <path d="M60 25l-0.8 4L55 30l4 0.8L60 35l0.8-4L65 30l-4-0.8z" fill="#FFD400" opacity="0.8"></path>
+    <path d="M28 25l-0.6 3L24 29l3 0.6L28 33l0.6-3L32 29l-3-0.9z" fill="#FFD400" opacity="0.8"></path>
+    <path d="M50 45l-0.5 2.5L47 48l2.5 0.5L50 51l0.5-2.5L53 48l-2.5-0.5z" fill="#FFD400" opacity="0.8"></path>
+</svg>

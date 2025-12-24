@@ -1,0 +1,65 @@
+appId: com.flaxeo.ui
+productName: FlaxeoUI
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!models/**/*'
+  - '!backend/**/*'
+  - '!build-structure/**/*'
+extraResources:
+  - from: "server.js"
+    to: "server.js"
+  - from: "backend-config.template.json"
+    to: "backend-config.json"
+  - from: "build-structure/models"
+    to: "models"
+    filter:
+      - "**/*"
+  - from: "build-structure/backend"
+    to: "backend"
+    filter:
+      - "**/*"
+  - from: "output"
+    to: "output"
+    filter:
+      - ".gitkeep"
+asarUnpack:
+  - resources/**
+win:
+  executableName: FlaxeoUI
+  icon: resources/icon.png
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  icon: resources/icon.png
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: flaxeo
+  category: Graphics
+  icon: resources/icon.png
+appImage:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: generic
+  url: https://example.com/auto-updates

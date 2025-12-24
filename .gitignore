@@ -1,0 +1,15 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+build-structure
+
+# Ignore all files in models, backend, and output subfolders, but keep the folder structure
+models/**/*
+!models/**/.gitkeep
+backend/**/*
+!backend/**/.gitkeep
+output/**/*
+!output/**/.gitkeep
