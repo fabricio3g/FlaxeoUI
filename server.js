@@ -561,7 +561,13 @@ app.post('/api/generate-cli', cliUpload, async (req, res) => {
 
     args.push('-v'); // Verbose
 
-    console.log('[CLI] Spawning sd-cli:', args.join(' '));
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`[${timestamp}] [CLI-GEN] Starting generation`);
+    console.log(`[${timestamp}] [CLI-GEN] Command: ${getSdCliPath()}`);
+    console.log(`[${timestamp}] [CLI-GEN] Args: ${args.join(' ')}`);
+    console.log(`[${timestamp}] [CLI-GEN] Working directory: ${getActiveBackendPath()}`);
+    console.log(`${'='.repeat(80)}\n`);
 
     try {
         const activeBackend = getActiveBackendPath();
@@ -569,22 +575,46 @@ app.post('/api/generate-cli', cliUpload, async (req, res) => {
 
         let output = '';
         let cancelled = false;
+        let lineBuffer = '';
 
         cliProcess.stdout.on('data', d => {
             const msg = d.toString();
-            console.log('[CLI]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [CLI-OUT] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
+        
         cliProcess.stderr.on('data', d => {
             const msg = d.toString();
-            console.log('[CLI-ERR]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [CLI-ERR] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
 
         await new Promise((resolve, reject) => {
             cliProcess.on('close', code => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.log(`\n${'='.repeat(80)}`);
+                console.log(`[${ts}] [CLI-GEN] Process exited with code: ${code}`);
+                console.log(`${'='.repeat(80)}\n`);
                 cliProcess = null;
                 if (code === 0) resolve();
                 else if (code === null) {
@@ -594,6 +624,8 @@ app.post('/api/generate-cli', cliUpload, async (req, res) => {
                 else reject(new Error(`CLI exited with code ${code}`));
             });
             cliProcess.on('error', err => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.error(`[${ts}] [CLI-GEN] Process error:`, err);
                 cliProcess = null;
                 reject(err);
             });
@@ -838,7 +870,13 @@ app.post('/api/inpaint', inpaintUpload.fields([
 
     args.push('-v'); // Verbose
 
-    console.log('[INPAINT] Spawning sd-cli:', args.join(' '));
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`[${timestamp}] [INPAINT] Starting inpainting`);
+    console.log(`[${timestamp}] [INPAINT] Command: ${getSdCliPath()}`);
+    console.log(`[${timestamp}] [INPAINT] Args: ${args.join(' ')}`);
+    console.log(`[${timestamp}] [INPAINT] Working directory: ${getActiveBackendPath()}`);
+    console.log(`${'='.repeat(80)}\n`);
 
     try {
         const activeBackend = getActiveBackendPath();
@@ -846,22 +884,46 @@ app.post('/api/inpaint', inpaintUpload.fields([
 
         let output = '';
         let cancelled = false;
+        let lineBuffer = '';
 
         cliProcess.stdout.on('data', d => {
             const msg = d.toString();
-            console.log('[INPAINT]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [INPAINT-OUT] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
+        
         cliProcess.stderr.on('data', d => {
             const msg = d.toString();
-            console.log('[INPAINT-ERR]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [INPAINT-ERR] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
 
         await new Promise((resolve, reject) => {
             cliProcess.on('close', code => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.log(`\n${'='.repeat(80)}`);
+                console.log(`[${ts}] [INPAINT] Process exited with code: ${code}`);
+                console.log(`${'='.repeat(80)}\n`);
                 cliProcess = null;
                 if (code === 0) resolve();
                 else if (code === null) {
@@ -871,6 +933,8 @@ app.post('/api/inpaint', inpaintUpload.fields([
                 else reject(new Error(`CLI exited with code ${code}`));
             });
             cliProcess.on('error', err => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.error(`[${ts}] [INPAINT] Process error:`, err);
                 cliProcess = null;
                 reject(err);
             });
@@ -1006,7 +1070,13 @@ app.post('/api/generate-video', videoUpload.single('initImage'), async (req, res
 
     args.push('-v'); // Verbose
 
-    console.log('[VIDEO] Spawning sd-cli:', args.join(' '));
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`[${timestamp}] [VIDEO] Starting video generation`);
+    console.log(`[${timestamp}] [VIDEO] Command: ${getSdCliPath()}`);
+    console.log(`[${timestamp}] [VIDEO] Args: ${args.join(' ')}`);
+    console.log(`[${timestamp}] [VIDEO] Working directory: ${getActiveBackendPath()}`);
+    console.log(`${'='.repeat(80)}\n`);
 
     try {
         const activeBackend = getActiveBackendPath();
@@ -1014,22 +1084,46 @@ app.post('/api/generate-video', videoUpload.single('initImage'), async (req, res
 
         let output = '';
         let cancelled = false;
+        let lineBuffer = '';
 
         cliProcess.stdout.on('data', d => {
             const msg = d.toString();
-            console.log('[VIDEO]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [VIDEO-OUT] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
+        
         cliProcess.stderr.on('data', d => {
             const msg = d.toString();
-            console.log('[VIDEO-ERR]', msg);
+            lineBuffer += msg;
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                    console.log(`[${ts}] [VIDEO-ERR] ${line}`);
+                }
+            });
             output += msg;
             serverLogs.push(msg);
         });
 
         await new Promise((resolve, reject) => {
             cliProcess.on('close', code => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.log(`\n${'='.repeat(80)}`);
+                console.log(`[${ts}] [VIDEO] Process exited with code: ${code}`);
+                console.log(`${'='.repeat(80)}\n`);
                 cliProcess = null;
                 if (code === 0) resolve();
                 else if (code === null) {
@@ -1039,6 +1133,8 @@ app.post('/api/generate-video', videoUpload.single('initImage'), async (req, res
                 else reject(new Error(`CLI exited with code ${code}`));
             });
             cliProcess.on('error', err => {
+                const ts = new Date().toISOString().split('T')[1].split('.')[0];
+                console.error(`[${ts}] [VIDEO] Process error:`, err);
                 cliProcess = null;
                 reject(err);
             });
