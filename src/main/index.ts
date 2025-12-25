@@ -14,7 +14,7 @@ let serverPort = 3000
  */
 function getResourcePath(relativePath: string): string {
   if (is.dev) {
-    return join(__dirname, '../../..', relativePath)
+    return join(__dirname, '../..', relativePath)
   }
   return join(process.resourcesPath, relativePath)
 }
