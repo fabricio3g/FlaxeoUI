@@ -179,9 +179,7 @@ function buildGenerationParams(): any {
 // Helper to get params from image
 async function sendToParams(imagePath: string) {
   try {
-    // filename unused
     
-    // We need to strip the URL part if it's there
     let relativePath = imagePath
     if (imagePath.startsWith('http')) {
         // e.g. http://localhost:3000/output/img.png -> img.png
@@ -220,8 +218,6 @@ async function sendToParams(imagePath: string) {
     
     // Restore Model (Note: name must match exactly or logic needed)
     if (data.diffusionModel) {
-       // Attempt to set. ConfigPanel watcher might correct it if invalid? 
-       // Or dropdown will just show selected value.
        config.value.diffusionModel = data.diffusionModel
     }
 
@@ -232,14 +228,7 @@ async function sendToParams(imagePath: string) {
   }
 }
 
-async function checkServerStatus() {
-  try {
-    const res = await apiGet<{ success: boolean }>('/api/system/check')
-    serverOnline.value = res.success
-  } catch (e) {
-    serverOnline.value = false
-  }
-}
+
 
 /**
  * handleGenerate() - Initiates image generation
@@ -275,10 +264,8 @@ async function handleGenerate(): Promise<void> {
     let result: { message: string; filenames?: string[]; filename?: string }
     
     if (needsFormData) {
-      // Use FormData for file uploads
       const formData = new FormData()
       
-      // Add all params as form fields
       Object.keys(payload).forEach(key => {
         const value = payload[key]
         if (value !== undefined && value !== null) {
@@ -426,12 +413,8 @@ function handleKeydown(e: KeyboardEvent) {
 // async function fetchGallery() { ... } - Removed to keep session-only history
 
 onMounted(() => {
-  checkServerStatus()
-  // fetchGallery() // Removed: User wants session-only images
-  
-  // Poll status every 5 seconds
-  const pollInterval = setInterval(checkServerStatus, 5000)
-  
+
+
   window.addEventListener('keydown', handleKeydown)
 
   // Check for params from Gallery
@@ -445,14 +428,13 @@ onMounted(() => {
   }
   
   onUnmounted(() => {
-      clearInterval(pollInterval)
       window.removeEventListener('keydown', handleKeydown)
   })
 })
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-background text-foreground">
+  <div class="flex flex-col bg-background text-foreground">
     <!-- Prompt Section -->
     <div class="shrink-0 border-b border-border/50 bg-card/30">
       <div class="p-5">
@@ -708,14 +690,6 @@ onMounted(() => {
             </div>
           </div>
           
-          <!-- Server Status Warning -->
-          <div v-if="!serverOnline" class="mt-4">
-            <div class="flex items-center gap-2 px-3 py-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
-              Server offline — configure and start backend in Settings
-            </div>
-          </div>
-          
         </div>
       </div>
     </div>
@@ -835,7 +809,6 @@ onMounted(() => {
                 >
                 <img :src="getOutputUrl(img)" class="w-full h-full object-cover" loading="lazy" :alt="img" />
                 
-                <!-- Tiny indicator if it matches current params? Not implemented yet -->
                 </button>
             </div>
             
