@@ -138,7 +138,7 @@ async function handleGenerate(): Promise<void> {
     const formData = new FormData()
     formData.append('prompt', prompt.value)
     formData.append('negative_prompt', negativePrompt.value)
-    formData.append('image', baseImageFile.value)
+    formData.append('initImage', baseImageFile.value)
     formData.append('strength', inpaintStrength.value.toString())
     formData.append('steps', config.value.steps.toString())
     formData.append('cfg_scale', config.value.cfgScale.toString())
