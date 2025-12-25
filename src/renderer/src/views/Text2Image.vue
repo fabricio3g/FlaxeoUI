@@ -27,6 +27,10 @@ const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
 // const serverStats = ref<any>(null) // Unused
 
+// File uploads (store actual File objects for proper upload)
+const kontextRefFile = ref<File | null>(null)
+const controlNetFile = ref<File | null>(null)
+
 // Advanced sections state
 const activeTab = ref<string>('')
 // const showPhotoMaker = ref(false) // Unused
@@ -70,20 +74,24 @@ function removePMImage(index: number) {
 function handleCNUpload(event: Event) {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const file = input.files[0] as any
-    config.value.controlImagePath = file.path
+    const file = input.files[0]
+    controlNetFile.value = file
+    // Store preview URL for display
+    config.value.controlImagePath = URL.createObjectURL(file)
   }
 }
 
 function handleKontextUpload(event: Event) {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const file = input.files[0] as any
-    config.value.kontextRefImage = file.path
+    const file = input.files[0]
+    kontextRefFile.value = file
+    // Store preview URL for display
+    config.value.kontextRefImage = URL.createObjectURL(file)
   }
 }
 
-function buildGenerationParams(): { param: any } {
+function buildGenerationParams(): any {
   const c = config.value
 
   // Handle embeddings: append to prompt
@@ -261,11 +269,55 @@ async function handleGenerate(): Promise<void> {
       }
     }
 
-    // Since we are sending local paths now, we can use simple JSON post
-    const result = await apiPost<{ message: string; filenames?: string[]; filename?: string }>(
-      endpoint,
-      payload
-    )
+    // Check if we need to use FormData (for file uploads)
+    const needsFormData = kontextRefFile.value || controlNetFile.value
+    
+    let result: { message: string; filenames?: string[]; filename?: string }
+    
+    if (needsFormData) {
+      // Use FormData for file uploads
+      const formData = new FormData()
+      
+      // Add all params as form fields
+      Object.keys(payload).forEach(key => {
+        const value = payload[key]
+        if (value !== undefined && value !== null) {
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            formData.append(key, JSON.stringify(value))
+          } else if (Array.isArray(value)) {
+            formData.append(key, JSON.stringify(value))
+          } else {
+            formData.append(key, String(value))
+          }
+        }
+      })
+      
+      // Add file uploads
+      if (kontextRefFile.value) {
+        formData.append('kontextRefImage', kontextRefFile.value)
+      }
+      if (controlNetFile.value) {
+        formData.append('controlNetImage', controlNetFile.value)
+      }
+      
+      // Use fetch for FormData
+      const response = await fetch(`http://localhost:${await window.electron.ipcRenderer.invoke('get-server-port')}${endpoint}`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+      
+      result = await response.json()
+    } else {
+      // Use regular JSON post
+      result = await apiPost<{ message: string; filenames?: string[]; filename?: string }>(
+        endpoint,
+        payload
+      )
+    }
     
     // Handle result
     if (result.filenames && result.filenames.length > 0) {
@@ -497,13 +549,13 @@ onMounted(() => {
                       <div>
                         <label class="text-xs text-muted-foreground block mb-2">Control Image</label>
                         <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
-                           <img v-if="config.controlImagePath" :src="'file://' + config.controlImagePath" class="w-full h-full object-cover" />
+                           <img v-if="config.controlImagePath" :src="config.controlImagePath.startsWith('blob:') ? config.controlImagePath : 'file://' + config.controlImagePath" class="w-full h-full object-cover" />
                            <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
                               <Upload v-if="!config.controlImagePath" class="w-6 h-6 text-muted-foreground/50" />
                               <span v-if="!config.controlImagePath" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
                               <input type="file" accept="image/*" class="hidden" @change="handleCNUpload" />
                            </label>
-                           <button v-if="config.controlImagePath" @click="config.controlImagePath = ''" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button v-if="config.controlImagePath" @click="config.controlImagePath = ''; controlNetFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
                               <X class="w-3 h-3" />
                            </button>
                         </div>
@@ -540,13 +592,13 @@ onMounted(() => {
                       <div>
                         <label class="text-xs text-muted-foreground block mb-2">Ref Image</label>
                         <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
-                           <img v-if="config.kontextRefImage" :src="'file://' + config.kontextRefImage" class="w-full h-full object-cover" />
+                           <img v-if="config.kontextRefImage" :src="config.kontextRefImage.startsWith('blob:') ? config.kontextRefImage : 'file://' + config.kontextRefImage" class="w-full h-full object-cover" />
                            <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
                               <Upload v-if="!config.kontextRefImage" class="w-6 h-6 text-muted-foreground/50" />
                               <span v-if="!config.kontextRefImage" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
                               <input type="file" accept="image/*" class="hidden" @change="handleKontextUpload" />
                            </label>
-                           <button v-if="config.kontextRefImage" @click="config.kontextRefImage = ''" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button v-if="config.kontextRefImage" @click="config.kontextRefImage = ''; kontextRefFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
                               <X class="w-3 h-3" />
                            </button>
                         </div>
