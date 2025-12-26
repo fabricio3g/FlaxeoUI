@@ -235,12 +235,12 @@ app.post('/api/start', (req, res) => {
 
         sdProcess.stdout.on('data', d => {
             const msg = d.toString();
-            console.log('[SD]', msg);
+            process.stdout.write(msg);
             serverLogs.push(msg);
         });
         sdProcess.stderr.on('data', d => {
             const msg = d.toString();
-            console.error('[SD-ERR]', msg);
+            process.stderr.write(msg);
             serverLogs.push(msg);
         });
         sdProcess.on('close', code => {
@@ -571,43 +571,12 @@ app.post('/api/generate-cli', cliUpload, async (req, res) => {
 
     try {
         const activeBackend = getActiveBackendPath();
-        cliProcess = spawn(getSdCliPath(), args, { cwd: activeBackend });
+        cliProcess = spawn(getSdCliPath(), args, { 
+            cwd: activeBackend,
+            stdio: 'inherit'  // Direct output to terminal for proper formatting
+        });
 
-        let output = '';
         let cancelled = false;
-        let lineBuffer = '';
-
-        cliProcess.stdout.on('data', d => {
-            const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [CLI-OUT] ${line}`);
-                }
-            });
-            output += msg;
-            serverLogs.push(msg);
-        });
-        
-        cliProcess.stderr.on('data', d => {
-            const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [CLI-ERR] ${line}`);
-                }
-            });
-            output += msg;
-            serverLogs.push(msg);
-        });
 
         await new Promise((resolve, reject) => {
             cliProcess.on('close', code => {
@@ -654,7 +623,7 @@ app.post('/api/generate-cli', cliUpload, async (req, res) => {
         } else if (fs.existsSync(outputPath)) {
             res.json({ message: 'Complete', filenames: [filename] });
         } else {
-            res.status(500).json({ message: 'Generation failed - no output file', output });
+            res.status(500).json({ message: 'Generation failed - no output file' });
         }
     } catch (e) {
         cliProcess = null;
@@ -884,36 +853,17 @@ app.post('/api/inpaint', inpaintUpload.fields([
 
         let output = '';
         let cancelled = false;
-        let lineBuffer = '';
 
         cliProcess.stdout.on('data', d => {
             const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [INPAINT-OUT] ${line}`);
-                }
-            });
+            process.stdout.write(msg);
             output += msg;
             serverLogs.push(msg);
         });
         
         cliProcess.stderr.on('data', d => {
             const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [INPAINT-ERR] ${line}`);
-                }
-            });
+            process.stderr.write(msg);
             output += msg;
             serverLogs.push(msg);
         });
@@ -1084,36 +1034,17 @@ app.post('/api/generate-video', videoUpload.single('initImage'), async (req, res
 
         let output = '';
         let cancelled = false;
-        let lineBuffer = '';
 
         cliProcess.stdout.on('data', d => {
             const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [VIDEO-OUT] ${line}`);
-                }
-            });
+            process.stdout.write(msg);
             output += msg;
             serverLogs.push(msg);
         });
         
         cliProcess.stderr.on('data', d => {
             const msg = d.toString();
-            lineBuffer += msg;
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() || '';
-            
-            lines.forEach(line => {
-                if (line.trim()) {
-                    const ts = new Date().toISOString().split('T')[1].split('.')[0];
-                    console.log(`[${ts}] [VIDEO-ERR] ${line}`);
-                }
-            });
+            process.stderr.write(msg);
             output += msg;
             serverLogs.push(msg);
         });
