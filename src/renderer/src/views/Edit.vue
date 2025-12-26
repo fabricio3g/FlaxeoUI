@@ -217,7 +217,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full overflow-auto">
     <!-- Prompt Section -->
     <div class="shrink-0 border-b border-border/50">
       <div class="p-5">
@@ -346,9 +346,9 @@ onMounted(() => {
     </div>
 
     <!-- Canvas Area -->
-    <div class="flex-1 overflow-hidden flex items-center justify-center p-4 bg-muted/30">
+    <div class="p-4 bg-muted/30 relative">
       <!-- Error -->
-      <div v-if="error" class="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-10">
+      <div v-if="error" class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-10">
         {{ error }}
         <button @click="error = null" class="hover:opacity-70">
           <X class="w-4 h-4" />
@@ -358,7 +358,7 @@ onMounted(() => {
       <!-- Canvas Container -->
       <div
         ref="containerRef"
-        class="relative max-w-full max-h-full rounded-lg overflow-hidden border border-border bg-background shadow-xl"
+        class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl"
       >
         <!-- Placeholder -->
         <div v-if="!baseImage" class="w-80 h-80 flex flex-col items-center justify-center text-muted-foreground gap-4">

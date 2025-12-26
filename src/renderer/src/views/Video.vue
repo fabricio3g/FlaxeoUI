@@ -125,7 +125,7 @@ async function handleCancel(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full overflow-auto">
     <!-- Prompt Section -->
     <div class="shrink-0 border-b border-border/50">
       <div class="p-5">
@@ -292,9 +292,9 @@ async function handleCancel(): Promise<void> {
     </div>
 
     <!-- Video Preview Area -->
-    <div class="flex-1 overflow-hidden flex flex-col items-center justify-center p-4 bg-muted/30">
+    <div class="p-4 bg-muted/30 relative">
       <!-- Error -->
-      <div v-if="error" class="px-4 py-2 mb-4 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2">
+      <div v-if="error" class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50">
         {{ error }}
         <button @click="error = null" class="hover:opacity-70">
           <X class="w-4 h-4" />
@@ -302,7 +302,7 @@ async function handleCancel(): Promise<void> {
       </div>
 
       <!-- Video Container -->
-      <div class="relative max-w-full max-h-full rounded-lg overflow-hidden border border-border bg-background shadow-xl">
+      <div class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl">
         <!-- Generated Video -->
         <video
           v-if="generatedVideo"
@@ -310,7 +310,7 @@ async function handleCancel(): Promise<void> {
           controls
           autoplay
           loop
-          class="max-w-full max-h-[65vh]"
+          class="max-w-full"
         ></video>
         
         <!-- Placeholder -->

@@ -1,7 +1,8 @@
 {
-  "activeVersion": "master-437-30a9113",
+  "activeVersion": "sd-master-200cb6f-bin-win-vulkan-x64",
   "installedVersions": [
-    "master-437-30a9113"
+    "master-437-30a9113",
+    "master-445-860a78e"
   ],
   "customBinaryExists": false
 }

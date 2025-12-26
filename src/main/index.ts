@@ -62,7 +62,8 @@ function startServer(): Promise<number> {
 
     serverProcess.stdout?.on('data', (data) => {
       const output = data.toString()
-      console.log('[Server]', output)
+      // Write raw output directly to preserve progress bars
+      process.stdout.write(output)
 
       // Parse port from server output
       const portMatch = output.match(/Server running on port (\d+)/)
@@ -74,7 +75,8 @@ function startServer(): Promise<number> {
     })
 
     serverProcess.stderr?.on('data', (data) => {
-      console.error('[Server Error]', data.toString())
+      // Write raw stderr directly
+      process.stderr.write(data.toString())
     })
 
     serverProcess.on('error', (err) => {

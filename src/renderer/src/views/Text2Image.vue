@@ -138,8 +138,8 @@ function buildGenerationParams(): any {
     // Kontext
     kontextRefPath: c.kontextRefImage || undefined, // Renamed from kontextRefImage to match server
 
-    // Models
-    diffusionModel: c.diffusionModel,
+    // Models - use correct model based on loadMode
+    diffusionModel: c.loadMode === 'standard' ? c.standardModel : c.diffusionModel,
     vae: c.vaeModel,
     t5xxl: c.t5xxlModel,
     llm: c.llmModel,
@@ -241,6 +241,9 @@ async function handleGenerate(): Promise<void> {
   
   try {
     const params = buildGenerationParams()
+    
+    // Check server status before choosing endpoint
+    await checkServerStatus()
     
     // Choose endpoint based on mode
     let endpoint = '/api/generate-cli'
@@ -412,8 +415,22 @@ function handleKeydown(e: KeyboardEvent) {
 // Fetch gallery on mount
 // async function fetchGallery() { ... } - Removed to keep session-only history
 
-onMounted(() => {
+/**
+ * checkServerStatus() - Check if sd-server is running
+ */
+async function checkServerStatus(): Promise<void> {
+  try {
+    const response = await apiGet<{ running: boolean }>('/api/status')
+    // Server is online if we get a response (sd-server is running)
+    serverOnline.value = response?.running === true
+  } catch {
+    serverOnline.value = false
+  }
+}
 
+onMounted(async () => {
+  // Check if sd-server is running
+  await checkServerStatus()
 
   window.addEventListener('keydown', handleKeydown)
 
@@ -434,7 +451,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col bg-background text-foreground">
+  <div class="flex flex-col h-full overflow-auto bg-background text-foreground">
     <!-- Prompt Section -->
     <div class="shrink-0 border-b border-border/50 bg-card/30">
       <div class="p-5">
@@ -695,7 +712,7 @@ onMounted(() => {
     </div>
 
     <!-- Preview Area -->
-    <div class="flex-1 overflow-hidden flex flex-col items-center justify-center p-4 bg-muted/30 relative">
+    <div class="p-4 bg-muted/30 relative">
       <!-- Error Message -->
       <div v-if="error" class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50">
         {{ error }}
@@ -705,12 +722,12 @@ onMounted(() => {
       </div>
 
       <!-- Preview Container -->
-      <div class="relative max-w-full max-h-full rounded-lg overflow-hidden border border-border bg-background shadow-xl group">
+      <div class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl group">
         <!-- Preview Image -->
         <img
           v-if="previewImage"
           :src="previewImage"
-          class="w-full h-full object-contain"
+          class="max-w-full"
           alt="Generated image"
         />
         

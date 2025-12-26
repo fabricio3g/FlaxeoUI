@@ -71,16 +71,18 @@ onMounted(async () => {
       <!-- Main Content -->
       <main class="flex-1 overflow-hidden flex flex-col">
         <router-view v-slot="{ Component }">
-          <transition 
-            name="fade" 
-            mode="out-in"
-            enter-active-class="transition-opacity duration-150"
-            leave-active-class="transition-opacity duration-150"
-            enter-from-class="opacity-0"
-            leave-to-class="opacity-0"
-          >
-            <component :is="Component" />
-          </transition>
+          <keep-alive>
+            <transition 
+              name="fade" 
+              mode="out-in"
+              enter-active-class="transition-opacity duration-150"
+              leave-active-class="transition-opacity duration-150"
+              enter-from-class="opacity-0"
+              leave-to-class="opacity-0"
+            >
+              <component :is="Component" />
+            </transition>
+          </keep-alive>
         </router-view>
       </main>
     </div>
