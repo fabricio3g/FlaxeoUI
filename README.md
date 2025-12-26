@@ -10,6 +10,8 @@ I created this Front End to quickly test models on my PC. Currently, it has only
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
 
+## Please use the master-418-200cb6f branch of stable-diffusion.cpp that is the one that works with this version of FlaxeoUI, or you will have issues. for Z Image turbo use the resolution 512x768 a bigger resolution will cause issues like generating white images in my case.
+
 ## Disclaimer
 This project hasn’t been fully tested. I ran into VRAM limitations when trying larger models, so testing was pretty limited.
 
