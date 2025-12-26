@@ -5,7 +5,7 @@ out
 .eslintcache
 *.log*
 build-structure
-
+temp
 # Ignore all files in models, backend, and output subfolders, but keep the folder structure
 models/**/*
 !models/**/.gitkeep
