@@ -81,7 +81,7 @@ npm run dev
 
 ## Credits
 
-This project is a GUI to **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
+This project is a UI to **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
 
 ## License
 
