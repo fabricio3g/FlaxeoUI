@@ -29,17 +29,17 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install ImageMagick (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      # - name: Install ImageMagick (Ubuntu)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: sudo apt-get update && sudo apt-get install -y imagemagick
 
-      - name: Install ImageMagick (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install imagemagick
+      # - name: Install ImageMagick (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: brew install imagemagick
 
-      - name: Install ImageMagick (Windows)
-        if: matrix.os == 'windows-latest'
-        run: choco install imagemagick -y
+      # - name: Install ImageMagick (Windows)
+      #   if: matrix.os == 'windows-latest'
+      #   run: choco install imagemagick -y
 
       - name: Install dependencies
         run: npm ci
@@ -47,21 +47,19 @@ jobs:
       - name: Generate folder structures
         run: node create-folder-structure.js
 
-      - name: Convert icons
-        run: node convert-icons.js
-        continue-on-error: true
+
 
       - name: Build Windows
         if: matrix.os == 'windows-latest'
         run: npm run build:win
 
-      - name: Build Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run build:linux
+      # - name: Build Linux
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: npm run build:linux
 
-      - name: Build macOS
-        if: matrix.os == 'macos-latest'
-        run: npm run build:mac
+      # - name: Build macOS
+      #   if: matrix.os == 'macos-latest'
+      #   run: npm run build:mac
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
@@ -73,25 +71,25 @@ jobs:
             dist/*.exe.blockmap
           retention-days: 30
 
-      - name: Upload Linux artifacts
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-          retention-days: 30
+      # - name: Upload Linux artifacts
+      #   if: matrix.os == 'ubuntu-latest'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: linux-build
+      #     path: |
+      #       dist/*.AppImage
+      #       dist/*.deb
+      #     retention-days: 30
 
-      - name: Upload macOS artifacts
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build
-          path: |
-            dist/*.dmg
-            dist/*.dmg.blockmap
-          retention-days: 30
+      # - name: Upload macOS artifacts
+      #   if: matrix.os == 'macos-latest'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: macos-build
+      #     path: |
+      #       dist/*.dmg
+      #       dist/*.dmg.blockmap
+      #     retention-days: 30
 
   release:
     name: Create Release
@@ -112,17 +110,7 @@ jobs:
           name: windows-build
           path: ./artifacts/windows
 
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: ./artifacts/linux
 
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-build
-          path: ./artifacts/macos
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
