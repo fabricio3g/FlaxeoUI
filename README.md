@@ -4,11 +4,10 @@
 
 A Front End for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**. Built with Electron and Node.js, I made it to be simple to interact with the stable difussion cpp cli
 
-I created this Front End to quickly test models on my PC. Currently, it has only been tested using Vulkan on Linux and Windows.
 
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
-## Please use the master-418-200cb6f branch of stable-diffusion.cpp that is the one that works with this version of FlaxeoUI, or you will have issues. for Z Image turbo use the resolution 512x768 a bigger resolution will cause issues like generating white images in my case.
+
 
 ## Disclaimer
 
