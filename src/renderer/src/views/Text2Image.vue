@@ -836,19 +836,19 @@ onMounted(async () => {
       </div>
 
       <!-- Preview Container -->
-      <div class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl group">
+      <div class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl group min-h-[400px]">
         <!-- Preview Image -->
         <img
           v-if="previewImage"
           :src="previewImage"
-          class="max-w-full"
+          class="max-w-full max-h-[70vh] min-h-[350px] object-contain"
           alt="Generated image"
         />
         
         <!-- Placeholder -->
         <div
           v-else
-          class="w-80 h-80 flex items-center justify-center text-muted-foreground"
+          class="w-96 h-96 flex items-center justify-center text-muted-foreground"
         >
           <span class="text-xs tracking-widest opacity-50">READY</span>
         </div>
