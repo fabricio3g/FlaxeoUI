@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { apiGet, apiPost } from '@/services/api'
-import { 
-  Settings as SettingsIcon, Download, Check, Loader2, 
-  FolderOpen, RefreshCw, AlertTriangle, Copy
+import {
+  Settings as SettingsIcon,
+  Download,
+  Loader2,
+  FolderOpen,
+  RefreshCw,
+  AlertTriangle,
+  Copy
 } from 'lucide-vue-next'
 import LogPanel from '@/components/LogPanel.vue'
-import { useToast } from '@/composables/useToast'
+
 
 interface BackendConfig {
   activeVersion: string
@@ -64,7 +69,7 @@ const cloudflareUrl = ref('')
 
 // Get variants for selected release
 const selectedReleaseAssets = computed(() => {
-  const release = releases.value.find(r => r.tag === selectedRelease.value)
+  const release = releases.value.find((r) => r.tag === selectedRelease.value)
   return release?.assets || []
 })
 
@@ -115,10 +120,9 @@ async function detectSystem(): Promise<void> {
  */
 function autoSelectVariant(): void {
   if (selectedReleaseAssets.value.length === 0) return
-  
+
   const platform = systemInfo.value.platform
-  const arch = systemInfo.value.arch
-  
+
   // Find matching variant
   let best = selectedReleaseAssets.value[0]
   for (const asset of selectedReleaseAssets.value) {
@@ -177,23 +181,23 @@ async function fetchNetworkStatus(): Promise<void> {
  */
 async function downloadAndInstall(): Promise<void> {
   if (!selectedRelease.value || !selectedVariant.value || isDownloading.value) return
-  
-  const asset = selectedReleaseAssets.value.find(a => a.name === selectedVariant.value)
+
+  const asset = selectedReleaseAssets.value.find((a) => a.name === selectedVariant.value)
   if (!asset) return
-  
+
   isDownloading.value = true
   downloadStatus.value = 'Downloading...'
-  
+
   try {
     await apiPost('/api/backend/download', {
       url: asset.url,
       variant: asset.name,
       version: selectedRelease.value
     })
-    
+
     downloadStatus.value = 'Installation complete!'
     await fetchConfig()
-    
+
     setTimeout(() => {
       downloadStatus.value = ''
     }, 3000)
@@ -216,30 +220,9 @@ async function setActiveVersion(version: string): Promise<void> {
   }
 }
 
-/**
- * useCustomBinary() - Set custom binary as active
- */
-async function useCustomBinary(): Promise<void> {
-  try {
-    await apiPost('/api/backend/use-custom', {})
-    await fetchConfig()
-  } catch (e) {
-    console.error('Failed to use custom binary:', e)
-  }
-}
 
-/**
- * toggleLocalNetwork() - Toggle local network access
- */
-async function toggleLocalNetwork(): Promise<void> {
-  try {
-    const newState = !localNetworkEnabled.value
-    await apiPost('/api/network/local', { enabled: newState })
-    await fetchNetworkStatus()
-  } catch (e) {
-    console.error('Failed to toggle local network:', e)
-  }
-}
+
+
 
 /**
  * toggleNgrok() - Toggle ngrok tunnel
@@ -247,20 +230,11 @@ async function toggleLocalNetwork(): Promise<void> {
 async function toggleNgrok(): Promise<void> {
   try {
     ngrokError.value = ''
-    if (!ngrokEnabled.value) {
-      // Starting - need token
-      const response = await apiPost<any>('/api/network/toggle', { 
-        service: 'ngrok', 
-        action: 'start',
-        token: ngrokToken.value || undefined
-      })
-      if (response.error) {
-        ngrokError.value = response.error
-      }
-    } else {
-      // Stopping
-      await apiPost('/api/network/toggle', { service: 'ngrok', action: 'stop' })
-    }
+    const newState = !ngrokEnabled.value
+    await apiPost('/api/network/ngrok', {
+      enabled: newState,
+      token: ngrokToken.value || undefined
+    })
     await fetchNetworkStatus()
   } catch (e: any) {
     ngrokError.value = e.message || 'Failed to toggle ngrok'
@@ -273,11 +247,8 @@ async function toggleNgrok(): Promise<void> {
  */
 async function toggleCloudflare(): Promise<void> {
   try {
-    if (!cloudflareEnabled.value) {
-      await apiPost('/api/network/toggle', { service: 'cloudflare', action: 'start' })
-    } else {
-      await apiPost('/api/network/toggle', { service: 'cloudflare', action: 'stop' })
-    }
+    const newState = !cloudflareEnabled.value
+    await apiPost('/api/network/cloudflare', { enabled: newState })
     await fetchNetworkStatus()
   } catch (e) {
     console.error('Failed to toggle cloudflare:', e)
@@ -337,17 +308,20 @@ onMounted(async () => {
         </div>
 
         <div class="flex items-center gap-3">
-          <div 
+          <div
             class="w-3 h-3 rounded-full"
             :class="config.activeBackendValid ? 'bg-green-500' : 'bg-red-500'"
           ></div>
-          <span 
+          <span
             class="font-medium"
             :class="config.activeBackendValid ? 'text-green-400' : 'text-red-400'"
           >
             {{ config.activeVersion || 'Not configured' }}
           </span>
-          <span v-if="config.activeBackendValid" class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+          <span
+            v-if="config.activeBackendValid"
+            class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded"
+          >
             Valid
           </span>
           <span v-else class="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded">
@@ -356,10 +330,13 @@ onMounted(async () => {
         </div>
 
         <!-- Version Selector for Installed Versions -->
-        <div v-if="config.installedVersions.length > 0 || config.customBinaryExists" class="space-y-2">
+        <div
+          v-if="config.installedVersions.length > 0 || config.customBinaryExists"
+          class="space-y-2"
+        >
           <label class="text-sm text-muted-foreground">Switch Version:</label>
           <div class="flex gap-2">
-            <select 
+            <select
               :value="config.activeVersion"
               @change="(e) => setActiveVersion((e.target as HTMLSelectElement).value)"
               class="flex-1 px-3 py-2 text-sm rounded bg-muted border border-input"
@@ -374,20 +351,34 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-if="!config.activeBackendValid" class="p-3 bg-amber-900/20 border border-amber-800/30 rounded text-sm text-amber-300">
+        <div
+          v-if="!config.activeBackendValid"
+          class="p-3 bg-amber-900/20 border border-amber-800/30 rounded text-sm text-amber-300"
+        >
           <AlertTriangle class="w-4 h-4 inline mr-1" />
           Place sd-cli and sd-server binaries in the custom folder, or download a release below.
         </div>
       </section>
 
       <!-- System Detection -->
-      <section v-if="systemInfo.platform" class="p-4 rounded-lg border border-blue-800/30 bg-blue-900/20">
+      <section
+        v-if="systemInfo.platform"
+        class="p-4 rounded-lg border border-blue-800/30 bg-blue-900/20"
+      >
         <div class="text-xs text-blue-400 font-medium mb-1">System Detected</div>
         <div class="text-sm text-blue-300">
-          {{ systemInfo.platform === 'win32' ? 'Windows' : systemInfo.platform === 'darwin' ? 'macOS' : 'Linux' }}
+          {{
+            systemInfo.platform === 'win32'
+              ? 'Windows'
+              : systemInfo.platform === 'darwin'
+                ? 'macOS'
+                : 'Linux'
+          }}
           ({{ systemInfo.arch }})
         </div>
-        <div v-if="systemInfo.note" class="text-xs text-blue-400/80 mt-1">{{ systemInfo.note }}</div>
+        <div v-if="systemInfo.note" class="text-xs text-blue-400/80 mt-1">
+          {{ systemInfo.note }}
+        </div>
       </section>
 
       <!-- Download New Release -->
@@ -397,7 +388,10 @@ onMounted(async () => {
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-sm text-muted-foreground mb-1 block">Release Version</label>
-            <select v-model="selectedRelease" class="w-full px-3 py-2 text-sm rounded bg-muted border border-input">
+            <select
+              v-model="selectedRelease"
+              class="w-full px-3 py-2 text-sm rounded bg-muted border border-input"
+            >
               <option value="" disabled>Select version...</option>
               <option v-for="r in releases" :key="r.tag" :value="r.tag">
                 {{ r.tag }} - {{ r.name }}
@@ -406,7 +400,10 @@ onMounted(async () => {
           </div>
           <div>
             <label class="text-sm text-muted-foreground mb-1 block">Binary Variant</label>
-            <select v-model="selectedVariant" class="w-full px-3 py-2 text-sm rounded bg-muted border border-input">
+            <select
+              v-model="selectedVariant"
+              class="w-full px-3 py-2 text-sm rounded bg-muted border border-input"
+            >
               <option value="" disabled>Select variant...</option>
               <option v-for="a in selectedReleaseAssets" :key="a.name" :value="a.name">
                 {{ a.name }}
@@ -415,7 +412,11 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-if="downloadStatus" class="text-sm" :class="downloadStatus.includes('failed') ? 'text-red-400' : 'text-green-400'">
+        <div
+          v-if="downloadStatus"
+          class="text-sm"
+          :class="downloadStatus.includes('failed') ? 'text-red-400' : 'text-green-400'"
+        >
           {{ downloadStatus }}
         </div>
 
@@ -423,9 +424,11 @@ onMounted(async () => {
           @click="downloadAndInstall"
           :disabled="!selectedRelease || !selectedVariant || isDownloading"
           class="w-full py-2.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-          :class="!selectedRelease || !selectedVariant || isDownloading
-            ? 'bg-muted text-muted-foreground cursor-not-allowed'
-            : 'bg-primary text-primary-foreground hover:bg-primary/90'"
+          :class="
+            !selectedRelease || !selectedVariant || isDownloading
+              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          "
         >
           <Loader2 v-if="isDownloading" class="w-4 h-4 animate-spin" />
           <Download v-else class="w-4 h-4" />
@@ -441,17 +444,18 @@ onMounted(async () => {
       <!-- Network Sharing -->
       <section class="p-6 rounded-lg border border-border bg-card space-y-4">
         <h2 class="text-lg font-semibold">Network Sharing</h2>
-        
+
         <!-- Local Network -->
         <div class="p-3 bg-muted/50 rounded">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Local Network</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" :checked="localNetworkEnabled" @change="toggleLocalNetwork" class="sr-only peer" />
-              <div class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-            </label>
+            <div class="text-xs font-semibold px-2 py-0.5 rounded" :class="localNetworkEnabled ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'">
+              {{ localNetworkEnabled ? 'Active' : 'Disabled' }}
+            </div>
           </div>
-          <p class="text-xs text-muted-foreground mb-2">Allow access from other devices on your network</p>
+          <p class="text-xs text-muted-foreground mb-2">
+            Access from other devices. Enable by starting with <code class="bg-muted px-1 rounded">--local</code> flag.
+          </p>
           <div
             v-if="localNetworkUrl && localNetworkEnabled"
             @click="copyUrl(localNetworkUrl)"
@@ -461,19 +465,31 @@ onMounted(async () => {
             <Copy class="w-3 h-3" />
           </div>
         </div>
-        
+
         <!-- Ngrok -->
         <div class="p-3 bg-muted/50 rounded">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Ngrok Tunnel</span>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" :checked="ngrokEnabled" @change="toggleNgrok" class="sr-only peer" />
-              <div class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+              <input
+                type="checkbox"
+                :checked="ngrokEnabled"
+                @change="toggleNgrok"
+                class="sr-only peer"
+              />
+              <div
+                class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
+              ></div>
             </label>
           </div>
           <p class="text-xs text-muted-foreground mb-2">
-            Expose your server to the internet. 
-            <a href="https://dashboard.ngrok.com/get-started/your-authtoken" target="_blank" class="text-blue-400 hover:underline">Get Auth Token</a>
+            Expose your server to the internet.
+            <a
+              href="https://dashboard.ngrok.com/get-started/your-authtoken"
+              target="_blank"
+              class="text-blue-400 hover:underline"
+              >Get Auth Token</a
+            >
           </p>
           <div v-if="!ngrokEnabled" class="mb-2">
             <input
@@ -483,7 +499,10 @@ onMounted(async () => {
               class="w-full px-3 py-2 text-xs rounded bg-background border border-input focus:ring-1 focus:ring-ring"
             />
           </div>
-          <div v-if="ngrokError" class="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400 mb-2">
+          <div
+            v-if="ngrokError"
+            class="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400 mb-2"
+          >
             {{ ngrokError }}
           </div>
           <div
@@ -495,14 +514,21 @@ onMounted(async () => {
             <Copy class="w-3 h-3" />
           </div>
         </div>
-        
+
         <!-- Cloudflare -->
         <div class="p-3 bg-muted/50 rounded">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Cloudflare Tunnel</span>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" :checked="cloudflareEnabled" @change="toggleCloudflare" class="sr-only peer" />
-              <div class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+              <input
+                type="checkbox"
+                :checked="cloudflareEnabled"
+                @change="toggleCloudflare"
+                class="sr-only peer"
+              />
+              <div
+                class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
+              ></div>
             </label>
           </div>
           <div
@@ -521,8 +547,8 @@ onMounted(async () => {
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Express Server Status</h2>
           <div class="flex items-center gap-2">
-            <div 
-              class="w-3 h-3 rounded-full" 
+            <div
+              class="w-3 h-3 rounded-full"
               :class="serverOnline ? 'bg-green-500' : 'bg-destructive'"
             ></div>
             <span class="text-sm">{{ serverOnline ? 'Online' : 'Offline' }}</span>

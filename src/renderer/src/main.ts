@@ -19,24 +19,24 @@ import Settings from './views/Settings.vue'
  * Routes map to the main application views
  */
 const router = createRouter({
-    history: createWebHashHistory(),
-    routes: [
-        { path: '/', redirect: '/text2image' },
-        { path: '/text2image', name: 'Text2Image', component: Text2Image },
-        { path: '/edit', name: 'Edit', component: Edit },
-        { path: '/video', name: 'Video', component: Video },
-        { path: '/gallery', name: 'Gallery', component: Gallery },
-        { path: '/settings', name: 'Settings', component: Settings }
-    ]
+  history: createWebHashHistory(),
+  routes: [
+    { path: '/', redirect: '/text2image' },
+    { path: '/text2image', name: 'Text2Image', component: Text2Image },
+    { path: '/edit', name: 'Edit', component: Edit },
+    { path: '/video', name: 'Video', component: Video },
+    { path: '/gallery', name: 'Gallery', component: Gallery },
+    { path: '/settings', name: 'Settings', component: Settings }
+  ]
 })
 
 // Create Vue application
 const app = createApp(App)
 
 // Configure plugins
-app.use(createPinia())   // State management
-app.use(router)           // Routing
-app.use(MotionPlugin)     // Animations from @vueuse/motion
+app.use(createPinia()) // State management
+app.use(router) // Routing
+app.use(MotionPlugin) // Animations from @vueuse/motion
 
 // Mount application
 app.mount('#app')

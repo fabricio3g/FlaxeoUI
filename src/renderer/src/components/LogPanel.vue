@@ -18,7 +18,7 @@ async function fetchLogs(): Promise<void> {
   try {
     const result = await apiGet<{ logs: string[]; total: number }>('/api/logs')
     logs.value = result.logs
-    
+
     if (autoScroll.value) {
       await nextTick()
       scrollToBottom()
@@ -92,30 +92,28 @@ onUnmounted(() => {
         <span class="text-sm font-medium">Server Logs</span>
         <span class="text-xs text-muted-foreground">({{ logs.length }} entries)</span>
       </div>
-      
+
       <div class="flex items-center gap-2">
         <!-- Auto-scroll toggle -->
         <label class="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
-          <input 
-            type="checkbox" 
-            v-model="autoScroll" 
-            class="w-3 h-3 rounded border-border"
-          />
+          <input type="checkbox" v-model="autoScroll" class="w-3 h-3 rounded border-border" />
           Auto-scroll
         </label>
-        
+
         <!-- Polling toggle -->
         <button
           @click="togglePolling"
           :class="[
             'p-1.5 rounded transition-colors',
-            isPolling ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:text-foreground'
+            isPolling
+              ? 'text-green-500 bg-green-500/10'
+              : 'text-muted-foreground hover:text-foreground'
           ]"
           :title="isPolling ? 'Pause auto-refresh' : 'Resume auto-refresh'"
         >
           <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isPolling }" />
         </button>
-        
+
         <!-- Clear logs -->
         <button
           @click="clearLogs"
@@ -126,18 +124,18 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-    
+
     <!-- Logs content -->
-    <div 
+    <div
       ref="logsContainer"
       class="flex-1 overflow-auto font-mono text-xs p-2 bg-black/90 text-green-400"
     >
       <div v-if="logs.length === 0" class="text-muted-foreground italic">
         No logs yet. Start a generation to see output.
       </div>
-      
-      <div 
-        v-for="(log, index) in logs" 
+
+      <div
+        v-for="(log, index) in logs"
         :key="index"
         class="whitespace-pre-wrap break-all leading-relaxed hover:bg-white/5"
         :class="{
@@ -146,7 +144,9 @@ onUnmounted(() => {
           'text-blue-400': log.includes('EXIT:'),
           'text-cyan-400': log.includes('[SD]') || log.includes('[CLI]')
         }"
-      >{{ log }}</div>
+      >
+        {{ log }}
+      </div>
     </div>
   </div>
 </template>

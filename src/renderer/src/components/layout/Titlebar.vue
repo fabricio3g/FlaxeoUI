@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { Minus, Square, X } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+
+const isElectron = ref(false)
+
+onMounted(() => {
+  isElectron.value = !!window.electronAPI
+})
 
 /**
  * handleMinimize() - Minimizes the electron window
@@ -25,31 +32,33 @@ function handleClose(): void {
 </script>
 
 <template>
-  <header class="h-8 flex items-center justify-between bg-background border-b border-border titlebar-drag select-none">
+  <header
+    class="h-8 flex items-center justify-between bg-background border-b border-border titlebar-drag select-none"
+  >
     <!-- App Title -->
     <div class="flex items-center gap-2 px-3">
       <span class="text-sm font-medium text-foreground">FlaxeoUI</span>
     </div>
-    
+
     <!-- Window Controls -->
-    <div class="flex titlebar-no-drag">
-      <button 
+    <div v-if="isElectron" class="flex titlebar-no-drag">
+      <button
         @click="handleMinimize"
         class="h-8 w-11 flex items-center justify-center hover:bg-muted transition-colors"
         title="Minimize"
       >
         <Minus class="w-4 h-4 text-muted-foreground" />
       </button>
-      
-      <button 
+
+      <button
         @click="handleMaximize"
         class="h-8 w-11 flex items-center justify-center hover:bg-muted transition-colors"
         title="Maximize"
       >
         <Square class="w-3 h-3 text-muted-foreground" />
       </button>
-      
-      <button 
+
+      <button
         @click="handleClose"
         class="h-8 w-11 flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
         title="Close"

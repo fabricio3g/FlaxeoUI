@@ -16,6 +16,9 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [vue(), tailwindcss()]
+    plugins: [vue(), tailwindcss()],
+    server: {
+      host: true // Enable LAN access for phone/other devices
+    }
   }
 })

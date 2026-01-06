@@ -12,23 +12,27 @@ files:
   - '!models/**/*'
   - '!backend/**/*'
   - '!build-structure/**/*'
+  - '!temp/**/*'
 extraResources:
-  - from: "server.js"
-    to: "server.js"
-  - from: "backend-config.template.json"
-    to: "backend-config.json"
-  - from: "build-structure/models"
-    to: "models"
+
+  - from: 'backend-config.template.json'
+    to: 'backend-config.json'
+  - from: 'build-structure/models'
+    to: 'models'
     filter:
-      - "**/*"
-  - from: "build-structure/backend"
-    to: "backend"
+      - '**/*'
+  - from: 'build-structure/backend'
+    to: 'backend'
     filter:
-      - "**/*"
-  - from: "output"
-    to: "output"
+      - '**/*'
+  - from: 'output'
+    to: 'output'
     filter:
-      - ".gitkeep"
+      - '.gitkeep'
+  - from: 'build-structure/temp'
+    to: 'temp'
+    filter:
+      - '**/*'
 asarUnpack:
   - resources/**
 win:

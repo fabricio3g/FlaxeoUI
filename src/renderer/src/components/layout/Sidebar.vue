@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { 
-  ImageIcon, 
-  Brush, 
-  Video, 
-  Images, 
-  Settings,
-  FolderOpen,
-  Database
-} from 'lucide-vue-next'
+import { ImageIcon, Brush, Video, Images, Settings, FolderOpen, Database } from 'lucide-vue-next'
 
 interface NavItem {
   id: string
@@ -77,8 +69,8 @@ function openGalleryFolder(): void {
         @click="handleNavClick(item.id)"
         class="w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200"
         :class="[
-          isActive(item.id) 
-            ? 'bg-primary text-primary-foreground' 
+          isActive(item.id)
+            ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         ]"
         :title="item.label"
@@ -90,7 +82,7 @@ function openGalleryFolder(): void {
         <component :is="item.icon" class="w-5 h-5" />
       </button>
     </nav>
-    
+
     <!-- Quick Actions -->
     <div class="flex flex-col gap-2 mt-auto">
       <button
@@ -100,7 +92,7 @@ function openGalleryFolder(): void {
       >
         <Database class="w-5 h-5" />
       </button>
-      
+
       <button
         @click="openGalleryFolder"
         class="w-12 h-12 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
