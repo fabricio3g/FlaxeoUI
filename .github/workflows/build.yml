@@ -15,10 +15,10 @@ jobs:
   build:
     name: Build ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       matrix:
-        os: [windows-latest]    
+        os: [windows-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,8 +46,6 @@ jobs:
 
       - name: Generate folder structures
         run: node create-folder-structure.js
-
-
 
       - name: Build Windows
         if: matrix.os == 'windows-latest'
@@ -96,10 +94,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    
+
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,8 +107,6 @@ jobs:
         with:
           name: windows-build
           path: ./artifacts/windows
-
-
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
