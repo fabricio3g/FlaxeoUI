@@ -26,7 +26,7 @@ async function fetchMetadata() {
   if (!props.filename) return
   isLoading.value = true
   metadata.value = null
-  
+
   try {
     // Attempt to fetch params from headers or basic info
     // We reuse the verify-params or image info endpoint logic if available
@@ -45,18 +45,20 @@ async function fetchMetadata() {
 
 function handleCopy() {
   if (!metadata.value) return
-  
+
   // Format metadata for copy
   const text = [
-     metadata.value.prompt,
-     metadata.value.negative_prompt ? `Negative prompt: ${metadata.value.negative_prompt}` : '',
-     `Steps: ${metadata.value.steps}, Sampler: ${metadata.value.sampler || 'Default'}, CFG scale: ${metadata.value.cfg_scale}, Seed: ${metadata.value.seed}, Size: ${metadata.value.width}x${metadata.value.height}, Model: ${metadata.value.model}`
-  ].filter(Boolean).join('\n')
-  
+    metadata.value.prompt,
+    metadata.value.negative_prompt ? `Negative prompt: ${metadata.value.negative_prompt}` : '',
+    `Steps: ${metadata.value.steps}, Sampler: ${metadata.value.sampler || 'Default'}, CFG scale: ${metadata.value.cfg_scale}, Seed: ${metadata.value.seed}, Size: ${metadata.value.width}x${metadata.value.height}, Model: ${metadata.value.model}`
+  ]
+    .filter(Boolean)
+    .join('\n')
+
   navigator.clipboard.writeText(text)
   isCopied.value = true
   toast.success('Parameters copied to clipboard')
-  setTimeout(() => isCopied.value = false, 2000)
+  setTimeout(() => (isCopied.value = false), 2000)
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -79,16 +81,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div 
+  <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-md"
     @click.self="emit('close')"
   >
     <!-- Top Bar -->
-    <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-background/50 to-transparent">
+    <div
+      class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-background/50 to-transparent"
+    >
       <div class="text-sm font-medium opacity-70 truncate max-w-md ml-4 text-white drop-shadow-md">
         {{ filename }}
       </div>
-      
+
       <div class="flex items-center gap-2 mr-2">
         <button
           @click="showInfo = !showInfo"
@@ -109,14 +113,14 @@ onUnmounted(() => {
     </div>
 
     <!-- Navigation Buttons -->
-    <button 
+    <button
       @click="emit('prev')"
       class="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors backdrop-blur-sm z-10"
     >
       <ChevronLeft class="w-8 h-8" />
     </button>
 
-    <button 
+    <button
       @click="emit('next')"
       class="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors backdrop-blur-sm z-10"
     >
@@ -124,7 +128,7 @@ onUnmounted(() => {
     </button>
 
     <!-- Main Image -->
-    <div 
+    <div
       class="w-full h-full flex items-center justify-center p-4 transition-all duration-300"
       :class="{ 'pr-96': showInfo }"
     >
@@ -137,14 +141,14 @@ onUnmounted(() => {
     </div>
 
     <!-- Info Panel -->
-    <div 
+    <div
       class="absolute top-0 right-0 bottom-0 w-96 bg-card border-l border-border shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out z-20 overflow-hidden"
       :class="showInfo ? 'translate-x-0' : 'translate-x-full'"
       @click.stop
     >
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-lg font-bold">Image Info</h3>
-        <button 
+        <button
           @click="handleCopy"
           class="p-2 rounded-md hover:bg-muted transition-colors"
           title="Copy Parameters"
@@ -158,7 +162,10 @@ onUnmounted(() => {
         Loading info...
       </div>
 
-      <div v-else-if="!metadata" class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-4">
+      <div
+        v-else-if="!metadata"
+        class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-4"
+      >
         <Info class="w-12 h-12 mb-4 opacity-20" />
         <p>No metadata found for this image.</p>
       </div>
@@ -166,38 +173,44 @@ onUnmounted(() => {
       <div v-else class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
         <!-- Prompt -->
         <div>
-          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Prompt</label>
+          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block"
+            >Prompt</label
+          >
           <p class="text-sm bg-muted/50 p-3 rounded-lg leading-relaxed">{{ metadata.prompt }}</p>
         </div>
 
         <!-- Negative Prompt -->
         <div v-if="metadata.negative_prompt">
-          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Negative Prompt</label>
-          <p class="text-sm bg-muted/50 p-3 rounded-lg leading-relaxed">{{ metadata.negative_prompt }}</p>
+          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block"
+            >Negative Prompt</label
+          >
+          <p class="text-sm bg-muted/50 p-3 rounded-lg leading-relaxed">
+            {{ metadata.negative_prompt }}
+          </p>
         </div>
 
         <!-- Details Grid -->
         <div class="grid grid-cols-2 gap-3">
-           <div class="bg-muted/30 p-2 rounded">
-             <span class="text-xs text-muted-foreground block">Steps</span>
-             <span class="text-sm font-mono">{{ metadata.steps }}</span>
-           </div>
-           <div class="bg-muted/30 p-2 rounded">
-             <span class="text-xs text-muted-foreground block">CFG Scale</span>
-             <span class="text-sm font-mono">{{ metadata.cfg_scale }}</span>
-           </div>
-           <div class="bg-muted/30 p-2 rounded">
-             <span class="text-xs text-muted-foreground block">Seed</span>
-             <span class="text-sm font-mono">{{ metadata.seed }}</span>
-           </div>
-           <div class="bg-muted/30 p-2 rounded">
-             <span class="text-xs text-muted-foreground block">Size</span>
-             <span class="text-sm font-mono">{{ metadata.width }}x{{ metadata.height }}</span>
-           </div>
-           <div class="bg-muted/30 p-2 rounded col-span-2">
-             <span class="text-xs text-muted-foreground block">Model</span>
-             <span class="text-sm font-mono truncate">{{ metadata.model }}</span>
-           </div>
+          <div class="bg-muted/30 p-2 rounded">
+            <span class="text-xs text-muted-foreground block">Steps</span>
+            <span class="text-sm font-mono">{{ metadata.steps }}</span>
+          </div>
+          <div class="bg-muted/30 p-2 rounded">
+            <span class="text-xs text-muted-foreground block">CFG Scale</span>
+            <span class="text-sm font-mono">{{ metadata.cfg_scale }}</span>
+          </div>
+          <div class="bg-muted/30 p-2 rounded">
+            <span class="text-xs text-muted-foreground block">Seed</span>
+            <span class="text-sm font-mono">{{ metadata.seed }}</span>
+          </div>
+          <div class="bg-muted/30 p-2 rounded">
+            <span class="text-xs text-muted-foreground block">Size</span>
+            <span class="text-sm font-mono">{{ metadata.width }}x{{ metadata.height }}</span>
+          </div>
+          <div class="bg-muted/30 p-2 rounded col-span-2">
+            <span class="text-xs text-muted-foreground block">Model</span>
+            <span class="text-sm font-mono truncate">{{ metadata.model }}</span>
+          </div>
         </div>
       </div>
     </div>
