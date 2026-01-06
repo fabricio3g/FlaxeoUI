@@ -24,7 +24,7 @@ export function useToast(): UseToastReturn {
   function show(message: string, type: Toast['type'] = 'info', duration = 4000): void {
     const id = nextId++
     toasts.value.push({ id, message, type, duration })
-    
+
     if (duration > 0) {
       setTimeout(() => remove(id), duration)
     }
@@ -47,7 +47,7 @@ export function useToast(): UseToastReturn {
   }
 
   function remove(id: number): void {
-    const index = toasts.value.findIndex(t => t.id === id)
+    const index = toasts.value.findIndex((t) => t.id === id)
     if (index > -1) {
       toasts.value.splice(index, 1)
     }
