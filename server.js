@@ -63,6 +63,10 @@ let releasesCache = null
 let releasesCacheTime = 0
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
+// Server logs storage for UI display
+let serverLogs = []
+const MAX_LOG_ENTRIES = 1000 // Limit log entries to prevent memory issues
+
 // --- Backend Config Management ---
 function loadBackendConfig() {
   try {
@@ -171,7 +175,6 @@ if (fs.existsSync(publicDir)) {
 
 let sdProcess = null
 let cliProcess = null
-let serverLogs = []
 
 
 const listFiles = (subdir) => {
