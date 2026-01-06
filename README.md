@@ -6,20 +6,20 @@ A Front End for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffus
 
 I created this Front End to quickly test models on my PC. Currently, it has only been tested using Vulkan on Linux and Windows.
 
-
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
-
 
 ## Please use the master-418-200cb6f branch of stable-diffusion.cpp that is the one that works with this version of FlaxeoUI, or you will have issues. for Z Image turbo use the resolution 512x768 a bigger resolution will cause issues like generating white images in my case.
 
 ## Disclaimer
+
 This project hasn’t been fully tested. I ran into VRAM limitations when trying larger models, so testing was pretty limited.
 
 I mostly developed and tested this on Windows. The first version did work on Ubuntu, but after the latest changes, I have no idea if it still works on Linux, since I haven’t tested it there again. Same goes for the build created by the GitHub Action, I haven’t tested it at all
 
-##  Getting Started
+## Getting Started
 
 ### Prerequisites
+
 - **Node.js**: v16 or higher (Tested with v22.20.0).
 - **stable-diffusion.cpp**: Tested with version `master-418-200cb6f`.
 - **NPM**: Included with Node.js.
@@ -27,12 +27,14 @@ I mostly developed and tested this on Windows. The first version did work on Ubu
 ### Installation
 
 1.  **Clone the repository**
+
     ```bash
     git clone https://github.com/yourusername/flaxeo-ui.git
     cd flaxeo-ui
     ```
 
 2.  **Install dependencies**
+
     ```bash
     npm install
     ```
@@ -45,12 +47,14 @@ I mostly developed and tested this on Windows. The first version did work on Ubu
 ### Installation Windows Build
 
 1.  **Clone the repository**
+
     ```bash
     git clone https://github.com/yourusername/flaxeo-ui.git
     cd flaxeo-ui
     ```
 
 2.  **Install dependencies**
+
     ```bash
     npm install
     ```
@@ -60,7 +64,6 @@ I mostly developed and tested this on Windows. The first version did work on Ubu
     npm run build:win
     ```
 
-
 ## Development
 
 To run the application in debug mode with hot-reloading for the frontend:
@@ -69,8 +72,6 @@ To run the application in debug mode with hot-reloading for the frontend:
 
 npm run dev
 ```
-
-
 
 ## Architecture
 
