@@ -1,6 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
-import { spawn, ChildProcess } from 'child_process'
+import { fork, ChildProcess } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as fs from 'fs'
@@ -28,11 +28,11 @@ function startServer(): Promise<number> {
     // In dev mode: __dirname is flaxeo-vue/out/main, so go up to flaxeo-vue root
     // In production: server.js is in resourcesPath
     const serverPath = is.dev
-      ? join(__dirname, '../..', 'server.js')  // flaxeo-vue/server.js
-      : join(process.resourcesPath, 'server.js')
+      ? join(__dirname, '../..', 'server.js') // flaxeo-vue/server.js
+      : join(__dirname, '../server/index.js') // inside app.asar/out/server/index.js
 
     const cwdPath = is.dev
-      ? join(__dirname, '../..')  // flaxeo-vue root
+      ? join(__dirname, '../..') // flaxeo-vue root
       : process.resourcesPath
 
     console.log('[Main] Starting server from:', serverPath)
@@ -46,27 +46,54 @@ function startServer(): Promise<number> {
     }
 
     // Pass CLI arguments to the server, filtering out Electron-specific ones
-    const args = process.argv.slice(2).filter(arg => 
-      !arg.startsWith('--user-data-dir=') && 
-      !arg.startsWith('--runtime-') &&
-      arg !== '.'
-    )
+    const args = process.argv
+      .slice(2)
+      .filter(
+        (arg) => !arg.startsWith('--user-data-dir=') && !arg.startsWith('--runtime-') && arg !== '.'
+      )
 
     console.log('[Main] Passing args to server:', args)
 
-    serverProcess = spawn('node', [serverPath, ...args], {
-      cwd: cwdPath,
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
+    // Environment variables for the server process
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
+      FLAXEO_PACKAGED: is.dev ? '0' : '1',
+      FLAXEO_RESOURCES_PATH: is.dev ? join(__dirname, '../..') : process.resourcesPath
+    }
+
+    // Use fork() which is designed for Node.js processes
+    // In production, spawn the Electron binary with ELECTRON_RUN_AS_NODE
+    // In development, fork() uses node automatically
+    if (is.dev) {
+      // Development: use fork() which uses node automatically
+      serverProcess = fork(serverPath, args, {
+        cwd: cwdPath,
+        env,
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc']
+      })
+    } else {
+      // Production: use Electron binary as Node runtime
+      const { spawn } = require('child_process')
+      serverProcess = spawn(process.execPath, [serverPath, ...args], {
+        cwd: cwdPath,
+        env,
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+    }
+
+    if (!serverProcess) {
+      reject(new Error('Failed to create server process'))
+      return
+    }
 
     serverProcess.stdout?.on('data', (data) => {
       const output = data.toString()
       // Write raw output directly to preserve progress bars
       process.stdout.write(output)
 
-      // Parse port from server output
-      const portMatch = output.match(/Server running on port (\d+)/)
+      // Parse port from server output (matches "[Server] Running on port: 3000")
+      const portMatch = output.match(/port:\s*(\d+)/i)
       if (portMatch) {
         serverPort = parseInt(portMatch[1])
         console.log('[Main] Server started on port:', serverPort)
@@ -86,6 +113,9 @@ function startServer(): Promise<number> {
 
     serverProcess.on('exit', (code) => {
       console.log('[Main] Server exited with code:', code)
+      if (code !== 0 && code !== null) {
+        console.error('[Main] Server crashed or exited unexpectedly.')
+      }
       serverProcess = null
     })
 

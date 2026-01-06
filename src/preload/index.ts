@@ -25,8 +25,7 @@ const api = {
    */
   getInitState: (): Promise<{ firstRun: boolean; port: number }> =>
     ipcRenderer.invoke('get-init-state'),
-  setFirstRunComplete: (): Promise<boolean> =>
-    ipcRenderer.invoke('set-first-run-complete'),
+  setFirstRunComplete: (): Promise<boolean> => ipcRenderer.invoke('set-first-run-complete'),
   toggleLocalNetwork: (enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('toggle-local-network', enabled)
 }
