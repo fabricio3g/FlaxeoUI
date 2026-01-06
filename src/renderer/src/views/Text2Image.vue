@@ -3,7 +3,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiGet, getOutputUrl, apiPostForm, getFileUrl } from '@/services/api'
+import { apiPost, apiGet, getOutputUrl, apiPostForm, getFileUrl, getApiBase } from '@/services/api'
 import {
   Sparkles, Loader2, Download, Trash2, X, User, Activity, ImagePlus,
   Plus, Upload, Copy, Eye, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Image
@@ -26,6 +26,47 @@ const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
 // const serverStats = ref<any>(null) // Unused
+
+// Preview polling
+let previewPollInterval: ReturnType<typeof setInterval> | null = null
+
+/**
+ * getPreviewImageUrl() - Get the current preview image URL with cache bust
+ */
+function getPreviewImageUrl(): string {
+  return `${getApiBase()}/api/preview-image?t=${Date.now()}`
+}
+
+/**
+ * startPreviewPolling() - Start polling for live preview images
+ */
+function startPreviewPolling(): void {
+  stopPreviewPolling() // Ensure no duplicate intervals
+  previewPollInterval = setInterval(async () => {
+    try {
+      const response = await fetch(getPreviewImageUrl())
+      if (response.ok) {
+        const blob = await response.blob()
+        if (blob.size > 0) {
+          // Only update if we got an actual image
+          previewImage.value = `${getApiBase()}/temp/preview.png?t=${Date.now()}`
+        }
+      }
+    } catch (e) {
+      // Preview not available yet, silently ignore
+    }
+  }, 1000) // Poll every 1 second
+}
+
+/**
+ * stopPreviewPolling() - Stop the preview polling interval
+ */
+function stopPreviewPolling(): void {
+  if (previewPollInterval) {
+    clearInterval(previewPollInterval)
+    previewPollInterval = null
+  }
+}
 
 // File uploads (store actual File objects for proper upload)
 // Map to store File objects for PhotoMaker web/mobile uploads (blobUrl -> File)
@@ -268,6 +309,11 @@ async function handleGenerate(): Promise<void> {
   isGenerating.value = true
   error.value = null
   
+  // Start live preview polling if a preview method is selected
+  if (config.value.livePreviewMethod) {
+    startPreviewPolling()
+  }
+  
   try {
     const params = buildGenerationParams()
     
@@ -369,6 +415,7 @@ async function handleGenerate(): Promise<void> {
     toast.error(errorMsg)
     console.error('Generation error:', e)
   } finally {
+    stopPreviewPolling()
     isGenerating.value = false
   }
 }
@@ -487,6 +534,7 @@ onMounted(async () => {
   
   onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown)
+      stopPreviewPolling()
   })
 })
 </script>
