@@ -176,7 +176,6 @@ if (fs.existsSync(publicDir)) {
 let sdProcess = null
 let cliProcess = null
 
-
 const listFiles = (subdir) => {
   try {
     const dir = path.join(MODELS_DIR, subdir)

@@ -11,6 +11,8 @@ A Front End for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffus
 
 ## Disclaimer
 
+The binary might be detected by chrome or microsoft edge not be trusted due the lacking of a digital signature. those new changes has broken the cloudflare tunnel. and the ngrok tunnel is not working as expected. by detfault the app is sharing in the local network to use it remotly in the same network on the phone or other device.
+
 This project hasn’t been fully tested. I ran into VRAM limitations when trying larger models, so testing was pretty limited.
 
 I mostly developed and tested this on Windows. The first version did work on Ubuntu, but after the latest changes, I have no idea if it still works on Linux, since I haven’t tested it there again. Same goes for the build created by the GitHub Action, I haven’t tested it at all
