@@ -45,6 +45,24 @@ I mostly developed and tested this on Windows. The first version did work on Ubu
     npm start
     ```
 
+### Using just the server.js
+1.  **Clone the repository**
+
+    ```bash
+    git clone https://github.com/yourusername/flaxeo-ui.git
+    cd flaxeo-ui
+    ```
+
+2.  **Install dependencies**
+
+    ```bash
+    npm install
+    ```
+
+3.  **Run the application**
+    ``` node ./server.js```
+
+
 ### Installation Windows Build
 
 1.  **Clone the repository**
