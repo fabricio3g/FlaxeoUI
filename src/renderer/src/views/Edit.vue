@@ -3,9 +3,10 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { Brush, Upload, Trash2, Loader2, X, Images } from 'lucide-vue-next'
+import { Brush, Upload, Trash2, X, Images } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import { useGenerationStatus } from '@/composables/useGeneration'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -14,7 +15,7 @@ const { config } = storeToRefs(configStore)
 // Inpainting state
 const prompt = ref('')
 const negativePrompt = ref('')
-const isGenerating = ref(false)
+const { isGenerating } = useGenerationStatus('edit')
 const error = ref<string | null>(null)
 
 // Canvas state
@@ -405,7 +406,7 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
-    <div class="flex-1 relative p-2 md:p-3 min-h-0">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-2 md:p-3">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -416,10 +417,10 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="mx-auto w-full max-w-5xl h-full">
+      <div class="mx-auto h-full w-full max-w-5xl min-h-0">
         <div
           ref="containerRef"
-          class="relative flex h-full min-h-[420px] max-h-[72vh] items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners"
+          class="relative flex h-full min-h-0 items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners"
           @wheel="handleViewportWheel"
           @mousedown="startPanning"
           @mousemove="panViewport"
@@ -452,14 +453,14 @@ onUnmounted(() => {
 
           <div
             v-else
-            class="relative inline-block transition-transform duration-75"
+              class="relative inline-block max-h-full max-w-full transition-transform duration-75"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
           >
             <img
               ref="imageRef"
               :src="baseImage"
-              class="block max-w-full max-h-[72vh] object-contain"
+              class="block max-h-full max-w-full object-contain"
               alt="Base image"
               @load="syncCanvasToDisplayedImage"
             />
@@ -484,17 +485,25 @@ onUnmounted(() => {
 
           <div
             v-if="isGenerating"
-            class="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm"
+            class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
-            <span class="text-sm font-medium">Inpainting...</span>
+            <div class="generating-status">
+              <div class="generating-loader-mark" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <span class="generating-status-title">Blending the edit</span>
+              <p class="generating-status-subtitle">Filling the masked area with your prompt.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="shrink-0 px-3 pb-3 pt-2">
-      <div class="relative overflow-visible rounded-3xl border border-border/60 bg-transparent shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+    <div class="shrink-0 bg-card/70 px-3 pb-3 pt-2">
+      <div class="relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
         <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
           <div class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1">
             <Brush class="w-3.5 h-3.5 text-muted-foreground" />

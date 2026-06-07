@@ -119,6 +119,20 @@ const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Comp
   { id: 'warnings', label: 'Warnings', icon: AlertTriangle }
 ]
 
+const activeCollapsedMeta = computed(() =>
+  collapsedSections.find((section) => section.id === activeCollapsedSection.value)
+)
+
+function collapsedSectionSummary(section: CollapsedSection): string {
+  if (section === 'backend') return sdServerRunning.value ? 'Server online' : 'CLI or offline'
+  if (section === 'presets') return selectedPreset.value?.name || `${presets.value.length} saved`
+  if (section === 'models') return config.value.loadMode === 'standard' ? 'Checkpoint mode' : 'Split model mode'
+  if (section === 'generation') return `${config.value.steps} steps · ${config.value.width}x${config.value.height}`
+  if (section === 'hardware') return config.value.backendAssignment || 'Auto backend'
+  if (section === 'warnings') return configWarnings.value.length ? `${configWarnings.value.length} warning${configWarnings.value.length === 1 ? '' : 's'}` : 'All clear'
+  return ''
+}
+
 const presetOptions = computed(() => [
   { label: 'Select preset...', value: '' },
   ...(
@@ -376,45 +390,75 @@ onUnmounted(() => {
 
 <template>
   <aside
-    class="config-panel-shell w-full flex flex-col h-full md:bg-card/95 md:shadow-none md:backdrop-blur-xl md:rounded-sm"
-    :class="collapsed ? 'overflow-visible z-50' : 'overflow-hidden'"
+    class="config-panel-shell w-full flex flex-col h-full md:shadow-none md:backdrop-blur-xl md:rounded-sm"
+    :class="collapsed ? 'overflow-visible z-50 titlebar-shell' : 'overflow-hidden md:bg-card/95'"
   >
-    <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-2 py-3">
-      <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
-        <button
-          class="relative h-9 w-9 metal-icon-button flex items-center justify-center titlebar-no-drag"
-          :class="[
-            activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
-              ? 'primary-metal-button'
-              : 'text-muted-foreground hover:text-foreground',
-            section.id === 'warnings' && configWarnings.length > 0 ? 'text-yellow-500' : ''
-          ]"
-          type="button"
-          @mouseenter="showCollapsedFlyout(section.id)"
-          @mouseleave="hideCollapsedFlyout(section.id)"
-          @click="pinCollapsedFlyout(section.id)"
-        >
-          <component :is="section.icon" class="w-4 h-4" />
-          <span
-            v-if="section.id === 'backend'"
-            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
-            :class="backendValid ? 'bg-green-500' : 'bg-red-500'"
-          ></span>
-          <span
-            v-if="section.id === 'warnings' && configWarnings.length > 0"
-            class="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black"
-          >{{ configWarnings.length }}</span>
-        </button>
-      </Tooltip>
+    <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag">
+      <div class="flex h-8 w-8 items-center justify-center metal-icon-button text-muted-foreground">
+        <div
+          class="h-2 w-2 rounded-full"
+          :class="backendValid ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.55)]' : 'bg-red-500'"
+        ></div>
+      </div>
+
+      <div class="my-1 h-px w-5 bg-border/80"></div>
+
+      <div class="flex flex-col items-center gap-1">
+        <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
+          <button
+            class="group relative flex h-8 w-8 items-center justify-center metal-icon-button titlebar-no-drag"
+            :class="[
+              activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
+                ? 'primary-metal-button'
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+              section.id === 'warnings' && configWarnings.length > 0 && activeCollapsedSection !== section.id && pinnedCollapsedSection !== section.id ? 'text-yellow-500' : ''
+            ]"
+            type="button"
+            @mouseenter="showCollapsedFlyout(section.id)"
+            @mouseleave="hideCollapsedFlyout(section.id)"
+            @click="pinCollapsedFlyout(section.id)"
+          >
+            <span
+              v-if="activeCollapsedSection === section.id || pinnedCollapsedSection === section.id"
+              class="absolute -left-2 h-5 w-0.5 rounded-full bg-primary"
+            ></span>
+            <component :is="section.icon" class="w-4 h-4" />
+            <span
+              v-if="section.id === 'backend'"
+              class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full ring-2 ring-background"
+              :class="sdServerRunning ? 'bg-green-500' : 'bg-muted-foreground/55'"
+            ></span>
+            <span
+              v-if="section.id === 'warnings' && configWarnings.length > 0"
+              class="absolute -right-1 -top-1 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
+            >{{ configWarnings.length }}</span>
+          </button>
+        </Tooltip>
+      </div>
+
+      <div class="mt-auto h-px w-5 bg-border/80"></div>
+
+      <div class="flex flex-col items-center gap-1 text-[9px] text-muted-foreground">
+        <span class="font-semibold">{{ config.steps }}</span>
+        <span>{{ config.width }}</span>
+      </div>
 
       <div
         v-if="activeCollapsedSection"
-        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-full overflow-y-auto rounded-xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-xl"
+        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-[calc(100vh-1rem)] overflow-y-auto rounded-sm border border-border/70 titlebar-shell p-4 shadow-xl backdrop-blur-xl"
         @mouseenter="keepCollapsedFlyout"
         @mouseleave="leaveCollapsedFlyout"
       >
-        <div class="mb-3 flex items-center justify-between gap-3">
-          <h3 class="text-sm font-semibold capitalize">{{ activeCollapsedSection }}</h3>
+        <div class="mb-4 flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+          <div class="flex min-w-0 items-start gap-3">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center metal-icon-button text-foreground">
+              <component v-if="activeCollapsedMeta" :is="activeCollapsedMeta.icon" class="h-4 w-4" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="truncate text-sm font-semibold">{{ activeCollapsedMeta?.label }}</h3>
+              <p class="mt-0.5 truncate text-[11px] text-muted-foreground">{{ collapsedSectionSummary(activeCollapsedSection) }}</p>
+            </div>
+          </div>
           <button class="metal-icon-button p-1 text-muted-foreground hover:text-foreground" @click="closeCollapsedFlyout">
             <X class="w-4 h-4" />
           </button>

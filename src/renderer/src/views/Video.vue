@@ -3,8 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, apiGet, getApiBase, getOutputUrl } from '@/services/api'
-import { Upload, Loader2, Play, X } from 'lucide-vue-next'
+import { Upload, Play, X } from 'lucide-vue-next'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import { useGenerationStatus } from '@/composables/useGeneration'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -12,7 +13,7 @@ const { config } = storeToRefs(configStore)
 // Video generation state
 const prompt = ref('')
 const negativePrompt = ref('')
-const isGenerating = ref(false)
+const { isGenerating } = useGenerationStatus('video')
 const generatedVideo = ref<string | null>(null)
 const error = ref<string | null>(null)
 
@@ -163,7 +164,7 @@ async function handleCancel(): Promise<void> {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
-    <div class="flex-1 relative p-2 md:p-3 min-h-0">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-2 md:p-3">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -174,15 +175,15 @@ async function handleCancel(): Promise<void> {
         </button>
       </div>
 
-      <div class="mx-auto w-full max-w-5xl h-full">
-        <div class="relative flex h-full min-h-[420px] max-h-[72vh] items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners">
+      <div class="mx-auto h-full w-full max-w-5xl min-h-0">
+        <div class="relative flex h-full min-h-0 items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners">
           <video
             v-if="generatedVideo"
             :src="generatedVideo"
             controls
             autoplay
             loop
-            class="max-w-full max-h-[72vh] object-contain"
+            class="h-full max-h-full max-w-full object-contain"
           ></video>
 
           <div v-else class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white">
@@ -190,25 +191,32 @@ async function handleCancel(): Promise<void> {
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
+            <div v-if="!isGenerating" class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
               <span class="text-3xl font-semibold tracking-tight md:text-5xl">Imagine it into form</span>
             </div>
           </div>
 
           <div
             v-if="isGenerating"
-            class="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm"
+            class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
-            <span class="text-sm font-medium">Generating video...</span>
-            <p class="text-xs text-muted-foreground mt-1">This may take several minutes</p>
+            <div class="generating-status">
+              <div class="generating-loader-mark" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <span class="generating-status-title">Rendering motion</span>
+              <p class="generating-status-subtitle">This can take a few minutes.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="shrink-0 px-3 pb-3 pt-2">
-      <div class="relative overflow-visible rounded-3xl border border-border/60 bg-transparent shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+    <div class="shrink-0 bg-card/70 px-3 pb-3 pt-2">
+      <div class="relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
         <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
           <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30">
             <button

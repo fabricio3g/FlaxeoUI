@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 import { apiPost } from '@/services/api'
 
+export type GenerationSurface = 'text2image' | 'edit' | 'video'
+
 export interface GenerationParams {
   prompt: string
   negative_prompt?: string
@@ -28,12 +30,25 @@ export interface GenerationParams {
  *
  * @returns {Object} Generation state and methods
  */
+const generationStatus: Record<GenerationSurface, ReturnType<typeof ref<boolean>>> = {
+  text2image: ref(false),
+  edit: ref(false),
+  video: ref(false)
+}
+
+const progress = ref(0)
+const previewImage = ref<string | null>(null)
+const generatedFiles = ref<string[]>([])
+const error = ref<string | null>(null)
+
+export function useGenerationStatus(surface: GenerationSurface) {
+  return {
+    isGenerating: generationStatus[surface]
+  }
+}
+
 export function useGeneration() {
-  const isGenerating = ref(false)
-  const progress = ref(0)
-  const previewImage = ref<string | null>(null)
-  const generatedFiles = ref<string[]>([])
-  const error = ref<string | null>(null)
+  const { isGenerating } = useGenerationStatus('text2image')
 
   /**
    * generateImage() - Initiates image generation via /api/generate-cli

@@ -70,7 +70,7 @@ const displayValue = computed<string>(() => {
 })
 
 const triggerClasses =
-  'flex w-full items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
+  'flex w-full min-w-0 items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
 
 const sizeClasses: Record<string, string> = {
   sm: 'text-xs px-2 py-1',
@@ -81,7 +81,7 @@ const contentClasses =
   'z-50 max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
 
 const itemClasses =
-  'relative flex cursor-default select-none items-center rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-medium data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
+  'relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-medium data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
 
 const viewportClasses = 'p-1'
 </script>
@@ -95,7 +95,7 @@ const viewportClasses = 'p-1'
     <SelectTrigger
       :class="[triggerClasses, sizeClasses[size], props.class]"
     >
-      <SelectValue :placeholder="placeholder">
+      <SelectValue :placeholder="placeholder" class="min-w-0 flex-1 truncate">
         {{ displayValue }}
       </SelectValue>
       <SelectIcon>
@@ -113,7 +113,7 @@ const viewportClasses = 'p-1'
               :value="option.value"
               :class="itemClasses"
             >
-              <SelectItemText>
+              <SelectItemText class="block min-w-0 truncate">
                 {{ option.label }}
               </SelectItemText>
             </SelectItem>
