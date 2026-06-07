@@ -104,7 +104,7 @@ onUnmounted(() => {
         <button
           @click="togglePolling"
           :class="[
-            'p-1.5 rounded transition-colors',
+            'p-1.5 rounded-md transition-colors',
             isPolling
               ? 'text-green-500 bg-green-500/10'
               : 'text-muted-foreground hover:text-foreground'

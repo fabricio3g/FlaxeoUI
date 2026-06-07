@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import type { Component } from 'vue'
 import { ImageIcon, Brush, Video, Images, Settings, FolderOpen, Database } from 'lucide-vue-next'
 
 interface NavItem {
   id: string
   label: string
-  icon: any
+  icon: Component
 }
 
 const props = defineProps<{
@@ -60,17 +60,17 @@ function openGalleryFolder(): void {
 </script>
 
 <template>
-  <aside class="w-16 flex flex-col items-center py-4 bg-card border-r border-border">
+  <aside class="w-16 flex flex-col items-center py-3 rounded-2xl border border-border/80 bg-card/85 shadow-sm backdrop-blur-xl">
     <!-- Main Navigation -->
-    <nav class="flex flex-col gap-2 flex-1">
+    <nav class="flex flex-col gap-1.5 flex-1">
       <button
         v-for="item in navItems"
         :key="item.id"
         @click="handleNavClick(item.id)"
-        class="w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200"
+        class="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200"
         :class="[
           isActive(item.id)
-            ? 'bg-primary text-primary-foreground'
+            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-500/20'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         ]"
         :title="item.label"
@@ -79,26 +79,26 @@ function openGalleryFolder(): void {
         :hovered="{ scale: 1.05 }"
         :tapped="{ scale: 0.95 }"
       >
-        <component :is="item.icon" class="w-5 h-5" />
+        <component :is="item.icon" class="w-4.5 h-4.5" />
       </button>
     </nav>
 
     <!-- Quick Actions -->
-    <div class="flex flex-col gap-2 mt-auto">
+    <div class="flex flex-col gap-1.5 mt-auto">
       <button
         @click="openModelsFolder"
-        class="w-12 h-12 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        class="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         title="Open Models Folder"
       >
-        <Database class="w-5 h-5" />
+        <Database class="w-4.5 h-4.5" />
       </button>
 
       <button
         @click="openGalleryFolder"
-        class="w-12 h-12 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        class="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         title="Open Gallery Folder"
       >
-        <FolderOpen class="w-5 h-5" />
+        <FolderOpen class="w-4.5 h-4.5" />
       </button>
     </div>
   </aside>

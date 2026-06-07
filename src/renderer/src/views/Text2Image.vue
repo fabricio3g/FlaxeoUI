@@ -77,6 +77,23 @@ const initImageFile = ref<File | null>(null)
 
 // Advanced sections state
 const activeTab = ref<string>('')
+const showNegPrompt = ref(false)
+const promptInput = ref<HTMLTextAreaElement | null>(null)
+
+function autoResize(): void {
+  const el = promptInput.value
+  if (el) {
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  }
+}
+
+function onPromptKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleGenerate()
+  }
+}
 
 // Size presets
 const sizePresets = [
@@ -540,408 +557,213 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-auto bg-background text-foreground">
-    <div class="shrink-0 border-b border-border/50 bg-card/30">
-      <div class="p-5">
-        <div class="max-w-4xl mx-auto space-y-4">
-          
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-xs font-semibold text-foreground/70 uppercase tracking-wider flex items-center gap-2">
-                Prompt
-                <span v-if="config.embeddings.length > 0" class="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] normal-case">
-                  {{ config.embeddings.length }} embeds
-                </span>
-              </label>
-              <span class="text-xs text-muted-foreground">{{ prompt.length }} chars</span>
-            </div>
-            <textarea
-              v-model="prompt"
-              rows="3"
-              placeholder="A stunning photograph of a mountain landscape at golden hour, dramatic lighting, 8k quality..."
-              class="w-full px-4 py-3 text-sm rounded-xl bg-background border-2 border-border/60 resize-none transition-all duration-200
-                     focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40 shadow-sm"
-              :disabled="isGenerating"
-            ></textarea>
-          </div>
-          
-          <div>
-            <label class="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-2 block">Negative Prompt</label>
-            <textarea
-              v-model="negativePrompt"
-              rows="2"
-              placeholder="blurry, low quality, distorted, watermark, bad anatomy..."
-              class="w-full px-4 py-3 text-sm rounded-xl bg-muted/30 border border-border/50 resize-none transition-all duration-200
-                     focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/40 shadow-sm"
-              :disabled="isGenerating"
-            ></textarea>
-          </div>
+  <div class="flex flex-col h-full overflow-hidden bg-transparent text-foreground">
+    <!-- Preview Area -->
+    <div class="flex-1 relative p-4 md:p-6 bg-muted/30 min-h-0">
+      <div v-if="error" class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50">
+        {{ error }}
+        <button @click="error = null" class="hover:opacity-70"><X class="w-4 h-4" /></button>
+      </div>
 
-          <div class="space-y-2">
-             <div class="rounded-lg border border-border/50 bg-muted/10 overflow-hidden">
-                <button 
-                  @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
-                  class="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                >
-                  <span class="text-xs font-medium uppercase tracking-wider flex items-center gap-2 text-foreground/80">
-                    <User class="w-3.5 h-3.5" /> PhotoMaker
-                  </span>
-                  <component :is="activeTab === 'photomaker' ? ChevronUp : ChevronDown" class="w-4 h-4 text-muted-foreground" />
-                </button>
-                <div v-show="activeTab === 'photomaker'" class="p-4 border-t border-border/50 space-y-3">
-                   <div class="flex flex-col md:flex-row items-start gap-4">
-                      <!-- Image Upload -->
-                      <div class="flex-1">
-                        <label class="text-xs text-muted-foreground block mb-2">ID Images (Max 4)</label>
-                        <div class="flex gap-2 flex-wrap">
-                           <div v-for="(img, idx) in config.photoMakerImages" :key="idx" class="relative group w-16 h-16 rounded-md overflow-hidden border border-border">
-                              <img :src="getFileUrl(img)" class="w-full h-full object-cover" />
-                              <button @click="removePMImage(idx)" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                                 <X class="w-4 h-4" />
-                              </button>
-                           </div>
-                           <label v-if="config.photoMakerImages.length < 4" class="w-16 h-16 rounded-md border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                              <Plus class="w-5 h-5 text-muted-foreground" />
-                              <input type="file" multiple accept="image/*" class="hidden" @change="handlePMUpload" />
-                           </label>
-                        </div>
-                      </div>
-                      <div class="w-48">
-                         <label class="text-xs text-muted-foreground block mb-2">Style Strength ({{ config.photoMakerStyleStrength }})</label>
-                         <input v-model.number="config.photoMakerStyleStrength" type="range" min="0" max="100" class="w-full accent-primary" />
-                      </div>
-                   </div>
-                </div>
-             </div>
+      <div class="relative flex items-center justify-center rounded-2xl metal-surface group h-full overflow-hidden dot-grid-corners">
+        <img v-if="previewImage" :src="previewImage" class="max-w-full max-h-full object-contain" alt="Generated image" />
+        <div v-else class="w-96 h-96 flex flex-col items-center justify-center text-muted-foreground">
+          <span class="text-xs tracking-[0.32em] opacity-60">READY</span>
+          <span class="mt-2 text-sm opacity-60">Your generated image will appear here</span>
+        </div>
+        <div v-if="isGenerating && !previewImage?.includes('temp/preview.png')" class="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm">
+          <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
+          <span class="text-sm font-medium">Generating...</span>
+        </div>
+        <div v-if="isGenerating && previewImage?.includes('temp/preview.png')" class="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur text-white text-xs rounded flex items-center gap-2">
+          <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>Live Preview
+        </div>
+        <div v-if="previewImage && galleryImages.length > 1 && !isGenerating" class="absolute inset-0 pointer-events-none flex items-center justify-between px-4">
+          <button @click="navigateImage(-1)" class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all backdrop-blur-sm" :class="{ 'opacity-0 cursor-default': isFirstImage }" :disabled="isFirstImage"><ChevronLeft class="w-8 h-8" /></button>
+          <button @click="navigateImage(1)" class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all backdrop-blur-sm" :class="{ 'opacity-0 cursor-default': isLastImage }" :disabled="isLastImage"><ChevronRight class="w-8 h-8" /></button>
+        </div>
+        <div v-if="previewImage && !isGenerating" class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button @click="deletePreview" class="p-2 rounded-xl bg-card/85 hover:bg-destructive hover:text-destructive-foreground transition-colors shadow-sm backdrop-blur" title="Delete image"><Trash2 class="w-4 h-4" /></button>
+          <a :href="previewImage" :download="previewImage.split('/').pop()" class="p-2 rounded-xl bg-card/85 hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm backdrop-blur" title="Download image"><Download class="w-4 h-4" /></a>
+        </div>
+      </div>
 
-             <div class="rounded-lg border border-border/50 bg-muted/10 overflow-hidden">
-                <button 
-                  @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
-                  class="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                >
-                  <span class="text-xs font-medium uppercase tracking-wider flex items-center gap-2 text-foreground/80">
-                    <Activity class="w-3.5 h-3.5" /> ControlNet
-                  </span>
-                  <component :is="activeTab === 'controlnet' ? 'ChevronUp': 'ChevronDown'" class="w-4 h-4 text-muted-foreground" />
-                </button>
-                <div v-show="activeTab === 'controlnet'" class="p-4 border-t border-border/50 space-y-3">
-                   <div class="flex flex-col md:flex-row items-start gap-4">
-                      <div>
-                        <label class="text-xs text-muted-foreground block mb-2">Control Image</label>
-                        <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
-                           <img v-if="config.controlImagePath" :src="getFileUrl(config.controlImagePath)" class="w-full h-full object-cover" />
-                           <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
-                              <Upload v-if="!config.controlImagePath" class="w-6 h-6 text-muted-foreground/50" />
-                              <span v-if="!config.controlImagePath" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
-                              <input type="file" accept="image/*" class="hidden" @change="handleCNUpload" />
-                           </label>
-                           <button v-if="config.controlImagePath" @click="config.controlImagePath = ''; controlNetFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X class="w-3 h-3" />
-                           </button>
-                        </div>
-                      </div>
-                      <div class="flex-1 space-y-3">
-                         <div>
-                            <label class="text-xs text-muted-foreground block mb-2">Strength ({{ config.controlNetStrength }})</label>
-                            <input v-model.number="config.controlNetStrength" type="range" min="0" max="2" step="0.1" class="w-full accent-primary" />
-                         </div>
-                         <label class="flex items-center gap-2 text-xs">
-                            <input v-model="config.applyCanny" type="checkbox" class="rounded border-border" />
-                            Apply Canny Preprocessor
-                         </label>
-                      </div>
-                   </div>
-                </div>
-             </div>
-
-             <div class="rounded-lg border border-border/50 bg-muted/10 overflow-hidden">
-                <button 
-                  @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
-                  class="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                >
-                  <span class="text-xs font-medium uppercase tracking-wider flex items-center gap-2 text-foreground/80">
-                    <Image class="w-3.5 h-3.5" /> Image to Image
-                  </span>
-                  <component :is="activeTab === 'img2img' ? 'ChevronUp': 'ChevronDown'" class="w-4 h-4 text-muted-foreground" />
-                </button>
-                <div v-show="activeTab === 'img2img'" class="p-4 border-t border-border/50">
-                    <div class="flex flex-col md:flex-row items-start gap-4">
-                      <div>
-                        <label class="text-xs text-muted-foreground block mb-2">Init Image</label>
-                        <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
-                           <img v-if="config.initImagePath" :src="getFileUrl(config.initImagePath)" class="w-full h-full object-cover" />
-                           <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
-                              <Upload v-if="!config.initImagePath" class="w-6 h-6 text-muted-foreground/50" />
-                              <span v-if="!config.initImagePath" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
-                              <input type="file" accept="image/*" class="hidden" @change="handleInitImageUpload" />
-                           </label>
-                           <button v-if="config.initImagePath" @click="config.initImagePath = ''; initImageFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X class="w-3 h-3" />
-                           </button>
-                        </div>
-                      </div>
-                    
-                      <div class="flex-1 space-y-3">
-                         <div>
-                            <label class="text-xs text-muted-foreground block mb-2">Denoising Strength ({{ config.img2imgStrength }})</label>
-                            <input v-model.number="config.img2imgStrength" type="range" min="0" max="1" step="0.05" class="w-full accent-primary" />
-                            <div class="flex justify-between text-[10px] text-muted-foreground mt-1">
-                               <span>Original</span>
-                               <span>Generated</span>
-                            </div>
-                         </div>
-                      </div>
-                    </div>
-                </div>
-             </div>
-
-             <div class="rounded-lg border border-border/50 bg-muted/10 overflow-hidden">
-                <button 
-                  @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
-                  class="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                >
-                  <span class="text-xs font-medium uppercase tracking-wider flex items-center gap-2 text-foreground/80">
-                    <ImagePlus class="w-3.5 h-3.5" /> Reference (Flux)
-                  </span>
-                  <component :is="activeTab === 'kontext' ? 'ChevronUp': 'ChevronDown'" class="w-4 h-4 text-muted-foreground" />
-                </button>
-                <div v-show="activeTab === 'kontext'" class="p-4 border-t border-border/50">
-                    <div class="flex flex-col md:flex-row items-start gap-4">
-
-                      <div>
-                        <label class="text-xs text-muted-foreground block mb-2">Ref Image</label>
-                        <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
-                           <img v-if="config.kontextRefImage" :src="getFileUrl(config.kontextRefImage)" class="w-full h-full object-cover" />
-                           <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
-                              <Upload v-if="!config.kontextRefImage" class="w-6 h-6 text-muted-foreground/50" />
-                              <span v-if="!config.kontextRefImage" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
-                              <input type="file" accept="image/*" class="hidden" @change="handleKontextUpload" />
-                           </label>
-                           <button v-if="config.kontextRefImage" @click="config.kontextRefImage = ''; kontextRefFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X class="w-3 h-3" />
-                           </button>
-                        </div>
-                      </div>
-                      <p class="text-[10px] text-muted-foreground flex-1 pt-2">
-                        Use this for context-aware editing or reference-guided generation with consistent styles (Flux models only).
-                      </p>
-                    </div>
-                </div>
-             </div>
-          </div>
-          
-          <div class="flex flex-wrap items-center gap-4">
-            
-            <div class="flex items-center gap-1 p-1 bg-muted/30 rounded-lg overflow-x-auto max-w-full no-scrollbar">
-              <button
-                v-for="preset in sizePresets"
-                :key="preset.label"
-                @click="setSize(preset)"
-                class="px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150"
-                :class="activePreset?.label === preset.label 
-                  ? 'bg-foreground text-background shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'"
-              >
-                {{ preset.label }}
-              </button>
-            </div>
-            
-            <div class="flex items-center gap-1.5 text-xs">
-              <div class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30">
-                <span class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30">W</span>
-                <input
-                  v-model.number="config.width"
-                  type="number"
-                  step="64"
-                  class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none"
-                />
-              </div>
-              <span class="text-muted-foreground font-medium">×</span>
-              <div class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30">
-                <span class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30">H</span>
-                <input
-                  v-model.number="config.height"
-                  type="number"
-                  step="64"
-                  class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none"
-                />
-              </div>
-            </div>
-            
-            <div class="hidden md:block flex-1"></div>
-            
-            <button
-              v-if="!isGenerating"
-              @click="handleGenerate"
-              :disabled="!prompt.trim()"
-              class="w-full md:w-auto justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 
-                     text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02]
-                     disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100
-                     transform transition-all duration-200 flex items-center gap-2"
-            >
-              <Sparkles class="w-4 h-4" />
-              Generate
-            </button>
-            <button
-              v-else
-              @click="handleCancel"
-              class="w-full md:w-auto justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-red-500/90 text-white
-                     hover:bg-red-500 transition-colors flex items-center gap-2"
-            >
-              <X class="w-4 h-4" />
-              Cancel
+      <div v-if="galleryImages.length > 0" class="mt-4 w-full max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Image class="w-3.5 h-3.5" /> Gallery ({{ galleryImages.length }})</h3>
+        </div>
+        <div class="relative group/carousel">
+          <div ref="carouselRef" class="flex gap-3 overflow-x-auto pb-4 pt-1 px-1 snap-x scroll-smooth no-scrollbar">
+            <button v-for="img in galleryImages" :key="img" @click="selectGalleryImage(img)" class="h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all relative group snap-start focus:outline-none focus:ring-2 focus:ring-primary/50" :class="previewImage === getOutputUrl(img) ? 'border-primary ring-2 ring-primary/20 shadow-lg scale-105 z-10' : 'border-transparent hover:border-border/80 opacity-70 hover:opacity-100'">
+              <img :src="getOutputUrl(img)" class="w-full h-full object-cover" loading="lazy" :alt="img" />
             </button>
           </div>
-
-           <div class="mt-4 grid grid-cols-2 gap-4">
-            <div>
-              <label class="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-1 block">Batch Count</label>
-              <div class="flex items-center gap-2 bg-background border border-border rounded-lg px-2 py-1.5 hover:border-primary/50 transition-colors">
-                 <Copy class="w-3.5 h-3.5 text-muted-foreground" />
-                 <input 
-                   v-model.number="config.batchCount" 
-                   type="number" 
-                   min="1" 
-                   max="16" 
-                   class="w-full bg-transparent text-sm font-medium focus:outline-none"
-                 >
-              </div>
-            </div>
-            <div>
-              <label class="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-1 block">Live Preview</label>
-               <div class="flex items-center gap-2 bg-background border border-border rounded-lg px-2 py-1.5 hover:border-primary/50 transition-colors">
-                 <Eye class="w-3.5 h-3.5 text-muted-foreground" />
-                 <select v-model="config.livePreviewMethod" class="w-full bg-background text-sm font-medium text-foreground focus:outline-none appearance-none cursor-pointer [&>option]:bg-background [&>option]:text-foreground">
-                    <option value="">None</option>
-                    <option value="proj">Proj (Fast)</option>
-                    <option value="tae">TAE</option>
-                    <option value="vae">VAE (Slow)</option>
-                 </select>
-              </div>
-            </div>
-          </div>
-          
+          <div class="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none"></div>
+          <div class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
         </div>
       </div>
     </div>
 
-    <!-- Preview Area -->
-    <div class="p-4 bg-muted/30 relative">
-      <!-- Error Message -->
-      <div v-if="error" class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50">
-        {{ error }}
-        <button @click="error = null" class="hover:opacity-70">
-          <X class="w-4 h-4" />
-        </button>
-      </div>
-
-      <!-- Preview Container -->
-      <div class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl group min-h-[400px]">
-        <!-- Preview Image -->
-        <img
-          v-if="previewImage"
-          :src="previewImage"
-          class="max-w-full max-h-[70vh] min-h-[350px] object-contain"
-          alt="Generated image"
-        />
-        
-        <!-- Placeholder -->
-        <div
-          v-else
-          class="w-96 h-96 flex items-center justify-center text-muted-foreground"
-        >
-          <span class="text-xs tracking-widest opacity-50">READY</span>
-        </div>
-
-        <div
-          v-if="isGenerating && !previewImage?.includes('temp/preview.png')"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
-        >
-          <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
-          <span class="text-sm font-medium">Generating...</span>
-        </div>
-
-         <div
-          v-if="isGenerating && previewImage?.includes('temp/preview.png')"
-          class="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur text-white text-xs rounded flex items-center gap-2"
-        >
-          <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-          Live Preview
-        </div>
-
-     
-      <div v-if="previewImage && galleryImages.length > 1 && !isGenerating" class="absolute inset-0 pointer-events-none flex items-center justify-between px-4">
-        <button 
-          @click="navigateImage(-1)" 
-          class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all backdrop-blur-sm"
-          :class="{ 'opacity-0 cursor-default': isFirstImage }"
-          :disabled="isFirstImage"
-        >
-          <ChevronLeft class="w-8 h-8" />
-        </button>
-        <button 
-          @click="navigateImage(1)" 
-          class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all backdrop-blur-sm"
-          :class="{ 'opacity-0 cursor-default': isLastImage }"
-          :disabled="isLastImage"
-        >
-          <ChevronRight class="w-8 h-8" />
-        </button>
-      </div>
-
- 
-        <div
-          v-if="previewImage && !isGenerating"
-          class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        >
-
-          <button
-            @click="deletePreview"
-            class="p-2 rounded bg-background/80 hover:bg-destructive hover:text-destructive-foreground transition-colors"
-            title="Delete image"
-          >
-            <Trash2 class="w-4 h-4" />
-          </button>
-          <a
-            :href="previewImage"
-            :download="previewImage.split('/').pop()"
-            class="p-2 rounded bg-background/80 hover:bg-primary hover:text-primary-foreground transition-colors"
-            title="Download image"
-          >
-            <Download class="w-4 h-4" />
-          </a>
-        </div>
-      </div>
-
-      <div
-        v-if="galleryImages.length > 0"
-        class="mt-4 w-full max-w-6xl mx-auto"
-      >
-        <div class="flex items-center justify-between mb-2 px-1">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Image class="w-3.5 h-3.5" /> Gallery ({{ galleryImages.length }})
-            </h3>
-        </div>
-        
-        <div class="relative group/carousel">
-             <div 
-                ref="carouselRef"
-                class="flex gap-3 overflow-x-auto pb-4 pt-1 px-1 snap-x scroll-smooth scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-primary/50"
-             >
-                <button
-                v-for="img in galleryImages"
-                :key="img"
-                @click="selectGalleryImage(img)"
-                class="h-20 w-20 shrink-0 rounded-md overflow-hidden border-2 transition-all relative group snap-start focus:outline-none focus:ring-2 focus:ring-primary/50"
-                :class="previewImage === getOutputUrl(img) ? 'border-primary ring-2 ring-primary/20 shadow-lg scale-105 z-10' : 'border-transparent hover:border-border/80 opacity-70 hover:opacity-100'"
-                >
-                <img :src="getOutputUrl(img)" class="w-full h-full object-cover" loading="lazy" :alt="img" />
-                
-                </button>
+    <!-- Accordion Panels -->
+    <div v-if="activeTab" class="shrink-0 px-4 max-h-64 overflow-y-auto border-t border-border/50 bg-card/50">
+      <div v-if="activeTab === 'photomaker'" class="py-3 space-y-3">
+        <div class="flex flex-col md:flex-row items-start gap-4">
+          <div class="flex-1">
+            <label class="text-xs text-muted-foreground block mb-2">ID Images (Max 4)</label>
+            <div class="flex gap-2 flex-wrap">
+              <div v-for="(img, idx) in config.photoMakerImages" :key="idx" class="relative group w-16 h-16 rounded-md overflow-hidden border border-border">
+                <img :src="getFileUrl(img)" class="w-full h-full object-cover" />
+                <button @click="removePMImage(idx)" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"><X class="w-4 h-4" /></button>
+              </div>
+              <label v-if="config.photoMakerImages.length < 4" class="w-16 h-16 rounded-md border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                <Plus class="w-5 h-5 text-muted-foreground" />
+                <input type="file" multiple accept="image/*" class="hidden" @change="handlePMUpload" />
+              </label>
             </div>
-            
-            <div class="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none"></div>
-            <div class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
+          </div>
+          <div class="w-48">
+            <label class="text-xs text-muted-foreground block mb-2">Style Strength ({{ config.photoMakerStyleStrength }})</label>
+            <input v-model.number="config.photoMakerStyleStrength" type="range" min="0" max="100" class="w-full accent-primary" />
+          </div>
+        </div>
+      </div>
+      <div v-if="activeTab === 'controlnet'" class="py-3 space-y-3">
+        <div class="flex flex-col md:flex-row items-start gap-4">
+          <div>
+            <label class="text-xs text-muted-foreground block mb-2">Control Image</label>
+            <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
+              <img v-if="config.controlImagePath" :src="getFileUrl(config.controlImagePath)" class="w-full h-full object-cover" />
+              <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
+                <Upload v-if="!config.controlImagePath" class="w-6 h-6 text-muted-foreground/50" />
+                <span v-if="!config.controlImagePath" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
+                <input type="file" accept="image/*" class="hidden" @change="handleCNUpload" />
+              </label>
+              <button v-if="config.controlImagePath" @click="config.controlImagePath = ''; controlNetFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><X class="w-3 h-3" /></button>
+            </div>
+          </div>
+          <div class="flex-1 space-y-3">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-2">Strength ({{ config.controlNetStrength }})</label>
+              <input v-model.number="config.controlNetStrength" type="range" min="0" max="2" step="0.1" class="w-full accent-primary" />
+            </div>
+            <label class="flex items-center gap-2 text-xs"><input v-model="config.applyCanny" type="checkbox" class="rounded border-border" />Apply Canny Preprocessor</label>
+          </div>
+        </div>
+      </div>
+      <div v-if="activeTab === 'img2img'" class="py-3">
+        <div class="flex flex-col md:flex-row items-start gap-4">
+          <div>
+            <label class="text-xs text-muted-foreground block mb-2">Init Image</label>
+            <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
+              <img v-if="config.initImagePath" :src="getFileUrl(config.initImagePath)" class="w-full h-full object-cover" />
+              <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
+                <Upload v-if="!config.initImagePath" class="w-6 h-6 text-muted-foreground/50" />
+                <span v-if="!config.initImagePath" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
+                <input type="file" accept="image/*" class="hidden" @change="handleInitImageUpload" />
+              </label>
+              <button v-if="config.initImagePath" @click="config.initImagePath = ''; initImageFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><X class="w-3 h-3" /></button>
+            </div>
+          </div>
+          <div class="flex-1 space-y-3">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-2">Denoising Strength ({{ config.img2imgStrength }})</label>
+              <input v-model.number="config.img2imgStrength" type="range" min="0" max="1" step="0.05" class="w-full accent-primary" />
+              <div class="flex justify-between text-[10px] text-muted-foreground mt-1"><span>Original</span><span>Generated</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="activeTab === 'kontext'" class="py-3">
+        <div class="flex flex-col md:flex-row items-start gap-4">
+          <div>
+            <label class="text-xs text-muted-foreground block mb-2">Ref Image</label>
+            <div class="relative group w-24 h-24 rounded-md overflow-hidden border border-border bg-muted/20">
+              <img v-if="config.kontextRefImage" :src="getFileUrl(config.kontextRefImage)" class="w-full h-full object-cover" />
+              <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors">
+                <Upload v-if="!config.kontextRefImage" class="w-6 h-6 text-muted-foreground/50" />
+                <span v-if="!config.kontextRefImage" class="text-[10px] text-muted-foreground/70 mt-1">Upload</span>
+                <input type="file" accept="image/*" class="hidden" @change="handleKontextUpload" />
+              </label>
+              <button v-if="config.kontextRefImage" @click="config.kontextRefImage = ''; kontextRefFile = null" class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><X class="w-3 h-3" /></button>
+            </div>
+          </div>
+          <p class="text-[10px] text-muted-foreground flex-1 pt-2">Use this for context-aware editing or reference-guided generation with consistent styles (Flux models only).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Controls Row -->
+    <div class="shrink-0 px-4 py-2 flex items-center gap-2 border-t border-border/50 flex-wrap">
+      <div class="flex items-center gap-1 p-1 metal-surface rounded-xl overflow-x-auto max-w-full no-scrollbar">
+        <button v-for="preset in sizePresets" :key="preset.label" @click="setSize(preset)" class="px-2.5 py-1 text-xs font-medium rounded transition-all duration-150" :class="activePreset?.label === preset.label ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'">{{ preset.label }}</button>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs">
+        <div class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30">
+          <span class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30">W</span>
+          <input v-model.number="config.width" type="number" step="64" class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none" />
+        </div>
+        <span class="text-muted-foreground font-medium">&times;</span>
+        <div class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30">
+          <span class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30">H</span>
+          <input v-model.number="config.height" type="number" step="64" class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none" />
+        </div>
+      </div>
+      <div class="flex-1 hidden md:block"></div>
+      <div class="flex items-center gap-1">
+        <button @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'" class="h-8 w-8 metal-icon-button flex items-center justify-center" :class="activeTab === 'photomaker' ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'" title="PhotoMaker"><User class="w-3.5 h-3.5" /></button>
+        <button @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'" class="h-8 w-8 metal-icon-button flex items-center justify-center" :class="activeTab === 'controlnet' ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'" title="ControlNet"><Activity class="w-3.5 h-3.5" /></button>
+        <button @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'" class="h-8 w-8 metal-icon-button flex items-center justify-center" :class="activeTab === 'img2img' ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'" title="Image to Image"><Image class="w-3.5 h-3.5" /></button>
+        <button @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'" class="h-8 w-8 metal-icon-button flex items-center justify-center" :class="activeTab === 'kontext' ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'" title="Reference"><ImagePlus class="w-3.5 h-3.5" /></button>
+      </div>
+      <div class="h-5 w-px bg-border/80"></div>
+      <button @click="showNegPrompt = !showNegPrompt" class="h-8 w-8 metal-icon-button flex items-center justify-center" :class="showNegPrompt ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'" title="Negative Prompt">&minus;</button>
+      <div class="h-5 w-px bg-border/80"></div>
+      <div class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1">
+        <Copy class="w-3.5 h-3.5 text-muted-foreground" />
+        <input v-model.number="config.batchCount" type="number" min="1" max="16" class="w-10 bg-transparent text-sm font-medium focus:outline-none text-center" />
+      </div>
+      <div class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1">
+        <Eye class="w-3.5 h-3.5 text-muted-foreground" />
+        <Select v-model="config.livePreviewMethod" size="sm" placeholder="None" class="w-24" :options="[{ label: 'None', value: '' },{ label: 'Proj', value: 'proj' },{ label: 'TAE', value: 'tae' },{ label: 'VAE', value: 'vae' }]" />
+      </div>
+    </div>
+
+    <!-- Floating Input Bar -->
+    <div class="shrink-0 px-4 pb-3 pt-2">
+      <div class="flex items-end gap-2">
+        <div class="flex-1 relative">
+          <textarea
+            v-model="prompt"
+            ref="promptInput"
+            rows="1"
+            placeholder="Describe the image you want to generate..."
+            class="w-full px-4 py-3 text-sm rounded-2xl bg-card border border-border/70 resize-none transition-all duration-200 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 placeholder:text-muted-foreground/50 shadow-sm overflow-y-auto"
+            :style="{ maxHeight: '120px' }"
+            :disabled="isGenerating"
+            @keydown="onPromptKeydown"
+            @input="autoResize"
+          ></textarea>
+          <span v-if="config.embeddings.length > 0" class="absolute top-2 right-3 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px]">{{ config.embeddings.length }} embeds</span>
+        </div>
+        <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="shrink-0 px-4 py-3 text-sm font-medium rounded-xl primary-metal-button disabled:cursor-not-allowed transition-colors duration-150 flex items-center gap-1.5">
+          <span class="flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-white text-sm leading-none">+</span>
+          <span class="hidden sm:inline">Generate</span>
+        </button>
+        <button v-else @click="handleCancel" class="shrink-0 px-4 py-3 text-sm font-medium rounded-xl bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-1.5">
+          <X class="w-4 h-4" />
+          <span class="hidden sm:inline">Cancel</span>
+        </button>
+      </div>
+
+      <div v-if="showNegPrompt" class="mt-2">
+        <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted..." class="w-full px-4 py-2 text-sm rounded-xl bg-muted/40 border border-border/50 resize-none focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between mt-1.5 px-1">
+        <span class="text-[10px] text-muted-foreground">{{ prompt.length }} chars</span>
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] text-muted-foreground">Batch: {{ config.batchCount }}</span>
+          <span class="text-[10px] text-muted-foreground">{{ config.width }}&times;{{ config.height }}</span>
         </div>
       </div>
     </div>

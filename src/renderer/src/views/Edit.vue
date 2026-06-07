@@ -217,10 +217,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-auto">
+  <div class="flex flex-col h-full overflow-auto bg-transparent">
     <!-- Prompt Section -->
-    <div class="shrink-0 border-b border-border/50">
-      <div class="p-5">
+    <div class="shrink-0 bg-transparent dot-grid-corners">
+      <div class="p-4 md:p-6">
         <div class="max-w-4xl mx-auto space-y-4">
           <!-- Inpaint Prompt -->
           <div>
@@ -297,14 +297,14 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <button
                 @click="clearMask"
-                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5"
+                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-md hover:bg-muted transition-colors flex items-center gap-1.5"
               >
                 <Trash2 class="w-3.5 h-3.5" />
                 Clear
               </button>
 
               <label
-                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
+                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-md cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
               >
                 <Upload class="w-3.5 h-3.5" />
                 Upload
@@ -313,7 +313,7 @@ onMounted(() => {
 
               <button
                 @click="goToGallery"
-                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5"
+                class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-md hover:bg-muted transition-colors flex items-center gap-1.5"
               >
                 <Images class="w-3.5 h-3.5" />
                 Gallery
@@ -328,7 +328,7 @@ onMounted(() => {
               v-if="!isGenerating"
               @click="handleGenerate"
               :disabled="!prompt.trim() || !baseImage"
-              class="w-full md:w-auto justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transform transition-all duration-200 flex items-center gap-2"
+              class="w-full md:w-auto justify-center px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transform transition-all duration-200 flex items-center gap-2"
             >
               <Brush class="w-4 h-4" />
               Inpaint
@@ -336,7 +336,7 @@ onMounted(() => {
             <button
               v-else
               @click="handleCancel"
-              class="w-full md:w-auto justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
+              class="w-full md:w-auto justify-center px-5 py-2 text-sm font-medium rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
             >
               <X class="w-4 h-4" />
               Cancel

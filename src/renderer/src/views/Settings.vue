@@ -11,6 +11,7 @@ import {
   Copy
 } from 'lucide-vue-next'
 import LogPanel from '@/components/LogPanel.vue'
+import Select from '@/components/ui/Select.vue'
 
 
 interface BackendConfig {
@@ -283,11 +284,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto p-6">
-    <div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-card">
+    <div class="mx-auto space-y-6 px-4 md:px-8 max-w-6xl">
       <!-- Header -->
       <header class="flex items-center gap-3">
-        <SettingsIcon class="w-8 h-8 text-primary" />
+        <SettingsIcon class="w-8 h-8 text-foreground" />
         <div>
           <h1 class="text-2xl font-bold">Settings</h1>
           <p class="text-sm text-muted-foreground">Backend binary and network settings</p>
@@ -295,12 +296,12 @@ onMounted(async () => {
       </header>
 
       <!-- Active Backend Status -->
-      <section class="p-6 rounded-lg border border-border bg-card space-y-4">
+      <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Active Backend</h2>
           <button
             @click="openCustomFolder"
-            class="px-3 py-1.5 text-xs rounded bg-muted hover:bg-muted/80 flex items-center gap-1"
+            class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1"
           >
             <FolderOpen class="w-4 h-4" />
             Custom Folder
@@ -336,24 +337,21 @@ onMounted(async () => {
         >
           <label class="text-sm text-muted-foreground">Switch Version:</label>
           <div class="flex gap-2">
-            <select
-              :value="config.activeVersion"
-              @change="(e) => setActiveVersion((e.target as HTMLSelectElement).value)"
-              class="flex-1 px-3 py-2 text-sm rounded bg-muted border border-input"
-            >
-              <option value="custom">
-                Custom {{ config.customBinaryExists ? '(Found)' : '(Not Found)' }}
-              </option>
-              <option v-for="v in config.installedVersions" :key="v" :value="v">
-                {{ v }}
-              </option>
-            </select>
+            <Select
+              :model-value="config.activeVersion"
+              @update:model-value="(val) => setActiveVersion(val)"
+              size="md"
+              :options="[
+                { label: `Custom ${config.customBinaryExists ? '(Found)' : '(Not Found)'}`, value: 'custom' },
+                ...config.installedVersions.map(v => ({ label: v, value: v }))
+              ]"
+            />
           </div>
         </div>
 
         <div
           v-if="!config.activeBackendValid"
-          class="p-3 bg-amber-900/20 border border-amber-800/30 rounded text-sm text-amber-300"
+          class="p-3 bg-muted/20 rounded-md text-sm text-foreground"
         >
           <AlertTriangle class="w-4 h-4 inline mr-1" />
           Place sd-cli and sd-server binaries in the custom folder, or download a release below.
@@ -363,10 +361,10 @@ onMounted(async () => {
       <!-- System Detection -->
       <section
         v-if="systemInfo.platform"
-        class="p-4 rounded-lg border border-blue-800/30 bg-blue-900/20"
+        class="p-3 bg-muted/20 rounded-md"
       >
-        <div class="text-xs text-blue-400 font-medium mb-1">System Detected</div>
-        <div class="text-sm text-blue-300">
+        <div class="text-xs font-medium mb-1">System Detected</div>
+        <div class="text-sm">
           {{
             systemInfo.platform === 'win32'
               ? 'Windows'
@@ -376,39 +374,33 @@ onMounted(async () => {
           }}
           ({{ systemInfo.arch }})
         </div>
-        <div v-if="systemInfo.note" class="text-xs text-blue-400/80 mt-1">
+        <div v-if="systemInfo.note" class="text-xs text-muted-foreground mt-1">
           {{ systemInfo.note }}
         </div>
       </section>
 
       <!-- Download New Release -->
-      <section class="p-6 rounded-lg border border-border bg-card space-y-4">
+      <section class="space-y-4">
         <h2 class="text-lg font-semibold">Install New Version</h2>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-sm text-muted-foreground mb-1 block">Release Version</label>
-            <select
+            <Select
               v-model="selectedRelease"
-              class="w-full px-3 py-2 text-sm rounded bg-muted border border-input"
-            >
-              <option value="" disabled>Select version...</option>
-              <option v-for="r in releases" :key="r.tag" :value="r.tag">
-                {{ r.tag }} - {{ r.name }}
-              </option>
-            </select>
+              size="md"
+              placeholder="Select version..."
+              :options="releases.map(r => ({ label: `${r.tag} - ${r.name}`, value: r.tag }))"
+            />
           </div>
           <div>
             <label class="text-sm text-muted-foreground mb-1 block">Binary Variant</label>
-            <select
+            <Select
               v-model="selectedVariant"
-              class="w-full px-3 py-2 text-sm rounded bg-muted border border-input"
-            >
-              <option value="" disabled>Select variant...</option>
-              <option v-for="a in selectedReleaseAssets" :key="a.name" :value="a.name">
-                {{ a.name }}
-              </option>
-            </select>
+              size="md"
+              placeholder="Select variant..."
+              :options="selectedReleaseAssets.map(a => ({ label: a.name, value: a.name }))"
+            />
           </div>
         </div>
 
@@ -423,11 +415,11 @@ onMounted(async () => {
         <button
           @click="downloadAndInstall"
           :disabled="!selectedRelease || !selectedVariant || isDownloading"
-          class="w-full py-2.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+           class="w-full py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors"
           :class="
             !selectedRelease || !selectedVariant || isDownloading
               ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'primary-metal-button'
           "
         >
           <Loader2 v-if="isDownloading" class="w-4 h-4 animate-spin" />
@@ -442,11 +434,11 @@ onMounted(async () => {
       </section>
 
       <!-- Network Sharing -->
-      <section class="p-6 rounded-lg border border-border bg-card space-y-4">
+      <section class="space-y-4">
         <h2 class="text-lg font-semibold">Network Sharing</h2>
 
         <!-- Local Network -->
-        <div class="p-3 bg-muted/50 rounded">
+        <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Local Network</span>
             <div class="text-xs font-semibold px-2 py-0.5 rounded" :class="localNetworkEnabled ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'">
@@ -454,12 +446,12 @@ onMounted(async () => {
             </div>
           </div>
           <p class="text-xs text-muted-foreground mb-2">
-            Access from other devices. Enable by starting with <code class="bg-muted px-1 rounded">--local</code> flag.
+            Access from other devices. Enable by starting with <code class="bg-muted/50 px-1 rounded">--local</code> flag.
           </p>
           <div
             v-if="localNetworkUrl && localNetworkEnabled"
             @click="copyUrl(localNetworkUrl)"
-            class="p-2 bg-background rounded text-xs font-mono text-green-400 cursor-pointer hover:bg-muted flex items-center justify-between"
+            class="p-2 bg-muted/30 rounded-md text-xs font-mono text-foreground cursor-pointer hover:bg-muted/50 flex items-center justify-between"
           >
             <span>{{ localNetworkUrl }}</span>
             <Copy class="w-3 h-3" />
@@ -467,7 +459,7 @@ onMounted(async () => {
         </div>
 
         <!-- Ngrok -->
-        <div class="p-3 bg-muted/50 rounded">
+        <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Ngrok Tunnel</span>
             <label class="relative inline-flex items-center cursor-pointer">
@@ -496,19 +488,19 @@ onMounted(async () => {
               v-model="ngrokToken"
               type="password"
               placeholder="Ngrok Auth Token (optional if set in env)"
-              class="w-full px-3 py-2 text-xs rounded bg-background border border-input focus:ring-1 focus:ring-ring"
+              class="w-full px-3 py-2 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
           <div
             v-if="ngrokError"
-            class="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400 mb-2"
+            class="p-2 bg-muted/20 rounded-md text-xs text-foreground mb-2"
           >
             {{ ngrokError }}
           </div>
           <div
             v-if="ngrokUrl"
             @click="copyUrl(ngrokUrl)"
-            class="p-2 bg-background rounded text-xs font-mono text-green-400 cursor-pointer hover:bg-muted flex items-center justify-between"
+            class="p-2 bg-muted/30 rounded-md text-xs font-mono text-foreground cursor-pointer hover:bg-muted/50 flex items-center justify-between"
           >
             <span>{{ ngrokUrl }}</span>
             <Copy class="w-3 h-3" />
@@ -516,7 +508,7 @@ onMounted(async () => {
         </div>
 
         <!-- Cloudflare -->
-        <div class="p-3 bg-muted/50 rounded">
+        <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium">Cloudflare Tunnel</span>
             <label class="relative inline-flex items-center cursor-pointer">
@@ -534,7 +526,7 @@ onMounted(async () => {
           <div
             v-if="cloudflareUrl"
             @click="copyUrl(cloudflareUrl)"
-            class="p-2 bg-background rounded text-xs font-mono text-green-400 cursor-pointer hover:bg-muted flex items-center justify-between"
+            class="p-2 bg-muted/30 rounded-md text-xs font-mono text-foreground cursor-pointer hover:bg-muted/50 flex items-center justify-between"
           >
             <span>{{ cloudflareUrl }}</span>
             <Copy class="w-3 h-3" />
@@ -543,7 +535,7 @@ onMounted(async () => {
       </section>
 
       <!-- Server Status -->
-      <section class="p-6 rounded-lg border border-border bg-card">
+      <section>
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Express Server Status</h2>
           <div class="flex items-center gap-2">
@@ -554,7 +546,7 @@ onMounted(async () => {
             <span class="text-sm">{{ serverOnline ? 'Online' : 'Offline' }}</span>
             <button
               @click="checkServerStatus"
-              class="ml-2 p-1.5 rounded bg-muted hover:bg-muted/80"
+              class="ml-2 p-1.5 metal-icon-button"
             >
               <RefreshCw class="w-4 h-4" />
             </button>
@@ -563,7 +555,7 @@ onMounted(async () => {
       </section>
 
       <!-- Server Logs -->
-      <section class="p-6 rounded-lg border border-border bg-card">
+      <section>
         <h2 class="text-lg font-semibold mb-4">Server Logs</h2>
         <div class="h-64">
           <LogPanel />

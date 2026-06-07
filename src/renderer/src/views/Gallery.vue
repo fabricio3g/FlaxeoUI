@@ -177,7 +177,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full bg-transparent">
     <!-- ... header/grid stuff ... -->
 
     <!-- (Adding ImageViewer at root) -->
@@ -191,7 +191,7 @@ onMounted(() => {
     />
 
     <!-- Header -->
-    <div class="p-4 border-b border-border bg-card shrink-0">
+    <div class="p-4 border-b border-border/70 bg-card/70 shrink-0 backdrop-blur-xl">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <Images class="w-6 h-6 text-primary" />
@@ -203,7 +203,7 @@ onMounted(() => {
 
         <div class="flex items-center gap-2">
           <!-- View Mode Toggle -->
-          <div class="flex p-1 bg-muted rounded-md">
+          <div class="flex p-1 bg-muted rounded">
             <button
               @click="viewMode = 'grid'"
               class="p-1.5 rounded"
@@ -224,7 +224,7 @@ onMounted(() => {
           <button
             @click="fetchGallery"
             :disabled="isLoading"
-            class="p-2 rounded hover:bg-muted transition-colors"
+            class="p-2 rounded-md hover:bg-muted transition-colors"
             title="Refresh gallery"
           >
             <RefreshCw class="w-4 h-4" :class="isLoading && 'animate-spin'" />
@@ -233,7 +233,7 @@ onMounted(() => {
           <!-- Open Folder -->
           <button
             @click="openGalleryFolder"
-            class="p-2 rounded hover:bg-muted transition-colors"
+            class="p-2 rounded-md hover:bg-muted transition-colors"
             title="Open gallery folder"
           >
             <FolderOpen class="w-4 h-4" />
@@ -296,7 +296,7 @@ onMounted(() => {
           <button
             @click="navigatePage('prev')"
             :disabled="currentPage === 1"
-            class="p-2 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            class="p-2 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft class="w-5 h-5" />
           </button>
@@ -304,7 +304,7 @@ onMounted(() => {
           <button
             @click="navigatePage('next')"
             :disabled="currentPage === totalPages"
-            class="p-2 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            class="p-2 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronRight class="w-5 h-5" />
           </button>
@@ -376,42 +376,42 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-2 p-4 border-t border-border">
           <button
             @click="showImageViewer = true"
-            class="col-span-2 py-2 px-3 text-xs rounded bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
+            class="col-span-2 px-3 py-1.5 text-xs rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
           >
             <Maximize2 class="w-4 h-4" />
             Full Screen
           </button>
           <button
             @click="sendToText2Image"
-            class="py-2 px-3 text-xs rounded bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
+            class="px-3 py-1.5 text-xs rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
           >
             <Sparkles class="w-4 h-4" />
             Use Params
           </button>
           <button
             @click="sendToEdit"
-            class="py-2 px-3 text-xs rounded bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
+            class="px-3 py-1.5 text-xs rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
           >
             <Send class="w-4 h-4" />
             Send to Edit
           </button>
           <button
             @click="copyImagePath"
-            class="py-2 px-3 text-xs rounded bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
+            class="px-3 py-1.5 text-xs rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center gap-1"
           >
             <Copy class="w-4 h-4" />
             Copy Path
           </button>
           <button
             @click="downloadImage"
-            class="py-2 px-3 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1"
+            class="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1"
           >
             <Download class="w-4 h-4" />
             Download
           </button>
           <button
             @click="deleteImage"
-            class="col-span-2 py-2 px-3 text-xs rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 flex items-center justify-center gap-1"
+            class="col-span-2 px-3 py-1.5 text-xs rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 flex items-center justify-center gap-1"
           >
             <Trash2 class="w-4 h-4" />
             Delete

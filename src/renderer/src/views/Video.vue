@@ -125,10 +125,10 @@ async function handleCancel(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-auto">
+  <div class="flex flex-col h-full overflow-auto bg-transparent">
     <!-- Prompt Section -->
-    <div class="shrink-0 border-b border-border/50">
-      <div class="p-5">
+    <div class="shrink-0 bg-transparent dot-grid-corners">
+      <div class="p-4 md:p-6">
         <div class="max-w-4xl mx-auto space-y-4">
           <!-- Header: Label + Mode Toggle -->
           <div class="flex items-center justify-between">
@@ -142,10 +142,10 @@ async function handleCancel(): Promise<void> {
             >
               <button
                 @click="setVideoMode('t2v')"
-                class="px-3 py-1 text-xs font-medium rounded-md transition-all duration-150"
+                class="px-3 py-1 text-xs font-medium rounded transition-all duration-150"
                 :class="
                   videoMode === 't2v'
-                    ? 'bg-foreground text-background shadow-sm'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/20'
                     : 'text-muted-foreground hover:text-foreground'
                 "
               >
@@ -153,10 +153,10 @@ async function handleCancel(): Promise<void> {
               </button>
               <button
                 @click="setVideoMode('i2v')"
-                class="px-3 py-1 text-xs font-medium rounded-md transition-all duration-150"
+                class="px-3 py-1 text-xs font-medium rounded transition-all duration-150"
                 :class="
                   videoMode === 'i2v'
-                    ? 'bg-foreground text-background shadow-sm'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/20'
                     : 'text-muted-foreground hover:text-foreground'
                 "
               >
@@ -281,7 +281,7 @@ async function handleCancel(): Promise<void> {
               v-if="!isGenerating"
               @click="handleGenerate"
               :disabled="!prompt.trim()"
-              class="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transform transition-all duration-200 flex items-center gap-2"
+              class="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transform transition-all duration-200 flex items-center gap-2"
             >
               <Play class="w-4 h-4" />
               Generate Video
@@ -289,7 +289,7 @@ async function handleCancel(): Promise<void> {
             <button
               v-else
               @click="handleCancel"
-              class="px-6 py-2.5 text-sm font-semibold rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
+              class="px-5 py-2 text-sm font-medium rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
             >
               <X class="w-4 h-4" />
               Cancel

@@ -148,7 +148,6 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     frame: false,
-    titleBarStyle: 'hidden',
     backgroundColor: '#09090b',
     icon: icon,
     webPreferences: {

@@ -7,21 +7,22 @@ import { apiGet, apiPost } from '@/services/api'
 import {
   ChevronDown,
   ChevronUp,
-  Plus,
-  Trash2,
-  Server,
-  Terminal,
-  Cpu,
-  Zap,
-  FolderOpen,
-  Database,
-  Play,
-  Square,
-  Globe,
-  Wifi,
   Copy,
-  X
+  Cpu,
+  Globe,
+  Info,
+  Play,
+  Plus,
+  Server,
+  Square,
+  Terminal,
+  Trash2,
+  Wifi,
+  X,
+  Zap
 } from 'lucide-vue-next'
+import Select from '@/components/ui/Select.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -242,15 +243,6 @@ function addNewEmbedding(): void {
   }
 }
 
-// Open folders (Electron API)
-function openModelsFolder(): void {
-  window.electronAPI?.openModelsFolder()
-}
-
-function openGalleryFolder(): void {
-  window.electronAPI?.openGalleryFolder()
-}
-
 onMounted(() => {
   fetchModels()
   fetchStatus()
@@ -284,17 +276,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="w-full md:w-80 flex flex-col bg-card border-r border-border overflow-hidden h-full">
+  <aside class="w-full md:w-80 flex flex-col overflow-hidden h-full md:border-r md:border-border/70 md:bg-card/95 md:shadow-none md:backdrop-blur-xl md:rounded-bl-lg">
     <!-- Header with Status -->
-    <div class="p-3 border-b border-border flex items-center justify-between">
+    <div class="relative p-4 flex items-center justify-between bg-card/95">
+      <div class="flex w-full items-center justify-between gap-8">
       <div class="flex items-center gap-2">
         <div
           class="w-2 h-2 rounded-full"
-          :class="sdServerRunning ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-red-500'"
+          :class="sdServerRunning ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.65)]' : 'bg-red-500'"
         ></div>
         <span
-          class="text-[10px] font-medium"
-          :class="sdServerRunning ? 'text-green-400' : 'text-muted-foreground'"
+          class="text-xs font-medium"
+          :class="sdServerRunning ? 'text-green-700' : 'text-muted-foreground'"
         >
           {{ sdServerRunning ? 'SERVER ONLINE' : 'SERVER OFFLINE' }}
         </span>
@@ -304,40 +297,50 @@ onUnmounted(() => {
           class="w-2 h-2 rounded-full"
           :class="backendValid ? 'bg-green-500' : 'bg-red-500'"
         ></div>
-        <span class="text-xs" :class="backendValid ? 'text-green-400' : 'text-red-400'">
-          {{ backendVersion }}
+        <span class="text-xs font-medium uppercase" :class="backendValid ? 'text-green-700' : 'text-red-500'">
           {{ backendVersion }}
         </span>
+      </div>
       </div>
 
       <!-- Mobile Close Button -->
       <button
         @click="$emit('close')"
-        class="md:hidden p-1.5 -mr-1 text-muted-foreground hover:text-foreground"
+          class="absolute right-3 md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         <X class="w-5 h-5" />
       </button>
     </div>
 
     <!-- Scrollable Content -->
-    <div class="flex-1 overflow-y-auto p-3 space-y-4">
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <!-- BACKEND MODE -->
       <section>
         <button
           @click="toggleSection('backend')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
         >
-          Backend Mode
+          <span class="flex items-center gap-1">
+            Backend Mode
+            <Tooltip
+              position="bottom"
+              :text="config.backendMode === 'server'
+                ? 'Server: Load model once, generate multiple times. Start/Stop below.'
+                : 'CLI: Load model each generation (recommended for large models)'"
+            >
+              <Info class="w-3 h-3 text-muted-foreground/50" />
+            </Tooltip>
+          </span>
           <ChevronDown v-if="!expandedSections.backend" class="w-4 h-4" />
           <ChevronUp v-else class="w-4 h-4" />
         </button>
 
         <div v-show="expandedSections.backend" class="space-y-3">
           <!-- Server / CLI Toggle -->
-          <div class="flex p-1 bg-muted rounded-md">
+          <div class="flex p-1 metal-surface rounded-lg">
             <button
               @click="setBackendMode('server')"
-              class="flex-1 py-1.5 text-xs font-medium rounded flex items-center justify-center gap-1 transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium rounded-lg flex items-center justify-center gap-1 transition-colors"
               :class="
                 config.backendMode === 'server'
                   ? 'bg-background text-foreground shadow-sm'
@@ -349,7 +352,7 @@ onUnmounted(() => {
             </button>
             <button
               @click="setBackendMode('cli')"
-              class="flex-1 py-1.5 text-xs font-medium rounded flex items-center justify-center gap-1 transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium rounded-lg flex items-center justify-center gap-1 transition-colors"
               :class="
                 config.backendMode === 'cli'
                   ? 'bg-background text-foreground shadow-sm'
@@ -361,20 +364,12 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <p class="text-[10px] text-muted-foreground">
-            {{
-              config.backendMode === 'server'
-                ? 'Server: Load model once, generate multiple times. Start/Stop below.'
-                : 'CLI: Load model each generation (recommended for large models)'
-            }}
-          </p>
-
           <!-- Server Controls (only in server mode) -->
           <div v-if="config.backendMode === 'server'" class="flex gap-2">
             <button
               @click="startServer"
               :disabled="sdServerRunning || isBooting || !backendValid"
-              class="flex-1 py-1.5 text-xs flex items-center justify-center gap-1 rounded transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 rounded-md transition-colors"
               :class="
                 sdServerRunning || isBooting || !backendValid
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
@@ -387,7 +382,7 @@ onUnmounted(() => {
             <button
               @click="stopServer"
               :disabled="!sdServerRunning"
-              class="flex-1 py-1.5 text-xs flex items-center justify-center gap-1 rounded transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 rounded-md transition-colors"
               :class="
                 !sdServerRunning
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
@@ -399,28 +394,11 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- Folder Shortcuts -->
-          <div class="flex gap-2">
-            <button
-              @click="openModelsFolder"
-              class="flex-1 py-1.5 text-xs flex items-center justify-center gap-1 bg-muted rounded hover:bg-muted/80 transition-colors"
-            >
-              <Database class="w-3.5 h-3.5" />
-              Models
-            </button>
-            <button
-              @click="openGalleryFolder"
-              class="flex-1 py-1.5 text-xs flex items-center justify-center gap-1 bg-muted rounded hover:bg-muted/80 transition-colors"
-            >
-              <FolderOpen class="w-3.5 h-3.5" />
-              Output
-            </button>
-          </div>
         </div>
       </section>
 
       <!-- NETWORK SHARING -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('network')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -521,31 +499,9 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- VIDEO MODE TOGGLE -->
-      <section class="pt-3 border-t border-border">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-            >Video Mode</span
-          >
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              :checked="config.videoMode"
-              @change="toggleVideoMode"
-              class="sr-only peer"
-            />
-            <div
-              class="w-9 h-5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
-            ></div>
-          </label>
-        </div>
-        <p class="text-[10px] text-muted-foreground mt-1">
-          Hide settings not used by WAN/video models
-        </p>
-      </section>
-
+      <!-- Video Mode toggle moved to topbar -->
       <!-- MODEL CONFIGURATION -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('models')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -557,10 +513,10 @@ onUnmounted(() => {
 
         <div v-show="expandedSections.models" class="space-y-3">
           <!-- Standard / Split Toggle -->
-          <div class="flex p-1 bg-muted rounded-md">
+          <div class="flex p-1 metal-surface rounded-lg">
             <button
               @click="setLoadMode('standard')"
-              class="flex-1 py-1.5 text-xs font-medium rounded transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors"
               :class="
                 config.loadMode === 'standard'
                   ? 'bg-background text-foreground shadow-sm'
@@ -571,7 +527,7 @@ onUnmounted(() => {
             </button>
             <button
               @click="setLoadMode('split')"
-              class="flex-1 py-1.5 text-xs font-medium rounded transition-colors"
+              class="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors"
               :class="
                 config.loadMode === 'split'
                   ? 'bg-background text-foreground shadow-sm'
@@ -586,15 +542,15 @@ onUnmounted(() => {
           <div v-if="config.loadMode === 'standard'" class="space-y-2">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">Model Checkpoint</label>
-              <select
+              <Select
                 v-model="config.standardModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">Select model...</option>
-                <option v-for="model in models.diffusion" :key="model" :value="model">
-                  {{ model }}
-                </option>
-              </select>
+                size="sm"
+                placeholder="Select model..."
+                :options="[
+                  { label: 'Select model...', value: '' },
+                  ...models.diffusion.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
           </div>
 
@@ -602,70 +558,82 @@ onUnmounted(() => {
           <div v-else class="space-y-2">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">Diffusion Model</label>
-              <select
+              <Select
                 v-model="config.diffusionModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">Select...</option>
-                <option v-for="m in models.diffusion" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="Select..."
+                :options="[
+                  { label: 'Select...', value: '' },
+                  ...models.diffusion.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
 
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="text-xs text-muted-foreground block mb-1">T5XXL</label>
-                <select
+                <Select
                   v-model="config.t5xxlModel"
-                  class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-                >
-                  <option value="">None</option>
-                  <option v-for="m in models.t5xxl" :key="m" :value="m">{{ m }}</option>
-                </select>
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.t5xxl.map(m => ({ label: m, value: m }))
+                  ]"
+                />
               </div>
               <div v-if="!config.videoMode">
                 <label class="text-xs text-muted-foreground block mb-1">LLM</label>
-                <select
+                <Select
                   v-model="config.llmModel"
-                  class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-                >
-                  <option value="">None</option>
-                  <option v-for="m in models.llm" :key="m" :value="m">{{ m }}</option>
-                </select>
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.llm.map(m => ({ label: m, value: m }))
+                  ]"
+                />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-2" v-if="!config.videoMode">
               <div>
                 <label class="text-xs text-muted-foreground block mb-1">CLIP-L</label>
-                <select
+                <Select
                   v-model="config.clipModel"
-                  class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-                >
-                  <option value="">None</option>
-                  <option v-for="m in models.clip" :key="m" :value="m">{{ m }}</option>
-                </select>
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.clip.map(m => ({ label: m, value: m }))
+                  ]"
+                />
               </div>
               <div>
                 <label class="text-xs text-muted-foreground block mb-1">CLIP-G</label>
-                <select
+                <Select
                   v-model="config.clipGModel"
-                  class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-                >
-                  <option value="">None</option>
-                  <option v-for="m in models.clipG" :key="m" :value="m">{{ m }}</option>
-                </select>
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.clipG.map(m => ({ label: m, value: m }))
+                  ]"
+                />
               </div>
             </div>
 
-            <div>
+            <div v-if="!config.videoMode">
               <label class="text-xs text-muted-foreground block mb-1">CLIP Vision</label>
-              <select
+              <Select
                 v-model="config.clipVisionModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.clipVision" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.clipVision.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
           </div>
 
@@ -673,13 +641,15 @@ onUnmounted(() => {
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">VAE</label>
-              <select
+              <Select
                 v-model="config.vaeModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.vae" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.vae.map(m => ({ label: m, value: m }))
+                ]"
+              />
               <p
                 v-if="
                   config.vaeModel === 'ae.sft' &&
@@ -698,7 +668,7 @@ onUnmounted(() => {
                 v-model.number="config.vaeTileSize"
                 type="number"
                 placeholder="0"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
@@ -706,53 +676,61 @@ onUnmounted(() => {
           <div class="grid grid-cols-2 gap-2" v-if="!config.videoMode">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">ControlNet</label>
-              <select
+              <Select
                 v-model="config.controlNetModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.controlnet" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.controlnet.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
             <div>
               <label class="text-xs text-muted-foreground block mb-1">PhotoMaker</label>
-              <select
+              <Select
                 v-model="config.photoMakerModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.photomaker" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.photomaker.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
+          <div v-if="!config.videoMode" class="grid grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">Upscale</label>
-              <select
+              <Select
                 v-model="config.upscaleModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.upscale" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.upscale.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
             <div>
               <label class="text-xs text-muted-foreground block mb-1">TAESD</label>
-              <select
+              <Select
                 v-model="config.taesdModel"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="">None</option>
-                <option v-for="m in models.taesd" :key="m" :value="m">{{ m }}</option>
-              </select>
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.taesd.map(m => ({ label: m, value: m }))
+                ]"
+              />
             </div>
           </div>
         </div>
       </section>
 
       <!-- LORA MODULES -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('loras')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -769,26 +747,25 @@ onUnmounted(() => {
           <div
             v-for="(lora, index) in config.loras"
             :key="index"
-            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50"
+            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
           >
-            <select
+            <Select
               v-model="lora.path"
-              class="flex-1 px-2 py-1.5 text-xs rounded-md bg-background border border-border focus:outline-none focus:border-primary/50 transition-colors"
-            >
-              <option v-for="m in models.loras" :key="m" :value="m">{{ m }}</option>
-            </select>
+              size="sm"
+              :options="models.loras.map(m => ({ label: m, value: m }))"
+            />
             <input
               v-model.number="lora.strength"
               type="number"
               step="0.1"
               min="0"
               max="2"
-              class="w-12 px-1 py-1.5 text-xs rounded-md bg-background border border-border text-center focus:outline-none focus:border-primary/50 transition-colors"
+              class="w-12 px-1 py-1.5 text-xs rounded-md bg-muted/50 text-center focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               title="Strength"
             />
             <button
               @click="configStore.removeLora(index)"
-              class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+              class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
             >
               <Trash2 class="w-3.5 h-3.5" />
             </button>
@@ -796,7 +773,7 @@ onUnmounted(() => {
 
           <button
             @click="addNewLora"
-            class="w-full py-2 text-xs flex items-center justify-center gap-1 border border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all"
+            class="w-full py-2 text-xs flex items-center justify-center gap-1 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-all"
           >
             <Plus class="w-3.5 h-3.5" />
             Add LoRA
@@ -805,7 +782,7 @@ onUnmounted(() => {
       </section>
 
       <!-- EMBEDDINGS -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('embeddings')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -824,28 +801,23 @@ onUnmounted(() => {
           <div
             v-for="(emb, index) in config.embeddings"
             :key="index"
-            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50"
+            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
           >
             <div class="flex-1 flex items-center gap-2 overflow-hidden">
               <span
-                class="text-[10px] uppercase font-bold text-muted-foreground px-1 py-0.5 bg-background rounded border border-border/50"
+                class="text-[10px] uppercase font-bold text-muted-foreground px-1 py-0.5 bg-muted rounded"
                 >TI</span
               >
-              <select
-                :value="emb"
-                @change="
-                  (e) => {
-                    config.embeddings[index] = (e.target as HTMLSelectElement).value
-                  }
-                "
-                class="flex-1 px-2 py-1.5 text-xs rounded-md bg-background border border-border focus:outline-none focus:border-primary/50 transition-colors min-w-0"
-              >
-                <option v-for="m in models.embeddings" :key="m" :value="m">{{ m }}</option>
-              </select>
+              <Select
+                :model-value="emb"
+                @update:model-value="(val) => { config.embeddings[index] = val }"
+                size="sm"
+                :options="models.embeddings.map(m => ({ label: m, value: m }))"
+              />
             </div>
             <button
               @click="configStore.removeEmbedding(emb)"
-              class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+              class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
             >
               <Trash2 class="w-3.5 h-3.5" />
             </button>
@@ -853,7 +825,7 @@ onUnmounted(() => {
 
           <button
             @click="addNewEmbedding"
-            class="w-full py-2 text-xs flex items-center justify-center gap-1 border border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all"
+            class="w-full py-2 text-xs flex items-center justify-center gap-1 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-all"
           >
             <Plus class="w-3.5 h-3.5" />
             Add Embedding
@@ -862,7 +834,7 @@ onUnmounted(() => {
       </section>
 
       <!-- SAMPLING -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('sampling')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -876,39 +848,43 @@ onUnmounted(() => {
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-muted-foreground block mb-1">Scheduler</label>
-              <select
+              <Select
                 v-model="config.scheduler"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="discrete">Discrete</option>
-                <option value="karras">Karras</option>
-                <option value="exponential">Exponential</option>
-                <option value="ays">AYS</option>
-                <option value="gits">GITS</option>
-              </select>
+                size="sm"
+                placeholder="Select..."
+                :options="[
+                  { label: 'Discrete', value: 'discrete' },
+                  { label: 'Karras', value: 'karras' },
+                  { label: 'Exponential', value: 'exponential' },
+                  { label: 'AYS', value: 'ays' },
+                  { label: 'GITS', value: 'gits' }
+                ]"
+              />
             </div>
             <div>
               <label class="text-xs text-muted-foreground block mb-1">Sampler</label>
-              <select
+              <Select
                 v-model="config.sampler"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-              >
-                <option value="euler">Euler</option>
-                <option value="euler_a">Euler A</option>
-                <option value="heun">Heun</option>
-                <option value="dpm2">DPM2</option>
-                <option value="dpm++2s_a">DPM++ 2S a</option>
-                <option value="dpm++2m">DPM++ 2M</option>
-                <option value="dpm++2mv2">DPM++ 2M v2</option>
-                <option value="lcm">LCM</option>
-              </select>
+                size="sm"
+                placeholder="Select..."
+                :options="[
+                  { label: 'Euler', value: 'euler' },
+                  { label: 'Euler A', value: 'euler_a' },
+                  { label: 'Heun', value: 'heun' },
+                  { label: 'DPM2', value: 'dpm2' },
+                  { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
+                  { label: 'DPM++ 2M', value: 'dpm++2m' },
+                  { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
+                  { label: 'LCM', value: 'lcm' }
+                ]"
+              />
             </div>
           </div>
         </div>
       </section>
 
       <!-- GENERATION SETTINGS -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('generation')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -927,7 +903,7 @@ onUnmounted(() => {
                 type="number"
                 min="1"
                 max="150"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
             <div>
@@ -938,7 +914,7 @@ onUnmounted(() => {
                 step="0.5"
                 min="1"
                 max="30"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
@@ -949,7 +925,7 @@ onUnmounted(() => {
                 v-model.number="config.guidance"
                 type="number"
                 step="0.1"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
             <div>
@@ -957,7 +933,7 @@ onUnmounted(() => {
               <input
                 v-model.number="config.clipSkip"
                 type="number"
-                class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
@@ -966,14 +942,14 @@ onUnmounted(() => {
             <input
               v-model.number="config.seed"
               type="number"
-              class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
+              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
             />
           </div>
         </div>
       </section>
 
       <!-- HARDWARE -->
-      <section class="pt-3 border-t border-border">
+      <section class="pt-3">
         <button
           @click="toggleSection('hardware')"
           class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
@@ -1007,28 +983,30 @@ onUnmounted(() => {
 
           <div>
             <label class="text-xs text-muted-foreground block mb-1">Quantization</label>
-            <select
+            <Select
               v-model="config.quantizationType"
-              class="w-full px-2 py-1.5 text-xs rounded bg-muted border border-input"
-            >
-              <option value="">Default</option>
-              <option value="f32">f32 - 32-bit</option>
-              <option value="f16">f16 - 16-bit</option>
-              <option value="q8_0">q8_0 - 8-bit</option>
-              <option value="q5_0">q5_0 - 5-bit</option>
-              <option value="q4_0">q4_0 - 4-bit</option>
-            </select>
+              size="sm"
+              placeholder="Default"
+              :options="[
+                { label: 'Default', value: '' },
+                { label: 'f32 - 32-bit', value: 'f32' },
+                { label: 'f16 - 16-bit', value: 'f16' },
+                { label: 'q8_0 - 8-bit', value: 'q8_0' },
+                { label: 'q5_0 - 5-bit', value: 'q5_0' },
+                { label: 'q4_0 - 4-bit', value: 'q4_0' }
+              ]"
+            />
           </div>
         </div>
       </section>
 
       <!-- LOGS (for server mode) -->
-      <section v-if="config.backendMode === 'server'" class="pt-3 border-t border-border">
+      <section v-if="config.backendMode === 'server'" class="pt-3">
         <h3 class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
           :: Logs ::
         </h3>
         <div
-          class="h-32 bg-black rounded-md border border-border p-2 overflow-y-auto text-[10px] font-mono text-green-400 leading-tight"
+          class="h-32 bg-muted/20 rounded-md p-2 overflow-y-auto text-[10px] font-mono text-foreground leading-tight"
         >
           <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
           <div v-if="logs.length === 0" class="text-muted-foreground">No logs yet...</div>
