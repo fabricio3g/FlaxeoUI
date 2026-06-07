@@ -429,10 +429,14 @@ onUnmounted(() => {
         >
           <div
             v-if="!baseImage"
-            class="w-80 h-80 flex flex-col items-center justify-center text-muted-foreground gap-4"
+            class="relative w-80 h-80 flex flex-col items-center justify-center text-muted-foreground gap-4 rounded-2xl overflow-hidden"
           >
-            <Brush class="w-12 h-12 opacity-30" />
-            <div class="text-center">
+            <div class="absolute inset-0 bg-gradient-to-br from-muted/20 via-transparent to-muted/10"></div>
+            <div class="absolute inset-0 opacity-30">
+              <div class="empty-preview-noise"></div>
+            </div>
+            <Brush class="w-12 h-12 opacity-30 relative z-10" />
+            <div class="text-center relative z-10">
               <p class="text-xs mb-2">Drop an image here or</p>
               <label
                 class="px-4 py-2 text-xs primary-metal-button text-white rounded cursor-pointer"
@@ -441,7 +445,7 @@ onUnmounted(() => {
                 <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
               </label>
             </div>
-            <button @click="goToGallery" class="text-xs text-muted-foreground/70 hover:text-foreground">
+            <button @click="goToGallery" class="text-xs text-muted-foreground/70 hover:text-foreground relative z-10">
               Select from Gallery
             </button>
           </div>

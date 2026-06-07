@@ -62,7 +62,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+  <div class="flex flex-col h-screen bg-background text-foreground overflow-hidden select-none">
     <!-- Custom Titlebar for Electron Only -->
     <Titlebar
       :current-tab="currentTab"

@@ -128,7 +128,7 @@ onUnmounted(() => {
     <!-- Logs content -->
     <div
       ref="logsContainer"
-      class="flex-1 overflow-auto font-mono text-xs p-2 bg-black/90 text-green-400"
+      class="flex-1 overflow-auto font-mono text-xs p-2 bg-black/90 text-green-400 select-text"
     >
       <div v-if="logs.length === 0" class="text-muted-foreground italic">
         No logs yet. Start a generation to see output.

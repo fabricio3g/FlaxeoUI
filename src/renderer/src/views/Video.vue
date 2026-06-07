@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, apiGet, getApiBase, getOutputUrl } from '@/services/api'
-import { Video as VideoIcon, Upload, Loader2, Play, X } from 'lucide-vue-next'
+import { Upload, Loader2, Play, X } from 'lucide-vue-next'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 
 const configStore = useConfigStore()
@@ -185,12 +185,14 @@ async function handleCancel(): Promise<void> {
             class="max-w-full max-h-[72vh] object-contain"
           ></video>
 
-          <div v-else class="w-96 h-64 flex flex-col items-center justify-center text-muted-foreground">
-            <VideoIcon class="w-12 h-12 opacity-30 mb-4" />
-            <span class="text-xs tracking-[0.32em] opacity-60">READY FOR VIDEO</span>
-            <p class="text-xs mt-2 text-center px-4">
-              Generate videos using WAN/CogVideoX models via sd-cli
-            </p>
+          <div v-else class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white">
+            <div class="empty-preview-noise"></div>
+            <div class="empty-preview-glow empty-preview-glow-a"></div>
+            <div class="empty-preview-glow empty-preview-glow-b"></div>
+            <div class="empty-preview-glow empty-preview-glow-c"></div>
+            <div class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
+              <span class="text-3xl font-semibold tracking-tight md:text-5xl">Imagine it into form</span>
+            </div>
           </div>
 
           <div
