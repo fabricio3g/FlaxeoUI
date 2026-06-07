@@ -3,10 +3,14 @@ import { apiGet } from '@/services/api'
 
 export interface ModelCategories {
   diffusion: string[]
+  uncondDiffusion: string[]
   loras: string[]
   vae: string[]
+  audioVae: string[]
   llm: string[]
+  llmVision: string[]
   t5xxl: string[]
+  embeddingsConnectors: string[]
   clip: string[]
   clipG: string[]
   clipVision: string[]
@@ -27,11 +31,15 @@ export interface ModelCategories {
  */
 export function useModels() {
   const models = ref<ModelCategories>({
-    diffusion: [],
+  diffusion: [],
+    uncondDiffusion: [],
     loras: [],
     vae: [],
+    audioVae: [],
     llm: [],
+    llmVision: [],
     t5xxl: [],
+    embeddingsConnectors: [],
     clip: [],
     clipG: [],
     clipVision: [],

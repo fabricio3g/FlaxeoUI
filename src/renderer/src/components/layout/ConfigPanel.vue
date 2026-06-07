@@ -7,9 +7,7 @@ import { apiGet, apiPost } from '@/services/api'
 import {
   ChevronDown,
   ChevronUp,
-  Copy,
   Cpu,
-  Globe,
   Info,
   Play,
   Plus,
@@ -19,7 +17,6 @@ import {
   Square,
   Terminal,
   Trash2,
-  Wifi,
   X,
   Zap
 } from 'lucide-vue-next'
@@ -54,18 +51,9 @@ const logs = ref<string[]>([])
 const presetName = ref('')
 const presetSearch = ref('')
 
-// Network status
-const localNetworkEnabled = ref(false)
-const localNetworkUrl = ref('')
-const ngrokEnabled = ref(false)
-const ngrokUrl = ref('')
-const cloudflareEnabled = ref(false)
-const cloudflareUrl = ref('')
-
 // Collapsible sections
 const expandedSections = ref({
   backend: true,
-  network: false,
   models: true,
   loras: false,
   embeddings: false,
@@ -133,23 +121,6 @@ async function fetchStatus(): Promise<void> {
 }
 
 /**
- * fetchNetworkStatus() - Get network sharing status
- */
-async function fetchNetworkStatus(): Promise<void> {
-  try {
-    const data = await apiGet<any>('/api/network/status')
-    localNetworkEnabled.value = data.local?.enabled || false
-    localNetworkUrl.value = data.local?.url || ''
-    ngrokEnabled.value = data.ngrok?.enabled || false
-    ngrokUrl.value = data.ngrok?.url || ''
-    cloudflareEnabled.value = data.cloudflare?.enabled || false
-    cloudflareUrl.value = data.cloudflare?.url || ''
-  } catch (e) {
-    // Network status not available
-  }
-}
-
-/**
  * startServer() - Start the sd-server with current configuration
  */
 async function startServer(): Promise<void> {
@@ -161,20 +132,64 @@ async function startServer(): Promise<void> {
         config.value.loadMode === 'standard'
           ? config.value.standardModel
           : config.value.diffusionModel,
+      highNoiseDiffusionModel: config.value.highNoiseDiffusionModel,
+      uncondDiffusionModel: config.value.uncondDiffusionModel,
       t5xxl: config.value.t5xxlModel,
       llm: config.value.llmModel,
+      llmVision: config.value.llmVisionModel,
       clipL: config.value.clipModel,
       clipG: config.value.clipGModel,
       vae: config.value.vaeModel,
+      vaeFormat: config.value.vaeFormat,
+      audioVae: config.value.audioVaeModel,
+      embeddingsConnectors: config.value.embeddingsConnectorsModel,
       controlNet: config.value.controlNetModel,
       photoMaker: config.value.photoMakerModel,
       scheduler: config.value.scheduler,
       samplingMethod: config.value.sampler,
+      rngType: config.value.rngType,
+      samplerRngType: config.value.samplerRngType,
       flashAttention: config.value.flashAttention,
       vaeTiling: config.value.vaeTiling,
       clipOnCpu: config.value.clipOnCpu,
+      vaeOnCpu: config.value.vaeOnCpu,
+      controlNetOnCpu: config.value.controlNetOnCpu,
       offloadToCpu: config.value.cpuOffload,
+      diffusionConvDirect: config.value.diffusionConvDirect,
+      vaeConvDirect: config.value.vaeConvDirect,
+      forceSDXLVaeConvScale: config.value.forceSDXLVaeConvScale,
+      backendAssignment: config.value.backendAssignment,
+      paramsBackendAssignment: config.value.paramsBackendAssignment,
+      threads: config.value.threads,
+      maxVram: config.value.maxVram,
+      streamLayers: config.value.streamLayers,
+      mmap: config.value.mmap,
+      circular: config.value.circular,
+      circularX: config.value.circularX,
+      circularY: config.value.circularY,
+      qwenImageZeroCondT: config.value.qwenImageZeroCondT,
+      chromaEnableT5Mask: config.value.chromaEnableT5Mask,
+      chromaDisableDitMask: config.value.chromaDisableDitMask,
+      chromaT5MaskPad: config.value.chromaT5MaskPad,
       quantType: config.value.quantizationType,
+      quantizationType: config.value.quantizationType,
+      tensorTypeRules: config.value.tensorTypeRules,
+      predictionType: config.value.predictionType,
+      cacheMode: config.value.cacheMode,
+      cacheOption: config.value.cacheOption,
+      scmMask: config.value.scmMask,
+      scmPolicy: config.value.scmPolicy,
+      flowShift: config.value.flowShift,
+      eta: config.value.eta,
+      slgScale: config.value.slgScale,
+      skipLayerStart: config.value.skipLayerStart,
+      skipLayerEnd: config.value.skipLayerEnd,
+      skipLayers: config.value.skipLayers,
+      sigmas: config.value.sigmas,
+      imgCfgScale: config.value.imgCfgScale,
+      extraSampleArgs: config.value.extraSampleArgs,
+      extraTilingArgs: config.value.extraTilingArgs,
+      disableImageMetadata: config.value.disableImageMetadata,
       vaeTileSize: config.value.vaeTileSize,
       defaultSteps: config.value.steps,
       defaultCfg: config.value.cfgScale
@@ -196,62 +211,6 @@ async function stopServer(): Promise<void> {
     await apiPost('/api/stop', {})
   } catch (e) {
     console.error('Failed to stop server:', e)
-  }
-}
-
-/**
- * toggleLocalNetwork() - Toggle local network access
- */
-async function toggleLocalNetwork(): Promise<void> {
-  try {
-    const newState = !localNetworkEnabled.value
-    await apiPost('/api/network/local', { enabled: newState })
-    await fetchNetworkStatus()
-  } catch (e) {
-    console.error('Failed to toggle local network:', e)
-  }
-}
-
-/**
- * toggleNgrok() - Toggle ngrok tunnel
- */
-async function toggleNgrok(): Promise<void> {
-  try {
-    if (!ngrokEnabled.value) {
-      await apiPost('/api/network/toggle', { service: 'ngrok', action: 'start' })
-    } else {
-      await apiPost('/api/network/toggle', { service: 'ngrok', action: 'stop' })
-    }
-    await fetchNetworkStatus()
-  } catch (e) {
-    console.error('Failed to toggle ngrok:', e)
-  }
-}
-
-/**
- * toggleCloudflare() - Toggle cloudflare tunnel
- */
-async function toggleCloudflare(): Promise<void> {
-  try {
-    if (!cloudflareEnabled.value) {
-      await apiPost('/api/network/toggle', { service: 'cloudflare', action: 'start' })
-    } else {
-      await apiPost('/api/network/toggle', { service: 'cloudflare', action: 'stop' })
-    }
-    await fetchNetworkStatus()
-  } catch (e) {
-    console.error('Failed to toggle cloudflare:', e)
-  }
-}
-
-/**
- * copyUrl() - Copy URL to clipboard
- */
-async function copyUrl(url: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(url)
-  } catch (e) {
-    console.error('Failed to copy:', e)
   }
 }
 
@@ -314,7 +273,6 @@ function addNewEmbedding(): void {
 onMounted(() => {
   fetchModels()
   fetchStatus()
-  fetchNetworkStatus()
   // Poll status every 2 seconds
   statusInterval = window.setInterval(() => {
     fetchStatus()
@@ -548,108 +506,6 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- NETWORK SHARING -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('network')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
-        >
-          Network Sharing
-          <ChevronDown v-if="!expandedSections.network" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
-
-        <div v-show="expandedSections.network" class="space-y-3">
-          <!-- Local Network -->
-          <div class="p-2 bg-muted/50 rounded">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs text-muted-foreground flex items-center gap-1">
-                <Wifi class="w-3 h-3" />
-                Local Network
-              </span>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  :checked="localNetworkEnabled"
-                  @change="toggleLocalNetwork"
-                  class="sr-only peer"
-                />
-                <div
-                  class="w-7 h-3.5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"
-                ></div>
-              </label>
-            </div>
-            <div
-              v-if="localNetworkUrl && localNetworkEnabled"
-              @click="copyUrl(localNetworkUrl)"
-              class="p-1.5 bg-background rounded text-[10px] font-mono text-green-400 cursor-pointer hover:text-green-300 break-all"
-              title="Click to copy"
-            >
-              {{ localNetworkUrl }}
-            </div>
-            <p v-else class="text-[10px] text-muted-foreground/60">Allow LAN access</p>
-          </div>
-
-          <!-- Ngrok -->
-          <div class="p-2 bg-muted/50 rounded">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs text-muted-foreground flex items-center gap-1">
-                <Globe class="w-3 h-3" />
-                Ngrok
-              </span>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  :checked="ngrokEnabled"
-                  @change="toggleNgrok"
-                  class="sr-only peer"
-                />
-                <div
-                  class="w-7 h-3.5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"
-                ></div>
-              </label>
-            </div>
-            <div
-              v-if="ngrokUrl"
-              @click="copyUrl(ngrokUrl)"
-              class="p-1.5 bg-background rounded text-[10px] font-mono text-green-400 cursor-pointer hover:text-green-300 break-all flex items-center justify-between"
-            >
-              <span>{{ ngrokUrl }}</span>
-              <Copy class="w-3 h-3 shrink-0" />
-            </div>
-          </div>
-
-          <!-- Cloudflare -->
-          <div class="p-2 bg-muted/50 rounded">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs text-muted-foreground flex items-center gap-1">
-                <Globe class="w-3 h-3" />
-                Cloudflare
-              </span>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  :checked="cloudflareEnabled"
-                  @change="toggleCloudflare"
-                  class="sr-only peer"
-                />
-                <div
-                  class="w-7 h-3.5 bg-muted-foreground/30 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"
-                ></div>
-              </label>
-            </div>
-            <div
-              v-if="cloudflareUrl"
-              @click="copyUrl(cloudflareUrl)"
-              class="p-1.5 bg-background rounded text-[10px] font-mono text-green-400 cursor-pointer hover:text-green-300 break-all flex items-center justify-between"
-            >
-              <span>{{ cloudflareUrl }}</span>
-              <Copy class="w-3 h-3 shrink-0" />
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Video Mode toggle moved to topbar -->
       <!-- MODEL CONFIGURATION -->
       <section class="pt-3">
@@ -722,6 +578,33 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-2 gap-2">
               <div>
+                <label class="text-xs text-muted-foreground block mb-1">High Noise</label>
+                <Select
+                  v-model="config.highNoiseDiffusionModel"
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.diffusion.map(m => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-muted-foreground block mb-1">Uncond Diffusion</label>
+                <Select
+                  v-model="config.uncondDiffusionModel"
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.uncondDiffusion.map(m => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
                 <label class="text-xs text-muted-foreground block mb-1">T5XXL</label>
                 <Select
                   v-model="config.t5xxlModel"
@@ -734,6 +617,18 @@ onUnmounted(() => {
                 />
               </div>
               <div v-if="!config.videoMode">
+                <label class="text-xs text-muted-foreground block mb-1">LLM</label>
+                <Select
+                  v-model="config.llmModel"
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.llm.map(m => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div v-else>
                 <label class="text-xs text-muted-foreground block mb-1">LLM</label>
                 <Select
                   v-model="config.llmModel"
@@ -786,6 +681,33 @@ onUnmounted(() => {
                 ]"
               />
             </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs text-muted-foreground block mb-1">LLM Vision</label>
+                <Select
+                  v-model="config.llmVisionModel"
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.llmVision.map(m => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-muted-foreground block mb-1">Emb. Connectors</label>
+                <Select
+                  v-model="config.embeddingsConnectorsModel"
+                  size="sm"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.embeddingsConnectors.map(m => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- Common Model Options (both modes) -->
@@ -820,6 +742,35 @@ onUnmounted(() => {
                 type="number"
                 placeholder="0"
                 class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Audio VAE</label>
+              <Select
+                v-model="config.audioVaeModel"
+                size="sm"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.audioVae.map(m => ({ label: m, value: m }))
+                ]"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">VAE Format</label>
+              <Select
+                v-model="config.vaeFormat"
+                size="sm"
+                placeholder="Auto"
+                :options="[
+                  { label: 'Auto', value: '' },
+                  { label: 'Flux', value: 'flux' },
+                  { label: 'SD3', value: 'sd3' },
+                  { label: 'Flux2', value: 'flux2' }
+                ]"
               />
             </div>
           </div>
@@ -1008,7 +959,14 @@ onUnmounted(() => {
                   { label: 'Karras', value: 'karras' },
                   { label: 'Exponential', value: 'exponential' },
                   { label: 'AYS', value: 'ays' },
-                  { label: 'GITS', value: 'gits' }
+                  { label: 'GITS', value: 'gits' },
+                  { label: 'Smoothstep', value: 'smoothstep' },
+                  { label: 'SGM Uniform', value: 'sgm_uniform' },
+                  { label: 'Simple', value: 'simple' },
+                  { label: 'KL Optimal', value: 'kl_optimal' },
+                  { label: 'LCM', value: 'lcm' },
+                  { label: 'Bong Tangent', value: 'bong_tangent' },
+                  { label: 'LTX2', value: 'ltx2' }
                 ]"
               />
             </div>
@@ -1026,10 +984,103 @@ onUnmounted(() => {
                   { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
                   { label: 'DPM++ 2M', value: 'dpm++2m' },
                   { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
-                  { label: 'LCM', value: 'lcm' }
+                  { label: 'IPNDM', value: 'ipndm' },
+                  { label: 'IPNDM V', value: 'ipndm_v' },
+                  { label: 'LCM', value: 'lcm' },
+                  { label: 'DDIM Trailing', value: 'ddim_trailing' },
+                  { label: 'TCD', value: 'tcd' },
+                  { label: 'Res Multistep', value: 'res_multistep' },
+                  { label: 'Res 2S', value: 'res_2s' },
+                  { label: 'ER-SDE', value: 'er_sde' },
+                  { label: 'Euler CFG++', value: 'euler_cfg_pp' },
+                  { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
                 ]"
               />
             </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">RNG</label>
+              <Select
+                v-model="config.rngType"
+                size="sm"
+                placeholder="Default"
+                :options="[
+                  { label: 'Default', value: '' },
+                  { label: 'CUDA / WebUI', value: 'cuda' },
+                  { label: 'CPU / ComfyUI', value: 'cpu' },
+                  { label: 'std_default', value: 'std_default' }
+                ]"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Sampler RNG</label>
+              <Select
+                v-model="config.samplerRngType"
+                size="sm"
+                placeholder="Same"
+                :options="[
+                  { label: 'Same as RNG', value: '' },
+                  { label: 'CUDA / WebUI', value: 'cuda' },
+                  { label: 'CPU / ComfyUI', value: 'cpu' },
+                  { label: 'std_default', value: 'std_default' }
+                ]"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Cache Mode</label>
+              <Select
+                v-model="config.cacheMode"
+                size="sm"
+                placeholder="Off"
+                :options="[
+                  { label: 'Off', value: '' },
+                  { label: 'UCache', value: 'ucache' },
+                  { label: 'EasyCache', value: 'easycache' },
+                  { label: 'DBCache', value: 'dbcache' },
+                  { label: 'TaylorSeer', value: 'taylorseer' },
+                  { label: 'Cache-DIT', value: 'cache-dit' },
+                  { label: 'Spectrum', value: 'spectrum' }
+                ]"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">SCM Policy</label>
+              <Select
+                v-model="config.scmPolicy"
+                size="sm"
+                placeholder="Dynamic"
+                :options="[
+                  { label: 'Default', value: '' },
+                  { label: 'Dynamic', value: 'dynamic' },
+                  { label: 'Static', value: 'static' }
+                ]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Cache Options</label>
+            <input
+              v-model="config.cacheOption"
+              type="text"
+              placeholder="threshold=0.25,warmup=4"
+              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">SCM Mask</label>
+            <input
+              v-model="config.scmMask"
+              type="text"
+              placeholder="1,1,1,0,0,1"
+              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+            />
           </div>
         </div>
       </section>
@@ -1096,6 +1147,59 @@ onUnmounted(() => {
               class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
             />
           </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Flow Shift</label>
+              <input v-model.number="config.flowShift" type="number" step="0.1" placeholder="Auto" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">ETA</label>
+              <input v-model.number="config.eta" type="number" step="0.1" placeholder="Auto" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">SLG Scale</label>
+              <input v-model.number="config.slgScale" type="number" step="0.1" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Img CFG</label>
+              <input v-model.number="config.imgCfgScale" type="number" step="0.1" placeholder="CFG" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">SLG Start</label>
+              <input v-model.number="config.skipLayerStart" type="number" step="0.01" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">SLG End</label>
+              <input v-model.number="config.skipLayerEnd" type="number" step="0.01" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Skip Layers</label>
+            <input v-model="config.skipLayers" type="text" placeholder="7,8,9" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Sigmas</label>
+            <input v-model="config.sigmas" type="text" placeholder="14.61,7.8,3.5,0.0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Extra Sample Args</label>
+            <input v-model="config.extraSampleArgs" type="text" placeholder="apg_eta=0.5,slg_uncond=1" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Extra Tiling Args</label>
+            <input v-model="config.extraTilingArgs" type="text" placeholder="temporal_tile_frames=4" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+          </div>
         </div>
       </section>
 
@@ -1130,6 +1234,74 @@ onUnmounted(() => {
               <Cpu class="w-3.5 h-3.5" />
               Offload
             </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.vaeOnCpu" type="checkbox" class="rounded" />
+              VAE CPU
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.controlNetOnCpu" type="checkbox" class="rounded" />
+              Control CPU
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.diffusionConvDirect" type="checkbox" class="rounded" />
+              Diff Conv
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.vaeConvDirect" type="checkbox" class="rounded" />
+              VAE Conv
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.forceSDXLVaeConvScale" type="checkbox" class="rounded" />
+              SDXL VAE Scale
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.streamLayers" type="checkbox" class="rounded" />
+              Stream Layers
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.mmap" type="checkbox" class="rounded" />
+              mmap
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.disableImageMetadata" type="checkbox" class="rounded" />
+              No Metadata
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Runtime Backend</label>
+              <input
+                v-model="config.backendAssignment"
+                type="text"
+                placeholder="auto, cpu, cuda0, vulkan0"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Params Backend</label>
+              <input
+                v-model="config.paramsBackendAssignment"
+                type="text"
+                placeholder="cpu or diffusion=gpu,te=cpu"
+                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+          </div>
+
+          <p class="text-[10px] text-muted-foreground leading-tight">
+            Backend names depend on the active stable-diffusion.cpp release: CPU, CUDA, Vulkan, ROCm, Metal, OpenCL, or SYCL builds expose different devices.
+          </p>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Threads</label>
+              <input v-model.number="config.threads" type="number" placeholder="-1" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground block mb-1">Max VRAM GiB</label>
+              <input v-model.number="config.maxVram" type="number" step="0.1" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+            </div>
           </div>
 
           <div>
@@ -1147,6 +1319,74 @@ onUnmounted(() => {
                 { label: 'q4_0 - 4-bit', value: 'q4_0' }
               ]"
             />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Tensor Type Rules</label>
+            <input v-model="config.tensorTypeRules" type="text" placeholder="^vae\\.=f16,model\\.=q8_0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Prediction</label>
+            <Select
+              v-model="config.predictionType"
+              size="sm"
+              placeholder="Auto"
+              :options="[
+                { label: 'Auto', value: '' },
+                { label: 'EPS', value: 'eps' },
+                { label: 'V', value: 'v' },
+                { label: 'EDM V', value: 'edm_v' },
+                { label: 'SD3 Flow', value: 'sd3_flow' },
+                { label: 'Flux Flow', value: 'flux_flow' },
+                { label: 'Flux2 Flow', value: 'flux2_flow' }
+              ]"
+            />
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">LoRA Apply Mode</label>
+            <Select
+              v-model="config.loraApplyMode"
+              size="sm"
+              :options="[
+                { label: 'Auto', value: 'auto' },
+                { label: 'Immediately', value: 'immediately' },
+                { label: 'At Runtime', value: 'at_runtime' }
+              ]"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.circular" type="checkbox" class="rounded" />
+              Circular
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.circularX" type="checkbox" class="rounded" />
+              Circular X
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.circularY" type="checkbox" class="rounded" />
+              Circular Y
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.qwenImageZeroCondT" type="checkbox" class="rounded" />
+              Qwen Zero T
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.chromaEnableT5Mask" type="checkbox" class="rounded" />
+              Chroma T5 Mask
+            </label>
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+              <input v-model="config.chromaDisableDitMask" type="checkbox" class="rounded" />
+              Disable DiT Mask
+            </label>
+          </div>
+
+          <div>
+            <label class="text-xs text-muted-foreground block mb-1">Chroma T5 Mask Pad</label>
+            <input v-model.number="config.chromaT5MaskPad" type="number" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
           </div>
         </div>
       </section>

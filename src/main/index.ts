@@ -28,7 +28,7 @@ function startServer(): Promise<number> {
     // In dev mode: __dirname is flaxeo-vue/out/main, so go up to flaxeo-vue root
     // In production: server.js is in resourcesPath
     const serverPath = is.dev
-      ? join(__dirname, '../..', 'server.js') // flaxeo-vue/server.js
+      ? join(__dirname, '../server/index.js')
       : join(__dirname, '../server/index.js') // inside app.asar/out/server/index.js
 
     const cwdPath = is.dev
@@ -38,9 +38,9 @@ function startServer(): Promise<number> {
     console.log('[Main] Starting server from:', serverPath)
     console.log('[Main] Working directory:', cwdPath)
 
-    // Check if server.js exists
+    // Check if the bundled server exists
     if (!fs.existsSync(serverPath)) {
-      console.error('[Main] server.js not found at:', serverPath)
+      console.error('[Main] server not found at:', serverPath)
       reject(new Error('Server file not found'))
       return
     }

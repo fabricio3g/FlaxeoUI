@@ -17,11 +17,15 @@ export interface GenerationConfig {
 
   // Split mode models
   diffusionModel: string
+  highNoiseDiffusionModel: string
+  uncondDiffusionModel: string
   t5xxlModel: string
   llmModel: string
+  llmVisionModel: string
   clipModel: string
   clipGModel: string
   clipVisionModel: string
+  embeddingsConnectorsModel: string
 
   // Common models
   vaeModel: string
@@ -30,6 +34,8 @@ export interface GenerationConfig {
   photoMakerModel: string
   upscaleModel: string
   taesdModel: string
+  audioVaeModel: string
+  vaeFormat: string
 
   // LoRAs (array of { path, strength })
   loras: Array<{ path: string; strength: number }>
@@ -42,6 +48,7 @@ export interface GenerationConfig {
   scheduler: string
   sampler: string
   rngType: string
+  samplerRngType: string
   batchCount: number
 
   // Generation parameters
@@ -61,7 +68,43 @@ export interface GenerationConfig {
   diffusionConvDirect: boolean
   vaeConvDirect: boolean
   forceSDXLVaeConvScale: boolean
+  backendAssignment: string
+  paramsBackendAssignment: string
+  threads: number
+  maxVram: number
+  streamLayers: boolean
+  mmap: boolean
+  vaeOnCpu: boolean
+  controlNetOnCpu: boolean
+  circular: boolean
+  circularX: boolean
+  circularY: boolean
+  qwenImageZeroCondT: boolean
+  chromaEnableT5Mask: boolean
+  chromaDisableDitMask: boolean
+  chromaT5MaskPad: number
   quantizationType: string
+  tensorTypeRules: string
+  predictionType: string
+
+  // Caching / acceleration
+  cacheMode: string
+  cacheOption: string
+  scmMask: string
+  scmPolicy: string
+
+  // Advanced sampling
+  flowShift: number
+  eta: number
+  slgScale: number
+  skipLayerStart: number
+  skipLayerEnd: number
+  skipLayers: string
+  sigmas: string
+  imgCfgScale: number
+  extraSampleArgs: string
+  extraTilingArgs: string
+  disableImageMetadata: boolean
 
   // Live preview
   livePreviewMethod: string
@@ -102,23 +145,30 @@ const defaultConfig: GenerationConfig = {
   loadMode: 'standard',
   standardModel: '',
   diffusionModel: '',
+  highNoiseDiffusionModel: '',
+  uncondDiffusionModel: '',
   t5xxlModel: '',
   llmModel: '',
+  llmVisionModel: '',
   clipModel: '',
   clipGModel: '',
   clipVisionModel: '',
+  embeddingsConnectorsModel: '',
   vaeModel: '',
   vaeTileSize: 0,
   controlNetModel: '',
   photoMakerModel: '',
   upscaleModel: '',
   taesdModel: '',
+  audioVaeModel: '',
+  vaeFormat: '',
   loras: [],
   loraApplyMode: 'auto',
   embeddings: [],
   scheduler: 'discrete',
   sampler: 'euler',
   rngType: '',
+  samplerRngType: '',
   batchCount: 1,
   steps: 20,
   cfgScale: 3.5,
@@ -134,7 +184,39 @@ const defaultConfig: GenerationConfig = {
   diffusionConvDirect: false,
   vaeConvDirect: false,
   forceSDXLVaeConvScale: false,
+  backendAssignment: '',
+  paramsBackendAssignment: '',
+  threads: -1,
+  maxVram: 0,
+  streamLayers: false,
+  mmap: false,
+  vaeOnCpu: false,
+  controlNetOnCpu: false,
+  circular: false,
+  circularX: false,
+  circularY: false,
+  qwenImageZeroCondT: false,
+  chromaEnableT5Mask: false,
+  chromaDisableDitMask: false,
+  chromaT5MaskPad: 0,
   quantizationType: '',
+  tensorTypeRules: '',
+  predictionType: '',
+  cacheMode: '',
+  cacheOption: '',
+  scmMask: '',
+  scmPolicy: '',
+  flowShift: 0,
+  eta: 0,
+  slgScale: 0,
+  skipLayerStart: 0.01,
+  skipLayerEnd: 0.2,
+  skipLayers: '',
+  sigmas: '',
+  imgCfgScale: 0,
+  extraSampleArgs: '',
+  extraTilingArgs: '',
+  disableImageMetadata: false,
   livePreviewMethod: '',
   controlNetStrength: 0.9,
   applyCanny: false,

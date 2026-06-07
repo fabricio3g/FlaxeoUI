@@ -4,7 +4,7 @@ console.log('Building server...')
 
 esbuild
   .build({
-    entryPoints: ['server.js'],
+    entryPoints: ['src/server/index.ts'],
     bundle: true,
     platform: 'node',
     target: 'node18',
