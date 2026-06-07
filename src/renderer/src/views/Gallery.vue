@@ -194,7 +194,7 @@ onMounted(() => {
     <div class="p-4 border-b border-border/70 bg-card/70 shrink-0 backdrop-blur-xl">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <Images class="w-6 h-6 text-primary" />
+          <Images class="w-6 h-6 text-foreground" />
           <div>
             <h1 class="text-xl font-bold">Gallery</h1>
             <p class="text-xs text-muted-foreground">{{ images.length }} images</p>
