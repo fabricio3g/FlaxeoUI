@@ -49,6 +49,19 @@ function handleImageUpload(event: Event): void {
   referenceImage.value = URL.createObjectURL(file)
 }
 
+async function loadReferenceFromUrl(url: string): Promise<void> {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const name = url.split('/').pop()?.split('?')[0] || 'reference.png'
+    referenceFile.value = new File([blob], name, { type: blob.type || 'image/png' })
+    referenceImage.value = url
+    videoMode.value = 'i2v'
+  } catch (e) {
+    console.error('Failed to load video reference:', e)
+  }
+}
+
 /**
  * clearReferenceImage() - Clear the reference image
  */
@@ -160,6 +173,14 @@ async function handleCancel(): Promise<void> {
   }
   isGenerating.value = false
 }
+
+onMounted(() => {
+  const referenceUrl = sessionStorage.getItem('videoReferenceImage')
+  if (!referenceUrl) return
+
+  sessionStorage.removeItem('videoReferenceImage')
+  loadReferenceFromUrl(referenceUrl)
+})
 </script>
 
 <template>
@@ -216,7 +237,7 @@ async function handleCancel(): Promise<void> {
     </div>
 
     <div class="shrink-0 bg-card/70 px-3 pb-3 pt-2">
-      <div class="relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
         <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
           <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30">
             <button
@@ -272,36 +293,36 @@ async function handleCancel(): Promise<void> {
           </div>
         </div>
 
-        <div class="composer-shell mx-3 rounded-2xl px-3 py-3">
+        <div class="composer-shell flax-composer mx-3 rounded-2xl">
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
-            class="mb-3"
+            class="flax-composer-presets"
           />
 
-          <div class="flex items-end gap-2">
+          <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
                 v-model="prompt"
                 rows="1"
                 placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
-                class="w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
+                class="flax-composer-textarea w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
                 :style="{ minHeight: '68px', maxHeight: '200px' }"
                 :disabled="isGenerating"
               ></textarea>
             </div>
-            <div class="flex items-end pb-0.5">
-              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="h-10 w-10 rounded-xl primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Generate Video">
+            <div class="flax-composer-actions flex items-end pb-0.5">
+              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="flax-composer-send primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center" title="Generate Video">
                 <Play class="w-5 h-5 stroke-[2.5]" />
               </button>
-              <button v-else @click="handleCancel" class="h-10 w-10 rounded-xl bg-red-500/90 text-white hover:bg-red-500 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Cancel">
+              <button v-else @click="handleCancel" class="flax-composer-cancel flex items-center justify-center" title="Cancel">
                 <X class="w-4 h-4" />
               </button>
             </div>
           </div>
 
           <div class="mt-2 border-t border-border/50 pt-2">
-            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, distorted, low quality, bad motion..." class="w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, distorted, low quality, bad motion..." class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
           </div>
         </div>
 

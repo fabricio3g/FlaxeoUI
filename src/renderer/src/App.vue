@@ -93,7 +93,7 @@ onMounted(async () => {
       <!-- Config Panel (detailed settings) -->
       <ConfigPanel
         :collapsed="sidebarCollapsed"
-        class="transition-all duration-300 ease-in-out bg-card/85 backdrop-blur-xl md:mt-3 md:mb-3 md:ml-3 md:rounded-sm"
+        class="shrink-0 transition-[width] duration-200 ease-out bg-card md:mt-3 md:mb-3 md:ml-3 md:rounded-sm"
         :class="[
           sidebarCollapsed ? 'md:flex md:w-12 md:relative md:translate-x-0' : 'md:flex md:w-80 md:relative md:translate-x-0',
           showMobileConfig ? 'absolute inset-0 z-50 w-full translate-x-0 flex' : 'hidden md:flex'

@@ -2,8 +2,9 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
+import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { storeToRefs } from 'pinia'
-import { apiGet, apiPost } from '@/services/api'
+import { apiPost } from '@/services/api'
 import {
   Activity,
   AlertTriangle,
@@ -47,11 +48,16 @@ const emit = defineEmits<{
 }>()
 
 // Backend status
-const sdServerRunning = ref(false)
-const backendVersion = ref('Loading...')
-const backendValid = ref(false)
+const {
+  sdServerRunning,
+  backendVersion,
+  backendValid,
+  logs,
+  fetchRuntimeStatus,
+  startRuntimeStatusPolling,
+  stopRuntimeStatusPolling
+} = useRuntimeStatus()
 const isBooting = ref(false)
-const logs = ref<string[]>([])
 const showModelHub = ref(false)
 let hideTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -59,6 +65,8 @@ type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardw
 
 const activeCollapsedSection = ref<CollapsedSection | null>(null)
 const pinnedCollapsedSection = ref<CollapsedSection | null>(null)
+const collapsedFlyoutHovered = ref(false)
+const collapsedSelectOpen = ref(false)
 
 // Presets
 const presetName = ref('')
@@ -66,16 +74,14 @@ const presetSearch = ref('')
 
 // Collapsible sections
 const expandedSections = ref({
-  backend: true,
-  models: true,
+  backend: false,
+  models: false,
   loras: false,
   embeddings: false,
   sampling: false,
-  generation: true,
+  generation: false,
   hardware: false
 })
-
-let statusInterval: number | null = null
 
 const filteredPresets = computed(() => {
   const query = presetSearch.value.trim().toLowerCase()
@@ -164,7 +170,7 @@ function pinCollapsedFlyout(section: CollapsedSection): void {
 }
 
 function hideCollapsedFlyout(section: CollapsedSection): void {
-  if (pinnedCollapsedSection.value !== section) {
+  if (pinnedCollapsedSection.value !== section && !collapsedSelectOpen.value) {
     hideTimeout = setTimeout(() => {
       activeCollapsedSection.value = null
     }, 200)
@@ -172,38 +178,32 @@ function hideCollapsedFlyout(section: CollapsedSection): void {
 }
 
 function closeCollapsedFlyout(): void {
+  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
   pinnedCollapsedSection.value = null
   activeCollapsedSection.value = null
+  collapsedFlyoutHovered.value = false
+  collapsedSelectOpen.value = false
 }
 
 function keepCollapsedFlyout(): void {
+  collapsedFlyoutHovered.value = true
   if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
 }
 
 function leaveCollapsedFlyout(): void {
+  collapsedFlyoutHovered.value = false
   if (activeCollapsedSection.value) hideCollapsedFlyout(activeCollapsedSection.value)
 }
 
-/**
- * fetchStatus() - Check sd-server and backend config status
- */
-async function fetchStatus(): Promise<void> {
-  try {
-    // Check backend config
-    const configData = await apiGet<any>('/api/backend/config')
-    backendVersion.value = configData.activeVersion || 'Not set'
-    backendValid.value = configData.activeBackendValid || false
+function handleCollapsedSelectOpen(open: boolean): void {
+  collapsedSelectOpen.value = open
+  if (open) {
+    if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+    return
+  }
 
-    // Check sd-server status
-    const statusData = await apiGet<any>('/api/status')
-    sdServerRunning.value = statusData.running || false
-    if (statusData.logs) {
-      logs.value = statusData.logs.slice(-50) // Keep last 50 lines
-    }
-  } catch (e) {
-    backendVersion.value = 'Error'
-    backendValid.value = false
-    sdServerRunning.value = false
+  if (activeCollapsedSection.value && !collapsedFlyoutHovered.value) {
+    hideCollapsedFlyout(activeCollapsedSection.value)
   }
 }
 
@@ -283,6 +283,9 @@ async function startServer(): Promise<void> {
     }
 
     await apiPost('/api/start', payload)
+    setTimeout(() => {
+      fetchRuntimeStatus()
+    }, 1000)
   } catch (e) {
     console.error('Failed to start server:', e)
   } finally {
@@ -296,6 +299,9 @@ async function startServer(): Promise<void> {
 async function stopServer(): Promise<void> {
   try {
     await apiPost('/api/stop', {})
+    setTimeout(() => {
+      fetchRuntimeStatus()
+    }, 500)
   } catch (e) {
     console.error('Failed to stop server:', e)
   }
@@ -359,11 +365,7 @@ function addNewEmbedding(): void {
 
 onMounted(() => {
   fetchModels()
-  fetchStatus()
-  // Poll status every 2 seconds
-  statusInterval = window.setInterval(() => {
-    fetchStatus()
-  }, 2000)
+  startRuntimeStatusPolling()
 })
 
 // Auto-select first model if none selected
@@ -382,15 +384,13 @@ watch(
 )
 
 onUnmounted(() => {
-  if (statusInterval) {
-    clearInterval(statusInterval)
-  }
+  stopRuntimeStatusPolling()
 })
 </script>
 
 <template>
   <aside
-    class="config-panel-shell w-full flex flex-col h-full md:shadow-none md:backdrop-blur-xl md:rounded-sm"
+    class="config-panel-shell w-full flex flex-col min-h-0 h-full md:h-auto md:shadow-none md:backdrop-blur-xl md:rounded-sm"
     :class="collapsed ? 'overflow-visible z-50 titlebar-shell' : 'overflow-hidden md:bg-card/95'"
   >
     <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag">
@@ -410,7 +410,7 @@ onUnmounted(() => {
             :class="[
               activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
                 ? 'primary-metal-button'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               section.id === 'warnings' && configWarnings.length > 0 && activeCollapsedSection !== section.id && pinnedCollapsedSection !== section.id ? 'text-yellow-500' : ''
             ]"
             type="button"
@@ -423,11 +423,6 @@ onUnmounted(() => {
               class="absolute -left-2 h-5 w-0.5 rounded-full bg-primary"
             ></span>
             <component :is="section.icon" class="w-4 h-4" />
-            <span
-              v-if="section.id === 'backend'"
-              class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full ring-2 ring-background"
-              :class="sdServerRunning ? 'bg-green-500' : 'bg-muted-foreground/55'"
-            ></span>
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
               class="absolute -right-1 -top-1 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
@@ -445,7 +440,7 @@ onUnmounted(() => {
 
       <div
         v-if="activeCollapsedSection"
-        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-[calc(100vh-1rem)] overflow-y-auto rounded-sm border border-border/70 titlebar-shell p-4 shadow-xl backdrop-blur-xl"
+        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-[calc(100vh-1rem)] overflow-y-auto rounded-sm border border-border/70 bg-card p-4 shadow-xl"
         @mouseenter="keepCollapsedFlyout"
         @mouseleave="leaveCollapsedFlyout"
       >
@@ -480,7 +475,7 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="activeCollapsedSection === 'presets'" class="space-y-3">
-          <Select :model-value="selectedPresetId" size="sm" :options="presetOptions" @update:model-value="selectPreset" />
+          <Select :model-value="selectedPresetId" size="sm" :options="presetOptions" @update:model-value="selectPreset" @update:open="handleCollapsedSelectOpen" />
           <div class="flex gap-2">
             <input v-model="presetName" type="text" placeholder="Preset name..." class="h-8 min-w-0 flex-1 rounded-md bg-muted/50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
             <button @click="saveCurrentPreset" :disabled="!presetName.trim()" class="primary-metal-button rounded-md px-3 text-xs disabled:opacity-40">Save</button>
@@ -496,12 +491,12 @@ onUnmounted(() => {
             <button @click="setLoadMode('standard')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'standard' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Standard</button>
             <button @click="setLoadMode('split')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'split' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Split</button>
           </div>
-          <Select v-if="config.loadMode === 'standard'" v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" />
+          <Select v-if="config.loadMode === 'standard'" v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
           <template v-else>
-            <Select v-model="config.diffusionModel" size="sm" placeholder="Diffusion" :options="[{ label: 'Diffusion...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" />
-            <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" />
-            <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" />
-            <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" />
+            <Select v-model="config.diffusionModel" size="sm" placeholder="Diffusion" :options="[{ label: 'Diffusion...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
           </template>
           <div v-if="activeModelSummary.length" class="space-y-1 pt-1 text-[11px] text-muted-foreground">
             <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
@@ -537,40 +532,12 @@ onUnmounted(() => {
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
 
     <template v-if="!collapsed">
-    <!-- Header with Status -->
-    <div class="relative p-5 flex items-center justify-between bg-card/95">
-      <div class="flex w-full items-center justify-between gap-8">
-      <div class="flex items-center gap-2">
-        <div
-          class="w-2 h-2 rounded-full"
-          :class="sdServerRunning ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.65)]' : 'bg-red-500'"
-        ></div>
-        <span
-          class="text-xs font-medium"
-          :class="sdServerRunning ? 'text-green-700' : 'text-muted-foreground'"
-        >
-          {{ sdServerRunning ? 'SERVER ONLINE' : 'SERVER OFFLINE' }}
-        </span>
-      </div>
-      <div class="flex items-center gap-1">
-        <div
-          class="w-2 h-2 rounded-full"
-          :class="backendValid ? 'bg-green-500' : 'bg-red-500'"
-        ></div>
-        <span class="text-xs font-medium uppercase" :class="backendValid ? 'text-green-700' : 'text-red-500'">
-          {{ backendVersion }}
-        </span>
-      </div>
-      </div>
-
-      <!-- Mobile Close Button -->
-      <button
-        @click="$emit('close')"
-          class="absolute right-3 md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        <X class="w-5 h-5" />
-      </button>
-    </div>
+    <button
+      @click="$emit('close')"
+      class="absolute right-3 top-3 z-10 p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+    >
+      <X class="w-5 h-5" />
+    </button>
 
     <!-- Scrollable Content -->
     <div class="config-panel-scroll flex-1 overflow-y-auto p-5 space-y-5">

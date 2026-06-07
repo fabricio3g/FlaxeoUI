@@ -406,7 +406,7 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-2 md:p-3">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-4 md:p-6">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -430,25 +430,26 @@ onUnmounted(() => {
         >
           <div
             v-if="!baseImage"
-            class="relative w-80 h-80 flex flex-col items-center justify-center text-muted-foreground gap-4 rounded-2xl overflow-hidden"
+            class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white"
           >
-            <div class="absolute inset-0 bg-gradient-to-br from-muted/20 via-transparent to-muted/10"></div>
-            <div class="absolute inset-0 opacity-30">
-              <div class="empty-preview-noise"></div>
-            </div>
-            <Brush class="w-12 h-12 opacity-30 relative z-10" />
-            <div class="text-center relative z-10">
-              <p class="text-xs mb-2">Drop an image here or</p>
+            <div class="empty-preview-noise"></div>
+            <div class="empty-preview-glow empty-preview-glow-a"></div>
+            <div class="empty-preview-glow empty-preview-glow-b"></div>
+            <div class="empty-preview-glow empty-preview-glow-c"></div>
+            <div class="relative z-10 flex max-w-sm flex-col items-center gap-4 px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
+              <Brush class="w-12 h-12 opacity-80" />
+              <p class="text-sm font-medium text-white/75">Drop an image here or start from your gallery.</p>
               <label
                 class="px-4 py-2 text-xs primary-metal-button text-white rounded cursor-pointer"
               >
                 Upload Image
                 <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
               </label>
+              <button @click="goToGallery" class="gallery-secondary-button relative z-10 flex items-center gap-1.5 px-4 py-2 text-xs font-medium">
+                <Images class="w-3.5 h-3.5" />
+                Select from Gallery
+              </button>
             </div>
-            <button @click="goToGallery" class="text-xs text-muted-foreground/70 hover:text-foreground relative z-10">
-              Select from Gallery
-            </button>
           </div>
 
           <div
@@ -502,20 +503,22 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="shrink-0 bg-card/70 px-3 pb-3 pt-2">
-      <div class="relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
-        <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
-          <div class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1">
-            <Brush class="w-3.5 h-3.5 text-muted-foreground" />
-            <span class="text-[10px] text-muted-foreground">Brush</span>
-            <input v-model.number="brushSize" type="range" min="5" max="100" class="w-20 h-1 accent-primary" />
-            <span class="text-xs w-6 text-center font-mono">{{ brushSize }}</span>
-          </div>
+    <div class="shrink-0 bg-card/70 px-5 pb-4 pt-3">
+      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+        <div class="px-5 py-3 flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-1 bg-muted/50 rounded-lg border border-border/30 p-1">
+            <div class="flex items-center gap-2 bg-background/50 rounded border border-border/20 px-2 py-1">
+              <Brush class="w-3.5 h-3.5 text-muted-foreground" />
+              <span class="text-[10px] text-muted-foreground">Brush</span>
+              <input v-model.number="brushSize" type="range" min="5" max="100" class="w-20 h-1 accent-primary" />
+              <span class="text-xs w-6 text-center font-mono">{{ brushSize }}</span>
+            </div>
 
-          <div class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[10px] text-muted-foreground">Strength</span>
-            <input v-model.number="inpaintStrength" type="range" min="0" max="1" step="0.05" class="w-16 h-1 accent-primary" />
-            <span class="text-xs w-8 text-center font-mono">{{ inpaintStrength.toFixed(2) }}</span>
+            <div class="flex items-center gap-2 bg-background/50 rounded border border-border/20 px-2 py-1">
+              <span class="text-[10px] text-muted-foreground">Strength</span>
+              <input v-model.number="inpaintStrength" type="range" min="0" max="1" step="0.05" class="w-16 h-1 accent-primary" />
+              <span class="text-xs w-8 text-center font-mono">{{ inpaintStrength.toFixed(2) }}</span>
+            </div>
           </div>
 
           <div class="flex-1 hidden md:block"></div>
@@ -535,40 +538,40 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div class="composer-shell mx-3 rounded-2xl px-3 py-3">
+        <div class="composer-shell flax-composer mx-4 rounded-2xl">
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
-            class="mb-3"
+            class="flax-composer-presets"
           />
 
-          <div class="flex items-end gap-2">
+          <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
                 v-model="prompt"
                 rows="1"
                 placeholder="Describe what to generate in the masked area..."
-                class="w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
+                class="flax-composer-textarea w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
                 :style="{ minHeight: '68px', maxHeight: '200px' }"
                 :disabled="isGenerating"
               ></textarea>
             </div>
-            <div class="flex items-end pb-0.5">
-              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim() || !baseImage" class="h-10 w-10 rounded-xl primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Inpaint">
+            <div class="flax-composer-actions flex items-end pb-0.5">
+              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim() || !baseImage" class="flax-composer-send primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center" title="Inpaint">
                 <Brush class="w-5 h-5 stroke-[2.5]" />
               </button>
-              <button v-else @click="handleCancel" class="h-10 w-10 rounded-xl bg-red-500/90 text-white hover:bg-red-500 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Cancel">
+              <button v-else @click="handleCancel" class="flax-composer-cancel flex items-center justify-center" title="Cancel">
                 <X class="w-4 h-4" />
               </button>
             </div>
           </div>
 
           <div class="mt-2 border-t border-border/50 pt-2">
-            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted, bad anatomy..." class="w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted, bad anatomy..." class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
           </div>
         </div>
 
-        <div class="flex items-center justify-between px-3 pb-2 pt-1">
+        <div class="flex items-center justify-between px-5 pb-3 pt-1">
           <span class="text-[10px] text-muted-foreground">{{ prompt.length }} chars</span>
           <span class="text-[10px] text-muted-foreground">Mask over the image to edit selected areas</span>
         </div>

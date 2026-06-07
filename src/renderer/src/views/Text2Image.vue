@@ -27,10 +27,12 @@ const galleryImages = ref<string[]>([])
 const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
+const currentTime = ref(new Date())
 // const serverStats = ref<any>(null) // Unused
 
 // Preview polling
 let previewPollInterval: ReturnType<typeof setInterval> | null = null
+let clockInterval: ReturnType<typeof setInterval> | null = null
 
 /**
  * getPreviewImageUrl() - Get the current preview image URL with cache bust
@@ -107,6 +109,21 @@ const sizePresets = [
 
 const activePreset = computed(() => {
   return sizePresets.find(p => p.width === config.value.width && p.height === config.value.height)
+})
+
+const greetingTitle = computed(() => {
+  const hour = currentTime.value.getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+})
+
+const greetingMessage = computed(() => {
+  const time = currentTime.value.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+  return time
 })
 
 function advancedConfigured(tab: string): boolean {
@@ -605,6 +622,10 @@ async function checkServerStatus(): Promise<void> {
 }
 
 onMounted(async () => {
+  clockInterval = setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
+
   // Check if sd-server is running
   await checkServerStatus()
 
@@ -623,6 +644,10 @@ onMounted(async () => {
   onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown)
       stopPreviewPolling()
+      if (clockInterval) {
+        clearInterval(clockInterval)
+        clockInterval = null
+      }
   })
 })
 </script>
@@ -645,7 +670,8 @@ onMounted(async () => {
           <div class="empty-preview-glow empty-preview-glow-b"></div>
           <div class="empty-preview-glow empty-preview-glow-c"></div>
           <div v-if="!isGenerating" class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
-            <span class="text-3xl font-semibold tracking-tight md:text-5xl">Imagine it into form</span>
+            <span class="text-3xl font-semibold tracking-tight md:text-5xl">{{ greetingTitle }}</span>
+            <span class="mt-3 text-sm font-medium text-white/70 md:text-base">{{ greetingMessage }}</span>
           </div>
         </div>
         <div v-if="isGenerating && !previewImage?.includes('temp/preview.png')" class="absolute inset-0 generating-halftone flex items-center justify-center">
@@ -691,7 +717,7 @@ onMounted(async () => {
     </div>
 
     <div class="shrink-0 bg-card/70 px-5 pb-4 pt-3">
-    <div class="relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+    <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
     <!-- Quick Controls Row -->
     <div class="px-5 py-3 flex items-center gap-2 flex-wrap">
       <div class="flex items-center p-1 bg-muted/50 rounded-lg border border-border/30">
@@ -828,21 +854,21 @@ onMounted(async () => {
     </div>
 
     <!-- Floating Input Bar -->
-      <div class="composer-shell mx-4 rounded-2xl px-4 py-3">
+      <div class="composer-shell flax-composer mx-4 rounded-2xl">
         <PromptPresetControls
           v-model:prompt="prompt"
           v-model:negative-prompt="negativePrompt"
-          class="mb-3"
+          class="flax-composer-presets"
         />
 
-        <div class="flex items-end gap-2">
+        <div class="flax-composer-input-row flex items-end gap-2">
           <div class="flex-1 relative">
             <textarea
               v-model="prompt"
               ref="promptInput"
               rows="1"
               placeholder="Describe the image you want to generate..."
-              class="w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
+              class="flax-composer-textarea w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
               :style="{ minHeight: '68px', maxHeight: '200px' }"
               :disabled="isGenerating"
               @keydown="onPromptKeydown"
@@ -850,18 +876,18 @@ onMounted(async () => {
             ></textarea>
             <span v-if="config.embeddings.length > 0" class="absolute top-1 right-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px]">{{ config.embeddings.length }} embeds</span>
           </div>
-          <div class="flex items-end pb-0.5">
-            <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="h-10 w-10 rounded-xl primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Generate">
-              <ArrowUp class="w-5 h-5 stroke-[2.5]" />
+          <div class="flax-composer-actions flex items-end pb-0.5">
+            <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="flax-composer-send primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center" title="Generate">
+              <span class="flax-composer-send-icon inline-flex"><ArrowUp class="w-5 h-5 stroke-[2.5]" /></span>
             </button>
-            <button v-else @click="handleCancel" class="h-10 w-10 rounded-xl bg-red-500/90 text-white hover:bg-red-500 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Cancel">
+            <button v-else @click="handleCancel" class="flax-composer-cancel flex items-center justify-center" title="Cancel">
               <X class="w-4 h-4" />
             </button>
           </div>
         </div>
 
         <div v-if="showNegPrompt" class="mt-2 border-t border-border/50 pt-2">
-          <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted..." class="w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+          <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted..." class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
         </div>
       </div>
 

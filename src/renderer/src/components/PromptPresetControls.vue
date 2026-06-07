@@ -94,10 +94,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="root" class="relative h-8 w-fit">
+  <div ref="root" class="prompt-preset-controls relative h-8 w-fit">
     <button
       type="button"
-      class="h-8 px-3 text-xs font-medium rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+      class="prompt-preset-trigger h-8 px-3 text-xs font-medium rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
       :class="showPresets ? 'bg-muted text-foreground' : ''"
       @click="showPresets = !showPresets"
     >

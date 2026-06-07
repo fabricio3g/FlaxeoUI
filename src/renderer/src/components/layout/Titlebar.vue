@@ -17,10 +17,11 @@ import {
   Video,
   X
 } from 'lucide-vue-next'
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
+import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 import Tooltip from '../ui/Tooltip.vue'
 
@@ -63,6 +64,29 @@ const isDark = ref(false)
 const showModelHub = ref(false)
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
+const {
+  sdServerRunning,
+  backendVersion,
+  backendValid,
+  runtimeState,
+  runtimeLabel,
+  startRuntimeStatusPolling,
+  stopRuntimeStatusPolling
+} = useRuntimeStatus()
+
+const statusDotClass = computed(() => {
+  if (runtimeState.value === 'online') return 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.68)]'
+  if (runtimeState.value === 'offline') return 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.45)]'
+  return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.52)]'
+})
+
+const statusHint = computed(() => {
+  if (config.value.backendMode === 'server' && backendValid.value && !sdServerRunning.value) {
+    return 'Server mode is selected but sd-server is offline.'
+  }
+  if (!backendValid.value) return 'Backend binary is not valid.'
+  return config.value.backendMode === 'server' ? 'Server mode active.' : 'CLI mode active.'
+})
 
 function applyTheme(dark: boolean): void {
   isDark.value = dark
@@ -73,6 +97,11 @@ function applyTheme(dark: boolean): void {
 onMounted(() => {
   isElectron.value = !!window.electronAPI
   applyTheme(localStorage.getItem('flaxeo-theme') !== 'light')
+  startRuntimeStatusPolling()
+})
+
+onUnmounted(() => {
+  stopRuntimeStatusPolling()
 })
 
 function toggleTheme(): void {
@@ -124,7 +153,7 @@ function handleClose(): void {
 
 <template>
   <header
-    class="titlebar-shell h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
+    class="titlebar-shell relative z-[10000] h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
   >
     <nav
       class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag"
@@ -155,6 +184,40 @@ function handleClose(): void {
           <component :is="item.icon" class="w-4 h-4" />
         </button>
       </Tooltip>
+
+      <div class="runtime-status-dot-wrap group relative flex h-8 items-center justify-center titlebar-no-drag">
+        <button
+          class="runtime-status-dot-button flex h-8 w-8 items-center justify-center"
+          type="button"
+          :aria-label="runtimeLabel"
+        >
+          <span class="h-2.5 w-2.5 rounded-full" :class="statusDotClass"></span>
+        </button>
+
+        <div class="runtime-status-popover pointer-events-none absolute left-0 top-full z-[10001] mt-2 w-64 opacity-0 translate-y-1 transition-all duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0">
+          <div class="rounded-lg border border-border bg-card p-3 text-xs shadow-xl">
+            <div class="mb-2 flex items-center gap-2 border-b border-border/70 pb-2">
+              <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
+              <span class="font-semibold text-foreground">Runtime status</span>
+            </div>
+            <div class="space-y-1.5 text-muted-foreground">
+              <div class="flex items-center justify-between gap-3">
+                <span>Server</span>
+                <span class="font-medium" :class="sdServerRunning ? 'text-green-600' : 'text-yellow-600'">{{ sdServerRunning ? 'Online' : 'Offline' }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span>Backend</span>
+                <span class="max-w-36 truncate font-medium" :class="backendValid ? 'text-foreground' : 'text-red-500'" :title="backendVersion">{{ backendVersion }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span>Mode</span>
+                <span class="font-medium text-foreground">{{ config.backendMode.toUpperCase() }}</span>
+              </div>
+            </div>
+            <p class="mt-2 border-t border-border/70 pt-2 text-[11px] leading-4 text-muted-foreground">{{ statusHint }}</p>
+          </div>
+        </div>
+      </div>
 
       <div class="mx-1 h-5 w-px bg-border/80"></div>
 

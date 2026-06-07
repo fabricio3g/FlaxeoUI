@@ -37,6 +37,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'update:open': [open: boolean]
 }>()
 
 const EMPTY_SENTINEL = '__empty__'
@@ -51,6 +52,10 @@ function fromSafeValue(v: string): string {
 
 function handleValueChange(value: string): void {
   emit('update:modelValue', fromSafeValue(value))
+}
+
+function handleOpenChange(open: boolean): void {
+  emit('update:open', open)
 }
 
 const safeOptions = computed(() =>
@@ -70,7 +75,7 @@ const displayValue = computed<string>(() => {
 })
 
 const triggerClasses =
-  'flex w-full min-w-0 items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
+  'flax-select-trigger flex w-full min-w-0 items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left font-medium tracking-[-0.01em] transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
 
 const sizeClasses: Record<string, string> = {
   sm: 'text-xs px-2 py-1',
@@ -78,10 +83,10 @@ const sizeClasses: Record<string, string> = {
 }
 
 const contentClasses =
-  'z-50 max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
+  'flax-select-content z-50 max-h-60 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
 
 const itemClasses =
-  'relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-medium data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
+  'flax-select-item relative flex min-w-0 max-w-full cursor-default select-none items-center overflow-hidden rounded px-2 py-1.5 text-xs font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
 
 const viewportClasses = 'p-1'
 </script>
@@ -91,6 +96,7 @@ const viewportClasses = 'p-1'
     :model-value="safeModelValue"
     :disabled="disabled"
     @update:model-value="handleValueChange"
+    @update:open="handleOpenChange"
   >
     <SelectTrigger
       :class="[triggerClasses, sizeClasses[size], props.class]"
@@ -113,7 +119,7 @@ const viewportClasses = 'p-1'
               :value="option.value"
               :class="itemClasses"
             >
-              <SelectItemText class="block min-w-0 truncate">
+              <SelectItemText class="block w-full min-w-0 truncate">
                 {{ option.label }}
               </SelectItemText>
             </SelectItem>
