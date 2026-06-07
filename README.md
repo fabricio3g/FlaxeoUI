@@ -1,107 +1,64 @@
-# <img src="public/assets/icon.png" width="32" height="32" alt="icon"> FlaxeoUI
+# FlaxeoUI
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-A Front End for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**. Built with Electron and Node.js, I made it to be simple to interact with the stable difussion cpp cli
-
+A simple front end for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**, built with Electron and Node.js.
 
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
-
-
 ## Disclaimer
 
-The binary might be detected by chrome or microsoft edge not be trusted due the lacking of a digital signature. those new changes has broken the cloudflare tunnel. and the ngrok tunnel is not working as expected. by detfault the app is sharing in the local network to use it remotly in the same network on the phone or other device.
-
-This project hasn’t been fully tested. I ran into VRAM limitations when trying larger models, so testing was pretty limited.
-
-I mostly developed and tested this on Windows. The first version did work on Ubuntu, but after the latest changes, I have no idea if it still works on Linux, since I haven’t tested it there again. Same goes for the build created by the GitHub Action, I haven’t tested it at all
+- The binary may be flagged as untrusted by browsers due to lacking a digital signature.
+- The Cloudflare and ngrok tunnels are currently broken. By default, the app shares on the local network for remote use on the same network.
+- Testing was limited due to VRAM constraints with larger models.
+- Developed and tested on Windows. Linux and GitHub Action builds are untested.
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Node.js**: v16 or higher (Tested with v22.20.0).
-- **stable-diffusion.cpp**: Tested with version `master-418-200cb6f`.
-- **NPM**: Included with Node.js.
+- **Node.js** v16+ (tested with v22.20.0)
+- **stable-diffusion.cpp** (tested with `master-418-200cb6f`)
 
-### Installation
+### Install & Run
 
-1.  **Clone the repository**
+```bash
+git clone https://github.com/yourusername/flaxeo-ui.git
+cd flaxeo-ui
+npm install
+npm start
+```
 
-    ```bash
-    git clone https://github.com/yourusername/flaxeo-ui.git
-    cd flaxeo-ui
-    ```
+### Run server only (no Electron)
 
-2.  **Install dependencies**
+```bash
+node ./server.js
+```
 
-    ```bash
-    npm install
-    ```
+### Build for Windows
 
-3.  **Run the application**
-    ```bash
-    npm start
-    ```
-
-### Using just the server.js
-1.  **Clone the repository**
-
-    ```bash
-    git clone https://github.com/yourusername/flaxeo-ui.git
-    cd flaxeo-ui
-    ```
-
-2.  **Install dependencies**
-
-    ```bash
-    npm install
-    ```
-
-3.  **Run the application**
-    ``` node ./server.js```
-
-
-### Installation Windows Build
-
-1.  **Clone the repository**
-
-    ```bash
-    git clone https://github.com/yourusername/flaxeo-ui.git
-    cd flaxeo-ui
-    ```
-
-2.  **Install dependencies**
-
-    ```bash
-    npm install
-    ```
-
-3.  **Run the application**
-    ```bash
-    npm run build:win
-    ```
+```bash
+npm run build:win
+```
 
 ## Development
 
-To run the application in debug mode with hot-reloading for the frontend:
+Run with hot-reloading:
 
 ```bash
-
 npm run dev
 ```
 
 ## Architecture
 
 - **Frontend**: Vue 3, TypeScript, Tailwind CSS
-- **Backend**: Node.js (Express) handling API requests and managing the `sd-server and sd-cli` subprocess.
-- **Core**: Electron for the desktop application wrapper.
-- **Inference**: Relies on `sd-server and sd-cli` (based on stable-diffusion.cpp) for efficient local inference.
+- **Backend**: Node.js (Express) managing the `sd-server`/`sd-cli` subprocess
+- **Desktop**: Electron wrapper
+- **Inference**: stable-diffusion.cpp via `sd-server`/`sd-cli`
 
 ## Credits
 
-This project is a UI to **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
+UI for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
 
 ## License
 
