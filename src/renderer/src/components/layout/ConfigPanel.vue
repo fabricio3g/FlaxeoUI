@@ -387,7 +387,7 @@ onUnmounted(() => {
 <template>
   <aside
     class="config-panel-shell w-full flex flex-col h-full md:bg-card/95 md:shadow-none md:backdrop-blur-xl md:rounded-sm"
-    :class="collapsed ? 'overflow-visible' : 'overflow-hidden'"
+    :class="collapsed ? 'overflow-visible z-50' : 'overflow-hidden'"
   >
     <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-2 py-3">
       <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
