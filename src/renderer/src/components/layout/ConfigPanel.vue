@@ -11,7 +11,6 @@ import {
   ChevronUp,
   Cpu,
   Database,
-  DownloadCloud,
   Info,
   Play,
   Plus,
@@ -56,7 +55,7 @@ const logs = ref<string[]>([])
 const showModelHub = ref(false)
 let hideTimeout: ReturnType<typeof setTimeout> | null = null
 
-type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings' | 'hub'
+type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings'
 
 const activeCollapsedSection = ref<CollapsedSection | null>(null)
 const pinnedCollapsedSection = ref<CollapsedSection | null>(null)
@@ -117,8 +116,7 @@ const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Comp
   { id: 'models', label: 'Models', icon: Database },
   { id: 'generation', label: 'Generation', icon: SlidersHorizontal },
   { id: 'hardware', label: 'Hardware', icon: Cpu },
-  { id: 'warnings', label: 'Warnings', icon: AlertTriangle },
-  { id: 'hub', label: 'Model Hub', icon: DownloadCloud }
+  { id: 'warnings', label: 'Warnings', icon: AlertTriangle }
 ]
 
 const presetOptions = computed(() => [
@@ -142,19 +140,11 @@ function toggleSection(section: keyof typeof expandedSections.value): void {
 
 function showCollapsedFlyout(section: CollapsedSection): void {
   if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
-  if (section === 'hub') {
-    showModelHub.value = true
-    return
-  }
   activeCollapsedSection.value = section
 }
 
 function pinCollapsedFlyout(section: CollapsedSection): void {
   if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
-  if (section === 'hub') {
-    showModelHub.value = true
-    return
-  }
   pinnedCollapsedSection.value = pinnedCollapsedSection.value === section ? null : section
   activeCollapsedSection.value = pinnedCollapsedSection.value || section
 }
@@ -418,7 +408,7 @@ onUnmounted(() => {
       </Tooltip>
 
       <div
-        v-if="activeCollapsedSection && activeCollapsedSection !== 'hub'"
+        v-if="activeCollapsedSection"
         class="absolute left-full top-0 z-50 ml-3 w-80 max-h-full overflow-y-auto rounded-xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-xl"
         @mouseenter="keepCollapsedFlyout"
         @mouseleave="leaveCollapsedFlyout"
