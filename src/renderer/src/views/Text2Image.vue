@@ -639,9 +639,14 @@ onMounted(async () => {
       <div class="mx-auto w-full max-w-5xl">
       <div class="relative flex items-center justify-center rounded-2xl metal-surface group min-h-[420px] max-h-[70vh] overflow-hidden dot-grid-corners">
         <img v-if="previewImage" :src="previewImage" class="max-w-full max-h-full object-contain" alt="Generated image" />
-        <div v-else class="w-96 h-96 flex flex-col items-center justify-center text-muted-foreground">
-          <span class="text-xs tracking-[0.32em] opacity-60">READY</span>
-          <span class="mt-2 text-sm opacity-60">Your generated image will appear here</span>
+        <div v-else class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white">
+          <div class="empty-preview-noise"></div>
+          <div class="empty-preview-glow empty-preview-glow-a"></div>
+          <div class="empty-preview-glow empty-preview-glow-b"></div>
+          <div class="empty-preview-glow empty-preview-glow-c"></div>
+          <div class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
+            <span class="text-3xl font-semibold tracking-tight md:text-5xl">Imagine it into form</span>
+          </div>
         </div>
         <div v-if="isGenerating && !previewImage?.includes('temp/preview.png')" class="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm">
           <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />

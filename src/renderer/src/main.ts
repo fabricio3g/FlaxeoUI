@@ -6,6 +6,10 @@ import { MotionPlugin } from '@vueuse/motion'
 import App from './App.vue'
 import './assets/main.css'
 
+if (localStorage.getItem('flaxeo-theme') !== 'light') {
+  document.documentElement.classList.add('dark')
+}
+
 // Import views (will be created)
 import Text2Image from './views/Text2Image.vue'
 import Edit from './views/Edit.vue'

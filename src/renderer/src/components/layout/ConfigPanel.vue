@@ -5,23 +5,30 @@ import { useModels } from '@/composables/useModels'
 import { storeToRefs } from 'pinia'
 import { apiGet, apiPost } from '@/services/api'
 import {
+  Activity,
+  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Cpu,
+  Database,
+  DownloadCloud,
   Info,
   Play,
   Plus,
   Save,
   Search,
   Server,
+  SlidersHorizontal,
   Square,
   Terminal,
   Trash2,
   X,
   Zap
 } from 'lucide-vue-next'
+import type { Component } from 'vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+import ModelHubModal from '@/components/ModelHubModal.vue'
 
 const configStore = useConfigStore()
 const { config, presets, selectedPresetId } = storeToRefs(configStore)
@@ -46,6 +53,13 @@ const backendVersion = ref('Loading...')
 const backendValid = ref(false)
 const isBooting = ref(false)
 const logs = ref<string[]>([])
+const showModelHub = ref(false)
+let hideTimeout: ReturnType<typeof setTimeout> | null = null
+
+type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings' | 'hub'
+
+const activeCollapsedSection = ref<CollapsedSection | null>(null)
+const pinnedCollapsedSection = ref<CollapsedSection | null>(null)
 
 // Presets
 const presetName = ref('')
@@ -78,6 +92,35 @@ const selectedPreset = computed(() =>
   presets.value.find((preset) => preset.id === selectedPresetId.value)
 )
 
+const configWarnings = computed(() => {
+  const warnings: string[] = []
+  if (!backendValid.value) warnings.push('Backend binary is not valid')
+  if (config.value.backendMode === 'server' && !sdServerRunning.value) warnings.push('Server mode is selected but sd-server is offline')
+  if (config.value.loadMode === 'standard' && !config.value.standardModel) warnings.push('No checkpoint selected')
+  if (config.value.loadMode === 'split' && !config.value.diffusionModel) warnings.push('No diffusion model selected')
+  if (config.value.videoMode && config.value.loadMode !== 'split') warnings.push('Video presets need split model loading')
+  if (config.value.videoMode && !config.value.t5xxlModel) warnings.push('Video mode usually requires T5XXL/UMT5')
+  return warnings
+})
+
+const activeModelSummary = computed(() => {
+  const parts = [config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel]
+  if (config.value.vaeModel) parts.push(config.value.vaeModel)
+  if (config.value.t5xxlModel) parts.push(config.value.t5xxlModel)
+  if (config.value.llmModel) parts.push(config.value.llmModel)
+  return parts.filter(Boolean).slice(0, 4)
+})
+
+const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Component }> = [
+  { id: 'backend', label: 'Backend', icon: Server },
+  { id: 'presets', label: 'Presets', icon: Save },
+  { id: 'models', label: 'Models', icon: Database },
+  { id: 'generation', label: 'Generation', icon: SlidersHorizontal },
+  { id: 'hardware', label: 'Hardware', icon: Cpu },
+  { id: 'warnings', label: 'Warnings', icon: AlertTriangle },
+  { id: 'hub', label: 'Model Hub', icon: DownloadCloud }
+]
+
 const presetOptions = computed(() => [
   { label: 'Select preset...', value: '' },
   ...(
@@ -85,7 +128,7 @@ const presetOptions = computed(() => [
       ? [selectedPreset.value, ...filteredPresets.value]
       : filteredPresets.value
   ).map((preset) => ({
-    label: `${preset.name} (${preset.config.backendMode.toUpperCase()})`,
+    label: `${preset.builtin ? 'Template: ' : ''}${preset.name} (${preset.config.backendMode.toUpperCase()})`,
     value: preset.id
   }))
 ])
@@ -95,6 +138,46 @@ const presetOptions = computed(() => [
  */
 function toggleSection(section: keyof typeof expandedSections.value): void {
   expandedSections.value[section] = !expandedSections.value[section]
+}
+
+function showCollapsedFlyout(section: CollapsedSection): void {
+  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (section === 'hub') {
+    showModelHub.value = true
+    return
+  }
+  activeCollapsedSection.value = section
+}
+
+function pinCollapsedFlyout(section: CollapsedSection): void {
+  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (section === 'hub') {
+    showModelHub.value = true
+    return
+  }
+  pinnedCollapsedSection.value = pinnedCollapsedSection.value === section ? null : section
+  activeCollapsedSection.value = pinnedCollapsedSection.value || section
+}
+
+function hideCollapsedFlyout(section: CollapsedSection): void {
+  if (pinnedCollapsedSection.value !== section) {
+    hideTimeout = setTimeout(() => {
+      activeCollapsedSection.value = null
+    }, 200)
+  }
+}
+
+function closeCollapsedFlyout(): void {
+  pinnedCollapsedSection.value = null
+  activeCollapsedSection.value = null
+}
+
+function keepCollapsedFlyout(): void {
+  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+}
+
+function leaveCollapsedFlyout(): void {
+  if (activeCollapsedSection.value) hideCollapsedFlyout(activeCollapsedSection.value)
 }
 
 /**
@@ -302,12 +385,126 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="w-full flex flex-col overflow-hidden h-full md:bg-card/95 md:shadow-none md:backdrop-blur-xl">
-    <div v-if="collapsed" class="hidden md:flex h-full flex-col items-center py-3"></div>
+  <aside
+    class="config-panel-shell w-full flex flex-col h-full md:bg-card/95 md:shadow-none md:backdrop-blur-xl md:rounded-sm"
+    :class="collapsed ? 'overflow-visible' : 'overflow-hidden'"
+  >
+    <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-2 py-3">
+      <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
+        <button
+          class="relative h-9 w-9 metal-icon-button flex items-center justify-center titlebar-no-drag"
+          :class="[
+            activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
+              ? 'primary-metal-button'
+              : 'text-muted-foreground hover:text-foreground',
+            section.id === 'warnings' && configWarnings.length > 0 ? 'text-yellow-500' : ''
+          ]"
+          type="button"
+          @mouseenter="showCollapsedFlyout(section.id)"
+          @mouseleave="hideCollapsedFlyout(section.id)"
+          @click="pinCollapsedFlyout(section.id)"
+        >
+          <component :is="section.icon" class="w-4 h-4" />
+          <span
+            v-if="section.id === 'backend'"
+            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
+            :class="backendValid ? 'bg-green-500' : 'bg-red-500'"
+          ></span>
+          <span
+            v-if="section.id === 'warnings' && configWarnings.length > 0"
+            class="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black"
+          >{{ configWarnings.length }}</span>
+        </button>
+      </Tooltip>
 
-    <template v-else>
+      <div
+        v-if="activeCollapsedSection && activeCollapsedSection !== 'hub'"
+        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-full overflow-y-auto rounded-xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-xl"
+        @mouseenter="keepCollapsedFlyout"
+        @mouseleave="leaveCollapsedFlyout"
+      >
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold capitalize">{{ activeCollapsedSection }}</h3>
+          <button class="metal-icon-button p-1 text-muted-foreground hover:text-foreground" @click="closeCollapsedFlyout">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div v-if="activeCollapsedSection === 'backend'" class="space-y-3">
+          <div class="rounded-lg bg-muted/30 p-3 text-xs space-y-2">
+            <div class="flex items-center justify-between"><span>Backend</span><span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{ backendVersion }}</span></div>
+            <div class="flex items-center justify-between"><span>Server</span><span :class="sdServerRunning ? 'text-green-500' : 'text-muted-foreground'">{{ sdServerRunning ? 'Online' : 'Offline' }}</span></div>
+          </div>
+          <div class="flex p-1 metal-surface rounded-lg">
+            <button @click="setBackendMode('server')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.backendMode === 'server' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Server</button>
+            <button @click="setBackendMode('cli')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.backendMode === 'cli' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">CLI</button>
+          </div>
+          <div v-if="config.backendMode === 'server'" class="grid grid-cols-2 gap-2">
+            <button @click="startServer" :disabled="sdServerRunning || isBooting || !backendValid" class="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40">{{ isBooting ? 'Booting' : 'Start' }}</button>
+            <button @click="stopServer" :disabled="!sdServerRunning" class="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40">Stop</button>
+          </div>
+        </div>
+
+        <div v-else-if="activeCollapsedSection === 'presets'" class="space-y-3">
+          <Select :model-value="selectedPresetId" size="sm" :options="presetOptions" @update:model-value="selectPreset" />
+          <div class="flex gap-2">
+            <input v-model="presetName" type="text" placeholder="Preset name..." class="h-8 min-w-0 flex-1 rounded-md bg-muted/50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button @click="saveCurrentPreset" :disabled="!presetName.trim()" class="primary-metal-button rounded-md px-3 text-xs disabled:opacity-40">Save</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="overwriteSelectedPreset" :disabled="!selectedPreset || selectedPreset.builtin" class="rounded-md bg-muted px-3 py-2 text-xs disabled:opacity-40">Overwrite</button>
+            <button @click="deleteSelectedPreset" :disabled="!selectedPreset || selectedPreset.builtin" class="rounded-md bg-muted px-3 py-2 text-xs text-destructive disabled:opacity-40">Delete</button>
+          </div>
+        </div>
+
+        <div v-else-if="activeCollapsedSection === 'models'" class="space-y-3">
+          <div class="flex p-1 metal-surface rounded-lg">
+            <button @click="setLoadMode('standard')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'standard' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Standard</button>
+            <button @click="setLoadMode('split')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'split' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Split</button>
+          </div>
+          <Select v-if="config.loadMode === 'standard'" v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" />
+          <template v-else>
+            <Select v-model="config.diffusionModel" size="sm" placeholder="Diffusion" :options="[{ label: 'Diffusion...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" />
+            <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" />
+            <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" />
+            <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" />
+          </template>
+          <div v-if="activeModelSummary.length" class="space-y-1 pt-1 text-[11px] text-muted-foreground">
+            <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
+          </div>
+        </div>
+
+        <div v-else-if="activeCollapsedSection === 'generation'" class="grid grid-cols-2 gap-2">
+          <label class="text-xs text-muted-foreground">Steps<input v-model.number="config.steps" type="number" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+          <label class="text-xs text-muted-foreground">CFG<input v-model.number="config.cfgScale" type="number" step="0.5" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+          <label class="text-xs text-muted-foreground">Width<input v-model.number="config.width" type="number" step="64" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+          <label class="text-xs text-muted-foreground">Height<input v-model.number="config.height" type="number" step="64" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+          <label class="col-span-2 text-xs text-muted-foreground">Seed<input v-model.number="config.seed" type="number" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+        </div>
+
+        <div v-else-if="activeCollapsedSection === 'hardware'" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2"><input v-model="config.flashAttention" type="checkbox" /> Flash</label>
+            <label class="flex items-center gap-2"><input v-model="config.vaeTiling" type="checkbox" /> VAE Tile</label>
+            <label class="flex items-center gap-2"><input v-model="config.clipOnCpu" type="checkbox" /> CLIP CPU</label>
+            <label class="flex items-center gap-2"><input v-model="config.cpuOffload" type="checkbox" /> Offload</label>
+          </div>
+          <input v-model="config.backendAssignment" type="text" placeholder="Backend: cuda0, vulkan0, cpu" class="w-full rounded-md bg-muted/50 px-2 py-1.5 text-xs" />
+          <input v-model="config.paramsBackendAssignment" type="text" placeholder="Params backend" class="w-full rounded-md bg-muted/50 px-2 py-1.5 text-xs" />
+          <label class="text-xs text-muted-foreground">Max VRAM GiB<input v-model.number="config.maxVram" type="number" step="0.1" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
+        </div>
+
+        <div v-else-if="activeCollapsedSection === 'warnings'" class="space-y-2">
+          <div v-if="configWarnings.length === 0" class="rounded-lg bg-green-500/10 p-3 text-xs text-green-600">Configuration looks ready.</div>
+          <div v-for="warning in configWarnings" :key="warning" class="rounded-lg bg-yellow-500/10 p-3 text-xs text-yellow-600">{{ warning }}</div>
+        </div>
+      </div>
+    </div>
+    <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
+
+    <template v-if="!collapsed">
     <!-- Header with Status -->
-    <div class="relative p-4 flex items-center justify-between bg-card/95">
+    <div class="relative p-5 flex items-center justify-between bg-card/95">
       <div class="flex w-full items-center justify-between gap-8">
       <div class="flex items-center gap-2">
         <div
@@ -342,7 +539,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Scrollable Content -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="config-panel-scroll flex-1 overflow-y-auto p-5 space-y-5">
       <!-- BACKEND MODE -->
       <section>
         <button
@@ -419,10 +616,10 @@ onUnmounted(() => {
             <div class="flex items-center gap-2">
               <button
                 @click="overwriteSelectedPreset"
-                :disabled="!selectedPreset"
+                :disabled="!selectedPreset || selectedPreset.builtin"
                 class="h-8 flex-1 text-xs font-medium rounded-md transition-colors"
                 :class="
-                  selectedPreset
+                  selectedPreset && !selectedPreset.builtin
                     ? 'bg-muted/60 hover:bg-muted text-foreground'
                     : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
                 "
@@ -431,10 +628,10 @@ onUnmounted(() => {
               </button>
               <button
                 @click="deleteSelectedPreset"
-                :disabled="!selectedPreset"
+                :disabled="!selectedPreset || selectedPreset.builtin"
                 class="h-8 flex-1 rounded-md transition-colors flex items-center justify-center"
                 :class="
-                  selectedPreset
+                  selectedPreset && !selectedPreset.builtin
                     ? 'bg-muted/60 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground'
                     : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
                 "

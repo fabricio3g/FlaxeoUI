@@ -4,15 +4,20 @@ import type { AppContext, BackendConfig, Paths } from './types'
 
 const MODEL_DIRS = [
   'diffusion',
+  'uncond_diffusion',
   'vae',
+  'audio_vae',
   'llm',
+  'llm_vision',
   't5xxl',
+  'embeddings_connectors',
   'clip',
   'clip_vision',
   'loras',
   'controlnet',
   'photomaker',
   'upscale',
+  'hires_upscalers',
   'taesd',
   'embeddings'
 ]

@@ -21,6 +21,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
+import ModelHubModal from '@/components/ModelHubModal.vue'
 import Tooltip from '../ui/Tooltip.vue'
 
 interface NavItem {
@@ -59,6 +60,7 @@ const navItems: NavItem[] = [
 
 const isElectron = ref(false)
 const isDark = ref(false)
+const showModelHub = ref(false)
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 
@@ -70,7 +72,7 @@ function applyTheme(dark: boolean): void {
 
 onMounted(() => {
   isElectron.value = !!window.electronAPI
-  applyTheme(localStorage.getItem('flaxeo-theme') === 'dark')
+  applyTheme(localStorage.getItem('flaxeo-theme') !== 'light')
 })
 
 function toggleTheme(): void {
@@ -122,10 +124,10 @@ function handleClose(): void {
 
 <template>
   <header
-    class="h-11 flex items-center justify-between bg-card/90 select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
+    class="titlebar-shell h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
   >
     <nav
-      class="h-full w-80 hidden md:flex items-center gap-1 bg-card/95 px-3 titlebar-no-drag"
+      class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag"
     >
       <button
         @click="emit('toggleSidebar')"
@@ -165,6 +167,14 @@ function handleClose(): void {
           <Database class="w-4 h-4" />
         </button>
       </Tooltip>
+
+      <button
+        @click="showModelHub = true"
+        class="h-8 rounded-lg px-3 text-xs font-medium metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+        type="button"
+      >
+        Model Hub
+      </button>
 
       <Tooltip text="Open Gallery Folder">
         <button
@@ -231,5 +241,6 @@ function handleClose(): void {
         </button>
       </template>
     </div>
+    <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
   </header>
 </template>

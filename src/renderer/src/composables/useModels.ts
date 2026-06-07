@@ -17,6 +17,7 @@ export interface ModelCategories {
   controlnet: string[]
   photomaker: string[]
   upscale: string[]
+  hiresUpscalers: string[]
   taesd: string[]
   embeddings: string[]
 }
@@ -46,6 +47,7 @@ export function useModels() {
     controlnet: [],
     photomaker: [],
     upscale: [],
+    hiresUpscalers: [],
     taesd: [],
     embeddings: []
   })

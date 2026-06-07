@@ -4,6 +4,33 @@ import type { Express } from 'express'
 import type { AppContext } from '../types'
 import { appendLog, listFiles, spawnLoggedProcess } from '../utils'
 import { addHardwareArgs, addModelArgs, addOptionalArgs, addPromptModelExtras, getSdServerPath } from '../sd'
+import { downloadFile } from '../utils'
+
+const MODEL_DOWNLOAD_DIRS = new Set([
+  'diffusion',
+  'uncond_diffusion',
+  'vae',
+  'audio_vae',
+  'llm',
+  'llm_vision',
+  't5xxl',
+  'embeddings_connectors',
+  'clip',
+  'clip_vision',
+  'loras',
+  'controlnet',
+  'photomaker',
+  'upscale',
+  'hires_upscalers',
+  'taesd',
+  'embeddings'
+])
+
+function filenameFromUrl(url: string): string {
+  const cleanUrl = url.split('?')[0]
+  const name = decodeURIComponent(path.basename(cleanUrl))
+  return name || `model_${Date.now()}`
+}
 
 export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/models', (_req, res) => {
@@ -24,9 +51,29 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
       controlnet: listFiles(modelDir('controlnet')),
       photomaker: listFiles(modelDir('photomaker')),
       upscale: listFiles(modelDir('upscale')),
+      hiresUpscalers: listFiles(modelDir('hires_upscalers')),
       taesd: listFiles(modelDir('taesd')),
       embeddings: listFiles(modelDir('embeddings'))
     })
+  })
+
+  app.post('/api/models/download', async (req, res) => {
+    const { url, category, filename } = req.body || {}
+    if (typeof url !== 'string' || !url.startsWith('https://')) return res.status(400).json({ error: 'HTTPS model URL required' })
+    if (typeof category !== 'string' || !MODEL_DOWNLOAD_DIRS.has(category)) return res.status(400).json({ error: 'Invalid model category' })
+
+    const safeFilename = path.basename(typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url))
+    const targetDir = path.join(ctx.paths.modelsDir, category)
+    const targetPath = path.join(targetDir, safeFilename)
+
+    try {
+      fs.mkdirSync(targetDir, { recursive: true })
+      await downloadFile(url, targetPath)
+      res.json({ success: true, category, filename: safeFilename, path: targetPath })
+    } catch (error: any) {
+      if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
+      res.status(500).json({ error: error.message })
+    }
   })
 
   app.post('/api/start', (req, res) => {
