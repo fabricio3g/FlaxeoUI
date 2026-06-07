@@ -129,7 +129,7 @@ onUnmounted(() => {
 
     <!-- Main Image -->
     <div
-      class="w-full h-full flex items-center justify-center p-4 transition-all duration-300"
+      class="w-full h-full flex items-center justify-center bg-black p-4 transition-all duration-300 dark:bg-neutral-950"
       :class="{ 'pr-96': showInfo }"
     >
       <img

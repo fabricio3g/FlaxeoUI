@@ -13,6 +13,7 @@ const router = useRouter()
 
 // State
 const showMobileConfig = ref(false)
+const sidebarCollapsed = ref(false)
 const isElectron = ref(false)
 const serverPort = ref<number>(3000)
 
@@ -63,7 +64,11 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col h-screen bg-background text-foreground overflow-hidden">
     <!-- Custom Titlebar for Electron Only -->
-    <Titlebar :current-tab="currentTab" />
+    <Titlebar
+      :current-tab="currentTab"
+      :sidebar-collapsed="sidebarCollapsed"
+      @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed"
+    />
 
     <!-- Mobile Header -->
     <div
@@ -87,16 +92,17 @@ onMounted(async () => {
     <div class="flex flex-1 overflow-hidden relative md:p-0">
       <!-- Config Panel (detailed settings) -->
       <ConfigPanel
-        class="transition-transform duration-300 ease-in-out bg-card/85 backdrop-blur-xl"
+        :collapsed="sidebarCollapsed"
+        class="transition-all duration-300 ease-in-out bg-card/85 backdrop-blur-xl"
         :class="[
-          'md:flex md:w-80 md:relative md:translate-x-0',
+          sidebarCollapsed ? 'md:flex md:w-12 md:relative md:translate-x-0' : 'md:flex md:w-80 md:relative md:translate-x-0',
           showMobileConfig ? 'absolute inset-0 z-50 w-full translate-x-0 flex' : 'hidden md:flex'
         ]"
         @close="showMobileConfig = false"
       />
 
       <!-- Main Content -->
-      <main class="flex-1 overflow-hidden flex flex-col relative w-full m-2 md:m-3 bg-card rounded-lg">
+      <main class="flex-1 overflow-hidden flex flex-col relative w-full m-2 md:m-3 bg-card rounded-2xl">
         <router-view v-slot="{ Component }">
           <keep-alive>
             <transition

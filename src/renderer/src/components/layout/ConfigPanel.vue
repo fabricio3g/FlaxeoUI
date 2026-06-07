@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
 import { storeToRefs } from 'pinia'
@@ -13,6 +13,8 @@ import {
   Info,
   Play,
   Plus,
+  Save,
+  Search,
   Server,
   Square,
   Terminal,
@@ -25,8 +27,17 @@ import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 
 const configStore = useConfigStore()
-const { config } = storeToRefs(configStore)
+const { config, presets, selectedPresetId } = storeToRefs(configStore)
 const { models, fetchModels } = useModels()
+
+withDefaults(
+  defineProps<{
+    collapsed?: boolean
+  }>(),
+  {
+    collapsed: false
+  }
+)
 
 const emit = defineEmits<{
   close: []
@@ -38,6 +49,10 @@ const backendVersion = ref('Loading...')
 const backendValid = ref(false)
 const isBooting = ref(false)
 const logs = ref<string[]>([])
+
+// Presets
+const presetName = ref('')
+const presetSearch = ref('')
 
 // Network status
 const localNetworkEnabled = ref(false)
@@ -60,6 +75,32 @@ const expandedSections = ref({
 })
 
 let statusInterval: number | null = null
+
+const filteredPresets = computed(() => {
+  const query = presetSearch.value.trim().toLowerCase()
+  if (!query) return presets.value
+
+  return presets.value.filter((preset) => {
+    const mode = preset.config.backendMode
+    return preset.name.toLowerCase().includes(query) || mode.includes(query)
+  })
+})
+
+const selectedPreset = computed(() =>
+  presets.value.find((preset) => preset.id === selectedPresetId.value)
+)
+
+const presetOptions = computed(() => [
+  { label: 'Select preset...', value: '' },
+  ...(
+    selectedPreset.value && !filteredPresets.value.some((preset) => preset.id === selectedPreset.value?.id)
+      ? [selectedPreset.value, ...filteredPresets.value]
+      : filteredPresets.value
+  ).map((preset) => ({
+    label: `${preset.name} (${preset.config.backendMode.toUpperCase()})`,
+    value: preset.id
+  }))
+])
 
 /**
  * toggleSection() - Toggle a collapsible section
@@ -219,6 +260,33 @@ function setBackendMode(mode: 'server' | 'cli'): void {
   configStore.updateConfig({ backendMode: mode })
 }
 
+function saveCurrentPreset(): void {
+  const savedPreset = configStore.savePreset(presetName.value)
+  if (savedPreset) {
+    presetName.value = ''
+    presetSearch.value = ''
+  }
+}
+
+function selectPreset(id: string): void {
+  if (!id) {
+    selectedPresetId.value = ''
+    return
+  }
+
+  configStore.applyPreset(id)
+}
+
+function overwriteSelectedPreset(): void {
+  if (!selectedPresetId.value) return
+  configStore.updatePreset(selectedPresetId.value)
+}
+
+function deleteSelectedPreset(): void {
+  if (!selectedPresetId.value) return
+  configStore.deletePreset(selectedPresetId.value)
+}
+
 // Load mode toggle
 function setLoadMode(mode: 'standard' | 'split'): void {
   configStore.updateConfig({ loadMode: mode })
@@ -276,7 +344,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="w-full md:w-80 flex flex-col overflow-hidden h-full md:border-r md:border-border/70 md:bg-card/95 md:shadow-none md:backdrop-blur-xl md:rounded-bl-lg">
+  <aside class="w-full flex flex-col overflow-hidden h-full md:bg-card/95 md:shadow-none md:backdrop-blur-xl">
+    <div v-if="collapsed" class="hidden md:flex h-full flex-col items-center py-3"></div>
+
+    <template v-else>
     <!-- Header with Status -->
     <div class="relative p-4 flex items-center justify-between bg-card/95">
       <div class="flex w-full items-center justify-between gap-8">
@@ -336,6 +407,86 @@ onUnmounted(() => {
         </button>
 
         <div v-show="expandedSections.backend" class="space-y-3">
+          <!-- Configuration Presets -->
+          <div class="p-2 rounded-lg bg-muted/30 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Save class="w-3.5 h-3.5" />
+                Presets
+              </span>
+              <span class="text-[10px] text-muted-foreground">{{ presets.length }} saved</span>
+            </div>
+
+            <div class="flex gap-2">
+              <input
+                v-model="presetName"
+                type="text"
+                placeholder="Preset name..."
+                class="h-8 flex-1 min-w-0 px-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                @keyup.enter="saveCurrentPreset"
+              />
+              <button
+                @click="saveCurrentPreset"
+                :disabled="!presetName.trim()"
+                class="h-8 w-24 text-xs font-medium rounded-md transition-colors"
+                :class="
+                  presetName.trim()
+                    ? 'primary-metal-button text-white'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                "
+              >
+                Save
+              </button>
+            </div>
+
+            <div class="relative">
+              <Search class="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                v-model="presetSearch"
+                type="text"
+                placeholder="Search presets..."
+                class="h-8 w-full pl-7 pr-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <Select
+              :model-value="selectedPresetId"
+              size="sm"
+              placeholder="Select preset..."
+              :options="presetOptions"
+              class="h-8"
+              @update:model-value="selectPreset"
+            />
+
+            <div class="flex items-center gap-2">
+              <button
+                @click="overwriteSelectedPreset"
+                :disabled="!selectedPreset"
+                class="h-8 flex-1 text-xs font-medium rounded-md transition-colors"
+                :class="
+                  selectedPreset
+                    ? 'bg-muted/60 hover:bg-muted text-foreground'
+                    : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
+                "
+              >
+                Overwrite
+              </button>
+              <button
+                @click="deleteSelectedPreset"
+                :disabled="!selectedPreset"
+                class="h-8 flex-1 rounded-md transition-colors flex items-center justify-center"
+                :class="
+                  selectedPreset
+                    ? 'bg-muted/60 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground'
+                    : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
+                "
+                title="Delete preset"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
           <!-- Server / CLI Toggle -->
           <div class="flex p-1 metal-surface rounded-lg">
             <button
@@ -1013,5 +1164,6 @@ onUnmounted(() => {
         </div>
       </section>
     </div>
+    </template>
   </aside>
 </template>

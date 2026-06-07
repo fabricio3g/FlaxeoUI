@@ -87,62 +87,161 @@ export interface GenerationConfig {
   videoMode: boolean
 }
 
+export interface ConfigPreset {
+  id: string
+  name: string
+  config: GenerationConfig
+  createdAt: number
+  updatedAt: number
+}
+
+const PRESETS_STORAGE_KEY = 'flaxeo-config-presets'
+
+const defaultConfig: GenerationConfig = {
+  backendMode: 'cli',
+  loadMode: 'standard',
+  standardModel: '',
+  diffusionModel: '',
+  t5xxlModel: '',
+  llmModel: '',
+  clipModel: '',
+  clipGModel: '',
+  clipVisionModel: '',
+  vaeModel: '',
+  vaeTileSize: 0,
+  controlNetModel: '',
+  photoMakerModel: '',
+  upscaleModel: '',
+  taesdModel: '',
+  loras: [],
+  loraApplyMode: 'auto',
+  embeddings: [],
+  scheduler: 'discrete',
+  sampler: 'euler',
+  rngType: '',
+  batchCount: 1,
+  steps: 20,
+  cfgScale: 3.5,
+  guidance: 3.5,
+  clipSkip: -1,
+  seed: -1,
+  width: 1024,
+  height: 1024,
+  flashAttention: false,
+  vaeTiling: false,
+  clipOnCpu: false,
+  cpuOffload: false,
+  diffusionConvDirect: false,
+  vaeConvDirect: false,
+  forceSDXLVaeConvScale: false,
+  quantizationType: '',
+  livePreviewMethod: '',
+  controlNetStrength: 0.9,
+  applyCanny: false,
+  controlImagePath: '',
+  photoMakerImages: [],
+  photoMakerStyleStrength: 20,
+  photoMakerIdEmbedsPath: '',
+  kontextRefImage: '',
+  initImagePath: '',
+  img2imgStrength: 0.4,
+  videoMode: false
+}
+
+function cloneConfig(value: GenerationConfig): GenerationConfig {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function normalizeConfig(value: Partial<GenerationConfig>): GenerationConfig {
+  return { ...cloneConfig(defaultConfig), ...value }
+}
+
+function createPresetId(): string {
+  return `preset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 /**
  * useConfigStore - Pinia store for generation configuration
  * Centralizes all settings from the sidebar
  */
 export const useConfigStore = defineStore('config', () => {
   // Default configuration matching original app
-  const config = ref<GenerationConfig>({
-    backendMode: 'cli',
-    loadMode: 'standard',
-    standardModel: '',
-    diffusionModel: '',
-    t5xxlModel: '',
-    llmModel: '',
-    clipModel: '',
-    clipGModel: '',
-    clipVisionModel: '',
-    vaeModel: '',
-    vaeTileSize: 0,
-    controlNetModel: '',
-    photoMakerModel: '',
-    upscaleModel: '',
-    taesdModel: '',
-    loras: [],
-    loraApplyMode: 'auto',
-    embeddings: [],
-    scheduler: 'discrete',
-    sampler: 'euler',
-    rngType: '',
-    batchCount: 1,
-    steps: 20,
-    cfgScale: 3.5,
-    guidance: 3.5,
-    clipSkip: -1,
-    seed: -1,
-    width: 1024,
-    height: 1024,
-    flashAttention: false,
-    vaeTiling: false,
-    clipOnCpu: false,
-    cpuOffload: false,
-    diffusionConvDirect: false,
-    vaeConvDirect: false,
-    forceSDXLVaeConvScale: false,
-    quantizationType: '',
-    livePreviewMethod: '',
-    controlNetStrength: 0.9,
-    applyCanny: false,
-    controlImagePath: '',
-    photoMakerImages: [],
-    photoMakerStyleStrength: 20,
-    photoMakerIdEmbedsPath: '',
-    kontextRefImage: '',
-    initImagePath: '',
-    img2imgStrength: 0.4,
-    videoMode: false
-  })
+  const config = ref<GenerationConfig>(cloneConfig(defaultConfig))
+  const presets = ref<ConfigPreset[]>([])
+  const selectedPresetId = ref('')
+
+  function persistPresets(): void {
+    if (typeof localStorage === 'undefined') return
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets.value))
+  }
+
+  function loadPresets(): void {
+    if (typeof localStorage === 'undefined') return
+
+    try {
+      const raw = localStorage.getItem(PRESETS_STORAGE_KEY)
+      if (!raw) return
+
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+
+      presets.value = parsed
+        .filter((preset) => preset?.id && preset?.name && preset?.config)
+        .map((preset) => ({
+          id: String(preset.id),
+          name: String(preset.name),
+          config: normalizeConfig(preset.config),
+          createdAt: Number(preset.createdAt) || Date.now(),
+          updatedAt: Number(preset.updatedAt) || Date.now()
+        }))
+    } catch (e) {
+      console.error('Failed to load config presets:', e)
+      presets.value = []
+    }
+  }
+
+  function savePreset(name: string): ConfigPreset | null {
+    const trimmedName = name.trim()
+    if (!trimmedName) return null
+
+    const now = Date.now()
+    const preset: ConfigPreset = {
+      id: createPresetId(),
+      name: trimmedName,
+      config: cloneConfig(config.value),
+      createdAt: now,
+      updatedAt: now
+    }
+
+    presets.value = [preset, ...presets.value]
+    selectedPresetId.value = preset.id
+    persistPresets()
+    return preset
+  }
+
+  function updatePreset(id: string): void {
+    const now = Date.now()
+    presets.value = presets.value.map((preset) =>
+      preset.id === id ? { ...preset, config: cloneConfig(config.value), updatedAt: now } : preset
+    )
+    persistPresets()
+  }
+
+  function applyPreset(id: string): void {
+    const preset = presets.value.find((item) => item.id === id)
+    if (!preset) return
+
+    config.value = normalizeConfig(preset.config)
+    selectedPresetId.value = preset.id
+  }
+
+  function deletePreset(id: string): void {
+    presets.value = presets.value.filter((preset) => preset.id !== id)
+    if (selectedPresetId.value === id) {
+      selectedPresetId.value = ''
+    }
+    persistPresets()
+  }
 
   /**
    * updateConfig() - Partially update configuration
@@ -199,9 +298,18 @@ export const useConfigStore = defineStore('config', () => {
     return config.value.diffusionModel
   })
 
+  loadPresets()
+
   return {
     config,
+    presets,
+    selectedPresetId,
     updateConfig,
+    loadPresets,
+    savePreset,
+    updatePreset,
+    applyPreset,
+    deletePreset,
     addLora,
     removeLora,
     addEmbedding,

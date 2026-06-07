@@ -4,6 +4,7 @@ import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, apiGet, getApiBase, getOutputUrl } from '@/services/api'
 import { Video as VideoIcon, Upload, Loader2, Play, X } from 'lucide-vue-next'
+import PromptPresetControls from '@/components/PromptPresetControls.vue'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -125,196 +126,8 @@ async function handleCancel(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-auto bg-transparent">
-    <!-- Prompt Section -->
-    <div class="shrink-0 bg-transparent dot-grid-corners">
-      <div class="p-4 md:p-6">
-        <div class="max-w-4xl mx-auto space-y-4">
-          <!-- Header: Label + Mode Toggle -->
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-semibold text-foreground/70 uppercase tracking-wider"
-              >Video Prompt</label
-            >
-
-            <!-- Mode Toggle: T2V / I2V -->
-            <div
-              class="flex items-center gap-1 p-0.5 bg-muted/50 rounded-lg border border-border/30"
-            >
-              <button
-                @click="setVideoMode('t2v')"
-                class="px-3 py-1 text-xs font-medium rounded transition-all duration-150"
-                :class="
-                  videoMode === 't2v'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/20'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                Text → Video
-              </button>
-              <button
-                @click="setVideoMode('i2v')"
-                class="px-3 py-1 text-xs font-medium rounded transition-all duration-150"
-                :class="
-                  videoMode === 'i2v'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/20'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                Image → Video
-              </button>
-            </div>
-          </div>
-
-          <!-- Prompt Textarea -->
-          <div>
-            <textarea
-              v-model="prompt"
-              rows="2"
-              placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
-              class="w-full px-4 py-3 text-sm rounded-xl bg-background border-2 border-border/60 resize-none transition-all duration-200 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
-              :disabled="isGenerating"
-            ></textarea>
-          </div>
-
-          <!-- Negative Prompt -->
-          <div>
-            <label
-              class="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-2 block"
-              >Negative Prompt</label
-            >
-            <textarea
-              v-model="negativePrompt"
-              rows="2"
-              placeholder="blurry, distorted, low quality, bad motion..."
-              class="w-full px-4 py-3 text-sm rounded-xl bg-muted/50 border border-border/50 resize-none transition-all duration-200 focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/40"
-              :disabled="isGenerating"
-            ></textarea>
-          </div>
-
-          <!-- Controls Row -->
-          <div class="flex flex-wrap items-center gap-4">
-            <!-- Resolution -->
-            <div class="flex items-center gap-2">
-              <label class="text-xs font-medium text-muted-foreground">Size</label>
-              <div class="flex items-center gap-1.5 text-xs">
-                <div
-                  class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30"
-                >
-                  <span
-                    class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30"
-                    >W</span
-                  >
-                  <input
-                    v-model.number="videoWidth"
-                    type="number"
-                    step="16"
-                    class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none"
-                  />
-                </div>
-                <span class="text-muted-foreground font-medium">×</span>
-                <div
-                  class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30"
-                >
-                  <span
-                    class="px-2 py-1.5 text-muted-foreground bg-muted/50 border-r border-border/30"
-                    >H</span
-                  >
-                  <input
-                    v-model.number="videoHeight"
-                    type="number"
-                    step="16"
-                    class="w-14 px-2 py-1.5 bg-transparent text-center focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Frames -->
-            <div class="flex items-center gap-2">
-              <label class="text-xs font-medium text-muted-foreground">Frames</label>
-              <div
-                class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30"
-              >
-                <input
-                  v-model.number="videoFrames"
-                  type="number"
-                  min="9"
-                  max="129"
-                  step="4"
-                  class="w-14 px-2 py-1.5 text-xs bg-transparent text-center focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <!-- Flow Shift -->
-            <div class="flex items-center gap-2">
-              <label class="text-xs font-medium text-muted-foreground">Flow</label>
-              <div
-                class="flex items-center bg-muted/50 rounded-md overflow-hidden border border-border/30"
-              >
-                <input
-                  v-model.number="flowShift"
-                  type="number"
-                  min="0"
-                  max="10"
-                  step="0.5"
-                  class="w-14 px-2 py-1.5 text-xs bg-transparent text-center focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <!-- I2V Image Upload -->
-            <label
-              v-if="videoMode === 'i2v'"
-              class="px-3 py-1.5 text-xs font-medium bg-muted/50 border border-border/30 rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
-            >
-              <Upload class="w-3.5 h-3.5" />
-              Reference
-              <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
-            </label>
-
-            <!-- Spacer -->
-            <div class="flex-1"></div>
-
-            <!-- Generate / Cancel Button -->
-            <button
-              v-if="!isGenerating"
-              @click="handleGenerate"
-              :disabled="!prompt.trim()"
-              class="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transform transition-all duration-200 flex items-center gap-2"
-            >
-              <Play class="w-4 h-4" />
-              Generate Video
-            </button>
-            <button
-              v-else
-              @click="handleCancel"
-              class="px-5 py-2 text-sm font-medium rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
-            >
-              <X class="w-4 h-4" />
-              Cancel
-            </button>
-          </div>
-
-          <!-- I2V Reference Preview -->
-          <div v-if="videoMode === 'i2v' && referenceImage">
-            <div
-              class="flex items-center gap-3 p-2 bg-muted/30 rounded-lg border border-border/30 inline-flex"
-            >
-              <img :src="referenceImage" class="h-14 rounded-md border border-border/50" />
-              <div class="text-xs text-muted-foreground">Reference loaded</div>
-              <button @click="clearReferenceImage" class="p-1 hover:bg-background rounded ml-2">
-                <X class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Video Preview Area -->
-    <div class="p-4 bg-muted/30 relative">
-      <!-- Error -->
+  <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
+    <div class="flex-1 relative p-2 md:p-3 min-h-0">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -325,40 +138,130 @@ async function handleCancel(): Promise<void> {
         </button>
       </div>
 
-      <!-- Video Container -->
-      <div
-        class="relative flex items-center justify-center rounded-lg border border-border bg-background shadow-xl"
-      >
-        <!-- Generated Video -->
-        <video
-          v-if="generatedVideo"
-          :src="generatedVideo"
-          controls
-          autoplay
-          loop
-          class="max-w-full"
-        ></video>
+      <div class="mx-auto w-full max-w-5xl h-full">
+        <div class="relative flex h-full min-h-[420px] max-h-[72vh] items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners">
+          <video
+            v-if="generatedVideo"
+            :src="generatedVideo"
+            controls
+            autoplay
+            loop
+            class="max-w-full max-h-[72vh] object-contain"
+          ></video>
 
-        <!-- Placeholder -->
-        <div
-          v-else
-          class="w-96 h-64 flex flex-col items-center justify-center text-muted-foreground"
-        >
-          <VideoIcon class="w-12 h-12 opacity-30 mb-4" />
-          <span class="text-xs tracking-widest opacity-50">READY FOR VIDEO</span>
-          <p class="text-xs mt-2 text-center px-4">
-            Generate videos using WAN/CogVideoX models via sd-cli
-          </p>
+          <div v-else class="w-96 h-64 flex flex-col items-center justify-center text-muted-foreground">
+            <VideoIcon class="w-12 h-12 opacity-30 mb-4" />
+            <span class="text-xs tracking-[0.32em] opacity-60">READY FOR VIDEO</span>
+            <p class="text-xs mt-2 text-center px-4">
+              Generate videos using WAN/CogVideoX models via sd-cli
+            </p>
+          </div>
+
+          <div
+            v-if="isGenerating"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm"
+          >
+            <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
+            <span class="text-sm font-medium">Generating video...</span>
+            <p class="text-xs text-muted-foreground mt-1">This may take several minutes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shrink-0 px-3 pb-3 pt-2">
+      <div class="relative overflow-visible rounded-3xl border border-border/60 bg-transparent shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
+        <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
+          <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30">
+            <button
+              @click="setVideoMode('t2v')"
+              class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+              :class="videoMode === 't2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+            >
+              Text to Video
+            </button>
+            <button
+              @click="setVideoMode('i2v')"
+              class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+              :class="videoMode === 'i2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+            >
+              Image to Video
+            </button>
+          </div>
+
+          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs">
+            <span class="text-muted-foreground text-[10px]">W</span>
+            <input v-model.number="videoWidth" type="number" step="16" class="w-14 px-1 bg-transparent text-center focus:outline-none" />
+            <span class="text-muted-foreground">×</span>
+            <span class="text-muted-foreground text-[10px]">H</span>
+            <input v-model.number="videoHeight" type="number" step="16" class="w-14 px-1 bg-transparent text-center focus:outline-none" />
+          </div>
+
+          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs gap-1">
+            <span class="text-[10px] text-muted-foreground">Frames</span>
+            <input v-model.number="videoFrames" type="number" min="9" max="129" step="4" class="w-14 bg-transparent text-center focus:outline-none" />
+          </div>
+
+          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs gap-1">
+            <span class="text-[10px] text-muted-foreground">Flow</span>
+            <input v-model.number="flowShift" type="number" min="0" max="10" step="0.5" class="w-14 bg-transparent text-center focus:outline-none" />
+          </div>
+
+          <div class="flex-1 hidden md:block"></div>
+
+          <label v-if="videoMode === 'i2v'" class="h-8 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
+            <Upload class="w-3.5 h-3.5" />
+            Reference
+            <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
+          </label>
         </div>
 
-        <!-- Loading Overlay -->
-        <div
-          v-if="isGenerating"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
-        >
-          <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
-          <span class="text-sm font-medium">Generating video...</span>
-          <p class="text-xs text-muted-foreground mt-1">This may take several minutes</p>
+        <div v-if="videoMode === 'i2v' && referenceImage" class="px-3 pb-2">
+          <div class="flex items-center gap-3 p-2 bg-muted/30 rounded-lg border border-border/30 inline-flex">
+            <img :src="referenceImage" class="h-14 rounded-md border border-border/50" />
+            <div class="text-xs text-muted-foreground">Reference loaded</div>
+            <button @click="clearReferenceImage" class="p-1 hover:bg-background rounded ml-2">
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div class="composer-shell mx-3 rounded-2xl px-3 py-3">
+          <PromptPresetControls
+            v-model:prompt="prompt"
+            v-model:negative-prompt="negativePrompt"
+            class="mb-3"
+          />
+
+          <div class="flex items-end gap-2">
+            <div class="flex-1 relative">
+              <textarea
+                v-model="prompt"
+                rows="1"
+                placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
+                class="w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
+                :style="{ minHeight: '68px', maxHeight: '200px' }"
+                :disabled="isGenerating"
+              ></textarea>
+            </div>
+            <div class="flex items-end pb-0.5">
+              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="h-10 w-10 rounded-xl primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Generate Video">
+                <Play class="w-5 h-5 stroke-[2.5]" />
+              </button>
+              <button v-else @click="handleCancel" class="h-10 w-10 rounded-xl bg-red-500/90 text-white hover:bg-red-500 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95" title="Cancel">
+                <X class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-2 border-t border-border/50 pt-2">
+            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, distorted, low quality, bad motion..." class="w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between px-3 pb-2 pt-1">
+          <span class="text-[10px] text-muted-foreground">{{ prompt.length }} chars</span>
+          <span class="text-[10px] text-muted-foreground">{{ videoWidth }}×{{ videoHeight }} · {{ videoFrames }} frames</span>
         </div>
       </div>
     </div>

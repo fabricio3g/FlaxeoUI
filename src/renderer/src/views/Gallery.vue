@@ -245,7 +245,7 @@ onMounted(() => {
     <!-- Content Area -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Image Grid -->
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-3 md:p-4 bg-muted/20">
         <!-- Loading State -->
         <div v-if="isLoading" class="flex items-center justify-center h-full">
           <RefreshCw class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -275,7 +275,7 @@ onMounted(() => {
             v-for="img in paginatedImages"
             :key="img"
             @click="selectImage(img)"
-            class="aspect-square rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] hover:shadow-lg"
+            class="group aspect-square rounded-xl overflow-hidden border-2 bg-black transition-all hover:scale-[1.02] hover:shadow-lg dark:bg-neutral-950"
             :class="
               selectedImage === img
                 ? 'border-primary ring-2 ring-primary/30'
@@ -285,7 +285,7 @@ onMounted(() => {
             <img
               :src="getOutputUrl(img)"
               :alt="img"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
               loading="lazy"
             />
           </button>
@@ -326,7 +326,7 @@ onMounted(() => {
             <ChevronLeft class="w-5 h-5" />
           </button>
 
-          <div class="relative w-full h-full group">
+          <div class="relative w-full h-full group rounded-xl bg-black p-2 dark:bg-neutral-950">
             <img
               :src="getOutputUrl(selectedImage)"
               :alt="selectedImage"

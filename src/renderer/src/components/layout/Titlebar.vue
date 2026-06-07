@@ -9,6 +9,8 @@ import {
   Images,
   Moon,
   Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Square,
   Sun,
@@ -29,6 +31,11 @@ interface NavItem {
 
 const props = defineProps<{
   currentTab: string
+  sidebarCollapsed: boolean
+}>()
+
+const emit = defineEmits<{
+  toggleSidebar: []
 }>()
 
 const router = useRouter()
@@ -71,7 +78,7 @@ function toggleTheme(): void {
 }
 
 function toggleVideoMode(): void {
-  config.value.videoMode = !config.value.videoMode
+  configStore.updateConfig({ videoMode: !config.value.videoMode })
 }
 
 function isActive(id: string): boolean {
@@ -115,20 +122,33 @@ function handleClose(): void {
 
 <template>
   <header
-    class="h-11 flex items-center justify-between bg-card/90 select-none backdrop-blur-xl rounded-tl-lg"
+    class="h-11 flex items-center justify-between bg-card/90 select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
   >
     <nav
-      class="h-full w-80 hidden md:flex items-center gap-1 bg-card/95 px-3"
+      class="h-full w-80 hidden md:flex items-center gap-1 bg-card/95 px-3 titlebar-no-drag"
     >
+      <button
+        @click="emit('toggleSidebar')"
+        class="h-8 w-8 shrink-0 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+        :aria-label="props.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        type="button"
+      >
+        <PanelLeftOpen v-if="props.sidebarCollapsed" class="w-4 h-4" />
+        <PanelLeftClose v-else class="w-4 h-4" />
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-border/80"></div>
+
       <Tooltip v-for="item in navItems" :key="item.id" :text="item.label">
         <button
           @click="handleNavClick(item.id)"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center"
+          class="h-8 w-8 metal-icon-button flex items-center justify-center titlebar-no-drag"
           :class="[
             isActive(item.id)
               ? 'primary-metal-button'
               : 'text-muted-foreground hover:text-foreground'
           ]"
+          type="button"
         >
           <component :is="item.icon" class="w-4 h-4" />
         </button>
@@ -139,7 +159,8 @@ function handleClose(): void {
       <Tooltip text="Open Models Folder">
         <button
           @click="openModelsFolder"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground"
+          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
         >
           <Database class="w-4 h-4" />
         </button>
@@ -148,7 +169,8 @@ function handleClose(): void {
       <Tooltip text="Open Gallery Folder">
         <button
           @click="openGalleryFolder"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground"
+          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
         >
           <FolderOpen class="w-4 h-4" />
         </button>
@@ -158,23 +180,25 @@ function handleClose(): void {
 
       <Tooltip :text="config.videoMode ? 'Disable Video Mode' : 'Enable Video Mode'">
         <button
-          @click="toggleVideoMode"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center"
+          @click.stop="toggleVideoMode"
+          class="h-8 w-8 metal-icon-button flex items-center justify-center titlebar-no-drag"
           :class="config.videoMode ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'"
+          type="button"
         >
           <Film class="w-4 h-4" />
         </button>
       </Tooltip>
     </nav>
 
-    <div class="flex-1 titlebar-drag"></div>
+    <div class="flex-1"></div>
 
     <!-- Window Controls -->
-    <div class="flex items-center h-full">
+    <div class="flex items-center h-full titlebar-no-drag">
       <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'">
         <button
           @click="toggleTheme"
-          class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground"
+          class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
         >
           <Sun v-if="isDark" class="w-4 h-4" />
           <Moon v-else class="w-4 h-4" />
