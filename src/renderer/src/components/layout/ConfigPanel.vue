@@ -113,6 +113,13 @@ const activeModelSummary = computed(() => {
   if (config.value.vaeModel) parts.push(config.value.vaeModel)
   if (config.value.t5xxlModel) parts.push(config.value.t5xxlModel)
   if (config.value.llmModel) parts.push(config.value.llmModel)
+  if (config.value.clipModel) parts.push(config.value.clipModel)
+  if (config.value.clipGModel) parts.push(config.value.clipGModel)
+  if (config.value.clipVisionModel) parts.push(config.value.clipVisionModel)
+  if (config.value.highNoiseDiffusionModel) parts.push(config.value.highNoiseDiffusionModel)
+  if (config.value.uncondDiffusionModel) parts.push(config.value.uncondDiffusionModel)
+  if (config.value.llmVisionModel) parts.push(config.value.llmVisionModel)
+  if (config.value.embeddingsConnectorsModel) parts.push(config.value.embeddingsConnectorsModel)
   return parts.filter(Boolean).slice(0, 4)
 })
 
@@ -394,14 +401,6 @@ onUnmounted(() => {
     :class="collapsed ? 'overflow-visible z-50 titlebar-shell' : 'overflow-hidden md:bg-card/95'"
   >
     <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag">
-      <div class="flex h-8 w-8 items-center justify-center metal-icon-button text-muted-foreground">
-        <div
-          class="h-2 w-2 rounded-full"
-          :class="backendValid ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.55)]' : 'bg-red-500'"
-        ></div>
-      </div>
-
-      <div class="my-1 h-px w-5 bg-border/80"></div>
 
       <div class="flex flex-col items-center gap-1">
         <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
@@ -491,12 +490,43 @@ onUnmounted(() => {
             <button @click="setLoadMode('standard')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'standard' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Standard</button>
             <button @click="setLoadMode('split')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'split' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Split</button>
           </div>
-          <Select v-if="config.loadMode === 'standard'" v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+          <template v-if="config.loadMode === 'standard'">
+            <Select v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.clipModel" size="sm" placeholder="CLIP-L" :options="[{ label: 'CLIP-L...', value: '' }, ...models.clip.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.clipGModel" size="sm" placeholder="CLIP-G" :options="[{ label: 'CLIP-G...', value: '' }, ...models.clipG.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.clipVisionModel" size="sm" placeholder="CLIP Vision" :options="[{ label: 'CLIP Vision...', value: '' }, ...models.clipVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+          </template>
           <template v-else>
             <Select v-model="config.diffusionModel" size="sm" placeholder="Diffusion" :options="[{ label: 'Diffusion...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.highNoiseDiffusionModel" size="sm" placeholder="High Noise" :options="[{ label: 'High Noise...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.uncondDiffusionModel" size="sm" placeholder="Uncond" :options="[{ label: 'Uncond...', value: '' }, ...models.uncondDiffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.clipModel" size="sm" placeholder="CLIP-L" :options="[{ label: 'CLIP-L...', value: '' }, ...models.clip.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.clipGModel" size="sm" placeholder="CLIP-G" :options="[{ label: 'CLIP-G...', value: '' }, ...models.clipG.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.clipVisionModel" size="sm" placeholder="CLIP Vision" :options="[{ label: 'CLIP Vision...', value: '' }, ...models.clipVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Select v-model="config.llmVisionModel" size="sm" placeholder="LLM Vision" :options="[{ label: 'LLM Vision...', value: '' }, ...models.llmVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+              <Select v-model="config.embeddingsConnectorsModel" size="sm" placeholder="Emb. Conn." :options="[{ label: 'Emb. Conn...', value: '' }, ...models.embeddingsConnectors.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
+            </div>
           </template>
           <div v-if="activeModelSummary.length" class="space-y-1 pt-1 text-[11px] text-muted-foreground">
             <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
