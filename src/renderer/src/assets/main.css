@@ -260,9 +260,6 @@ html.dark .titlebar-shell {
 
 .config-panel-shell section > button {
   min-height: 30px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: transparent;
   color: var(--config-sidebar-muted);
   font-size: 11px;
   font-weight: 700;
@@ -275,7 +272,6 @@ html.dark .titlebar-shell {
 }
 
 .config-panel-shell section > button:hover {
-  background: var(--config-sidebar-hover);
   color: var(--config-sidebar-secondary);
 }
 
@@ -340,43 +336,7 @@ html.dark .titlebar-shell {
   color: var(--config-sidebar-text);
 }
 
-.config-panel-shell .metal-icon-button {
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--config-sidebar-muted);
-  box-shadow: none;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.config-panel-shell .metal-icon-button:hover:not(:disabled) {
-  border-color: transparent;
-  background: var(--config-sidebar-hover);
-  color: var(--config-sidebar-text);
-}
-
-.config-panel-shell .metal-icon-button:hover:not(:disabled) svg {
-  transform: rotate(-8deg);
-}
-
-.config-panel-shell .primary-metal-button {
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: var(--config-sidebar-active);
-  color: var(--config-sidebar-text);
-  box-shadow: none;
-}
-
-.config-panel-shell .primary-metal-button:hover:not(:disabled) {
-  border-color: var(--config-sidebar-border);
-  background: var(--config-sidebar-hover);
-  color: var(--config-sidebar-text);
-  filter: none;
-}
 
 .flax-select-trigger {
   border-color: var(--config-sidebar-border, var(--color-border));

@@ -409,7 +409,7 @@ onUnmounted(() => {
             :class="[
               activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
                 ? 'primary-metal-button'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                : 'text-muted-foreground hover:text-foreground',
               section.id === 'warnings' && configWarnings.length > 0 && activeCollapsedSection !== section.id && pinnedCollapsedSection !== section.id ? 'text-yellow-500' : ''
             ]"
             type="button"
@@ -417,10 +417,6 @@ onUnmounted(() => {
             @mouseleave="hideCollapsedFlyout(section.id)"
             @click="pinCollapsedFlyout(section.id)"
           >
-            <span
-              v-if="activeCollapsedSection === section.id || pinnedCollapsedSection === section.id"
-              class="absolute -left-2 h-5 w-0.5 rounded-full bg-primary"
-            ></span>
             <component :is="section.icon" class="w-4 h-4" />
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
@@ -575,7 +571,7 @@ onUnmounted(() => {
       <section>
         <button
           @click="toggleSection('backend')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           <span class="flex items-center gap-1">
             Backend Mode
@@ -739,7 +735,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('models')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           Model Configuration
           <ChevronDown v-if="!expandedSections.models" class="w-4 h-4" />
@@ -1063,7 +1059,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('loras')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           LoRA Modules
           <div class="flex items-center gap-2">
@@ -1115,7 +1111,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('embeddings')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           Embeddings
           <div class="flex items-center gap-2">
@@ -1167,7 +1163,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('sampling')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           Sampling
           <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4" />
@@ -1317,7 +1313,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('generation')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           Generation Settings
           <ChevronDown v-if="!expandedSections.generation" class="w-4 h-4" />
@@ -1435,7 +1431,7 @@ onUnmounted(() => {
       <section class="pt-3">
         <button
           @click="toggleSection('hardware')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2"
+          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
         >
           Hardware
           <ChevronDown v-if="!expandedSections.hardware" class="w-4 h-4" />

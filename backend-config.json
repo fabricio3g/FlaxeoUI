@@ -1,5 +1,10 @@
 {
-  "activeVersion": "custom",
-  "installedVersions": ["master-437-30a9113", "master-445-860a78e", "master-457-b90b1ee"],
+  "activeVersion": "master-679-f3fd359",
+  "installedVersions": [
+    "master-437-30a9113",
+    "master-445-860a78e",
+    "master-457-b90b1ee",
+    "master-679-f3fd359"
+  ],
   "customBinaryExists": false
 }
