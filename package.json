@@ -1,6 +1,6 @@
 {
   "name": "flaxeo-ui",
-  "version": "0.2.0",
+  "version": "0.3.1-debug",
   "description": "FlaxeoUI - AI Image Generation Studio using stable-diffusion.cpp (Vue + Electron)",
   "main": "./out/main/index.js",
   "author": "",
