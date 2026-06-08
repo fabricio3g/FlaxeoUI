@@ -38,16 +38,14 @@ function handleNavClick(id: string): void {
       v-for="item in navItems"
       :key="item.id"
       @click="handleNavClick(item.id)"
-      class="flex min-w-12 flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200"
+      class="flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-lg"
       :class="[
-        currentTab === item.id ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-500/20' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        currentTab === item.id
+          ? 'primary-metal-button text-white'
+          : 'metal-icon-button text-muted-foreground hover:text-foreground'
       ]"
     >
-      <component
-        :is="item.icon"
-        class="w-4.5 h-4.5"
-        :class="{ 'fill-current/20': currentTab === item.id }"
-      />
+      <component :is="item.icon" class="w-4 h-4" />
       <span class="text-[10px] font-medium">{{ item.label }}</span>
     </button>
   </nav>

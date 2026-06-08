@@ -100,16 +100,23 @@ const selectedPreset = computed(() =>
 const configWarnings = computed(() => {
   const warnings: string[] = []
   if (!backendValid.value) warnings.push('Backend binary is not valid')
-  if (config.value.backendMode === 'server' && !sdServerRunning.value) warnings.push('Server mode is selected but sd-server is offline')
-  if (config.value.loadMode === 'standard' && !config.value.standardModel) warnings.push('No checkpoint selected')
-  if (config.value.loadMode === 'split' && !config.value.diffusionModel) warnings.push('No diffusion model selected')
-  if (config.value.videoMode && config.value.loadMode !== 'split') warnings.push('Video presets need split model loading')
-  if (config.value.videoMode && !config.value.t5xxlModel) warnings.push('Video mode usually requires T5XXL/UMT5')
+  if (config.value.backendMode === 'server' && !sdServerRunning.value)
+    warnings.push('Server mode is selected but sd-server is offline')
+  if (config.value.loadMode === 'standard' && !config.value.standardModel)
+    warnings.push('No checkpoint selected')
+  if (config.value.loadMode === 'split' && !config.value.diffusionModel)
+    warnings.push('No diffusion model selected')
+  if (config.value.videoMode && config.value.loadMode !== 'split')
+    warnings.push('Video presets need split model loading')
+  if (config.value.videoMode && !config.value.t5xxlModel)
+    warnings.push('Video mode usually requires T5XXL/UMT5')
   return warnings
 })
 
 const activeModelSummary = computed(() => {
-  const parts = [config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel]
+  const parts = [
+    config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
+  ]
   if (config.value.vaeModel) parts.push(config.value.vaeModel)
   if (config.value.t5xxlModel) parts.push(config.value.t5xxlModel)
   if (config.value.llmModel) parts.push(config.value.llmModel)
@@ -139,19 +146,24 @@ const activeCollapsedMeta = computed(() =>
 function collapsedSectionSummary(section: CollapsedSection): string {
   if (section === 'backend') return sdServerRunning.value ? 'Server online' : 'CLI or offline'
   if (section === 'presets') return selectedPreset.value?.name || `${presets.value.length} saved`
-  if (section === 'models') return config.value.loadMode === 'standard' ? 'Checkpoint mode' : 'Split model mode'
-  if (section === 'generation') return `${config.value.steps} steps · ${config.value.width}x${config.value.height}`
+  if (section === 'models')
+    return config.value.loadMode === 'standard' ? 'Checkpoint mode' : 'Split model mode'
+  if (section === 'generation')
+    return `${config.value.steps} steps · ${config.value.width}x${config.value.height}`
   if (section === 'hardware') return config.value.backendAssignment || 'Auto backend'
-  if (section === 'warnings') return configWarnings.value.length ? `${configWarnings.value.length} warning${configWarnings.value.length === 1 ? '' : 's'}` : 'All clear'
+  if (section === 'warnings')
+    return configWarnings.value.length
+      ? `${configWarnings.value.length} warning${configWarnings.value.length === 1 ? '' : 's'}`
+      : 'All clear'
   return ''
 }
 
 const presetOptions = computed(() => [
   { label: 'Select preset...', value: '' },
-  ...(
-    selectedPreset.value && !filteredPresets.value.some((preset) => preset.id === selectedPreset.value?.id)
-      ? [selectedPreset.value, ...filteredPresets.value]
-      : filteredPresets.value
+  ...(selectedPreset.value &&
+  !filteredPresets.value.some((preset) => preset.id === selectedPreset.value?.id)
+    ? [selectedPreset.value, ...filteredPresets.value]
+    : filteredPresets.value
   ).map((preset) => ({
     label: `${preset.builtin ? 'Template: ' : ''}${preset.name} (${preset.config.backendMode.toUpperCase()})`,
     value: preset.id
@@ -166,12 +178,18 @@ function toggleSection(section: keyof typeof expandedSections.value): void {
 }
 
 function showCollapsedFlyout(section: CollapsedSection): void {
-  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
   activeCollapsedSection.value = section
 }
 
 function pinCollapsedFlyout(section: CollapsedSection): void {
-  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
   pinnedCollapsedSection.value = pinnedCollapsedSection.value === section ? null : section
   activeCollapsedSection.value = pinnedCollapsedSection.value || section
 }
@@ -185,7 +203,10 @@ function hideCollapsedFlyout(section: CollapsedSection): void {
 }
 
 function closeCollapsedFlyout(): void {
-  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
   pinnedCollapsedSection.value = null
   activeCollapsedSection.value = null
   collapsedFlyoutHovered.value = false
@@ -194,7 +215,10 @@ function closeCollapsedFlyout(): void {
 
 function keepCollapsedFlyout(): void {
   collapsedFlyoutHovered.value = true
-  if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
 }
 
 function leaveCollapsedFlyout(): void {
@@ -205,7 +229,10 @@ function leaveCollapsedFlyout(): void {
 function handleCollapsedSelectOpen(open: boolean): void {
   collapsedSelectOpen.value = open
   if (open) {
-    if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null }
+    if (hideTimeout) {
+      clearTimeout(hideTimeout)
+      hideTimeout = null
+    }
     return
   }
 
@@ -400,17 +427,29 @@ onUnmounted(() => {
     class="config-panel-shell w-full flex flex-col min-h-0 h-full md:h-auto md:shadow-none md:backdrop-blur-xl md:rounded-sm"
     :class="collapsed ? 'overflow-visible z-50 titlebar-shell' : 'overflow-hidden md:bg-card/95'"
   >
-    <div v-if="collapsed" class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag">
-
+    <div
+      v-if="collapsed"
+      class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag"
+    >
       <div class="flex flex-col items-center gap-1">
-        <Tooltip v-for="section in collapsedSections" :key="section.id" :text="section.label" position="right">
+        <Tooltip
+          v-for="section in collapsedSections"
+          :key="section.id"
+          :text="section.label"
+          position="right"
+        >
           <button
             class="group relative flex h-8 w-8 items-center justify-center metal-icon-button titlebar-no-drag"
             :class="[
               activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
                 ? 'primary-metal-button'
                 : 'text-muted-foreground hover:text-foreground',
-              section.id === 'warnings' && configWarnings.length > 0 && activeCollapsedSection !== section.id && pinnedCollapsedSection !== section.id ? 'text-yellow-500' : ''
+              section.id === 'warnings' &&
+              configWarnings.length > 0 &&
+              activeCollapsedSection !== section.id &&
+              pinnedCollapsedSection !== section.id
+                ? 'text-yellow-500'
+                : ''
             ]"
             type="button"
             @mouseenter="showCollapsedFlyout(section.id)"
@@ -421,7 +460,8 @@ onUnmounted(() => {
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
               class="absolute -right-1 -top-1 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
-            >{{ configWarnings.length }}</span>
+              >{{ configWarnings.length }}</span
+            >
           </button>
         </Tooltip>
       </div>
@@ -441,313 +481,133 @@ onUnmounted(() => {
       >
         <div class="mb-4 flex items-center justify-between gap-3 border-b border-border/70 pb-3">
           <div class="flex min-w-0 items-start gap-3">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center metal-icon-button text-foreground">
-              <component v-if="activeCollapsedMeta" :is="activeCollapsedMeta.icon" class="h-4 w-4" />
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center metal-icon-button text-foreground"
+            >
+              <component
+                v-if="activeCollapsedMeta"
+                :is="activeCollapsedMeta.icon"
+                class="h-4 w-4"
+              />
             </div>
             <div class="min-w-0">
               <h3 class="truncate text-sm font-semibold">{{ activeCollapsedMeta?.label }}</h3>
-              <p class="mt-0.5 truncate text-[11px] text-muted-foreground">{{ collapsedSectionSummary(activeCollapsedSection) }}</p>
+              <p class="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {{ collapsedSectionSummary(activeCollapsedSection) }}
+              </p>
             </div>
           </div>
-          <button class="metal-icon-button p-1 text-muted-foreground hover:text-foreground" @click="closeCollapsedFlyout">
+          <button
+            class="metal-icon-button p-1 text-muted-foreground hover:text-foreground"
+            @click="closeCollapsedFlyout"
+          >
             <X class="w-4 h-4" />
           </button>
         </div>
 
         <div v-if="activeCollapsedSection === 'backend'" class="space-y-3">
-          <div class="rounded-lg bg-muted/30 p-3 text-xs space-y-2">
-            <div class="flex items-center justify-between"><span>Backend</span><span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{ backendVersion }}</span></div>
-            <div class="flex items-center justify-between"><span>Server</span><span :class="sdServerRunning ? 'text-green-500' : 'text-muted-foreground'">{{ sdServerRunning ? 'Online' : 'Offline' }}</span></div>
+          <div class="rounded-lg bg-muted/30 p-3 text-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span>Backend</span
+              ><span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{
+                backendVersion
+              }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span>Server</span
+              ><span :class="sdServerRunning ? 'text-green-500' : 'text-muted-foreground'">{{
+                sdServerRunning ? 'Online' : 'Offline'
+              }}</span>
+            </div>
           </div>
           <div class="flex p-1 metal-surface rounded-lg">
-            <button @click="setBackendMode('server')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.backendMode === 'server' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Server</button>
-            <button @click="setBackendMode('cli')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.backendMode === 'cli' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">CLI</button>
+            <button
+              @click="setBackendMode('server')"
+              class="flex-1 py-2 text-sm rounded-lg"
+              :class="
+                config.backendMode === 'server'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground'
+              "
+            >
+              Server
+            </button>
+            <button
+              @click="setBackendMode('cli')"
+              class="flex-1 py-2 text-sm rounded-lg"
+              :class="
+                config.backendMode === 'cli'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground'
+              "
+            >
+              CLI
+            </button>
           </div>
-          <div v-if="config.backendMode === 'server'" class="grid grid-cols-2 gap-2">
-            <button @click="startServer" :disabled="sdServerRunning || isBooting || !backendValid" class="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40">{{ isBooting ? 'Booting' : 'Start' }}</button>
-            <button @click="stopServer" :disabled="!sdServerRunning" class="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40">Stop</button>
+          <div v-if="config.backendMode === 'server'" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <button
+              @click="startServer"
+              :disabled="sdServerRunning || isBooting || !backendValid"
+              class="rounded-lg bg-green-600 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {{ isBooting ? 'Booting' : 'Start' }}
+            </button>
+            <button
+              @click="stopServer"
+              :disabled="!sdServerRunning"
+              class="rounded-lg bg-red-600 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            >
+              Stop
+            </button>
           </div>
         </div>
 
         <div v-else-if="activeCollapsedSection === 'presets'" class="space-y-3">
-          <Select :model-value="selectedPresetId" size="sm" :options="presetOptions" @update:model-value="selectPreset" @update:open="handleCollapsedSelectOpen" />
+          <Select
+            :model-value="selectedPresetId"
+            size="md"
+            :options="presetOptions"
+            @update:model-value="selectPreset"
+            @update:open="handleCollapsedSelectOpen"
+          />
           <div class="flex gap-2">
-            <input v-model="presetName" type="text" placeholder="Preset name..." class="h-8 min-w-0 flex-1 rounded-md bg-muted/50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
-            <button @click="saveCurrentPreset" :disabled="!presetName.trim()" class="primary-metal-button rounded-md px-3 text-xs disabled:opacity-40">Save</button>
+            <input
+              v-model="presetName"
+              type="text"
+              placeholder="Preset name..."
+              class="h-9 min-w-0 flex-1 rounded-md bg-muted/50 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              @click="saveCurrentPreset"
+              :disabled="!presetName.trim()"
+              class="primary-metal-button rounded-md px-3 text-sm disabled:opacity-40"
+            >
+              Save
+            </button>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <button @click="overwriteSelectedPreset" :disabled="!selectedPreset || selectedPreset.builtin" class="rounded-md bg-muted px-3 py-2 text-xs disabled:opacity-40">Overwrite</button>
-            <button @click="deleteSelectedPreset" :disabled="!selectedPreset || selectedPreset.builtin" class="rounded-md bg-muted px-3 py-2 text-xs text-destructive disabled:opacity-40">Delete</button>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <button
+              @click="overwriteSelectedPreset"
+              :disabled="!selectedPreset || selectedPreset.builtin"
+              class="rounded-md bg-muted px-3 py-2.5 text-sm disabled:opacity-40"
+            >
+              Overwrite
+            </button>
+            <button
+              @click="deleteSelectedPreset"
+              :disabled="!selectedPreset || selectedPreset.builtin"
+              class="rounded-md bg-muted px-3 py-2.5 text-sm text-destructive disabled:opacity-40"
+            >
+              Delete
+            </button>
           </div>
         </div>
 
         <div v-else-if="activeCollapsedSection === 'models'" class="space-y-3">
           <div class="flex p-1 metal-surface rounded-lg">
-            <button @click="setLoadMode('standard')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'standard' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Standard</button>
-            <button @click="setLoadMode('split')" class="flex-1 py-1.5 text-xs rounded-lg" :class="config.loadMode === 'split' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'">Split</button>
-          </div>
-          <template v-if="config.loadMode === 'standard'">
-            <Select v-model="config.standardModel" size="sm" placeholder="Checkpoint" :options="[{ label: 'Select model...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.clipModel" size="sm" placeholder="CLIP-L" :options="[{ label: 'CLIP-L...', value: '' }, ...models.clip.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.clipGModel" size="sm" placeholder="CLIP-G" :options="[{ label: 'CLIP-G...', value: '' }, ...models.clipG.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.clipVisionModel" size="sm" placeholder="CLIP Vision" :options="[{ label: 'CLIP Vision...', value: '' }, ...models.clipVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-          </template>
-          <template v-else>
-            <Select v-model="config.diffusionModel" size="sm" placeholder="Diffusion" :options="[{ label: 'Diffusion...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.highNoiseDiffusionModel" size="sm" placeholder="High Noise" :options="[{ label: 'High Noise...', value: '' }, ...models.diffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.uncondDiffusionModel" size="sm" placeholder="Uncond" :options="[{ label: 'Uncond...', value: '' }, ...models.uncondDiffusion.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.vaeModel" size="sm" placeholder="VAE" :options="[{ label: 'VAE...', value: '' }, ...models.vae.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.t5xxlModel" size="sm" placeholder="T5XXL" :options="[{ label: 'T5XXL...', value: '' }, ...models.t5xxl.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.llmModel" size="sm" placeholder="LLM" :options="[{ label: 'LLM...', value: '' }, ...models.llm.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.clipModel" size="sm" placeholder="CLIP-L" :options="[{ label: 'CLIP-L...', value: '' }, ...models.clip.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.clipGModel" size="sm" placeholder="CLIP-G" :options="[{ label: 'CLIP-G...', value: '' }, ...models.clipG.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.clipVisionModel" size="sm" placeholder="CLIP Vision" :options="[{ label: 'CLIP Vision...', value: '' }, ...models.clipVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <Select v-model="config.llmVisionModel" size="sm" placeholder="LLM Vision" :options="[{ label: 'LLM Vision...', value: '' }, ...models.llmVision.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-              <Select v-model="config.embeddingsConnectorsModel" size="sm" placeholder="Emb. Conn." :options="[{ label: 'Emb. Conn...', value: '' }, ...models.embeddingsConnectors.map(m => ({ label: m, value: m }))]" @update:open="handleCollapsedSelectOpen" />
-            </div>
-          </template>
-          <div v-if="activeModelSummary.length" class="space-y-1 pt-1 text-[11px] text-muted-foreground">
-            <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
-          </div>
-        </div>
-
-        <div v-else-if="activeCollapsedSection === 'generation'" class="grid grid-cols-2 gap-2">
-          <label class="text-xs text-muted-foreground">Steps<input v-model.number="config.steps" type="number" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-          <label class="text-xs text-muted-foreground">CFG<input v-model.number="config.cfgScale" type="number" step="0.5" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-          <label class="text-xs text-muted-foreground">Width<input v-model.number="config.width" type="number" step="64" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-          <label class="text-xs text-muted-foreground">Height<input v-model.number="config.height" type="number" step="64" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-          <label class="col-span-2 text-xs text-muted-foreground">Seed<input v-model.number="config.seed" type="number" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-        </div>
-
-        <div v-else-if="activeCollapsedSection === 'hardware'" class="space-y-3">
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <label class="flex items-center gap-2"><input v-model="config.flashAttention" type="checkbox" /> Flash</label>
-            <label class="flex items-center gap-2"><input v-model="config.vaeTiling" type="checkbox" /> VAE Tile</label>
-            <label class="flex items-center gap-2"><input v-model="config.clipOnCpu" type="checkbox" /> CLIP CPU</label>
-            <label class="flex items-center gap-2"><input v-model="config.cpuOffload" type="checkbox" /> Offload</label>
-          </div>
-          <input v-model="config.backendAssignment" type="text" placeholder="Backend: cuda0, vulkan0, cpu" class="w-full rounded-md bg-muted/50 px-2 py-1.5 text-xs" />
-          <input v-model="config.paramsBackendAssignment" type="text" placeholder="Params backend" class="w-full rounded-md bg-muted/50 px-2 py-1.5 text-xs" />
-          <label class="text-xs text-muted-foreground">Max VRAM GiB<input v-model.number="config.maxVram" type="number" step="0.1" class="mt-1 w-full rounded-md bg-muted/50 px-2 py-1.5 text-foreground" /></label>
-        </div>
-
-        <div v-else-if="activeCollapsedSection === 'warnings'" class="space-y-2">
-          <div v-if="configWarnings.length === 0" class="rounded-lg bg-green-500/10 p-3 text-xs text-green-600">Configuration looks ready.</div>
-          <div v-for="warning in configWarnings" :key="warning" class="rounded-lg bg-yellow-500/10 p-3 text-xs text-yellow-600">{{ warning }}</div>
-        </div>
-      </div>
-    </div>
-    <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
-
-    <template v-if="!collapsed">
-    <button
-      @click="$emit('close')"
-      class="absolute right-3 top-3 z-10 p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
-    >
-      <X class="w-5 h-5" />
-    </button>
-
-    <!-- Scrollable Content -->
-    <div class="config-panel-scroll flex-1 overflow-y-auto p-5 space-y-5">
-      <!-- BACKEND MODE -->
-      <section>
-        <button
-          @click="toggleSection('backend')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          <span class="flex items-center gap-1">
-            Backend Mode
-            <Tooltip
-              position="bottom"
-              :text="config.backendMode === 'server'
-                ? 'Server: Load model once, generate multiple times. Start/Stop below.'
-                : 'CLI: Load model each generation (recommended for large models)'"
-            >
-              <Info class="w-3 h-3 text-muted-foreground/50" />
-            </Tooltip>
-          </span>
-          <ChevronDown v-if="!expandedSections.backend" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
-
-        <div v-show="expandedSections.backend" class="space-y-3">
-          <!-- Configuration Presets -->
-          <div class="p-2 rounded-lg bg-muted/30 space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Save class="w-3.5 h-3.5" />
-                Presets
-              </span>
-              <span class="text-[10px] text-muted-foreground">{{ presets.length }} saved</span>
-            </div>
-
-            <div class="flex gap-2">
-              <input
-                v-model="presetName"
-                type="text"
-                placeholder="Preset name..."
-                class="h-8 flex-1 min-w-0 px-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                @keyup.enter="saveCurrentPreset"
-              />
-              <button
-                @click="saveCurrentPreset"
-                :disabled="!presetName.trim()"
-                class="h-8 w-24 text-xs font-medium rounded-md transition-colors"
-                :class="
-                  presetName.trim()
-                    ? 'primary-metal-button text-white'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
-                "
-              >
-                Save
-              </button>
-            </div>
-
-            <div class="relative">
-              <Search class="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                v-model="presetSearch"
-                type="text"
-                placeholder="Search presets..."
-                class="h-8 w-full pl-7 pr-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-
-            <Select
-              :model-value="selectedPresetId"
-              size="sm"
-              placeholder="Select preset..."
-              :options="presetOptions"
-              class="h-8"
-              @update:model-value="selectPreset"
-            />
-
-            <div class="flex items-center gap-2">
-              <button
-                @click="overwriteSelectedPreset"
-                :disabled="!selectedPreset || selectedPreset.builtin"
-                class="h-8 flex-1 text-xs font-medium rounded-md transition-colors"
-                :class="
-                  selectedPreset && !selectedPreset.builtin
-                    ? 'bg-muted/60 hover:bg-muted text-foreground'
-                    : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
-                "
-              >
-                Overwrite
-              </button>
-              <button
-                @click="deleteSelectedPreset"
-                :disabled="!selectedPreset || selectedPreset.builtin"
-                class="h-8 flex-1 rounded-md transition-colors flex items-center justify-center"
-                :class="
-                  selectedPreset && !selectedPreset.builtin
-                    ? 'bg-muted/60 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground'
-                    : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
-                "
-                title="Delete preset"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <!-- Server / CLI Toggle -->
-          <div class="flex p-1 metal-surface rounded-lg">
-            <button
-              @click="setBackendMode('server')"
-              class="flex-1 py-1.5 text-xs font-medium rounded-lg flex items-center justify-center gap-1 transition-colors"
-              :class="
-                config.backendMode === 'server'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-            >
-              <Server class="w-3.5 h-3.5" />
-              Server
-            </button>
-            <button
-              @click="setBackendMode('cli')"
-              class="flex-1 py-1.5 text-xs font-medium rounded-lg flex items-center justify-center gap-1 transition-colors"
-              :class="
-                config.backendMode === 'cli'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-            >
-              <Terminal class="w-3.5 h-3.5" />
-              CLI
-            </button>
-          </div>
-
-          <!-- Server Controls (only in server mode) -->
-          <div v-if="config.backendMode === 'server'" class="flex gap-2">
-            <button
-              @click="startServer"
-              :disabled="sdServerRunning || isBooting || !backendValid"
-              class="flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 rounded-md transition-colors"
-              :class="
-                sdServerRunning || isBooting || !backendValid
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              "
-            >
-              <Play class="w-3.5 h-3.5" />
-              {{ isBooting ? 'Booting...' : 'Start' }}
-            </button>
-            <button
-              @click="stopServer"
-              :disabled="!sdServerRunning"
-              class="flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 rounded-md transition-colors"
-              :class="
-                !sdServerRunning
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-red-600 text-white hover:bg-red-700'
-              "
-            >
-              <Square class="w-3 h-3" />
-              Stop
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- Video Mode toggle moved to topbar -->
-      <!-- MODEL CONFIGURATION -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('models')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          Model Configuration
-          <ChevronDown v-if="!expandedSections.models" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
-
-        <div v-show="expandedSections.models" class="space-y-3">
-          <!-- Standard / Split Toggle -->
-          <div class="flex p-1 metal-surface rounded-lg">
             <button
               @click="setLoadMode('standard')"
-              class="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors"
+              class="flex-1 py-2 text-sm rounded-lg"
               :class="
                 config.loadMode === 'standard'
                   ? 'bg-background text-foreground shadow-sm'
@@ -758,876 +618,1484 @@ onUnmounted(() => {
             </button>
             <button
               @click="setLoadMode('split')"
-              class="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors"
+              class="flex-1 py-2 text-sm rounded-lg"
               :class="
                 config.loadMode === 'split'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground'
               "
             >
-              Split / Flux
+              Split
             </button>
           </div>
-
-          <!-- Standard Mode: Single Checkpoint -->
-          <div v-if="config.loadMode === 'standard'" class="space-y-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Model Checkpoint</label>
-              <Select
-                v-model="config.standardModel"
-                size="sm"
-                placeholder="Select model..."
-                :options="[
-                  { label: 'Select model...', value: '' },
-                  ...models.diffusion.map(m => ({ label: m, value: m }))
-                ]"
-              />
-            </div>
-          </div>
-
-          <!-- Split Mode: Multiple Models -->
-          <div v-else class="space-y-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Diffusion Model</label>
-              <Select
-                v-model="config.diffusionModel"
-                size="sm"
-                placeholder="Select..."
-                :options="[
-                  { label: 'Select...', value: '' },
-                  ...models.diffusion.map(m => ({ label: m, value: m }))
-                ]"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">High Noise</label>
-                <Select
-                  v-model="config.highNoiseDiffusionModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.diffusion.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">Uncond Diffusion</label>
-                <Select
-                  v-model="config.uncondDiffusionModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.uncondDiffusion.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">T5XXL</label>
-                <Select
-                  v-model="config.t5xxlModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.t5xxl.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div v-if="!config.videoMode">
-                <label class="text-xs text-muted-foreground block mb-1">LLM</label>
-                <Select
-                  v-model="config.llmModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.llm.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div v-else>
-                <label class="text-xs text-muted-foreground block mb-1">LLM</label>
-                <Select
-                  v-model="config.llmModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.llm.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2" v-if="!config.videoMode">
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">CLIP-L</label>
-                <Select
-                  v-model="config.clipModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.clip.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">CLIP-G</label>
-                <Select
-                  v-model="config.clipGModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.clipG.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div v-if="!config.videoMode">
-              <label class="text-xs text-muted-foreground block mb-1">CLIP Vision</label>
-              <Select
-                v-model="config.clipVisionModel"
-                size="sm"
-                placeholder="None"
-                :options="[
-                  { label: 'None', value: '' },
-                  ...models.clipVision.map(m => ({ label: m, value: m }))
-                ]"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">LLM Vision</label>
-                <Select
-                  v-model="config.llmVisionModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.llmVision.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-xs text-muted-foreground block mb-1">Emb. Connectors</label>
-                <Select
-                  v-model="config.embeddingsConnectorsModel"
-                  size="sm"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.embeddingsConnectors.map(m => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Common Model Options (both modes) -->
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">VAE</label>
+          <template v-if="config.loadMode === 'standard'">
+            <Select
+              v-model="config.standardModel"
+              size="md"
+              placeholder="Checkpoint"
+              :options="[
+                { label: 'Select model...', value: '' },
+                ...models.diffusion.map((m) => ({ label: m, value: m }))
+              ]"
+              @update:open="handleCollapsedSelectOpen"
+            />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Select
                 v-model="config.vaeModel"
-                size="sm"
-                placeholder="None"
+                size="md"
+                placeholder="VAE"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.vae.map(m => ({ label: m, value: m }))
+                  { label: 'VAE...', value: '' },
+                  ...models.vae.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
-              <p
-                v-if="
-                  config.vaeModel === 'ae.sft' &&
-                  !(config.diffusionModel || config.standardModel || '')
-                    .toLowerCase()
-                    .includes('flux')
-                "
-                class="text-[10px] text-yellow-500 mt-1 leading-tight"
-              >
-                ⚠️ ae.sft is for Flux. Might fail with SDXL/Pony.
-              </p>
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">VAE Tile</label>
-              <input
-                v-model.number="config.vaeTileSize"
-                type="number"
-                placeholder="0"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Audio VAE</label>
               <Select
-                v-model="config.audioVaeModel"
-                size="sm"
-                placeholder="None"
+                v-model="config.t5xxlModel"
+                size="md"
+                placeholder="T5XXL"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.audioVae.map(m => ({ label: m, value: m }))
+                  { label: 'T5XXL...', value: '' },
+                  ...models.t5xxl.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
             </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">VAE Format</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Select
-                v-model="config.vaeFormat"
-                size="sm"
-                placeholder="Auto"
+                v-model="config.llmModel"
+                size="md"
+                placeholder="LLM"
                 :options="[
-                  { label: 'Auto', value: '' },
-                  { label: 'Flux', value: 'flux' },
-                  { label: 'SD3', value: 'sd3' },
-                  { label: 'Flux2', value: 'flux2' }
+                  { label: 'LLM...', value: '' },
+                  ...models.llm.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2" v-if="!config.videoMode">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">ControlNet</label>
               <Select
-                v-model="config.controlNetModel"
-                size="sm"
-                placeholder="None"
+                v-model="config.clipModel"
+                size="md"
+                placeholder="CLIP-L"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.controlnet.map(m => ({ label: m, value: m }))
+                  { label: 'CLIP-L...', value: '' },
+                  ...models.clip.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
             </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">PhotoMaker</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Select
-                v-model="config.photoMakerModel"
-                size="sm"
-                placeholder="None"
+                v-model="config.clipGModel"
+                size="md"
+                placeholder="CLIP-G"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.photomaker.map(m => ({ label: m, value: m }))
+                  { label: 'CLIP-G...', value: '' },
+                  ...models.clipG.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
-            </div>
-          </div>
-
-          <div v-if="!config.videoMode" class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Upscale</label>
               <Select
-                v-model="config.upscaleModel"
-                size="sm"
-                placeholder="None"
+                v-model="config.clipVisionModel"
+                size="md"
+                placeholder="CLIP Vision"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.upscale.map(m => ({ label: m, value: m }))
+                  { label: 'CLIP Vision...', value: '' },
+                  ...models.clipVision.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
               />
             </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">TAESD</label>
+          </template>
+          <template v-else>
+            <Select
+              v-model="config.diffusionModel"
+              size="md"
+              placeholder="Diffusion"
+              :options="[
+                { label: 'Diffusion...', value: '' },
+                ...models.diffusion.map((m) => ({ label: m, value: m }))
+              ]"
+              @update:open="handleCollapsedSelectOpen"
+            />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Select
-                v-model="config.taesdModel"
-                size="sm"
-                placeholder="None"
+                v-model="config.highNoiseDiffusionModel"
+                size="md"
+                placeholder="High Noise"
                 :options="[
-                  { label: 'None', value: '' },
-                  ...models.taesd.map(m => ({ label: m, value: m }))
+                  { label: 'High Noise...', value: '' },
+                  ...models.diffusion.map((m) => ({ label: m, value: m }))
                 ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+              <Select
+                v-model="config.uncondDiffusionModel"
+                size="md"
+                placeholder="Uncond"
+                :options="[
+                  { label: 'Uncond...', value: '' },
+                  ...models.uncondDiffusion.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
               />
             </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Select
+                v-model="config.vaeModel"
+                size="md"
+                placeholder="VAE"
+                :options="[
+                  { label: 'VAE...', value: '' },
+                  ...models.vae.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+              <Select
+                v-model="config.t5xxlModel"
+                size="md"
+                placeholder="T5XXL"
+                :options="[
+                  { label: 'T5XXL...', value: '' },
+                  ...models.t5xxl.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Select
+                v-model="config.llmModel"
+                size="md"
+                placeholder="LLM"
+                :options="[
+                  { label: 'LLM...', value: '' },
+                  ...models.llm.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+              <Select
+                v-model="config.clipModel"
+                size="md"
+                placeholder="CLIP-L"
+                :options="[
+                  { label: 'CLIP-L...', value: '' },
+                  ...models.clip.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Select
+                v-model="config.clipGModel"
+                size="md"
+                placeholder="CLIP-G"
+                :options="[
+                  { label: 'CLIP-G...', value: '' },
+                  ...models.clipG.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+              <Select
+                v-model="config.clipVisionModel"
+                size="md"
+                placeholder="CLIP Vision"
+                :options="[
+                  { label: 'CLIP Vision...', value: '' },
+                  ...models.clipVision.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Select
+                v-model="config.llmVisionModel"
+                size="md"
+                placeholder="LLM Vision"
+                :options="[
+                  { label: 'LLM Vision...', value: '' },
+                  ...models.llmVision.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+              <Select
+                v-model="config.embeddingsConnectorsModel"
+                size="md"
+                placeholder="Emb. Conn."
+                :options="[
+                  { label: 'Emb. Conn...', value: '' },
+                  ...models.embeddingsConnectors.map((m) => ({ label: m, value: m }))
+                ]"
+                @update:open="handleCollapsedSelectOpen"
+              />
+            </div>
+          </template>
+          <div
+            v-if="activeModelSummary.length"
+            class="space-y-1 pt-1 text-[11px] text-muted-foreground"
+          >
+            <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
           </div>
         </div>
-      </section>
 
-      <!-- LORA MODULES -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('loras')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
+        <div
+          v-else-if="activeCollapsedSection === 'generation'"
+          class="grid grid-cols-1 md:grid-cols-2 gap-2"
         >
-          LoRA Modules
-          <div class="flex items-center gap-2">
-            <span class="text-xs bg-muted px-1.5 py-0.5 rounded">{{ config.loras.length }}</span>
-            <ChevronDown v-if="!expandedSections.loras" class="w-4 h-4" />
-            <ChevronUp v-else class="w-4 h-4" />
-          </div>
-        </button>
+          <label class="text-sm text-muted-foreground"
+            >Steps<input
+              v-model.number="config.steps"
+              type="number"
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
+          <label class="text-sm text-muted-foreground"
+            >CFG<input
+              v-model.number="config.cfgScale"
+              type="number"
+              step="0.5"
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
+          <label class="text-sm text-muted-foreground"
+            >Width<input
+              v-model.number="config.width"
+              type="number"
+              step="64"
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
+          <label class="text-sm text-muted-foreground"
+            >Height<input
+              v-model.number="config.height"
+              type="number"
+              step="64"
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
+          <label class="col-span-2 text-sm text-muted-foreground"
+            >Seed<input
+              v-model.number="config.seed"
+              type="number"
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
+        </div>
 
-        <div v-show="expandedSections.loras" class="space-y-2">
-          <div
-            v-for="(lora, index) in config.loras"
-            :key="index"
-            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
-          >
-            <Select
-              v-model="lora.path"
-              size="sm"
-              :options="models.loras.map(m => ({ label: m, value: m }))"
-            />
-            <input
-              v-model.number="lora.strength"
+        <div v-else-if="activeCollapsedSection === 'hardware'" class="space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <label class="flex items-center gap-2"
+              ><input v-model="config.flashAttention" type="checkbox" /> Flash</label
+            >
+            <label class="flex items-center gap-2"
+              ><input v-model="config.vaeTiling" type="checkbox" /> VAE Tile</label
+            >
+            <label class="flex items-center gap-2"
+              ><input v-model="config.clipOnCpu" type="checkbox" /> CLIP CPU</label
+            >
+            <label class="flex items-center gap-2"
+              ><input v-model="config.cpuOffload" type="checkbox" /> Offload</label
+            >
+          </div>
+          <input
+            v-model="config.backendAssignment"
+            type="text"
+            placeholder="Backend: cuda0, vulkan0, cpu"
+            class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm"
+          />
+          <input
+            v-model="config.paramsBackendAssignment"
+            type="text"
+            placeholder="Params backend"
+            class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm"
+          />
+          <label class="text-sm text-muted-foreground"
+            >Max VRAM GiB<input
+              v-model.number="config.maxVram"
               type="number"
               step="0.1"
-              min="0"
-              max="2"
-              class="w-12 px-1 py-1.5 text-xs rounded-md bg-muted/50 text-center focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              title="Strength"
-            />
-            <button
-              @click="configStore.removeLora(index)"
-              class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 class="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <button
-            @click="addNewLora"
-            class="w-full py-2 text-xs flex items-center justify-center gap-1 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-all"
-          >
-            <Plus class="w-3.5 h-3.5" />
-            Add LoRA
-          </button>
+              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
+          /></label>
         </div>
-      </section>
 
-      <!-- EMBEDDINGS -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('embeddings')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          Embeddings
-          <div class="flex items-center gap-2">
-            <span class="text-xs bg-muted px-1.5 py-0.5 rounded">{{
-              config.embeddings.length
-            }}</span>
-            <ChevronDown v-if="!expandedSections.embeddings" class="w-4 h-4" />
-            <ChevronUp v-else class="w-4 h-4" />
-          </div>
-        </button>
-
-        <div v-show="expandedSections.embeddings" class="space-y-2">
+        <div v-else-if="activeCollapsedSection === 'warnings'" class="space-y-2">
           <div
-            v-for="(emb, index) in config.embeddings"
-            :key="index"
-            class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
+            v-if="configWarnings.length === 0"
+            class="rounded-lg bg-green-500/10 p-3 text-sm text-green-600"
           >
-            <div class="flex-1 flex items-center gap-2 overflow-hidden">
-              <span
-                class="text-[10px] uppercase font-bold text-muted-foreground px-1 py-0.5 bg-muted rounded"
-                >TI</span
+            Configuration looks ready.
+          </div>
+          <div
+            v-for="warning in configWarnings"
+            :key="warning"
+            class="rounded-lg bg-yellow-500/10 p-3 text-sm text-yellow-600"
+          >
+            {{ warning }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
+
+    <template v-if="!collapsed">
+      <!-- Scrollable Content -->
+      <div class="config-panel-scroll flex-1 overflow-y-auto p-5 space-y-5">
+        <!-- BACKEND MODE -->
+        <section>
+          <button
+            @click="toggleSection('backend')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            <span class="flex items-center gap-1">
+              Backend Mode
+              <Tooltip
+                position="bottom"
+                :text="
+                  config.backendMode === 'server'
+                    ? 'Server: Load model once, generate multiple times. Start/Stop below.'
+                    : 'CLI: Load model each generation (recommended for large models)'
+                "
               >
+                <Info class="w-3 h-3 text-muted-foreground/50" />
+              </Tooltip>
+            </span>
+            <ChevronDown v-if="!expandedSections.backend" class="w-4 h-4" />
+            <ChevronUp v-else class="w-4 h-4" />
+          </button>
+
+          <div
+            v-show="expandedSections.backend"
+            class="space-y-4 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <!-- Configuration Presets -->
+            <div class="p-2 rounded-lg bg-muted/30 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <Save class="w-3.5 h-3.5" />
+                  Presets
+                </span>
+                <span class="text-[10px] text-muted-foreground">{{ presets.length }} saved</span>
+              </div>
+
+              <div class="flex gap-2">
+                <input
+                  v-model="presetName"
+                  type="text"
+                  placeholder="Preset name..."
+                  class="h-9 flex-1 min-w-0 px-3 text-sm rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                  @keyup.enter="saveCurrentPreset"
+                />
+                <button
+                  @click="saveCurrentPreset"
+                  :disabled="!presetName.trim()"
+                  class="h-9 w-24 text-sm font-medium rounded-md transition-colors"
+                  :class="
+                    presetName.trim()
+                      ? 'primary-metal-button text-white'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed'
+                  "
+                >
+                  Save
+                </button>
+              </div>
+
+              <div class="relative">
+                <Search
+                  class="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  v-model="presetSearch"
+                  type="text"
+                  placeholder="Search presets..."
+                  class="h-9 w-full pl-7 pr-3 text-sm rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+
               <Select
-                :model-value="emb"
-                @update:model-value="(val) => { config.embeddings[index] = val }"
-                size="sm"
-                :options="models.embeddings.map(m => ({ label: m, value: m }))"
+                :model-value="selectedPresetId"
+                size="md"
+                placeholder="Select preset..."
+                :options="presetOptions"
+                class="h-9"
+                @update:model-value="selectPreset"
               />
+
+              <div class="flex items-center gap-2">
+                <button
+                  @click="overwriteSelectedPreset"
+                  :disabled="!selectedPreset || selectedPreset.builtin"
+                  class="h-9 flex-1 text-sm font-medium rounded-md transition-colors"
+                  :class="
+                    selectedPreset && !selectedPreset.builtin
+                      ? 'bg-muted/60 hover:bg-muted text-foreground'
+                      : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
+                  "
+                >
+                  Overwrite
+                </button>
+                <button
+                  @click="deleteSelectedPreset"
+                  :disabled="!selectedPreset || selectedPreset.builtin"
+                  class="h-9 flex-1 rounded-md transition-colors flex items-center justify-center"
+                  :class="
+                    selectedPreset && !selectedPreset.builtin
+                      ? 'bg-muted/60 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground'
+                      : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
+                  "
+                  title="Delete preset"
+                >
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-            <button
-              @click="configStore.removeEmbedding(emb)"
-              class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
+
+            <!-- Server / CLI Toggle -->
+            <div class="flex p-1 metal-surface rounded-lg">
+              <button
+                @click="setBackendMode('server')"
+                class="flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                :class="
+                  config.backendMode === 'server'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+              >
+                <Server class="w-3.5 h-3.5" />
+                Server
+              </button>
+              <button
+                @click="setBackendMode('cli')"
+                class="flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                :class="
+                  config.backendMode === 'cli'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+              >
+                <Terminal class="w-3.5 h-3.5" />
+                CLI
+              </button>
+            </div>
+
+            <!-- Server Controls (only in server mode) -->
+            <div v-if="config.backendMode === 'server'" class="flex gap-2">
+              <button
+                @click="startServer"
+                :disabled="sdServerRunning || isBooting || !backendValid"
+                class="flex-1 py-2 text-sm font-medium flex items-center justify-center gap-1.5 rounded-md transition-colors"
+                :class="
+                  sdServerRunning || isBooting || !backendValid
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                "
+              >
+                <Play class="w-3.5 h-3.5" />
+                {{ isBooting ? 'Booting...' : 'Start' }}
+              </button>
+              <button
+                @click="stopServer"
+                :disabled="!sdServerRunning"
+                class="flex-1 py-2 text-sm font-medium flex items-center justify-center gap-1.5 rounded-md transition-colors"
+                :class="
+                  !sdServerRunning
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                "
+              >
+                <Square class="w-3 h-3" />
+                Stop
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Video Mode toggle moved to topbar -->
+        <!-- MODEL CONFIGURATION -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('models')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            Model Configuration
+            <ChevronDown v-if="!expandedSections.models" class="w-4 h-4" />
+            <ChevronUp v-else class="w-4 h-4" />
+          </button>
+
+          <div
+            v-show="expandedSections.models"
+            class="space-y-4 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <!-- Standard / Split Toggle -->
+            <div class="flex p-1 metal-surface rounded-lg">
+              <button
+                @click="setLoadMode('standard')"
+                class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
+                :class="
+                  config.loadMode === 'standard'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                "
+              >
+                Standard
+              </button>
+              <button
+                @click="setLoadMode('split')"
+                class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
+                :class="
+                  config.loadMode === 'split'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                "
+              >
+                Split / Flux
+              </button>
+            </div>
+
+            <!-- Standard Mode: Single Checkpoint -->
+            <div v-if="config.loadMode === 'standard'" class="space-y-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Model Checkpoint</label>
+                <Select
+                  v-model="config.standardModel"
+                  size="md"
+                  placeholder="Select model..."
+                  :options="[
+                    { label: 'Select model...', value: '' },
+                    ...models.diffusion.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+            </div>
+
+            <!-- Split Mode: Multiple Models -->
+            <div v-else class="space-y-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Diffusion Model</label>
+                <Select
+                  v-model="config.diffusionModel"
+                  size="md"
+                  placeholder="Select..."
+                  :options="[
+                    { label: 'Select...', value: '' },
+                    ...models.diffusion.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">High Noise</label>
+                  <Select
+                    v-model="config.highNoiseDiffusionModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.diffusion.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">Uncond Diffusion</label>
+                  <Select
+                    v-model="config.uncondDiffusionModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.uncondDiffusion.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">T5XXL</label>
+                  <Select
+                    v-model="config.t5xxlModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.t5xxl.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div v-if="!config.videoMode">
+                  <label class="text-sm text-muted-foreground block mb-1">LLM</label>
+                  <Select
+                    v-model="config.llmModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.llm.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div v-else>
+                  <label class="text-sm text-muted-foreground block mb-1">LLM</label>
+                  <Select
+                    v-model="config.llmModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.llm.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">CLIP-L</label>
+                  <Select
+                    v-model="config.clipModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.clip.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">CLIP-G</label>
+                  <Select
+                    v-model="config.clipGModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.clipG.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
+
+              <div v-if="!config.videoMode">
+                <label class="text-sm text-muted-foreground block mb-1">CLIP Vision</label>
+                <Select
+                  v-model="config.clipVisionModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.clipVision.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">LLM Vision</label>
+                  <Select
+                    v-model="config.llmVisionModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.llmVision.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="text-sm text-muted-foreground block mb-1">Emb. Connectors</label>
+                  <Select
+                    v-model="config.embeddingsConnectorsModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.embeddingsConnectors.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Common Model Options (both modes) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">VAE</label>
+                <Select
+                  v-model="config.vaeModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.vae.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+                <p
+                  v-if="
+                    config.vaeModel === 'ae.sft' &&
+                    !(config.diffusionModel || config.standardModel || '')
+                      .toLowerCase()
+                      .includes('flux')
+                  "
+                  class="text-[10px] text-yellow-500 mt-1 leading-tight"
+                >
+                  ⚠️ ae.sft is for Flux. Might fail with SDXL/Pony.
+                </p>
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">VAE Tile</label>
+                <input
+                  v-model.number="config.vaeTileSize"
+                  type="number"
+                  placeholder="0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Audio VAE</label>
+                <Select
+                  v-model="config.audioVaeModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.audioVae.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">VAE Format</label>
+                <Select
+                  v-model="config.vaeFormat"
+                  size="md"
+                  placeholder="Auto"
+                  :options="[
+                    { label: 'Auto', value: '' },
+                    { label: 'Flux', value: 'flux' },
+                    { label: 'SD3', value: 'sd3' },
+                    { label: 'Flux2', value: 'flux2' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">ControlNet</label>
+                <Select
+                  v-model="config.controlNetModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.controlnet.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">PhotoMaker</label>
+                <Select
+                  v-model="config.photoMakerModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.photomaker.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div v-if="!config.videoMode" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Upscale</label>
+                <Select
+                  v-model="config.upscaleModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.upscale.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">TAESD</label>
+                <Select
+                  v-model="config.taesdModel"
+                  size="md"
+                  placeholder="None"
+                  :options="[
+                    { label: 'None', value: '' },
+                    ...models.taesd.map((m) => ({ label: m, value: m }))
+                  ]"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LORA MODULES -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('loras')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            LoRA Modules
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-muted px-1.5 py-0.5 rounded">{{ config.loras.length }}</span>
+              <ChevronDown v-if="!expandedSections.loras" class="w-4 h-4" />
+              <ChevronUp v-else class="w-4 h-4" />
+            </div>
+          </button>
+
+          <div
+            v-show="expandedSections.loras"
+            class="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <div
+              v-for="(lora, index) in config.loras"
+              :key="index"
+              class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
             >
-              <Trash2 class="w-3.5 h-3.5" />
+              <Select
+                v-model="lora.path"
+                size="md"
+                :options="models.loras.map((m) => ({ label: m, value: m }))"
+              />
+              <input
+                v-model.number="lora.strength"
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                class="w-14 px-2 py-2 text-sm rounded-md bg-muted/50 text-center focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                title="Strength"
+              />
+              <button
+                @click="configStore.removeLora(index)"
+                class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button
+              @click="addNewLora"
+              class="w-full py-2.5 text-sm flex items-center justify-center gap-1.5 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-colors"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              Add LoRA
             </button>
           </div>
+        </section>
 
+        <!-- EMBEDDINGS -->
+        <section class="pt-3">
           <button
-            @click="addNewEmbedding"
-            class="w-full py-2 text-xs flex items-center justify-center gap-1 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-all"
+            @click="toggleSection('embeddings')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
           >
-            <Plus class="w-3.5 h-3.5" />
-            Add Embedding
+            Embeddings
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-muted px-1.5 py-0.5 rounded">{{
+                config.embeddings.length
+              }}</span>
+              <ChevronDown v-if="!expandedSections.embeddings" class="w-4 h-4" />
+              <ChevronUp v-else class="w-4 h-4" />
+            </div>
           </button>
-        </div>
-      </section>
 
-      <!-- SAMPLING -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('sampling')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          Sampling
-          <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
+          <div
+            v-show="expandedSections.embeddings"
+            class="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <div
+              v-for="(emb, index) in config.embeddings"
+              :key="index"
+              class="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
+            >
+              <div class="flex-1 flex items-center gap-2 overflow-hidden">
+                <span
+                  class="text-[10px] uppercase font-bold text-muted-foreground px-1 py-0.5 bg-muted rounded"
+                  >TI</span
+                >
+                <Select
+                  :model-value="emb"
+                  @update:model-value="
+                    (val) => {
+                      config.embeddings[index] = val
+                    }
+                  "
+                  size="md"
+                  :options="models.embeddings.map((m) => ({ label: m, value: m }))"
+                />
+              </div>
+              <button
+                @click="configStore.removeEmbedding(emb)"
+                class="p-1.5 metal-icon-button text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-        <div v-show="expandedSections.sampling" class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
+            <button
+              @click="addNewEmbedding"
+              class="w-full py-2.5 text-sm flex items-center justify-center gap-1.5 rounded-md bg-muted/30 hover:bg-muted/50 hover:text-primary transition-colors"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              Add Embedding
+            </button>
+          </div>
+        </section>
+
+        <!-- SAMPLING -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('sampling')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            Sampling
+            <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4" />
+            <ChevronUp v-else class="w-4 h-4" />
+          </button>
+
+          <div
+            v-show="expandedSections.sampling"
+            class="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Scheduler</label>
+                <Select
+                  v-model="config.scheduler"
+                  size="md"
+                  placeholder="Select..."
+                  :options="[
+                    { label: 'Discrete', value: 'discrete' },
+                    { label: 'Karras', value: 'karras' },
+                    { label: 'Exponential', value: 'exponential' },
+                    { label: 'AYS', value: 'ays' },
+                    { label: 'GITS', value: 'gits' },
+                    { label: 'Smoothstep', value: 'smoothstep' },
+                    { label: 'SGM Uniform', value: 'sgm_uniform' },
+                    { label: 'Simple', value: 'simple' },
+                    { label: 'KL Optimal', value: 'kl_optimal' },
+                    { label: 'LCM', value: 'lcm' },
+                    { label: 'Bong Tangent', value: 'bong_tangent' },
+                    { label: 'LTX2', value: 'ltx2' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Sampler</label>
+                <Select
+                  v-model="config.sampler"
+                  size="md"
+                  placeholder="Select..."
+                  :options="[
+                    { label: 'Euler', value: 'euler' },
+                    { label: 'Euler A', value: 'euler_a' },
+                    { label: 'Heun', value: 'heun' },
+                    { label: 'DPM2', value: 'dpm2' },
+                    { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
+                    { label: 'DPM++ 2M', value: 'dpm++2m' },
+                    { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
+                    { label: 'IPNDM', value: 'ipndm' },
+                    { label: 'IPNDM V', value: 'ipndm_v' },
+                    { label: 'LCM', value: 'lcm' },
+                    { label: 'DDIM Trailing', value: 'ddim_trailing' },
+                    { label: 'TCD', value: 'tcd' },
+                    { label: 'Res Multistep', value: 'res_multistep' },
+                    { label: 'Res 2S', value: 'res_2s' },
+                    { label: 'ER-SDE', value: 'er_sde' },
+                    { label: 'Euler CFG++', value: 'euler_cfg_pp' },
+                    { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">RNG</label>
+                <Select
+                  v-model="config.rngType"
+                  size="md"
+                  placeholder="Default"
+                  :options="[
+                    { label: 'Default', value: '' },
+                    { label: 'CUDA / WebUI', value: 'cuda' },
+                    { label: 'CPU / ComfyUI', value: 'cpu' },
+                    { label: 'std_default', value: 'std_default' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Sampler RNG</label>
+                <Select
+                  v-model="config.samplerRngType"
+                  size="md"
+                  placeholder="Same"
+                  :options="[
+                    { label: 'Same as RNG', value: '' },
+                    { label: 'CUDA / WebUI', value: 'cuda' },
+                    { label: 'CPU / ComfyUI', value: 'cpu' },
+                    { label: 'std_default', value: 'std_default' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Cache Mode</label>
+                <Select
+                  v-model="config.cacheMode"
+                  size="md"
+                  placeholder="Off"
+                  :options="[
+                    { label: 'Off', value: '' },
+                    { label: 'UCache', value: 'ucache' },
+                    { label: 'EasyCache', value: 'easycache' },
+                    { label: 'DBCache', value: 'dbcache' },
+                    { label: 'TaylorSeer', value: 'taylorseer' },
+                    { label: 'Cache-DIT', value: 'cache-dit' },
+                    { label: 'Spectrum', value: 'spectrum' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">SCM Policy</label>
+                <Select
+                  v-model="config.scmPolicy"
+                  size="md"
+                  placeholder="Dynamic"
+                  :options="[
+                    { label: 'Default', value: '' },
+                    { label: 'Dynamic', value: 'dynamic' },
+                    { label: 'Static', value: 'static' }
+                  ]"
+                />
+              </div>
+            </div>
+
             <div>
-              <label class="text-xs text-muted-foreground block mb-1">Scheduler</label>
-              <Select
-                v-model="config.scheduler"
-                size="sm"
-                placeholder="Select..."
-                :options="[
-                  { label: 'Discrete', value: 'discrete' },
-                  { label: 'Karras', value: 'karras' },
-                  { label: 'Exponential', value: 'exponential' },
-                  { label: 'AYS', value: 'ays' },
-                  { label: 'GITS', value: 'gits' },
-                  { label: 'Smoothstep', value: 'smoothstep' },
-                  { label: 'SGM Uniform', value: 'sgm_uniform' },
-                  { label: 'Simple', value: 'simple' },
-                  { label: 'KL Optimal', value: 'kl_optimal' },
-                  { label: 'LCM', value: 'lcm' },
-                  { label: 'Bong Tangent', value: 'bong_tangent' },
-                  { label: 'LTX2', value: 'ltx2' }
-                ]"
+              <label class="text-sm text-muted-foreground block mb-1">Cache Options</label>
+              <input
+                v-model="config.cacheOption"
+                type="text"
+                placeholder="threshold=0.25,warmup=4"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
+
             <div>
-              <label class="text-xs text-muted-foreground block mb-1">Sampler</label>
-              <Select
-                v-model="config.sampler"
-                size="sm"
-                placeholder="Select..."
-                :options="[
-                  { label: 'Euler', value: 'euler' },
-                  { label: 'Euler A', value: 'euler_a' },
-                  { label: 'Heun', value: 'heun' },
-                  { label: 'DPM2', value: 'dpm2' },
-                  { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
-                  { label: 'DPM++ 2M', value: 'dpm++2m' },
-                  { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
-                  { label: 'IPNDM', value: 'ipndm' },
-                  { label: 'IPNDM V', value: 'ipndm_v' },
-                  { label: 'LCM', value: 'lcm' },
-                  { label: 'DDIM Trailing', value: 'ddim_trailing' },
-                  { label: 'TCD', value: 'tcd' },
-                  { label: 'Res Multistep', value: 'res_multistep' },
-                  { label: 'Res 2S', value: 'res_2s' },
-                  { label: 'ER-SDE', value: 'er_sde' },
-                  { label: 'Euler CFG++', value: 'euler_cfg_pp' },
-                  { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
-                ]"
+              <label class="text-sm text-muted-foreground block mb-1">SCM Mask</label>
+              <input
+                v-model="config.scmMask"
+                type="text"
+                placeholder="1,1,1,0,0,1"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
+        </section>
 
-          <div class="grid grid-cols-2 gap-2">
+        <!-- GENERATION SETTINGS -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('generation')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            Generation Settings
+            <ChevronDown v-if="!expandedSections.generation" class="w-4 h-4" />
+            <ChevronUp v-else class="w-4 h-4" />
+          </button>
+
+          <div
+            v-show="expandedSections.generation"
+            class="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Steps</label>
+                <input
+                  v-model.number="config.steps"
+                  type="number"
+                  min="1"
+                  max="150"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">CFG Scale</label>
+                <input
+                  v-model.number="config.cfgScale"
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  max="30"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Guidance</label>
+                <input
+                  v-model.number="config.guidance"
+                  type="number"
+                  step="0.1"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Clip Skip</label>
+                <input
+                  v-model.number="config.clipSkip"
+                  type="number"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
             <div>
-              <label class="text-xs text-muted-foreground block mb-1">RNG</label>
+              <label class="text-sm text-muted-foreground block mb-1">Seed (-1 random)</label>
+              <input
+                v-model.number="config.seed"
+                type="number"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Flow Shift</label>
+                <input
+                  v-model.number="config.flowShift"
+                  type="number"
+                  step="0.1"
+                  placeholder="Auto"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">ETA</label>
+                <input
+                  v-model.number="config.eta"
+                  type="number"
+                  step="0.1"
+                  placeholder="Auto"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">SLG Scale</label>
+                <input
+                  v-model.number="config.slgScale"
+                  type="number"
+                  step="0.1"
+                  placeholder="0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Img CFG</label>
+                <input
+                  v-model.number="config.imgCfgScale"
+                  type="number"
+                  step="0.1"
+                  placeholder="CFG"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">SLG Start</label>
+                <input
+                  v-model.number="config.skipLayerStart"
+                  type="number"
+                  step="0.01"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">SLG End</label>
+                <input
+                  v-model.number="config.skipLayerEnd"
+                  type="number"
+                  step="0.01"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Skip Layers</label>
+              <input
+                v-model="config.skipLayers"
+                type="text"
+                placeholder="7,8,9"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Sigmas</label>
+              <input
+                v-model="config.sigmas"
+                type="text"
+                placeholder="14.61,7.8,3.5,0.0"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Extra Sample Args</label>
+              <input
+                v-model="config.extraSampleArgs"
+                type="text"
+                placeholder="apg_eta=0.5,slg_uncond=1"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Extra Tiling Args</label>
+              <input
+                v-model="config.extraTilingArgs"
+                type="text"
+                placeholder="temporal_tile_frames=4"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- HARDWARE -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('hardware')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2 metal-surface px-3 py-2 rounded-lg"
+          >
+            Hardware
+            <ChevronDown v-if="!expandedSections.hardware" class="w-4 h-4" />
+            <ChevronUp v-else class="w-4 h-4" />
+          </button>
+
+          <div
+            v-show="expandedSections.hardware"
+            class="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4 shadow-sm"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.flashAttention" type="checkbox" class="rounded" />
+                <Zap class="w-3.5 h-3.5" />
+                Flash Attn
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.vaeTiling" type="checkbox" class="rounded" />
+                VAE Tiling
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.clipOnCpu" type="checkbox" class="rounded" />
+                CLIP CPU
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.cpuOffload" type="checkbox" class="rounded" />
+                <Cpu class="w-3.5 h-3.5" />
+                Offload
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.vaeOnCpu" type="checkbox" class="rounded" />
+                VAE CPU
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.controlNetOnCpu" type="checkbox" class="rounded" />
+                Control CPU
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.diffusionConvDirect" type="checkbox" class="rounded" />
+                Diff Conv
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.vaeConvDirect" type="checkbox" class="rounded" />
+                VAE Conv
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.forceSDXLVaeConvScale" type="checkbox" class="rounded" />
+                SDXL VAE Scale
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.streamLayers" type="checkbox" class="rounded" />
+                Stream Layers
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.mmap" type="checkbox" class="rounded" />
+                mmap
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.disableImageMetadata" type="checkbox" class="rounded" />
+                No Metadata
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Runtime Backend</label>
+                <input
+                  v-model="config.backendAssignment"
+                  type="text"
+                  placeholder="auto, cpu, cuda0, vulkan0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Params Backend</label>
+                <input
+                  v-model="config.paramsBackendAssignment"
+                  type="text"
+                  placeholder="cpu or diffusion=gpu,te=cpu"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <p class="text-[10px] text-muted-foreground leading-tight">
+              Backend names depend on the active stable-diffusion.cpp release: CPU, CUDA, Vulkan,
+              ROCm, Metal, OpenCL, or SYCL builds expose different devices.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Threads</label>
+                <input
+                  v-model.number="config.threads"
+                  type="number"
+                  placeholder="-1"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Max VRAM GiB</label>
+                <input
+                  v-model.number="config.maxVram"
+                  type="number"
+                  step="0.1"
+                  placeholder="0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Quantization</label>
               <Select
-                v-model="config.rngType"
-                size="sm"
+                v-model="config.quantizationType"
+                size="md"
                 placeholder="Default"
                 :options="[
                   { label: 'Default', value: '' },
-                  { label: 'CUDA / WebUI', value: 'cuda' },
-                  { label: 'CPU / ComfyUI', value: 'cpu' },
-                  { label: 'std_default', value: 'std_default' }
+                  { label: 'f32 - 32-bit', value: 'f32' },
+                  { label: 'f16 - 16-bit', value: 'f16' },
+                  { label: 'q8_0 - 8-bit', value: 'q8_0' },
+                  { label: 'q5_0 - 5-bit', value: 'q5_0' },
+                  { label: 'q4_0 - 4-bit', value: 'q4_0' }
                 ]"
               />
             </div>
+
             <div>
-              <label class="text-xs text-muted-foreground block mb-1">Sampler RNG</label>
-              <Select
-                v-model="config.samplerRngType"
-                size="sm"
-                placeholder="Same"
-                :options="[
-                  { label: 'Same as RNG', value: '' },
-                  { label: 'CUDA / WebUI', value: 'cuda' },
-                  { label: 'CPU / ComfyUI', value: 'cpu' },
-                  { label: 'std_default', value: 'std_default' }
-                ]"
-              />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Cache Mode</label>
-              <Select
-                v-model="config.cacheMode"
-                size="sm"
-                placeholder="Off"
-                :options="[
-                  { label: 'Off', value: '' },
-                  { label: 'UCache', value: 'ucache' },
-                  { label: 'EasyCache', value: 'easycache' },
-                  { label: 'DBCache', value: 'dbcache' },
-                  { label: 'TaylorSeer', value: 'taylorseer' },
-                  { label: 'Cache-DIT', value: 'cache-dit' },
-                  { label: 'Spectrum', value: 'spectrum' }
-                ]"
-              />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">SCM Policy</label>
-              <Select
-                v-model="config.scmPolicy"
-                size="sm"
-                placeholder="Dynamic"
-                :options="[
-                  { label: 'Default', value: '' },
-                  { label: 'Dynamic', value: 'dynamic' },
-                  { label: 'Static', value: 'static' }
-                ]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Cache Options</label>
-            <input
-              v-model="config.cacheOption"
-              type="text"
-              placeholder="threshold=0.25,warmup=4"
-              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-            />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">SCM Mask</label>
-            <input
-              v-model="config.scmMask"
-              type="text"
-              placeholder="1,1,1,0,0,1"
-              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- GENERATION SETTINGS -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('generation')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          Generation Settings
-          <ChevronDown v-if="!expandedSections.generation" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
-
-        <div v-show="expandedSections.generation" class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Steps</label>
+              <label class="text-sm text-muted-foreground block mb-1">Tensor Type Rules</label>
               <input
-                v-model.number="config.steps"
-                type="number"
-                min="1"
-                max="150"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">CFG Scale</label>
-              <input
-                v-model.number="config.cfgScale"
-                type="number"
-                step="0.5"
-                min="1"
-                max="30"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Guidance</label>
-              <input
-                v-model.number="config.guidance"
-                type="number"
-                step="0.1"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Clip Skip</label>
-              <input
-                v-model.number="config.clipSkip"
-                type="number"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Seed (-1 random)</label>
-            <input
-              v-model.number="config.seed"
-              type="number"
-              class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-            />
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Flow Shift</label>
-              <input v-model.number="config.flowShift" type="number" step="0.1" placeholder="Auto" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">ETA</label>
-              <input v-model.number="config.eta" type="number" step="0.1" placeholder="Auto" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">SLG Scale</label>
-              <input v-model.number="config.slgScale" type="number" step="0.1" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Img CFG</label>
-              <input v-model.number="config.imgCfgScale" type="number" step="0.1" placeholder="CFG" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">SLG Start</label>
-              <input v-model.number="config.skipLayerStart" type="number" step="0.01" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">SLG End</label>
-              <input v-model.number="config.skipLayerEnd" type="number" step="0.01" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Skip Layers</label>
-            <input v-model="config.skipLayers" type="text" placeholder="7,8,9" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Sigmas</label>
-            <input v-model="config.sigmas" type="text" placeholder="14.61,7.8,3.5,0.0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Extra Sample Args</label>
-            <input v-model="config.extraSampleArgs" type="text" placeholder="apg_eta=0.5,slg_uncond=1" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Extra Tiling Args</label>
-            <input v-model="config.extraTilingArgs" type="text" placeholder="temporal_tile_frames=4" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-        </div>
-      </section>
-
-      <!-- HARDWARE -->
-      <section class="pt-3">
-        <button
-          @click="toggleSection('hardware')"
-          class="w-full flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 metal-surface px-2 py-1.5 rounded-lg"
-        >
-          Hardware
-          <ChevronDown v-if="!expandedSections.hardware" class="w-4 h-4" />
-          <ChevronUp v-else class="w-4 h-4" />
-        </button>
-
-        <div v-show="expandedSections.hardware" class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.flashAttention" type="checkbox" class="rounded" />
-              <Zap class="w-3.5 h-3.5" />
-              Flash Attn
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.vaeTiling" type="checkbox" class="rounded" />
-              VAE Tiling
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.clipOnCpu" type="checkbox" class="rounded" />
-              CLIP CPU
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.cpuOffload" type="checkbox" class="rounded" />
-              <Cpu class="w-3.5 h-3.5" />
-              Offload
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.vaeOnCpu" type="checkbox" class="rounded" />
-              VAE CPU
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.controlNetOnCpu" type="checkbox" class="rounded" />
-              Control CPU
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.diffusionConvDirect" type="checkbox" class="rounded" />
-              Diff Conv
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.vaeConvDirect" type="checkbox" class="rounded" />
-              VAE Conv
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.forceSDXLVaeConvScale" type="checkbox" class="rounded" />
-              SDXL VAE Scale
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.streamLayers" type="checkbox" class="rounded" />
-              Stream Layers
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.mmap" type="checkbox" class="rounded" />
-              mmap
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.disableImageMetadata" type="checkbox" class="rounded" />
-              No Metadata
-            </label>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Runtime Backend</label>
-              <input
-                v-model="config.backendAssignment"
+                v-model="config.tensorTypeRules"
                 type="text"
-                placeholder="auto, cpu, cuda0, vulkan0"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                placeholder="^vae\\.=f16,model\\.=q8_0"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
+
             <div>
-              <label class="text-xs text-muted-foreground block mb-1">Params Backend</label>
+              <label class="text-sm text-muted-foreground block mb-1">Prediction</label>
+              <Select
+                v-model="config.predictionType"
+                size="md"
+                placeholder="Auto"
+                :options="[
+                  { label: 'Auto', value: '' },
+                  { label: 'EPS', value: 'eps' },
+                  { label: 'V', value: 'v' },
+                  { label: 'EDM V', value: 'edm_v' },
+                  { label: 'SD3 Flow', value: 'sd3_flow' },
+                  { label: 'Flux Flow', value: 'flux_flow' },
+                  { label: 'Flux2 Flow', value: 'flux2_flow' }
+                ]"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">LoRA Apply Mode</label>
+              <Select
+                v-model="config.loraApplyMode"
+                size="md"
+                :options="[
+                  { label: 'Auto', value: 'auto' },
+                  { label: 'Immediately', value: 'immediately' },
+                  { label: 'At Runtime', value: 'at_runtime' }
+                ]"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.circular" type="checkbox" class="rounded" />
+                Circular
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.circularX" type="checkbox" class="rounded" />
+                Circular X
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.circularY" type="checkbox" class="rounded" />
+                Circular Y
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.qwenImageZeroCondT" type="checkbox" class="rounded" />
+                Qwen Zero T
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.chromaEnableT5Mask" type="checkbox" class="rounded" />
+                Chroma T5 Mask
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.chromaDisableDitMask" type="checkbox" class="rounded" />
+                Disable DiT Mask
+              </label>
+            </div>
+
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Chroma T5 Mask Pad</label>
               <input
-                v-model="config.paramsBackendAssignment"
-                type="text"
-                placeholder="cpu or diffusion=gpu,te=cpu"
-                class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                v-model.number="config.chromaT5MaskPad"
+                type="number"
+                placeholder="0"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
+        </section>
 
-          <p class="text-[10px] text-muted-foreground leading-tight">
-            Backend names depend on the active stable-diffusion.cpp release: CPU, CUDA, Vulkan, ROCm, Metal, OpenCL, or SYCL builds expose different devices.
-          </p>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Threads</label>
-              <input v-model.number="config.threads" type="number" placeholder="-1" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-1">Max VRAM GiB</label>
-              <input v-model.number="config.maxVram" type="number" step="0.1" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-            </div>
+        <!-- LOGS (for server mode) -->
+        <section v-if="config.backendMode === 'server'" class="pt-3">
+          <h3 class="text-sm font-semibold text-foreground mb-2">:: Logs ::</h3>
+          <div
+            class="h-32 bg-muted/20 rounded-md p-2 overflow-y-auto text-[10px] font-mono text-foreground leading-tight"
+          >
+            <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
+            <div v-if="logs.length === 0" class="text-muted-foreground">No logs yet...</div>
           </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Quantization</label>
-            <Select
-              v-model="config.quantizationType"
-              size="sm"
-              placeholder="Default"
-              :options="[
-                { label: 'Default', value: '' },
-                { label: 'f32 - 32-bit', value: 'f32' },
-                { label: 'f16 - 16-bit', value: 'f16' },
-                { label: 'q8_0 - 8-bit', value: 'q8_0' },
-                { label: 'q5_0 - 5-bit', value: 'q5_0' },
-                { label: 'q4_0 - 4-bit', value: 'q4_0' }
-              ]"
-            />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Tensor Type Rules</label>
-            <input v-model="config.tensorTypeRules" type="text" placeholder="^vae\\.=f16,model\\.=q8_0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Prediction</label>
-            <Select
-              v-model="config.predictionType"
-              size="sm"
-              placeholder="Auto"
-              :options="[
-                { label: 'Auto', value: '' },
-                { label: 'EPS', value: 'eps' },
-                { label: 'V', value: 'v' },
-                { label: 'EDM V', value: 'edm_v' },
-                { label: 'SD3 Flow', value: 'sd3_flow' },
-                { label: 'Flux Flow', value: 'flux_flow' },
-                { label: 'Flux2 Flow', value: 'flux2_flow' }
-              ]"
-            />
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">LoRA Apply Mode</label>
-            <Select
-              v-model="config.loraApplyMode"
-              size="sm"
-              :options="[
-                { label: 'Auto', value: 'auto' },
-                { label: 'Immediately', value: 'immediately' },
-                { label: 'At Runtime', value: 'at_runtime' }
-              ]"
-            />
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.circular" type="checkbox" class="rounded" />
-              Circular
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.circularX" type="checkbox" class="rounded" />
-              Circular X
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.circularY" type="checkbox" class="rounded" />
-              Circular Y
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.qwenImageZeroCondT" type="checkbox" class="rounded" />
-              Qwen Zero T
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.chromaEnableT5Mask" type="checkbox" class="rounded" />
-              Chroma T5 Mask
-            </label>
-            <label class="flex items-center gap-2 text-xs cursor-pointer">
-              <input v-model="config.chromaDisableDitMask" type="checkbox" class="rounded" />
-              Disable DiT Mask
-            </label>
-          </div>
-
-          <div>
-            <label class="text-xs text-muted-foreground block mb-1">Chroma T5 Mask Pad</label>
-            <input v-model.number="config.chromaT5MaskPad" type="number" placeholder="0" class="w-full px-2 py-1.5 text-xs rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors" />
-          </div>
-        </div>
-      </section>
-
-      <!-- LOGS (for server mode) -->
-      <section v-if="config.backendMode === 'server'" class="pt-3">
-        <h3 class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-          :: Logs ::
-        </h3>
-        <div
-          class="h-32 bg-muted/20 rounded-md p-2 overflow-y-auto text-[10px] font-mono text-foreground leading-tight"
-        >
-          <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
-          <div v-if="logs.length === 0" class="text-muted-foreground">No logs yet...</div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
     </template>
   </aside>
 </template>

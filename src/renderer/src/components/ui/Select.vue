@@ -78,15 +78,15 @@ const triggerClasses =
   'flax-select-trigger flex w-full min-w-0 items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left font-medium tracking-[-0.01em] transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
 
 const sizeClasses: Record<string, string> = {
-  sm: 'text-xs px-2 py-1',
-  md: 'text-sm px-2.5 py-1.5'
+  sm: 'text-sm px-2.5 py-1.5',
+  md: 'text-sm px-3 py-2'
 }
 
 const contentClasses =
   'flax-select-content z-50 max-h-60 min-w-[var(--radix-select-trigger-width)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
 
 const itemClasses =
-  'flax-select-item relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-xs font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
+  'flax-select-item relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-sm font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
 
 const viewportClasses = 'p-1'
 </script>
@@ -98,9 +98,7 @@ const viewportClasses = 'p-1'
     @update:model-value="handleValueChange"
     @update:open="handleOpenChange"
   >
-    <SelectTrigger
-      :class="[triggerClasses, sizeClasses[size], props.class]"
-    >
+    <SelectTrigger :class="[triggerClasses, sizeClasses[size], props.class]">
       <SelectValue :placeholder="placeholder" class="min-w-0 flex-1 truncate">
         {{ displayValue }}
       </SelectValue>

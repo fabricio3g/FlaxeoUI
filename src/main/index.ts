@@ -5,6 +5,12 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as fs from 'fs'
 
+// Fix Linux SUID sandbox helper issue (chrome-sandbox permissions)
+// This is a no-op on Windows/macOS, so it stays cross-platform safe
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('--no-sandbox')
+}
+
 let mainWindow: BrowserWindow | null = null
 let serverProcess: ChildProcess | null = null
 let serverPort = 3000

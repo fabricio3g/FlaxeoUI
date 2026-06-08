@@ -14,7 +14,6 @@ files:
   - '!build-structure/**/*'
   - '!temp/**/*'
 extraResources:
-
   - from: 'backend-config.template.json'
     to: 'backend-config.json'
   - from: 'build-structure/models'

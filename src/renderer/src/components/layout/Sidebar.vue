@@ -60,24 +60,22 @@ function openGalleryFolder(): void {
 </script>
 
 <template>
-  <aside class="w-16 flex flex-col items-center py-3 rounded-2xl border border-border/80 bg-card/85 shadow-sm backdrop-blur-xl">
+  <aside
+    class="w-16 flex flex-col items-center py-3 rounded-2xl border border-border/80 bg-card/85 shadow-sm backdrop-blur-xl"
+  >
     <!-- Main Navigation -->
     <nav class="flex flex-col gap-1.5 flex-1">
       <button
         v-for="item in navItems"
         :key="item.id"
         @click="handleNavClick(item.id)"
-        class="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200"
+        class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-150"
         :class="[
           isActive(item.id)
-            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-500/20'
+            ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         ]"
         :title="item.label"
-        v-motion
-        :initial="{ scale: 1 }"
-        :hovered="{ scale: 1.05 }"
-        :tapped="{ scale: 0.95 }"
       >
         <component :is="item.icon" class="w-4.5 h-4.5" />
       </button>

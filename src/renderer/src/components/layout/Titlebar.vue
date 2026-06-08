@@ -39,6 +39,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   toggleSidebar: []
+  toggleMobileConfig: []
 }>()
 
 const router = useRouter()
@@ -79,7 +80,8 @@ const {
 
 const statusDotClass = computed(() => {
   if (runtimeState.value === 'online') return 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.68)]'
-  if (runtimeState.value === 'offline') return 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.45)]'
+  if (runtimeState.value === 'offline')
+    return 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.45)]'
   return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.52)]'
 })
 
@@ -120,7 +122,7 @@ function isActive(id: string): boolean {
 }
 
 function handleNavClick(id: string): void {
-  router.push(routeMap[id] || ('/' + id))
+  router.push(routeMap[id] || '/' + id)
 }
 
 function openModelsFolder(): void {
@@ -158,9 +160,7 @@ function handleClose(): void {
   <header
     class="titlebar-shell relative z-[10000] h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
   >
-    <nav
-      class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag"
-    >
+    <nav class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag">
       <button
         @click="emit('toggleSidebar')"
         class="h-8 w-8 shrink-0 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
@@ -188,7 +188,9 @@ function handleClose(): void {
         </button>
       </Tooltip>
 
-      <div class="runtime-status-dot-wrap group relative flex h-8 items-center justify-center titlebar-no-drag">
+      <div
+        class="runtime-status-dot-wrap group relative flex h-8 items-center justify-center titlebar-no-drag"
+      >
         <button
           class="runtime-status-dot-button flex h-8 w-8 items-center justify-center"
           type="button"
@@ -197,7 +199,9 @@ function handleClose(): void {
           <span class="h-2.5 w-2.5 rounded-full" :class="statusDotClass"></span>
         </button>
 
-        <div class="runtime-status-popover pointer-events-none absolute left-0 top-full z-[10001] mt-2 w-64 opacity-0 translate-y-1 transition-all duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0">
+        <div
+          class="runtime-status-popover pointer-events-none absolute left-0 top-full z-[10001] mt-2 w-64 opacity-0 translate-y-1 transition-all duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0"
+        >
           <div class="rounded-lg border border-border bg-card p-3 text-xs shadow-xl">
             <div class="mb-2 flex items-center gap-2 border-b border-border/70 pb-2">
               <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
@@ -206,18 +210,33 @@ function handleClose(): void {
             <div class="space-y-1.5 text-muted-foreground">
               <div class="flex items-center justify-between gap-3">
                 <span>Server</span>
-                <span class="font-medium" :class="sdServerRunning ? 'text-green-600' : 'text-yellow-600'">{{ sdServerRunning ? 'Online' : 'Offline' }}</span>
+                <span
+                  class="font-medium"
+                  :class="sdServerRunning ? 'text-green-600' : 'text-yellow-600'"
+                  >{{ sdServerRunning ? 'Online' : 'Offline' }}</span
+                >
               </div>
               <div class="flex items-center justify-between gap-3">
                 <span>Backend</span>
-                <span class="max-w-36 truncate font-medium" :class="backendValid ? 'text-foreground' : 'text-red-500'" :title="backendVersion">{{ backendVersion }}</span>
+                <span
+                  class="max-w-36 truncate font-medium"
+                  :class="backendValid ? 'text-foreground' : 'text-red-500'"
+                  :title="backendVersion"
+                  >{{ backendVersion }}</span
+                >
               </div>
               <div class="flex items-center justify-between gap-3">
                 <span>Mode</span>
-                <span class="font-medium text-foreground">{{ config.backendMode.toUpperCase() }}</span>
+                <span class="font-medium text-foreground">{{
+                  config.backendMode.toUpperCase()
+                }}</span>
               </div>
             </div>
-            <p class="mt-2 border-t border-border/70 pt-2 text-[11px] leading-4 text-muted-foreground">{{ statusHint }}</p>
+            <p
+              class="mt-2 border-t border-border/70 pt-2 text-[11px] leading-4 text-muted-foreground"
+            >
+              {{ statusHint }}
+            </p>
           </div>
         </div>
       </div>
@@ -258,7 +277,11 @@ function handleClose(): void {
         <button
           @click.stop="toggleVideoMode"
           class="h-8 w-8 metal-icon-button flex items-center justify-center titlebar-no-drag"
-          :class="config.videoMode ? 'primary-metal-button' : 'text-muted-foreground hover:text-foreground'"
+          :class="
+            config.videoMode
+              ? 'primary-metal-button'
+              : 'text-muted-foreground hover:text-foreground'
+          "
           type="button"
         >
           <Film class="w-4 h-4" />
@@ -270,6 +293,16 @@ function handleClose(): void {
 
     <!-- Window Controls -->
     <div class="flex items-center h-full titlebar-no-drag">
+      <!-- Mobile config toggle (shown on small screens only) -->
+      <button
+        @click="emit('toggleMobileConfig')"
+        class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
+        type="button"
+        title="Configuration"
+      >
+        <PanelLeftClose class="w-4 h-4" />
+      </button>
+
       <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'">
         <button
           @click="toggleTheme"
