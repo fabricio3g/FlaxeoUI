@@ -316,26 +316,6 @@ html.dark .titlebar-shell {
   font-weight: 500;
 }
 
-.config-panel-shell .metal-surface {
-  border: 1px solid var(--config-sidebar-border);
-  border-radius: 6px;
-  background: var(--config-sidebar-hover);
-  box-shadow: none;
-}
-
-.config-panel-shell .metal-surface > button {
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: var(--config-sidebar-muted);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.config-panel-shell .metal-surface > button:hover {
-  background: var(--config-sidebar-surface);
-  color: var(--config-sidebar-text);
-}
-
 
 
 .flax-select-trigger {
