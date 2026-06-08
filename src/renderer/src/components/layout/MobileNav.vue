@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageIcon, Brush, Video, Images, Settings } from 'lucide-vue-next'
+import { ImageIcon, Brush, Video, Images, Settings, Scale } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
 interface NavItem {
@@ -21,7 +21,8 @@ const navItems: NavItem[] = [
   { id: 'edit', label: 'Edit', icon: Brush },
   { id: 'video', label: 'Video', icon: Video },
   { id: 'gallery', label: 'Gallery', icon: Images },
-  { id: 'settings', label: 'Settings', icon: Settings }
+  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'quantization', label: 'Quantize', icon: Scale }
 ]
 
 function handleNavClick(id: string): void {

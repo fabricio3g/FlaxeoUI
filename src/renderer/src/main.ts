@@ -16,6 +16,7 @@ import Edit from './views/Edit.vue'
 import Video from './views/Video.vue'
 import Gallery from './views/Gallery.vue'
 import Settings from './views/Settings.vue'
+import Quantization from './views/Quantization.vue'
 
 /**
  * Vue Router Configuration
@@ -30,7 +31,8 @@ const router = createRouter({
     { path: '/edit', name: 'Edit', component: Edit },
     { path: '/video', name: 'Video', component: Video },
     { path: '/gallery', name: 'Gallery', component: Gallery },
-    { path: '/settings', name: 'Settings', component: Settings }
+    { path: '/settings', name: 'Settings', component: Settings },
+    { path: '/quantization', name: 'Quantization', component: Quantization }
   ]
 })
 

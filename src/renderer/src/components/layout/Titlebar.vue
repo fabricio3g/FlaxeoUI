@@ -11,6 +11,7 @@ import {
   Minus,
   PanelLeftClose,
   PanelLeftOpen,
+  Scale,
   Settings,
   Square,
   Sun,
@@ -48,7 +49,8 @@ const routeMap: Record<string, string> = {
   edit: '/edit',
   video: '/video',
   gallery: '/gallery',
-  settings: '/settings'
+  settings: '/settings',
+  quantization: '/quantization'
 }
 
 const navItems: NavItem[] = [
@@ -56,7 +58,8 @@ const navItems: NavItem[] = [
   { id: 'edit', label: 'Edit', icon: Brush },
   { id: 'video', label: 'Video', icon: Video },
   { id: 'gallery', label: 'Gallery', icon: Images },
-  { id: 'settings', label: 'Settings', icon: Settings }
+  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'quantization', label: 'Quantize', icon: Scale }
 ]
 
 const isElectron = ref(false)

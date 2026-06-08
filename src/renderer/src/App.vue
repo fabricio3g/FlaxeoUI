@@ -33,7 +33,8 @@ const routeMap: Record<string, string> = {
   edit: 'Edit',
   video: 'Video',
   gallery: 'Gallery',
-  settings: 'Settings'
+  settings: 'Settings',
+  quantization: 'Quantization'
 }
 
 /**
