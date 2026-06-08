@@ -83,10 +83,10 @@ const sizeClasses: Record<string, string> = {
 }
 
 const contentClasses =
-  'flax-select-content z-50 max-h-60 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
+  'flax-select-content z-50 max-h-60 min-w-[var(--radix-select-trigger-width)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
 
 const itemClasses =
-  'flax-select-item relative flex min-w-0 max-w-full cursor-default select-none items-center overflow-hidden rounded px-2 py-1.5 text-xs font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
+  'flax-select-item relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-xs font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
 
 const viewportClasses = 'p-1'
 </script>
@@ -119,7 +119,7 @@ const viewportClasses = 'p-1'
               :value="option.value"
               :class="itemClasses"
             >
-              <SelectItemText class="block w-full min-w-0 truncate">
+              <SelectItemText class="block w-full min-w-0 whitespace-nowrap">
                 {{ option.label }}
               </SelectItemText>
             </SelectItem>
