@@ -1,6 +1,6 @@
 {
   "name": "flaxeo-ui",
-  "version": "0.3.1-debug",
+  "version": "0.3.2-debug",
   "description": "FlaxeoUI - AI Image Generation Studio using stable-diffusion.cpp (Vue + Electron)",
   "main": "./out/main/index.js",
   "author": "",
@@ -16,10 +16,11 @@
     "build": "npm run typecheck && electron-vite build && node build-server.js",
     "postinstall": "electron-builder install-app-deps",
     "prebuild:win": "node create-folder-structure.js",
+    "prebuild:linux": "node create-folder-structure.js",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run prebuild:win && npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux"
+    "build:linux": "npm run prebuild:linux && npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

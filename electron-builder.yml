@@ -35,7 +35,7 @@ extraResources:
 asarUnpack:
   - resources/**
 win:
-  executableName: FlaxeoUI-v0.3.1-debug
+  executableName: FlaxeoUI-v0.3.2-debug
   icon: resources/icon.png
 nsis:
   artifactName: ${name}-${version}-setup.${ext}

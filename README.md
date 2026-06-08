@@ -11,7 +11,7 @@ A simple front end for **[stable-diffusion.cpp](https://github.com/leejet/stable
 - The binary may be flagged as untrusted by browsers due to lacking a digital signature.
 - The Cloudflare and ngrok tunnels are currently broken. By default, the app shares on the local network for remote use on the same network.
 - Testing was limited due to VRAM constraints with larger models.
-- Developed and tested on Windows. Linux and GitHub Action builds are untested.
+- Developed and tested on Windows. Linux builds are available (Ubuntu/Debian, AppImage).
 
 ## Getting Started
 

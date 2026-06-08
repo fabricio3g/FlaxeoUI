@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, ubuntu-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,9 +51,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: npm run build:win
 
-      # - name: Build Linux
-      #   if: matrix.os == 'ubuntu-latest'
-      #   run: npm run build:linux
+      - name: Build Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build:linux
 
       # - name: Build macOS
       #   if: matrix.os == 'macos-latest'
@@ -69,15 +69,15 @@ jobs:
             dist/*.exe.blockmap
           retention-days: 30
 
-      # - name: Upload Linux artifacts
-      #   if: matrix.os == 'ubuntu-latest'
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: linux-build
-      #     path: |
-      #       dist/*.AppImage
-      #       dist/*.deb
-      #     retention-days: 30
+      - name: Upload Linux artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          retention-days: 30
 
       # - name: Upload macOS artifacts
       #   if: matrix.os == 'macos-latest'
@@ -107,6 +107,12 @@ jobs:
         with:
           name: windows-build
           path: ./artifacts/windows
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: ./artifacts/linux
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
