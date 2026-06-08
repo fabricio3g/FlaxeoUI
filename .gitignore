@@ -6,6 +6,7 @@ out
 *.log*
 build-structure
 temp
+backend-config.json
 # Ignore all files in models, backend, and output subfolders, but keep the folder structure
 models/**/*
 !models/**/.gitkeep
