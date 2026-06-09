@@ -1363,281 +1363,6 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <!-- LORA MODULES -->
-        <section class="pt-3">
-          <button
-            @click="toggleSection('loras')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            LoRA Modules
-            <div class="flex items-center gap-2">
-              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{ config.loras.length }}</span>
-              <ChevronDown v-if="!expandedSections.loras" class="w-4 h-4 text-muted-foreground" />
-              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
-
-          <div
-            v-show="expandedSections.loras"
-            class="space-y-4 "
-          >
-            <div
-              v-for="(lora, index) in config.loras"
-              :key="index"
-              class="flex items-center gap-3 p-3.5 rounded-xl bg-muted/40 border border-border/40 shadow-sm"
-            >
-              <div class="flex-1 min-w-0">
-                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">LoRA {{ index + 1 }}</label>
-                <Select
-                  v-model="lora.path"
-                  size="md"
-                  :options="models.loras.map((m) => ({ label: m, value: m }))"
-                />
-              </div>
-              <div class="shrink-0">
-                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 text-center">Strength</label>
-                <input
-                  v-model.number="lora.strength"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  class="w-20 px-3 py-2.5 text-sm rounded-lg bg-muted/60 text-center font-medium focus:outline-none focus:ring-2 focus:ring-ring/30 transition-colors"
-                  title="Strength"
-                />
-              </div>
-              <button
-                @click="configStore.removeLora(index)"
-                class="self-end p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
-                title="Remove LoRA"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
-
-            <button
-              @click="addNewLora"
-              class="w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 rounded-xl bg-muted/40 hover:bg-muted/70 hover:text-primary border border-dashed border-border/50 transition-colors"
-            >
-              <Plus class="w-4 h-4" />
-              Add LoRA
-            </button>
-          </div>
-        </section>
-
-        <!-- EMBEDDINGS -->
-        <section class="pt-3">
-          <button
-            @click="toggleSection('embeddings')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Embeddings
-            <div class="flex items-center gap-2">
-              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{
-                config.embeddings.length
-              }}</span>
-              <ChevronDown v-if="!expandedSections.embeddings" class="w-4 h-4 text-muted-foreground" />
-              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
-
-          <div
-            v-show="expandedSections.embeddings"
-            class="space-y-4 "
-          >
-            <div
-              v-for="(emb, index) in config.embeddings"
-              :key="index"
-              class="flex items-center gap-3 p-3.5 rounded-xl bg-muted/40 border border-border/40 shadow-sm"
-            >
-              <div class="flex-1 flex items-center gap-3 overflow-hidden">
-                <span
-                  class="text-xs uppercase font-bold text-muted-foreground px-2 py-1 bg-muted rounded-md shrink-0"
-                  >TI</span
-                >
-                <Select
-                  :model-value="emb"
-                  @update:model-value="
-                    (val) => {
-                      config.embeddings[index] = val
-                    }
-                  "
-                  size="md"
-                  :options="models.embeddings.map((m) => ({ label: m, value: m }))"
-                />
-              </div>
-              <button
-                @click="configStore.removeEmbedding(emb)"
-                class="p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
-                title="Remove Embedding"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
-
-            <button
-              @click="addNewEmbedding"
-              class="w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 rounded-xl bg-muted/40 hover:bg-muted/70 hover:text-primary border border-dashed border-border/50 transition-colors"
-            >
-              <Plus class="w-4 h-4" />
-              Add Embedding
-            </button>
-          </div>
-        </section>
-
-        <!-- SAMPLING -->
-        <section class="pt-3">
-          <button
-            @click="toggleSection('sampling')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Sampling
-            <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4 text-muted-foreground" />
-            <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-          </button>
-
-          <div
-            v-show="expandedSections.sampling"
-            class="space-y-5 "
-          >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Scheduler</label>
-                <Select
-                  v-model="config.scheduler"
-                  size="md"
-                  placeholder="Select..."
-                  :options="[
-                    { label: 'Discrete', value: 'discrete' },
-                    { label: 'Karras', value: 'karras' },
-                    { label: 'Exponential', value: 'exponential' },
-                    { label: 'AYS', value: 'ays' },
-                    { label: 'GITS', value: 'gits' },
-                    { label: 'Smoothstep', value: 'smoothstep' },
-                    { label: 'SGM Uniform', value: 'sgm_uniform' },
-                    { label: 'Simple', value: 'simple' },
-                    { label: 'KL Optimal', value: 'kl_optimal' },
-                    { label: 'LCM', value: 'lcm' },
-                    { label: 'Bong Tangent', value: 'bong_tangent' },
-                    { label: 'LTX2', value: 'ltx2' }
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler</label>
-                <Select
-                  v-model="config.sampler"
-                  size="md"
-                  placeholder="Select..."
-                  :options="[
-                    { label: 'Euler', value: 'euler' },
-                    { label: 'Euler A', value: 'euler_a' },
-                    { label: 'Heun', value: 'heun' },
-                    { label: 'DPM2', value: 'dpm2' },
-                    { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
-                    { label: 'DPM++ 2M', value: 'dpm++2m' },
-                    { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
-                    { label: 'IPNDM', value: 'ipndm' },
-                    { label: 'IPNDM V', value: 'ipndm_v' },
-                    { label: 'LCM', value: 'lcm' },
-                    { label: 'DDIM Trailing', value: 'ddim_trailing' },
-                    { label: 'TCD', value: 'tcd' },
-                    { label: 'Res Multistep', value: 'res_multistep' },
-                    { label: 'Res 2S', value: 'res_2s' },
-                    { label: 'ER-SDE', value: 'er_sde' },
-                    { label: 'Euler CFG++', value: 'euler_cfg_pp' },
-                    { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">RNG</label>
-                <Select
-                  v-model="config.rngType"
-                  size="md"
-                  placeholder="Default"
-                  :options="[
-                    { label: 'Default', value: '' },
-                    { label: 'CUDA / WebUI', value: 'cuda' },
-                    { label: 'CPU / ComfyUI', value: 'cpu' },
-                    { label: 'std_default', value: 'std_default' }
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler RNG</label>
-                <Select
-                  v-model="config.samplerRngType"
-                  size="md"
-                  placeholder="Same"
-                  :options="[
-                    { label: 'Same as RNG', value: '' },
-                    { label: 'CUDA / WebUI', value: 'cuda' },
-                    { label: 'CPU / ComfyUI', value: 'cpu' },
-                    { label: 'std_default', value: 'std_default' }
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Mode</label>
-                <Select
-                  v-model="config.cacheMode"
-                  size="md"
-                  placeholder="Off"
-                  :options="[
-                    { label: 'Off', value: '' },
-                    { label: 'UCache', value: 'ucache' },
-                    { label: 'EasyCache', value: 'easycache' },
-                    { label: 'DBCache', value: 'dbcache' },
-                    { label: 'TaylorSeer', value: 'taylorseer' },
-                    { label: 'Cache-DIT', value: 'cache-dit' },
-                    { label: 'Spectrum', value: 'spectrum' }
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Policy</label>
-                <Select
-                  v-model="config.scmPolicy"
-                  size="md"
-                  placeholder="Dynamic"
-                  :options="[
-                    { label: 'Default', value: '' },
-                    { label: 'Dynamic', value: 'dynamic' },
-                    { label: 'Static', value: 'static' }
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Options</label>
-              <input
-                v-model="config.cacheOption"
-                type="text"
-                placeholder="threshold=0.25,warmup=4"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Mask</label>
-              <input
-                v-model="config.scmMask"
-                type="text"
-                placeholder="1,1,1,0,0,1"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-          </div>
-        </section>
-
         <!-- GENERATION SETTINGS -->
         <section class="pt-3">
           <button
@@ -1807,6 +1532,281 @@ onUnmounted(() => {
                 v-model="config.extraTilingArgs"
                 type="text"
                 placeholder="temporal_tile_frames=4"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- LORA MODULES -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('loras')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
+          >
+            LoRA Modules
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{ config.loras.length }}</span>
+              <ChevronDown v-if="!expandedSections.loras" class="w-4 h-4 text-muted-foreground" />
+              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
+            </div>
+          </button>
+
+          <div
+            v-show="expandedSections.loras"
+            class="space-y-2"
+          >
+            <div
+              v-for="(lora, index) in config.loras"
+              :key="index"
+              class="flex items-center gap-3 p-2 rounded-lg bg-card"
+            >
+              <div class="flex-1 min-w-0">
+                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">LoRA {{ index + 1 }}</label>
+                <Select
+                  v-model="lora.path"
+                  size="md"
+                  :options="models.loras.map((m) => ({ label: m, value: m }))"
+                />
+              </div>
+              <div class="shrink-0">
+                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 text-center">Strength</label>
+                <input
+                  v-model.number="lora.strength"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  class="w-20 px-3 py-2 text-sm rounded-lg bg-background text-center font-medium focus:outline-none focus:ring-1 focus:ring-ring/30 transition-colors"
+                  title="Strength"
+                />
+              </div>
+              <button
+                @click="configStore.removeLora(index)"
+                class="self-end p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                title="Remove LoRA"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              @click="addNewLora"
+              class="w-full h-8 text-xs font-semibold flex items-center justify-center gap-1.5 rounded-lg metal-surface hover:text-foreground transition-colors"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              Add LoRA
+            </button>
+          </div>
+        </section>
+
+        <!-- EMBEDDINGS -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('embeddings')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
+          >
+            Embeddings
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{
+                config.embeddings.length
+              }}</span>
+              <ChevronDown v-if="!expandedSections.embeddings" class="w-4 h-4 text-muted-foreground" />
+              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
+            </div>
+          </button>
+
+          <div
+            v-show="expandedSections.embeddings"
+            class="space-y-2"
+          >
+            <div
+              v-for="(emb, index) in config.embeddings"
+              :key="index"
+              class="flex items-center gap-3 p-2 rounded-lg bg-card"
+            >
+              <div class="flex-1 flex items-center gap-3 overflow-hidden">
+                <span
+                  class="text-xs uppercase font-bold text-muted-foreground px-2 py-1 bg-muted rounded-md shrink-0"
+                  >TI</span
+                >
+                <Select
+                  :model-value="emb"
+                  @update:model-value="
+                    (val) => {
+                      config.embeddings[index] = val
+                    }
+                  "
+                  size="md"
+                  :options="models.embeddings.map((m) => ({ label: m, value: m }))"
+                />
+              </div>
+              <button
+                @click="configStore.removeEmbedding(emb)"
+                class="p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                title="Remove Embedding"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              @click="addNewEmbedding"
+              class="w-full h-8 text-xs font-semibold flex items-center justify-center gap-1.5 rounded-lg metal-surface hover:text-foreground transition-colors"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              Add Embedding
+            </button>
+          </div>
+        </section>
+
+        <!-- SAMPLING -->
+        <section class="pt-3">
+          <button
+            @click="toggleSection('sampling')"
+            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
+          >
+            Sampling
+            <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4 text-muted-foreground" />
+            <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
+          </button>
+
+          <div
+            v-show="expandedSections.sampling"
+            class="space-y-5 "
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Scheduler</label>
+                <Select
+                  v-model="config.scheduler"
+                  size="md"
+                  placeholder="Select..."
+                  :options="[
+                    { label: 'Discrete', value: 'discrete' },
+                    { label: 'Karras', value: 'karras' },
+                    { label: 'Exponential', value: 'exponential' },
+                    { label: 'AYS', value: 'ays' },
+                    { label: 'GITS', value: 'gits' },
+                    { label: 'Smoothstep', value: 'smoothstep' },
+                    { label: 'SGM Uniform', value: 'sgm_uniform' },
+                    { label: 'Simple', value: 'simple' },
+                    { label: 'KL Optimal', value: 'kl_optimal' },
+                    { label: 'LCM', value: 'lcm' },
+                    { label: 'Bong Tangent', value: 'bong_tangent' },
+                    { label: 'LTX2', value: 'ltx2' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler</label>
+                <Select
+                  v-model="config.sampler"
+                  size="md"
+                  placeholder="Select..."
+                  :options="[
+                    { label: 'Euler', value: 'euler' },
+                    { label: 'Euler A', value: 'euler_a' },
+                    { label: 'Heun', value: 'heun' },
+                    { label: 'DPM2', value: 'dpm2' },
+                    { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
+                    { label: 'DPM++ 2M', value: 'dpm++2m' },
+                    { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
+                    { label: 'IPNDM', value: 'ipndm' },
+                    { label: 'IPNDM V', value: 'ipndm_v' },
+                    { label: 'LCM', value: 'lcm' },
+                    { label: 'DDIM Trailing', value: 'ddim_trailing' },
+                    { label: 'TCD', value: 'tcd' },
+                    { label: 'Res Multistep', value: 'res_multistep' },
+                    { label: 'Res 2S', value: 'res_2s' },
+                    { label: 'ER-SDE', value: 'er_sde' },
+                    { label: 'Euler CFG++', value: 'euler_cfg_pp' },
+                    { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">RNG</label>
+                <Select
+                  v-model="config.rngType"
+                  size="md"
+                  placeholder="Default"
+                  :options="[
+                    { label: 'Default', value: '' },
+                    { label: 'CUDA / WebUI', value: 'cuda' },
+                    { label: 'CPU / ComfyUI', value: 'cpu' },
+                    { label: 'std_default', value: 'std_default' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler RNG</label>
+                <Select
+                  v-model="config.samplerRngType"
+                  size="md"
+                  placeholder="Same"
+                  :options="[
+                    { label: 'Same as RNG', value: '' },
+                    { label: 'CUDA / WebUI', value: 'cuda' },
+                    { label: 'CPU / ComfyUI', value: 'cpu' },
+                    { label: 'std_default', value: 'std_default' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Mode</label>
+                <Select
+                  v-model="config.cacheMode"
+                  size="md"
+                  placeholder="Off"
+                  :options="[
+                    { label: 'Off', value: '' },
+                    { label: 'UCache', value: 'ucache' },
+                    { label: 'EasyCache', value: 'easycache' },
+                    { label: 'DBCache', value: 'dbcache' },
+                    { label: 'TaylorSeer', value: 'taylorseer' },
+                    { label: 'Cache-DIT', value: 'cache-dit' },
+                    { label: 'Spectrum', value: 'spectrum' }
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Policy</label>
+                <Select
+                  v-model="config.scmPolicy"
+                  size="md"
+                  placeholder="Dynamic"
+                  :options="[
+                    { label: 'Default', value: '' },
+                    { label: 'Dynamic', value: 'dynamic' },
+                    { label: 'Static', value: 'static' }
+                  ]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Options</label>
+              <input
+                v-model="config.cacheOption"
+                type="text"
+                placeholder="threshold=0.25,warmup=4"
+                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Mask</label>
+              <input
+                v-model="config.scmMask"
+                type="text"
+                placeholder="1,1,1,0,0,1"
                 class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
