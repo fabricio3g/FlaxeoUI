@@ -1294,7 +1294,7 @@ onMounted(async () => {
                 ref="promptInput"
                 rows="1"
                 placeholder="Describe the image you want to generate..."
-                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-6 md:px-5 py-6 md:py-4 pr-16 text-xl md:text-lg leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
+                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-4 py-3 md:px-5 md:py-4 pr-14 md:pr-16 text-lg leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
                 :style="{ minHeight: '120px', maxHeight: '360px' }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
@@ -1310,7 +1310,7 @@ onMounted(async () => {
                   v-if="!isGenerating"
                   @click="handleGenerate"
                   :disabled="!prompt.trim()"
-                  class="flax-composer-send metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                  class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Generate"
                 >
                   <span class="flax-composer-send-icon inline-flex"
@@ -1320,10 +1320,10 @@ onMounted(async () => {
                 <button
                   v-else
                   @click="handleCancel"
-                  class="metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg"
+                  class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
                   title="Cancel"
                 >
-                  <X class="w-4.5 h-4.5 md:w-4 md:h-4" />
+                  <X class="w-4.5 h-4.5" />
                 </button>
               </div>
             </div>
@@ -1334,7 +1334,7 @@ onMounted(async () => {
               v-model="negativePrompt"
               rows="2"
               placeholder="Things to avoid: blurry, low quality, distorted..."
-              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-4 md:py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
               :disabled="isGenerating"
             ></textarea>
           </div>
