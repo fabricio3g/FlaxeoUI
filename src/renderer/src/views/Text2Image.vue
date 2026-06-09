@@ -745,15 +745,15 @@ onMounted(async () => {
           />
           <div
             v-else
-            class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white"
+            class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white bg-gradient-to-b from-background to-muted md:bg-transparent md:empty-preview-orb"
           >
-            <div class="empty-preview-noise"></div>
-            <div class="empty-preview-glow empty-preview-glow-a"></div>
-            <div class="empty-preview-glow empty-preview-glow-b"></div>
-            <div class="empty-preview-glow empty-preview-glow-c"></div>
+            <div class="empty-preview-noise hidden md:block"></div>
+            <div class="empty-preview-glow empty-preview-glow-a hidden md:block"></div>
+            <div class="empty-preview-glow empty-preview-glow-b hidden md:block"></div>
+            <div class="empty-preview-glow empty-preview-glow-c hidden md:block"></div>
             <div
               v-if="!isGenerating"
-              class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]"
+              class="relative z-10 hidden md:flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]"
             >
               <span class="text-3xl font-semibold tracking-tight md:text-5xl">{{
                 greetingTitle
