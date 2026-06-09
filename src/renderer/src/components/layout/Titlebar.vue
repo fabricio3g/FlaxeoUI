@@ -15,6 +15,7 @@ import {
   Settings,
   Square,
   Sun,
+  Terminal,
   Video,
   X
 } from 'lucide-vue-next'
@@ -40,6 +41,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   toggleSidebar: []
   toggleMobileConfig: []
+  toggleLogs: []
 }>()
 
 const router = useRouter()
@@ -285,6 +287,16 @@ function handleClose(): void {
           type="button"
         >
           <Film class="w-4 h-4" />
+        </button>
+      </Tooltip>
+
+      <Tooltip text="Server Logs">
+        <button
+          @click="emit('toggleLogs')"
+          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
+        >
+          <Terminal class="w-4 h-4" />
         </button>
       </Tooltip>
     </nav>

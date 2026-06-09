@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events'
 import fs from 'fs'
 import path from 'path'
 import type { AppContext, BackendConfig, Paths } from './types'
@@ -88,7 +89,9 @@ export function createContext(): AppContext {
       cloudflare: { enabled: false, url: null, error: null }
     },
     ngrokListener: null,
-    cloudflareTunnel: null
+    cloudflareTunnel: null,
+    progress: null,
+    progressBus: new EventEmitter()
   }
 
   return {

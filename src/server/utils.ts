@@ -7,8 +7,6 @@ import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import type { AppContext } from './types'
 
-export const MAX_LOG_ENTRIES = 1000
-
 export function asBool(value: unknown): boolean {
   return value === true || value === 'true' || value === '1' || value === 1
 }
@@ -22,9 +20,6 @@ export function firstString(...values: unknown[]): string | undefined {
 
 export function appendLog(ctx: AppContext, msg: string): void {
   ctx.state.serverLogs.push(msg)
-  if (ctx.state.serverLogs.length > MAX_LOG_ENTRIES) {
-    ctx.state.serverLogs.splice(0, ctx.state.serverLogs.length - MAX_LOG_ENTRIES)
-  }
 }
 
 export function listFiles(dir: string): string[] {
@@ -201,4 +196,24 @@ export function removeDir(dirPath?: string | null): void {
   } catch (error) {
     console.error('Failed to remove directory:', error)
   }
+}
+
+export interface ParsedStep {
+  current: number
+  total: number
+  itPerSec: number
+}
+
+const RE_SAMPLING_STEP = /sampling\s+step\s+(\d+)\s*\/\s*(\d+)/i
+const RE_STEP = /(?:^|\s)step\s+(\d+)\s*\/\s*(\d+)/i
+const RE_IT_PER_SEC = /it\/s[:=]\s*([\d.]+)/i
+
+export function parseStepLine(line: string): ParsedStep | null {
+  const samplingMatch = line.match(RE_SAMPLING_STEP) || line.match(RE_STEP)
+  if (!samplingMatch) return null
+  const current = parseInt(samplingMatch[1], 10)
+  const total = parseInt(samplingMatch[2], 10)
+  const itMatch = line.match(RE_IT_PER_SEC)
+  const itPerSec = itMatch ? parseFloat(itMatch[1]) : 0
+  return { current, total, itPerSec }
 }

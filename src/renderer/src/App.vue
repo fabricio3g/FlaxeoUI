@@ -5,6 +5,7 @@ import Titlebar from './components/layout/Titlebar.vue'
 import ConfigPanel from './components/layout/ConfigPanel.vue'
 import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
 
 const route = useRoute()
@@ -13,6 +14,7 @@ const router = useRouter()
 // State
 const showMobileConfig = ref(false)
 const sidebarCollapsed = ref(false)
+const showFloatingLogs = ref(false)
 const isElectron = ref(false)
 const serverPort = ref<number>(3000)
 
@@ -69,6 +71,7 @@ onMounted(async () => {
       :sidebar-collapsed="sidebarCollapsed"
       @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed"
       @toggle-mobile-config="showMobileConfig = !showMobileConfig"
+      @toggle-logs="showFloatingLogs = !showFloatingLogs"
     />
 
     <!-- Main Content Area -->
@@ -112,5 +115,8 @@ onMounted(async () => {
 
     <!-- Toast Notifications -->
     <ToastContainer />
+
+    <!-- Floating Log Panel -->
+    <FloatingLogPanel v-model="showFloatingLogs" />
   </div>
 </template>

@@ -28,6 +28,13 @@ const filteredPresets = computed(() => {
   )
 })
 
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  { compact: false }
+)
+
 const selectedPreset = computed(() =>
   presets.value.find((preset) => preset.id === selectedPresetId.value)
 )
@@ -94,10 +101,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="root" class="prompt-preset-controls relative h-8 w-fit">
+  <div ref="root" class="prompt-preset-controls relative">
     <button
+      v-if="compact"
       type="button"
-      class="prompt-preset-trigger h-8 px-3 text-xs font-medium rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+      class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+      :class="showPresets ? 'primary-metal-button text-white' : ''"
+      @click="showPresets = !showPresets"
+      title="Prompt Presets"
+    >
+      <Save class="w-4 h-4 md:w-3 md:h-3" />
+    </button>
+    <button
+      v-else
+      type="button"
+      class="prompt-preset-trigger h-8 px-3 text-xs font-medium rounded-md bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
       :class="showPresets ? 'bg-muted text-foreground' : ''"
       @click="showPresets = !showPresets"
     >
@@ -108,7 +126,7 @@ onUnmounted(() => {
 
     <div
       v-if="showPresets"
-      class="absolute left-0 bottom-full z-50 mb-2 w-[min(520px,calc(100vw-2rem))] rounded-xl border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-xl backdrop-blur space-y-2"
+      class="absolute left-0 bottom-full z-50 mb-2 w-[min(520px,calc(100vw-2rem))] rounded-xl border border-border/70 bg-popover p-3 text-popover-foreground shadow-xl space-y-2"
     >
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium text-muted-foreground flex items-center gap-1">

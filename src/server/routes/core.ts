@@ -117,7 +117,7 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   })
 
   app.get('/api/status', (_req, res) => {
-    res.json({ running: !!ctx.state.sdProcess, logs: ctx.state.serverLogs.slice(-50) })
+    res.json({ running: !!ctx.state.sdProcess, logs: ctx.state.serverLogs })
   })
 
   app.post('/api/generate', async (req, res) => {
@@ -162,5 +162,40 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
       console.error('Gen Error:', error)
       res.status(500).json({ message: 'Generation failed', error: error.message })
     }
+  })
+
+  app.get('/api/generation/progress', (req, res) => {
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    })
+    res.flushHeaders()
+
+    const send = (evt: string, data: unknown): void => {
+      res.write(`event: ${evt}\ndata: ${JSON.stringify(data)}\n\n`)
+    }
+
+    send('hello', { ok: true, progress: ctx.state.progress })
+
+    const onProgress = (p: unknown): void => { send('progress', p) }
+    const onStart = (s: unknown): void => { send('start', s) }
+    const onEnd = (): void => { send('end', {}) }
+
+    ctx.state.progressBus.on('progress', onProgress)
+    ctx.state.progressBus.on('start', onStart)
+    ctx.state.progressBus.on('end', onEnd)
+
+    const keepAlive = setInterval(() => {
+      res.write(': ping\n\n')
+    }, 15000)
+
+    req.on('close', () => {
+      clearInterval(keepAlive)
+      ctx.state.progressBus.removeListener('progress', onProgress)
+      ctx.state.progressBus.removeListener('start', onStart)
+      ctx.state.progressBus.removeListener('end', onEnd)
+    })
   })
 }

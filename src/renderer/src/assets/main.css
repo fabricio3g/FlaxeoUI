@@ -259,12 +259,12 @@ html.dark .titlebar-shell {
 }
 
 .config-panel-shell section > button {
-  min-height: 30px;
+  min-height: 38px;
   color: var(--config-sidebar-muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 5px 8px;
+  letter-spacing: 0.06em;
+  padding: 8px 12px;
   transition:
     background-color 0.15s ease,
     color 0.15s ease,
@@ -278,7 +278,7 @@ html.dark .titlebar-shell {
 .config-panel-shell label,
 .config-panel-shell .btn-label {
   color: var(--config-sidebar-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 

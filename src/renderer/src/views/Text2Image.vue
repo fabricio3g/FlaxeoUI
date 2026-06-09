@@ -24,6 +24,7 @@ import {
 } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import { useGeneration } from '@/composables/useGeneration'
+import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -33,6 +34,7 @@ const toast = useToast()
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const { isGenerating } = useGeneration()
+const progress = useGenerationProgress()
 
 // Form state
 const prompt = ref('')
@@ -96,6 +98,7 @@ const initImageFile = ref<File | null>(null)
 
 // Advanced sections state
 const activeTab = ref<string>('')
+const showSizeMenu = ref(false)
 const showNegPrompt = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 
@@ -116,13 +119,41 @@ function onPromptKeydown(e: KeyboardEvent): void {
 
 // Size presets
 const sizePresets = [
-  { label: 'Square', width: 1024, height: 1024 },
-  { label: 'Portrait', width: 832, height: 1216 },
-  { label: 'Landscape', width: 1216, height: 832 },
-  { label: 'Wide', width: 1536, height: 640 }
+  { label: '512×512', width: 512, height: 512 },
+  { label: '512×768', width: 512, height: 768 },
+  { label: '768×512', width: 768, height: 512 },
+  { label: '768×1344', width: 768, height: 1344 },
+  { label: '1024×1024', width: 1024, height: 1024 },
+  { label: '1024×1536', width: 1024, height: 1536 },
+  { label: '1536×1024', width: 1536, height: 1024 },
+  { label: '1920×1080', width: 1920, height: 1080 },
+  { label: 'Manual', width: 0, height: 0 }
+]
+
+const isManual = ref(false)
+
+const SAMPLER_OPTIONS = [
+  { label: 'Euler', value: 'euler' },
+  { label: 'Euler A', value: 'euler_a' },
+  { label: 'Heun', value: 'heun' },
+  { label: 'DPM2', value: 'dpm2' },
+  { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
+  { label: 'DPM++ 2M', value: 'dpm++2m' },
+  { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
+  { label: 'IPNDM', value: 'ipndm' },
+  { label: 'IPNDM V', value: 'ipndm_v' },
+  { label: 'LCM', value: 'lcm' },
+  { label: 'DDIM Trailing', value: 'ddim_trailing' },
+  { label: 'TCD', value: 'tcd' },
+  { label: 'Res Multistep', value: 'res_multistep' },
+  { label: 'Res 2S', value: 'res_2s' },
+  { label: 'ER-SDE', value: 'er_sde' },
+  { label: 'Euler CFG++', value: 'euler_cfg_pp' },
+  { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
 ]
 
 const activePreset = computed(() => {
+  if (isManual.value) return sizePresets.find((p) => p.label === 'Manual')
   return sizePresets.find((p) => p.width === config.value.width && p.height === config.value.height)
 })
 
@@ -176,6 +207,11 @@ const advancedPopoverArrowClass = computed(() => {
 })
 
 function setSize(preset: (typeof sizePresets)[0]): void {
+  if (preset.label === 'Manual') {
+    isManual.value = true
+    return
+  }
+  isManual.value = false
   configStore.setDimensions(preset.width, preset.height)
 }
 
@@ -425,6 +461,7 @@ async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
 
   isGenerating.value = true
+  progress.start()
   error.value = null
 
   // Start live preview polling if a preview method is selected
@@ -536,6 +573,7 @@ async function handleGenerate(): Promise<void> {
   } finally {
     stopPreviewPolling()
     isGenerating.value = false
+    progress.stop()
   }
 }
 
@@ -550,6 +588,7 @@ async function handleCancel(): Promise<void> {
     toast.error('Failed to cancel generation')
     console.error('Cancel failed:', e)
   }
+  progress.stop()
   isGenerating.value = false
 }
 
@@ -598,6 +637,13 @@ const isLastImage = computed(() => {
   return galleryImages.value.indexOf(currentFile) >= galleryImages.value.length - 1
 })
 
+function formatETA(secs: number): string {
+  if (!Number.isFinite(secs) || secs <= 0) return '...'
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 function navigateImage(direction: number) {
   if (!previewImage.value) return
   const currentFile = previewImage.value.split('/').pop() || ''
@@ -607,6 +653,13 @@ function navigateImage(direction: number) {
   const newIdx = idx + direction
   if (newIdx >= 0 && newIdx < galleryImages.value.length) {
     selectGalleryImage(galleryImages.value[newIdx])
+  }
+}
+
+function handleSizeMenuClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement
+  if (!target.closest('.size-menu')) {
+    showSizeMenu.value = false
   }
 }
 
@@ -644,6 +697,7 @@ onMounted(async () => {
   await checkServerStatus()
 
   window.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', handleSizeMenuClick)
 
   // Check for params from Gallery
   const paramsImage = sessionStorage.getItem('text2imageParams')
@@ -657,6 +711,7 @@ onMounted(async () => {
 
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown)
+    document.removeEventListener('click', handleSizeMenuClick)
     stopPreviewPolling()
     if (clockInterval) {
       clearInterval(clockInterval)
@@ -669,7 +724,7 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
     <!-- Preview Area -->
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-4 md:p-6">
+    <div class="flex-1 relative min-h-0 overflow-hidden p-4 md:p-6">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -712,14 +767,31 @@ onMounted(async () => {
             v-if="isGenerating && !previewImage?.includes('temp/preview.png')"
             class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <div class="generating-status">
-              <div class="generating-loader-mark" aria-hidden="true">
-                <span></span><span></span><span></span><span></span> <span></span><span></span
-                ><span></span><span></span> <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
+            <div class="generating-status max-w-sm w-full px-6">
+              <div v-if="!progress.hasSteps" class="text-center">
+                <div class="generating-loader-mark" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span> <span></span><span></span
+                  ><span></span><span></span> <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <span class="generating-status-title">Loading model</span>
+                <p class="generating-status-subtitle">Preparing to paint your idea...</p>
               </div>
-              <span class="generating-status-title">Painting your idea</span>
-              <p class="generating-status-subtitle">Sit tight while the image comes together.</p>
+              <div v-else class="flex flex-col items-center gap-3">
+                <span class="text-sm font-semibold text-white/80">
+                  Step {{ progress.current }} / {{ progress.total }}
+                </span>
+                <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    class="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500 ease-linear"
+                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
+                  ></div>
+                </div>
+                <div class="flex items-center gap-4 text-xs text-white/50">
+                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
+                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
+                </div>
+              </div>
             </div>
           </div>
           <div
@@ -814,58 +886,113 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="shrink-0 bg-card/70 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
+    <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
       <div
-        class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur"
+        class="flaxeo-generation-controls relative overflow-visible rounded-3xl"
       >
         <!-- Quick Controls Row -->
         <div class="px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 flex-wrap">
-          <div
-            class="flex items-center p-1 bg-muted/50 rounded-lg border border-border/30 overflow-x-auto no-scrollbar"
-          >
+          <!-- Generation Params -->
+          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
+            <span class="text-[11px] font-semibold text-foreground/70">Batch</span>
+            <input
+              v-model.number="config.batchCount"
+              type="number"
+              min="1"
+              max="16"
+              class="w-8 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
+            <span class="text-[11px] font-semibold text-foreground/70">Steps</span>
+            <input
+              v-model.number="config.steps"
+              type="number"
+              min="1"
+              max="100"
+              class="w-8 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
+            <span class="text-[11px] font-semibold text-foreground/70">CFG</span>
+            <input
+              v-model.number="config.cfgScale"
+              type="number"
+              min="0"
+              max="30"
+              step="0.5"
+              class="w-9 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+          <div class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1 min-w-0">
+            <span class="text-[11px] font-semibold text-foreground/70 shrink-0">Sampler</span>
+            <Select
+              v-model="config.sampler"
+              size="sm"
+              placeholder="Sampler"
+              :options="SAMPLER_OPTIONS"
+              class="!border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 !text-xs !font-bold !w-[80px]"
+            />
+          </div>
+          <div class="relative size-menu">
             <button
-              v-for="preset in sizePresets"
-              :key="preset.label"
-              @click="setSize(preset)"
-              class="px-1 py-0.5 text-[9px] font-medium rounded transition-colors shrink-0"
-              :class="
-                activePreset?.label === preset.label
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              "
+              @click="showSizeMenu = !showSizeMenu"
+              class="flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded-lg transition-colors shrink-0 leading-none bg-card border border-border h-8"
             >
-              {{ preset.label }}
+              <span>{{ activePreset?.label ?? config.width + '×' + config.height }}</span>
+              <ChevronUp class="w-3 h-3" />
             </button>
-            <div class="w-px h-4 bg-border/30 mx-1 shrink-0"></div>
-            <div class="flex items-center gap-1 text-xs shrink-0">
-              <div
-                class="flex items-center bg-background/50 rounded overflow-hidden border border-border/20"
+            <div
+              v-if="showSizeMenu"
+              class="absolute bottom-full left-0 z-50 mb-1 w-28 rounded-lg border border-border/70 bg-popover p-1 text-popover-foreground shadow-lg"
+            >
+              <button
+                v-for="preset in sizePresets"
+                :key="preset.label"
+                @click="setSize(preset); showSizeMenu = false"
+                class="w-full text-left px-2 py-1 text-[10px] font-medium rounded hover:bg-muted/60 transition-colors"
+                :class="
+                  activePreset?.label === preset.label
+                    ? 'text-foreground bg-muted/40'
+                    : 'text-muted-foreground'
+                "
               >
-                <span class="px-1.5 py-1.5 md:py-1 text-muted-foreground text-xs md:text-[10px]"
-                  >W</span
-                >
-                <input
-                  v-model.number="config.width"
-                  type="number"
-                  step="64"
-                  class="w-14 md:w-16 px-1.5 py-1.5 md:py-1 bg-transparent text-center focus:outline-none text-sm md:text-xs"
-                />
-              </div>
-              <span class="text-muted-foreground">&times;</span>
-              <div
-                class="flex items-center bg-background/50 rounded overflow-hidden border border-border/20"
-              >
-                <span class="px-1.5 py-1.5 md:py-1 text-muted-foreground text-xs md:text-[10px]"
-                  >H</span
-                >
-                <input
-                  v-model.number="config.height"
-                  type="number"
-                  step="64"
-                  class="w-14 md:w-16 px-1.5 py-1.5 md:py-1 bg-transparent text-center focus:outline-none text-sm md:text-xs"
-                />
-              </div>
+                {{ preset.label === 'Manual' ? 'Manual' : preset.width + '×' + preset.height }}
+              </button>
             </div>
+          </div>
+          <div v-if="isManual" class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1">
+            <span class="text-[11px] font-semibold text-foreground/70">W</span>
+            <input
+              v-model.number="config.width"
+              type="number"
+              step="64"
+              class="w-12 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+          <div v-if="isManual" class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1">
+            <span class="text-[11px] font-semibold text-foreground/70">H</span>
+            <input
+              v-model.number="config.height"
+              type="number"
+              step="64"
+              class="w-12 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+          <div class="flex items-center gap-1 h-8 shrink-0 bg-card border border-border rounded-lg px-2 py-1">
+            <Eye class="w-3 h-3 text-muted-foreground" />
+            <Select
+              v-model="config.livePreviewMethod"
+              size="sm"
+              placeholder="None"
+              class="!w-auto !min-w-[68px] !h-8 !border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 text-[10px]"
+              :options="[
+                { label: 'None', value: '' },
+                { label: 'Proj', value: 'proj' },
+                { label: 'TAE', value: 'tae' },
+                { label: 'VAE', value: 'vae' }
+              ]"
+            />
           </div>
           <div class="flex-1 hidden md:block"></div>
           <div class="relative flex items-center gap-1">
@@ -1136,36 +1263,10 @@ onMounted(async () => {
               <ImagePlus class="w-4 h-4 md:w-3 md:h-3" />
             </button>
           </div>
-          <div class="h-5 w-px bg-border/80 hidden md:block"></div>
-          <div
-            class="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1.5 md:py-1"
-          >
-            <Copy class="w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              v-model.number="config.batchCount"
-              type="number"
-              min="1"
-              max="16"
-              class="w-10 bg-transparent text-sm font-medium focus:outline-none text-center"
-            />
-          </div>
           <div class="flex items-center gap-1.5 text-muted-foreground">
-            <Eye class="w-3.5 h-3.5 hidden md:block" />
-            <Select
-              v-model="config.livePreviewMethod"
-              size="sm"
-              placeholder="None"
-              class="hidden md:block !w-[72px] !border-0 !bg-transparent !px-1 !py-0.5 text-[10px] shadow-none"
-              :options="[
-                { label: 'None', value: '' },
-                { label: 'Proj', value: 'proj' },
-                { label: 'TAE', value: 'tae' },
-                { label: 'VAE', value: 'vae' }
-              ]"
-            />
             <button
               @click="showNegPrompt = !showNegPrompt"
-              class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
+              class="h-8 w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
               :class="
                 showNegPrompt
                   ? 'primary-metal-button text-white'
@@ -1173,19 +1274,19 @@ onMounted(async () => {
               "
               title="Negative Prompt"
             >
-              <Minus class="w-4 h-4 md:w-3 md:h-3" />
+              <Minus class="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-
-        <!-- Floating Input Bar -->
-        <div class="composer-shell flax-composer mx-3 md:mx-4 rounded-2xl">
+          <div class="h-5 w-px bg-border/80 hidden md:block"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
-            class="flax-composer-presets"
+            compact
           />
+        </div>
 
+        <!-- Floating Input Bar -->
+        <div class="flax-composer rounded-2xl">
           <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
@@ -1193,8 +1294,8 @@ onMounted(async () => {
                 ref="promptInput"
                 rows="1"
                 placeholder="Describe the image you want to generate..."
-                class="flax-composer-textarea w-full resize-none bg-transparent px-5 md:px-2 py-4 md:py-2 text-lg md:text-[15px] leading-6 text-foreground transition-colors duration-150 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: '72px', maxHeight: '200px' }"
+                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-6 md:px-5 py-6 md:py-4 pr-16 text-xl md:text-lg leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
+                :style="{ minHeight: '120px', maxHeight: '360px' }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
                 @input="autoResize"
@@ -1204,27 +1305,27 @@ onMounted(async () => {
                 class="absolute top-1 right-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px]"
                 >{{ config.embeddings.length }} embeds</span
               >
-            </div>
-            <div class="flax-composer-actions flex items-end pb-0.5">
-              <button
-                v-if="!isGenerating"
-                @click="handleGenerate"
-                :disabled="!prompt.trim()"
-                class="flax-composer-send metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Generate"
-              >
-                <span class="flax-composer-send-icon inline-flex"
-                  ><ArrowUp class="w-4.5 h-4.5 stroke-[2.5]"
-                /></span>
-              </button>
-              <button
-                v-else
-                @click="handleCancel"
-                class="metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg"
-                title="Cancel"
-              >
-                <X class="w-4.5 h-4.5 md:w-4 md:h-4" />
-              </button>
+              <div class="absolute bottom-3 right-3 flex items-end">
+                <button
+                  v-if="!isGenerating"
+                  @click="handleGenerate"
+                  :disabled="!prompt.trim()"
+                  class="flax-composer-send metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Generate"
+                >
+                  <span class="flax-composer-send-icon inline-flex"
+                    ><ArrowUp class="w-4.5 h-4.5 stroke-[2.5]"
+                  /></span>
+                </button>
+                <button
+                  v-else
+                  @click="handleCancel"
+                  class="metal-icon-button flex items-center justify-center h-9 w-9 md:h-8 md:w-8 rounded-lg"
+                  title="Cancel"
+                >
+                  <X class="w-4.5 h-4.5 md:w-4 md:h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1233,23 +1334,9 @@ onMounted(async () => {
               v-model="negativePrompt"
               rows="2"
               placeholder="Things to avoid: blurry, low quality, distorted..."
-              class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
               :disabled="isGenerating"
             ></textarea>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between px-3 md:px-5 pb-2 md:pb-3 pt-1">
-          <span class="text-xs md:text-[10px] text-muted-foreground"
-            >{{ prompt.length }} chars</span
-          >
-          <div class="flex items-center gap-3">
-            <span class="text-xs md:text-[10px] text-muted-foreground"
-              >Batch: {{ config.batchCount }}</span
-            >
-            <span class="text-xs md:text-[10px] text-muted-foreground"
-              >{{ config.width }}&times;{{ config.height }}</span
-            >
           </div>
         </div>
       </div>

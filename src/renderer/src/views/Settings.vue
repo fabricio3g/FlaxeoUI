@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Copy
 } from 'lucide-vue-next'
-import LogPanel from '@/components/LogPanel.vue'
 import Select from '@/components/ui/Select.vue'
 
 
@@ -551,14 +550,6 @@ onMounted(async () => {
               <RefreshCw class="w-4 h-4" />
             </button>
           </div>
-        </div>
-      </section>
-
-      <!-- Server Logs -->
-      <section>
-        <h2 class="text-lg font-semibold mb-4">Server Logs</h2>
-        <div class="h-64">
-          <LogPanel />
         </div>
       </section>
     </div>

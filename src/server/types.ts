@@ -1,7 +1,17 @@
 import type { ChildProcess } from 'child_process'
+import type { EventEmitter } from 'events'
 import type { Server } from 'http'
 
 export type JsonObject = Record<string, any>
+
+export interface ProgressInfo {
+  current: number
+  total: number
+  itPerSec: number
+  label: string
+  startedAt: number
+  updatedAt: number
+}
 
 export interface BackendConfig {
   activeVersion: string
@@ -36,6 +46,8 @@ export interface RuntimeState {
   networkStatus: NetworkStatus
   ngrokListener: any
   cloudflareTunnel: ChildProcess | null
+  progress: ProgressInfo | null
+  progressBus: EventEmitter
 }
 
 export interface AppContext {

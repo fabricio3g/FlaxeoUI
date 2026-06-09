@@ -7,11 +7,13 @@ import {
   asBool,
   firstString,
   modelPath,
+  parseStepLine,
   removeDir,
   removeFile,
   spawnLoggedProcess,
   waitForProcess
 } from '../utils'
+import type { ParsedStep } from '../utils'
 import {
   addGenerationArgs,
   addHardwareArgs,
@@ -63,12 +65,45 @@ function uploadMiddleware(ctx: AppContext) {
 
 async function runCli(ctx: AppContext, args: string[], label: string): Promise<{ cancelled: boolean }> {
   const activeBackend = ctx.getActiveBackendPath()
+  const startedAt = Date.now()
+  ctx.state.progressBus.emit('start', { label, startedAt })
+  ctx.state.progress = { current: 0, total: 0, itPerSec: 0, label, startedAt, updatedAt: startedAt }
+
   ctx.state.cliProcess = spawnLoggedProcess(ctx, getSdCliPath(ctx), args, label, { cwd: activeBackend })
+
+  const onChunk = (data: Buffer): void => {
+    const text = data.toString()
+    const lines = text.split('\n')
+    for (const line of lines) {
+      const parsed = parseStepLine(line)
+      if (parsed) {
+        updateProgress(ctx, parsed, label, startedAt)
+      }
+    }
+  }
+  ctx.state.cliProcess.stdout?.on('data', onChunk)
+  ctx.state.cliProcess.stderr?.on('data', onChunk)
+
   try {
     return await waitForProcess(ctx.state.cliProcess, label)
   } finally {
     ctx.state.cliProcess = null
+    ctx.state.progress = null
+    ctx.state.progressBus.emit('end', {})
   }
+}
+
+function updateProgress(ctx: AppContext, parsed: ParsedStep, label: string, startedAt: number): void {
+  const p = {
+    current: parsed.current,
+    total: parsed.total,
+    itPerSec: parsed.itPerSec,
+    label,
+    startedAt,
+    updatedAt: Date.now()
+  }
+  ctx.state.progress = p
+  ctx.state.progressBus.emit('progress', p)
 }
 
 function fileFromUpload(req: UploadRequest, field: string): string | null {

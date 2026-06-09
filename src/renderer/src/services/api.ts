@@ -135,6 +135,7 @@ export const API_ENDPOINTS = {
   GENERATE_SERVER: '/api/generate',
   CANCEL_CLI: '/api/cancel-cli',
   CANCEL: '/api/cancel',
+  GENERATION_PROGRESS: '/api/generation/progress',
 
   // Inpainting
   INPAINT: '/api/inpaint',

@@ -19,7 +19,7 @@ async function fetchRuntimeStatus(): Promise<void> {
     const statusData = await apiGet<any>('/api/status')
     sdServerRunning.value = statusData.running || false
     if (statusData.logs) {
-      logs.value = statusData.logs.slice(-50)
+      logs.value = statusData.logs
     }
   } catch {
     backendVersion.value = 'Error'
