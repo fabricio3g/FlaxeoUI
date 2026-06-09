@@ -160,7 +160,7 @@ function handleClose(): void {
 
 <template>
   <header
-    class="titlebar-shell relative z-[10000] h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag"
+    class="titlebar-shell relative z-[10000] h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag titlebar-border"
   >
     <nav class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag">
       <button

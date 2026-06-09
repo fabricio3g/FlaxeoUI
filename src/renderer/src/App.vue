@@ -64,7 +64,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen bg-background text-foreground overflow-hidden select-none">
+  <div class="flex flex-col h-screen text-foreground overflow-hidden select-none window-border">
     <!-- Custom Titlebar for Electron Only -->
     <Titlebar
       :current-tab="currentTab"
@@ -79,7 +79,7 @@ onMounted(async () => {
       <!-- Config Panel (detailed settings) -->
       <ConfigPanel
         :collapsed="sidebarCollapsed"
-        class="shrink-0 transition-[width] duration-200 ease-out bg-card md:mt-3 md:mb-3 md:ml-3 md:rounded-sm"
+        class="shrink-0 transition-[width] duration-200 ease-out bg-card sidebar-border md:mt-3 md:mb-3 md:ml-3 md:rounded-sm"
         :class="[
           sidebarCollapsed
             ? 'md:flex md:w-12 md:relative md:translate-x-0'
