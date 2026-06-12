@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, apiGet, getApiBase, getOutputUrl } from '@/services/api'
-import { Upload, Play, X } from 'lucide-vue-next'
+import { ArrowUp, Minus, Upload, X } from 'lucide-vue-next'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import { useGenerationStatus } from '@/composables/useGeneration'
+import { useGenerationProgress } from '@/composables/useGenerationProgress'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -14,8 +15,12 @@ const { config } = storeToRefs(configStore)
 const prompt = ref('')
 const negativePrompt = ref('')
 const { isGenerating } = useGenerationStatus('video')
+const progress = useGenerationProgress()
 const generatedVideo = ref<string | null>(null)
 const error = ref<string | null>(null)
+const showNegPrompt = ref(false)
+const promptInput = ref<HTMLTextAreaElement | null>(null)
+const isMobile = ref(false)
 
 // Video mode: T2V (text to video) or I2V (image to video)
 const videoMode = ref<'t2v' | 'i2v'>('t2v')
@@ -29,6 +34,32 @@ const flowShift = ref(3.0)
 // I2V reference image
 const referenceImage = ref<string | null>(null)
 const referenceFile = ref<File | null>(null)
+
+function autoResize(): void {
+  const el = promptInput.value
+  if (!el) return
+
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, isMobile.value ? 160 : 360) + 'px'
+}
+
+function onPromptKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleGenerate()
+  }
+}
+
+function handleWindowResize(): void {
+  isMobile.value = window.innerWidth < 768
+}
+
+function formatETA(secs: number): string {
+  if (!Number.isFinite(secs) || secs <= 0) return '...'
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 /**
  * setVideoMode() - Switch between T2V and I2V
@@ -77,6 +108,7 @@ async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
 
   isGenerating.value = true
+  progress.start()
   error.value = null
   generatedVideo.value = null
 
@@ -159,6 +191,7 @@ async function handleGenerate(): Promise<void> {
     console.error('Video generation error:', e)
   } finally {
     isGenerating.value = false
+    progress.stop()
   }
 }
 
@@ -171,21 +204,29 @@ async function handleCancel(): Promise<void> {
   } catch (e) {
     console.error('Cancel failed:', e)
   }
+  progress.stop()
   isGenerating.value = false
 }
 
 onMounted(() => {
+  handleWindowResize()
+  window.addEventListener('resize', handleWindowResize)
+
   const referenceUrl = sessionStorage.getItem('videoReferenceImage')
   if (!referenceUrl) return
 
   sessionStorage.removeItem('videoReferenceImage')
   loadReferenceFromUrl(referenceUrl)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleWindowResize)
+})
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-2 md:p-3">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -212,8 +253,9 @@ onMounted(() => {
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div v-if="!isGenerating" class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
-              <span class="text-3xl font-semibold tracking-tight md:text-5xl">Imagine it into form</span>
+            <div v-if="!isGenerating" class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center">
+              <span class="empty-preview-brand">FlaxeoUI</span>
+              <span class="empty-preview-brand-subtitle">Imagine it into motion</span>
             </div>
           </div>
 
@@ -221,69 +263,107 @@ onMounted(() => {
             v-if="isGenerating"
             class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <div class="generating-status">
-              <div class="generating-loader-mark" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
+            <div class="generating-status generating-status-panel">
+              <div v-if="!progress.hasSteps" class="flex flex-col items-center">
+                <div class="generating-loader-mark" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <span class="generating-status-title">Loading model</span>
+                <p class="generating-status-subtitle">Preparing motion generation...</p>
               </div>
-              <span class="generating-status-title">Rendering motion</span>
-              <p class="generating-status-subtitle">This can take a few minutes.</p>
+              <div v-else class="flex w-full flex-col items-center gap-3">
+                <span class="generating-status-kicker">{{ progress.label || 'VIDEO' }}</span>
+                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
+                <div class="generating-progress-track">
+                  <div
+                    class="generating-progress-bar"
+                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
+                  ></div>
+                </div>
+                <div class="generating-status-metrics">
+                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
+                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="shrink-0 bg-card/70 px-3 pb-3 pt-2">
-      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
-        <div class="px-3 py-2 flex items-center gap-2 flex-wrap">
-          <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30">
+    <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
+      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
+        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
+          <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30 shrink-0">
             <button
               @click="setVideoMode('t2v')"
-              class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+              class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
               :class="videoMode === 't2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             >
               Text to Video
             </button>
             <button
               @click="setVideoMode('i2v')"
-              class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+              class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
               :class="videoMode === 'i2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             >
               Image to Video
             </button>
           </div>
 
-          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs">
+          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs">
             <span class="text-muted-foreground text-[10px]">W</span>
-            <input v-model.number="videoWidth" type="number" step="16" class="w-14 px-1 bg-transparent text-center focus:outline-none" />
+            <input v-model.number="videoWidth" type="number" step="16" class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none" />
             <span class="text-muted-foreground">×</span>
             <span class="text-muted-foreground text-[10px]">H</span>
-            <input v-model.number="videoHeight" type="number" step="16" class="w-14 px-1 bg-transparent text-center focus:outline-none" />
+            <input v-model.number="videoHeight" type="number" step="16" class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none" />
           </div>
 
-          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs gap-1">
+          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1">
             <span class="text-[10px] text-muted-foreground">Frames</span>
-            <input v-model.number="videoFrames" type="number" min="9" max="129" step="4" class="w-14 bg-transparent text-center focus:outline-none" />
+            <input v-model.number="videoFrames" type="number" min="9" max="129" step="4" class="w-11 md:w-14 bg-transparent text-center focus:outline-none" />
           </div>
 
-          <div class="flex items-center bg-card border border-border rounded-lg px-2 py-1 text-xs gap-1">
+          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1">
             <span class="text-[10px] text-muted-foreground">Flow</span>
-            <input v-model.number="flowShift" type="number" min="0" max="10" step="0.5" class="w-14 bg-transparent text-center focus:outline-none" />
+            <input v-model.number="flowShift" type="number" min="0" max="10" step="0.5" class="w-11 md:w-14 bg-transparent text-center focus:outline-none" />
           </div>
 
           <div class="flex-1 hidden md:block"></div>
 
-          <label v-if="videoMode === 'i2v'" class="h-8 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
+          <label v-if="videoMode === 'i2v'" class="h-8 shrink-0 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
             <Upload class="w-3.5 h-3.5" />
             Reference
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
+
+          <div class="flex items-center gap-1.5 text-muted-foreground shrink-0">
+            <button
+              @click="showNegPrompt = !showNegPrompt"
+              class="h-7 w-7 md:h-8 md:w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
+              :class="
+                showNegPrompt
+                  ? 'primary-metal-button text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              title="Negative Prompt"
+            >
+              <Minus class="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div class="h-5 w-px bg-border/80 hidden md:block shrink-0"></div>
+          <PromptPresetControls
+            v-model:prompt="prompt"
+            v-model:negative-prompt="negativePrompt"
+            compact
+            class="shrink-0"
+          />
         </div>
 
-        <div v-if="videoMode === 'i2v' && referenceImage" class="px-3 pb-2">
+        <div v-if="videoMode === 'i2v' && referenceImage" class="px-2 md:px-5 pb-2">
           <div class="flex items-center gap-3 p-2 bg-muted/30 rounded-lg border border-border/30 inline-flex">
             <img :src="referenceImage" class="h-14 rounded-md border border-border/50" />
             <div class="text-xs text-muted-foreground">Reference loaded</div>
@@ -293,42 +373,53 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="composer-shell flax-composer mx-3 rounded-2xl">
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            class="flax-composer-presets"
-          />
-
+        <div class="flax-composer rounded-2xl px-0.5 md:px-0">
           <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
                 v-model="prompt"
+                ref="promptInput"
                 rows="1"
                 placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
-                class="flax-composer-textarea w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: '68px', maxHeight: '200px' }"
+                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
+                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
                 :disabled="isGenerating"
+                @keydown="onPromptKeydown"
+                @input="autoResize"
               ></textarea>
-            </div>
-            <div class="flax-composer-actions flex items-end pb-0.5">
-              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim()" class="flax-composer-send primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center" title="Generate Video">
-                <Play class="w-5 h-5 stroke-[2.5]" />
-              </button>
-              <button v-else @click="handleCancel" class="flax-composer-cancel flex items-center justify-center" title="Cancel">
-                <X class="w-4 h-4" />
-              </button>
+              <div class="absolute bottom-3 right-3 flex items-end">
+                <button
+                  v-if="!isGenerating"
+                  @click="handleGenerate"
+                  :disabled="!prompt.trim()"
+                  class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Generate Video"
+                >
+                  <span class="flax-composer-send-icon inline-flex">
+                    <ArrowUp class="w-4.5 h-4.5 stroke-[2.5]" />
+                  </span>
+                </button>
+                <button
+                  v-else
+                  @click="handleCancel"
+                  class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
+                  title="Cancel"
+                >
+                  <X class="w-4.5 h-4.5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="mt-2 border-t border-border/50 pt-2">
-            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, distorted, low quality, bad motion..." class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+          <div v-if="showNegPrompt" class="mt-2 border-t border-border/50 pt-2">
+            <textarea
+              v-model="negativePrompt"
+              rows="2"
+              placeholder="Things to avoid: blurry, distorted, low quality, bad motion..."
+              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-4 md:py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+              :disabled="isGenerating"
+            ></textarea>
           </div>
-        </div>
-
-        <div class="flex items-center justify-between px-3 pb-2 pt-1">
-          <span class="text-[10px] text-muted-foreground">{{ prompt.length }} chars</span>
-          <span class="text-[10px] text-muted-foreground">{{ videoWidth }}×{{ videoHeight }} · {{ videoFrames }} frames</span>
         </div>
       </div>
     </div>

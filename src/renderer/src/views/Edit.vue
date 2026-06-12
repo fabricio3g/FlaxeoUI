@@ -3,10 +3,11 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { Brush, Upload, Trash2, X, Images } from 'lucide-vue-next'
+import { ArrowUp, Brush, Images, Minus, Trash2, Upload, X } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import { useGenerationStatus } from '@/composables/useGeneration'
+import { useGenerationProgress } from '@/composables/useGenerationProgress'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -16,7 +17,11 @@ const { config } = storeToRefs(configStore)
 const prompt = ref('')
 const negativePrompt = ref('')
 const { isGenerating } = useGenerationStatus('edit')
+const progress = useGenerationProgress()
 const error = ref<string | null>(null)
+const showNegPrompt = ref(false)
+const promptInput = ref<HTMLTextAreaElement | null>(null)
+const isMobile = ref(false)
 
 // Canvas state
 const baseImage = ref<string | null>(null)
@@ -39,6 +44,26 @@ let ctx: CanvasRenderingContext2D | null = null
 let imageElement: HTMLImageElement | null = null
 let imageResizeObserver: ResizeObserver | null = null
 let lastMaskPoint: { x: number; y: number } | null = null
+
+function autoResize(): void {
+  const el = promptInput.value
+  if (!el) return
+
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, isMobile.value ? 160 : 360) + 'px'
+}
+
+function onPromptKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleGenerate()
+  }
+}
+
+function handleWindowResize(): void {
+  isMobile.value = window.innerWidth < 768
+  syncCanvasToDisplayedImage()
+}
 
 const canvasDisplayStyle = computed(() => ({
   width: canvasDisplaySize.value.width ? `${canvasDisplaySize.value.width}px` : '100%',
@@ -238,7 +263,6 @@ function startPanning(event: MouseEvent): void {
 function panViewport(event: MouseEvent): void {
   if (!isPanning.value) return
 
-
   pan.value = {
     x: panOrigin.value.x + event.clientX - panStart.value.x,
     y: panOrigin.value.y + event.clientY - panStart.value.y
@@ -252,6 +276,13 @@ function stopPanning(): void {
 function resetViewport(): void {
   zoom.value = 1
   pan.value = { x: 0, y: 0 }
+}
+
+function formatETA(secs: number): string {
+  if (!Number.isFinite(secs) || secs <= 0) return '...'
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 /**
@@ -269,6 +300,7 @@ async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim() || !baseImageFile.value) return
 
   isGenerating.value = true
+  progress.start()
   error.value = null
 
   try {
@@ -359,6 +391,7 @@ async function handleGenerate(): Promise<void> {
     console.error('Inpainting error:', e)
   } finally {
     isGenerating.value = false
+    progress.stop()
   }
 }
 
@@ -371,6 +404,7 @@ async function handleCancel(): Promise<void> {
   } catch (e) {
     console.error('Cancel failed:', e)
   }
+  progress.stop()
   isGenerating.value = false
 }
 
@@ -383,7 +417,8 @@ function goToGallery(): void {
 
 // Check for image from gallery on mount
 onMounted(() => {
-  window.addEventListener('resize', syncCanvasToDisplayedImage)
+  handleWindowResize()
+  window.addEventListener('resize', handleWindowResize)
 
   const editImage = sessionStorage.getItem('editImage')
   if (editImage) {
@@ -399,14 +434,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', syncCanvasToDisplayedImage)
+  window.removeEventListener('resize', handleWindowResize)
   imageResizeObserver?.disconnect()
 })
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-4 md:p-6">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -436,8 +471,8 @@ onUnmounted(() => {
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div class="relative z-10 flex max-w-sm flex-col items-center gap-4 px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
-              <Brush class="w-12 h-12 opacity-80" />
+            <div class="relative z-10 flex max-w-sm flex-col items-center gap-4 px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.5)]">
+              <span class="empty-preview-brand">FlaxeoUI</span>
               <p class="text-sm font-medium text-white/75">Drop an image here or start from your gallery.</p>
               <label
                 class="px-4 py-2 text-xs primary-metal-button text-white rounded cursor-pointer"
@@ -454,7 +489,7 @@ onUnmounted(() => {
 
           <div
             v-else
-              class="relative inline-block max-h-full max-w-full transition-transform duration-75"
+            class="relative inline-block max-h-full max-w-full transition-transform duration-75"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
           >
@@ -488,92 +523,141 @@ onUnmounted(() => {
             v-if="isGenerating"
             class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <div class="generating-status">
-              <div class="generating-loader-mark" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
+            <div class="generating-status generating-status-panel">
+              <div v-if="!progress.hasSteps" class="flex flex-col items-center">
+                <div class="generating-loader-mark" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <span class="generating-status-title">Loading model</span>
+                <p class="generating-status-subtitle">Preparing the edit workspace...</p>
               </div>
-              <span class="generating-status-title">Blending the edit</span>
-              <p class="generating-status-subtitle">Filling the masked area with your prompt.</p>
+              <div v-else class="flex w-full flex-col items-center gap-3">
+                <span class="generating-status-kicker">{{ progress.label || 'INPAINT' }}</span>
+                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
+                <div class="generating-progress-track">
+                  <div
+                    class="generating-progress-bar"
+                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
+                  ></div>
+                </div>
+                <div class="generating-status-metrics">
+                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
+                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="shrink-0 bg-card/70 px-5 pb-4 pt-3">
-      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
-        <div class="px-5 py-3 flex items-center gap-2 flex-wrap">
-          <div class="flex items-center gap-1 bg-muted/50 rounded-lg border border-border/30 p-1">
-            <div class="flex items-center gap-2 bg-background/50 rounded border border-border/20 px-2 py-1">
+    <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
+      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
+        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
+          <div class="flex items-center gap-1 bg-muted/50 rounded-lg border border-border/30 p-1 shrink-0">
+            <div class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1">
               <Brush class="w-3.5 h-3.5 text-muted-foreground" />
-              <span class="text-[10px] text-muted-foreground">Brush</span>
-              <input v-model.number="brushSize" type="range" min="5" max="100" class="w-20 h-1 accent-primary" />
-              <span class="text-xs w-6 text-center font-mono">{{ brushSize }}</span>
+              <span class="text-[10px] text-muted-foreground hidden sm:inline">Brush</span>
+              <input v-model.number="brushSize" type="range" min="5" max="100" class="w-16 md:w-20 h-1 accent-primary" />
+              <span class="text-[11px] md:text-xs w-5 md:w-6 text-center font-mono">{{ brushSize }}</span>
             </div>
 
-            <div class="flex items-center gap-2 bg-background/50 rounded border border-border/20 px-2 py-1">
-              <span class="text-[10px] text-muted-foreground">Strength</span>
-              <input v-model.number="inpaintStrength" type="range" min="0" max="1" step="0.05" class="w-16 h-1 accent-primary" />
-              <span class="text-xs w-8 text-center font-mono">{{ inpaintStrength.toFixed(2) }}</span>
+            <div class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1">
+              <span class="text-[10px] text-muted-foreground hidden sm:inline">Strength</span>
+              <input v-model.number="inpaintStrength" type="range" min="0" max="1" step="0.05" class="w-12 md:w-16 h-1 accent-primary" />
+              <span class="text-[11px] md:text-xs w-6 md:w-8 text-center font-mono">{{ inpaintStrength.toFixed(2) }}</span>
             </div>
           </div>
 
           <div class="flex-1 hidden md:block"></div>
 
-          <button @click="clearMask" class="h-8 px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
+          <button @click="clearMask" class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
             <Trash2 class="w-3.5 h-3.5" />
             Clear
           </button>
-          <label class="h-8 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
+          <label class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
             <Upload class="w-3.5 h-3.5" />
             Upload
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
-          <button @click="goToGallery" class="h-8 px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
+          <button @click="goToGallery" class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
             <Images class="w-3.5 h-3.5" />
             Gallery
           </button>
-        </div>
 
-        <div class="composer-shell flax-composer mx-4 rounded-2xl">
+          <div class="flex items-center gap-1.5 text-muted-foreground shrink-0">
+            <button
+              @click="showNegPrompt = !showNegPrompt"
+              class="h-7 w-7 md:h-8 md:w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
+              :class="
+                showNegPrompt
+                  ? 'primary-metal-button text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              title="Negative Prompt"
+            >
+              <Minus class="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div class="h-5 w-px bg-border/80 hidden md:block shrink-0"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
-            class="flax-composer-presets"
+            compact
+            class="shrink-0"
           />
+        </div>
 
+        <div class="flax-composer rounded-2xl px-0.5 md:px-0">
           <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
                 v-model="prompt"
+                ref="promptInput"
                 rows="1"
                 placeholder="Describe what to generate in the masked area..."
-                class="flax-composer-textarea w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-foreground transition-all duration-200 focus:outline-none placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: '68px', maxHeight: '200px' }"
+                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
+                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
                 :disabled="isGenerating"
+                @keydown="onPromptKeydown"
+                @input="autoResize"
               ></textarea>
-            </div>
-            <div class="flax-composer-actions flex items-end pb-0.5">
-              <button v-if="!isGenerating" @click="handleGenerate" :disabled="!prompt.trim() || !baseImage" class="flax-composer-send primary-metal-button disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center" title="Inpaint">
-                <Brush class="w-5 h-5 stroke-[2.5]" />
-              </button>
-              <button v-else @click="handleCancel" class="flax-composer-cancel flex items-center justify-center" title="Cancel">
-                <X class="w-4 h-4" />
-              </button>
+              <div class="absolute bottom-3 right-3 flex items-end">
+                <button
+                  v-if="!isGenerating"
+                  @click="handleGenerate"
+                  :disabled="!prompt.trim() || !baseImage"
+                  class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Inpaint"
+                >
+                  <span class="flax-composer-send-icon inline-flex">
+                    <ArrowUp class="w-4.5 h-4.5 stroke-[2.5]" />
+                  </span>
+                </button>
+                <button
+                  v-else
+                  @click="handleCancel"
+                  class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
+                  title="Cancel"
+                >
+                  <X class="w-4.5 h-4.5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="mt-2 border-t border-border/50 pt-2">
-            <textarea v-model="negativePrompt" rows="2" placeholder="Things to avoid: blurry, low quality, distorted, bad anatomy..." class="flax-composer-negative w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50" :disabled="isGenerating"></textarea>
+          <div v-if="showNegPrompt" class="mt-2 border-t border-border/50 pt-2">
+            <textarea
+              v-model="negativePrompt"
+              rows="2"
+              placeholder="Things to avoid: blurry, low quality, distorted, bad anatomy..."
+              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-4 md:py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+              :disabled="isGenerating"
+            ></textarea>
           </div>
-        </div>
-
-        <div class="flex items-center justify-between px-5 pb-3 pt-1">
-          <span class="text-[10px] text-muted-foreground">{{ prompt.length }} chars</span>
-          <span class="text-[10px] text-muted-foreground">Mask over the image to edit selected areas</span>
         </div>
       </div>
     </div>

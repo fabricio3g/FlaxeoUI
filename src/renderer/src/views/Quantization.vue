@@ -122,7 +122,7 @@ onMounted(() => {
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
     <!-- Preview / Status Area -->
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-4 md:p-6">
+    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
         <div class="relative flex min-h-0 flex-1 items-center justify-center rounded-2xl metal-surface group overflow-hidden dot-grid-corners">
           <!-- Empty State -->
@@ -131,9 +131,9 @@ onMounted(() => {
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]">
-              <span class="text-3xl font-semibold tracking-tight md:text-5xl">Model Quantization</span>
-              <span class="mt-3 text-sm font-medium text-white/70 md:text-base">Convert models to GGUF with lower precision</span>
+            <div class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center">
+              <span class="empty-preview-brand">FlaxeoUI</span>
+              <span class="empty-preview-brand-subtitle">Model Quantization</span>
             </div>
           </div>
 
@@ -179,10 +179,10 @@ onMounted(() => {
     </div>
 
     <!-- Controls Panel -->
-    <div class="shrink-0 bg-card/70 px-5 pb-4 pt-3">
+    <div class="shrink-0 bg-card/70 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
       <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl border border-border/70 bg-card/85 shadow-[0_12px_34px_rgba(130,130,255,0.14)] backdrop-blur">
         <!-- Quick Controls Row -->
-        <div class="px-5 py-3 flex items-center gap-2 flex-wrap">
+        <div class="px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 flex-wrap">
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <Scale class="w-3.5 h-3.5" />
             <span class="font-medium">Quantization</span>
@@ -197,7 +197,7 @@ onMounted(() => {
         </div>
 
         <!-- Conversion Form -->
-        <div class="px-5 pb-4 space-y-3">
+        <div class="px-3 md:px-5 pb-3 md:pb-4 space-y-3">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label class="text-[11px] font-medium text-muted-foreground block mb-1.5">Source Model</label>

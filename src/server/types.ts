@@ -37,13 +37,29 @@ export interface NetworkStatus {
   cloudflare: { enabled: boolean; url: string | null; error: string | null }
 }
 
+export interface DownloadTask {
+  id: string
+  label: string
+  targetPath: string
+  url: string
+  status: 'downloading' | 'completed' | 'failed' | 'cancelled'
+  receivedBytes: number
+  totalBytes: number | null
+  startedAt: number
+  updatedAt: number
+  error?: string
+  cancel?: () => void
+}
+
 export interface RuntimeState {
   backendConfig: BackendConfig
   serverLogs: string[]
+  logBus: EventEmitter
   sdProcess: ChildProcess | null
   cliProcess: ChildProcess | null
   server: Server | null
   networkStatus: NetworkStatus
+  downloads: Record<string, DownloadTask>
   ngrokListener: any
   cloudflareTunnel: ChildProcess | null
   progress: ProgressInfo | null

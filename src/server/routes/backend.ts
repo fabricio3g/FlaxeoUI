@@ -122,11 +122,35 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
     const versionDir = path.join(ctx.paths.releasesDir, version)
     const isTarGz = url.endsWith('.tar.gz') || url.endsWith('.tgz')
     const archivePath = path.join(ctx.paths.releasesDir, `download${isTarGz ? '.tar.gz' : '.zip'}`)
+    const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    ctx.state.downloads[id] = {
+      id,
+      label: `Backend: ${variant || version}`,
+      url,
+      targetPath: archivePath,
+      status: 'downloading',
+      receivedBytes: 0,
+      totalBytes: null,
+      startedAt: Date.now(),
+      updatedAt: Date.now()
+    }
 
     try {
       console.log(`[Backend] Downloading ${version} (${variant}) from ${url}`)
       fs.mkdirSync(versionDir, { recursive: true })
-      await downloadFile(url, archivePath)
+      await downloadFile(url, archivePath, {
+        registerCancel: (cancel) => {
+          const task = ctx.state.downloads[id]
+          if (task) task.cancel = cancel
+        },
+        onProgress: (receivedBytes, totalBytes) => {
+          const task = ctx.state.downloads[id]
+          if (!task) return
+          task.receivedBytes = receivedBytes
+          task.totalBytes = totalBytes
+          task.updatedAt = Date.now()
+        }
+      })
       if (isTarGz) await tar.x({ file: archivePath, cwd: versionDir, strip: 0 })
       else new AdmZip(archivePath).extractAllTo(versionDir, true)
       if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
@@ -142,10 +166,18 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       ctx.state.backendConfig.activeVersion = version
       ctx.state.backendConfig.installedVersions = Array.from(new Set([...(ctx.state.backendConfig.installedVersions || []), version]))
       ctx.saveBackendConfig()
-      res.json({ success: true, version, path: versionDir })
+      ctx.state.downloads[id].status = 'completed'
+      ctx.state.downloads[id].updatedAt = Date.now()
+      res.json({ success: true, id, version, path: versionDir })
     } catch (error: any) {
       console.error('[Backend] Download/install error:', error)
       if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
+      const task = ctx.state.downloads[id]
+      if (task) {
+        task.status = error.message === 'Download cancelled' ? 'cancelled' : 'failed'
+        task.error = error.message
+        task.updatedAt = Date.now()
+      }
       res.status(500).json({ error: error.message })
     }
   })

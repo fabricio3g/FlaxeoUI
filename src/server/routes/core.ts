@@ -26,6 +26,44 @@ const MODEL_DOWNLOAD_DIRS = new Set([
   'embeddings'
 ])
 
+function createDownloadTask(ctx: AppContext, label: string, url: string, targetPath: string): string {
+  const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  ctx.state.downloads[id] = {
+    id,
+    label,
+    url,
+    targetPath,
+    status: 'downloading',
+    receivedBytes: 0,
+    totalBytes: null,
+    startedAt: Date.now(),
+    updatedAt: Date.now()
+  }
+  return id
+}
+
+async function trackedDownload(ctx: AppContext, id: string, url: string, targetPath: string): Promise<string> {
+  return downloadFile(url, targetPath, {
+    registerCancel: (cancel) => {
+      const task = ctx.state.downloads[id]
+      if (task) task.cancel = cancel
+    },
+    onProgress: (receivedBytes, totalBytes) => {
+      const task = ctx.state.downloads[id]
+      if (!task) return
+      task.receivedBytes = receivedBytes
+      task.totalBytes = totalBytes
+      task.updatedAt = Date.now()
+    }
+  })
+}
+
+function publicDownloadTasks(ctx: AppContext) {
+  return Object.values(ctx.state.downloads)
+    .sort((a, b) => b.startedAt - a.startedAt)
+    .map(({ cancel: _cancel, ...task }) => task)
+}
+
 function filenameFromUrl(url: string): string {
   const cleanUrl = url.split('?')[0]
   const name = decodeURIComponent(path.basename(cleanUrl))
@@ -65,15 +103,46 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const safeFilename = path.basename(typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url))
     const targetDir = path.join(ctx.paths.modelsDir, category)
     const targetPath = path.join(targetDir, safeFilename)
+    const id = createDownloadTask(ctx, `Model: ${safeFilename}`, url, targetPath)
 
     try {
       fs.mkdirSync(targetDir, { recursive: true })
-      await downloadFile(url, targetPath)
-      res.json({ success: true, category, filename: safeFilename, path: targetPath })
+      await trackedDownload(ctx, id, url, targetPath)
+      ctx.state.downloads[id].status = 'completed'
+      ctx.state.downloads[id].updatedAt = Date.now()
+      res.json({ success: true, id, category, filename: safeFilename, path: targetPath })
     } catch (error: any) {
       if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
+      const task = ctx.state.downloads[id]
+      if (task) {
+        task.status = error.message === 'Download cancelled' ? 'cancelled' : 'failed'
+        task.error = error.message
+        task.updatedAt = Date.now()
+      }
       res.status(500).json({ error: error.message })
     }
+  })
+
+  app.get('/api/downloads', (_req, res) => {
+    res.json({ downloads: publicDownloadTasks(ctx) })
+  })
+
+  app.post('/api/downloads/:id/cancel', (req, res) => {
+    const task = ctx.state.downloads[req.params.id]
+    if (!task) return res.status(404).json({ error: 'Download not found' })
+    if (task.status !== 'downloading') return res.json({ success: true, task })
+    task.cancel?.()
+    task.status = 'cancelled'
+    task.updatedAt = Date.now()
+    if (fs.existsSync(task.targetPath)) fs.unlinkSync(task.targetPath)
+    res.json({ success: true })
+  })
+
+  app.post('/api/downloads/clear-completed', (_req, res) => {
+    for (const [id, task] of Object.entries(ctx.state.downloads)) {
+      if (task.status !== 'downloading') delete ctx.state.downloads[id]
+    }
+    res.json({ success: true })
   })
 
   app.post('/api/start', (req, res) => {

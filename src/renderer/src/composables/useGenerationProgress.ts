@@ -107,8 +107,10 @@ function start(): void {
     })
 
     eventSource.onerror = () => {
+      const shouldReconnect = isActive.value
       cleanup()
-      if (isActive.value) {
+      if (shouldReconnect) {
+        isActive.value = true
         setTimeout(connect, 1000)
       }
     }

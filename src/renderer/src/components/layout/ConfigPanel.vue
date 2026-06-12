@@ -932,8 +932,23 @@ onUnmounted(() => {
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
 
     <template v-if="!collapsed">
+      <!-- Mobile Header -->
+      <div class="mobile-sheet-header md:hidden flex items-center justify-between px-5 py-3 border-b border-border shrink-0 bg-card">
+        <h2 class="text-sm font-bold flex items-center gap-2">
+          <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
+          Configuration
+        </h2>
+        <button
+          @click="emit('close')"
+          class="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          type="button"
+        >
+          <X class="w-4.5 h-4.5" />
+        </button>
+      </div>
+
       <!-- Scrollable Content -->
-      <div class="config-panel-scroll flex-1 overflow-y-auto p-5 space-y-5">
+      <div class="config-panel-scroll flex-1 overflow-y-auto p-4 pb-8 md:p-5 md:pb-5 space-y-5">
         <!-- Server / CLI Toggle (always visible) -->
         <section>
           <div class="space-y-2">

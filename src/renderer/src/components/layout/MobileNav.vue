@@ -32,13 +32,13 @@ function handleNavClick(id: string): void {
 
 <template>
   <nav
-    class="h-16 bg-card/90 border-t border-border/70 flex items-center justify-around px-2 shrink-0 z-40 backdrop-blur-xl"
+    class="mobile-nav h-16 bg-card/90 border-t border-border/70 flex items-center justify-around px-2 shrink-0 z-40 backdrop-blur-xl"
   >
     <button
       v-for="item in navItems"
       :key="item.id"
       @click="handleNavClick(item.id)"
-      class="flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-lg"
+      class="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg"
       :class="[
         currentTab === item.id
           ? 'primary-metal-button text-white'
@@ -46,7 +46,7 @@ function handleNavClick(id: string): void {
       ]"
     >
       <component :is="item.icon" class="w-4 h-4" />
-      <span class="text-[10px] font-medium">{{ item.label }}</span>
+      <span class="max-w-full truncate text-[10px] font-medium">{{ item.label }}</span>
     </button>
   </nav>
 </template>

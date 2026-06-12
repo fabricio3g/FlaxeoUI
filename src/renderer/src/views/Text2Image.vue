@@ -101,12 +101,14 @@ const activeTab = ref<string>('')
 const showSizeMenu = ref(false)
 const showNegPrompt = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
+const isMobile = ref(false)
 
 function autoResize(): void {
   const el = promptInput.value
   if (el) {
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 180) + 'px'
+    const limit = isMobile.value ? 160 : 360
+    el.style.height = Math.min(el.scrollHeight, limit) + 'px'
   }
 }
 
@@ -689,6 +691,12 @@ async function checkServerStatus(): Promise<void> {
 }
 
 onMounted(async () => {
+  isMobile.value = window.innerWidth < 768
+  const handleResize = () => {
+    isMobile.value = window.innerWidth < 768
+  }
+  window.addEventListener('resize', handleResize)
+
   clockInterval = setInterval(() => {
     currentTime.value = new Date()
   }, 1000)
@@ -710,6 +718,7 @@ onMounted(async () => {
   }
 
   onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
     window.removeEventListener('keydown', handleKeydown)
     document.removeEventListener('click', handleSizeMenuClick)
     stopPreviewPolling()
@@ -724,7 +733,7 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
     <!-- Preview Area -->
-    <div class="flex-1 relative min-h-0 overflow-hidden p-4 md:p-6">
+    <div class="flex-1 relative min-h-0 overflow-hidden p-1.5 md:p-6">
       <div
         v-if="error"
         class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
@@ -753,21 +762,17 @@ onMounted(async () => {
             <div class="empty-preview-glow empty-preview-glow-c"></div>
             <div
               v-if="!isGenerating"
-              class="relative z-10 hidden md:flex max-w-lg flex-col items-center px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)]"
+              class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center"
             >
-              <span class="text-3xl font-semibold tracking-tight md:text-5xl">{{
-                greetingTitle
-              }}</span>
-              <span class="mt-3 text-sm font-medium text-white/70 md:text-base">{{
-                greetingMessage
-              }}</span>
+              <span class="empty-preview-brand">FlaxeoUI</span>
+              <span class="empty-preview-brand-subtitle">{{ greetingTitle }} · {{ greetingMessage }}</span>
             </div>
           </div>
           <div
             v-if="isGenerating && !previewImage?.includes('temp/preview.png')"
             class="absolute inset-0 generating-halftone flex items-center justify-center"
           >
-            <div class="generating-status max-w-sm w-full px-6">
+            <div class="generating-status generating-status-panel max-w-sm w-full px-6">
               <div v-if="!progress.hasSteps" class="text-center">
                 <div class="generating-loader-mark" aria-hidden="true">
                   <span></span><span></span><span></span><span></span> <span></span><span></span
@@ -778,16 +783,15 @@ onMounted(async () => {
                 <p class="generating-status-subtitle">Preparing to paint your idea...</p>
               </div>
               <div v-else class="flex flex-col items-center gap-3">
-                <span class="text-sm font-semibold text-white/80">
-                  Step {{ progress.current }} / {{ progress.total }}
-                </span>
-                <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <span class="generating-status-kicker">{{ progress.label || 'CLI-GEN' }}</span>
+                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
+                <div class="generating-progress-track">
                   <div
-                    class="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500 ease-linear"
+                    class="generating-progress-bar"
                     :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
                   ></div>
                 </div>
-                <div class="flex items-center gap-4 text-xs text-white/50">
+                <div class="generating-status-metrics">
                   <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
                   <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
                 </div>
@@ -887,57 +891,55 @@ onMounted(async () => {
     </div>
 
     <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
-      <div
-        class="flaxeo-generation-controls relative overflow-visible rounded-3xl"
-      >
+      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
         <!-- Quick Controls Row -->
-        <div class="px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 flex-wrap">
+        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
           <!-- Generation Params -->
-          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[11px] font-semibold text-foreground/70">Batch</span>
+          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Batch</span>
             <input
               v-model.number="config.batchCount"
               type="number"
               min="1"
               max="16"
-              class="w-8 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[11px] font-semibold text-foreground/70">Steps</span>
+          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Steps</span>
             <input
               v-model.number="config.steps"
               type="number"
               min="1"
               max="100"
-              class="w-8 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1.5 h-8 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[11px] font-semibold text-foreground/70">CFG</span>
+          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">CFG</span>
             <input
               v-model.number="config.cfgScale"
               type="number"
               min="0"
               max="30"
               step="0.5"
-              class="w-9 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              class="w-7 md:w-9 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1 min-w-0">
-            <span class="text-[11px] font-semibold text-foreground/70 shrink-0">Sampler</span>
+          <div class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 min-w-0 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70 shrink-0">Sampler</span>
             <Select
               v-model="config.sampler"
               size="sm"
               placeholder="Sampler"
               :options="SAMPLER_OPTIONS"
-              class="!border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 !text-xs !font-bold !w-[80px]"
+              class="!border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 !text-[11px] md:!text-xs !font-bold !w-[70px] md:!w-[80px]"
             />
           </div>
-          <div class="relative size-menu">
+          <div class="relative size-menu shrink-0">
             <button
               @click="showSizeMenu = !showSizeMenu"
-              class="flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded-lg transition-colors shrink-0 leading-none bg-card border border-border h-8"
+              class="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] md:text-xs font-medium rounded-lg transition-colors shrink-0 leading-none bg-card border border-border h-7 md:h-8"
             >
               <span>{{ activePreset?.label ?? config.width + '×' + config.height }}</span>
               <ChevronUp class="w-3 h-3" />
@@ -961,31 +963,31 @@ onMounted(async () => {
               </button>
             </div>
           </div>
-          <div v-if="isManual" class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[11px] font-semibold text-foreground/70">W</span>
+          <div v-if="isManual" class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">W</span>
             <input
               v-model.number="config.width"
               type="number"
               step="64"
-              class="w-12 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div v-if="isManual" class="flex items-center gap-1 h-8 bg-card border border-border rounded-lg px-2 py-1">
-            <span class="text-[11px] font-semibold text-foreground/70">H</span>
+          <div v-if="isManual" class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">H</span>
             <input
               v-model.number="config.height"
               type="number"
               step="64"
-              class="w-12 bg-transparent text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1 h-8 shrink-0 bg-card border border-border rounded-lg px-2 py-1">
+          <div class="flex items-center gap-1 h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1">
             <Eye class="w-3 h-3 text-muted-foreground" />
             <Select
               v-model="config.livePreviewMethod"
               size="sm"
               placeholder="None"
-              class="!w-auto !min-w-[68px] !h-8 !border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 text-[10px]"
+              class="!w-auto !min-w-[56px] md:!min-w-[68px] !h-6 md:!h-8 !border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 text-[10px]"
               :options="[
                 { label: 'None', value: '' },
                 { label: 'Proj', value: 'proj' },
@@ -995,10 +997,19 @@ onMounted(async () => {
             />
           </div>
           <div class="flex-1 hidden md:block"></div>
-          <div class="relative flex items-center gap-1">
+          <div class="relative flex items-center gap-1 shrink-0">
+            <!-- Mobile Backdrop for Popovers -->
             <div
               v-if="activeTab"
-              class="absolute bottom-full right-0 z-50 mb-3 w-[min(520px,calc(100vw-2rem))] rounded-lg border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur"
+              class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              @click="activeTab = ''"
+            ></div>
+
+            <div
+              v-if="activeTab"
+              class="border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur z-50
+                     md:absolute md:bottom-full md:right-0 md:mb-3 md:w-[520px] md:rounded-lg
+                      fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:inset-auto rounded-2xl max-h-[54vh] overflow-y-auto"
             >
               <div v-if="activeTab === 'photomaker'" class="space-y-3">
                 <div class="flex flex-col md:flex-row items-start gap-3">
@@ -1226,13 +1237,13 @@ onMounted(async () => {
                 </div>
               </div>
               <div
-                class="absolute -bottom-1 h-2 w-2 rotate-45 border-b border-r border-border/70 bg-popover/95"
+                class="hidden md:block absolute -bottom-1 h-2 w-2 rotate-45 border-b border-r border-border/70 bg-popover/95"
                 :class="advancedPopoverArrowClass"
               ></div>
             </div>
             <button
               @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
-              class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
               :class="advancedButtonClass('photomaker')"
               title="PhotoMaker"
             >
@@ -1240,7 +1251,7 @@ onMounted(async () => {
             </button>
             <button
               @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
-              class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
               :class="advancedButtonClass('controlnet')"
               title="ControlNet"
             >
@@ -1248,7 +1259,7 @@ onMounted(async () => {
             </button>
             <button
               @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
-              class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
               :class="advancedButtonClass('img2img')"
               title="Image to Image"
             >
@@ -1256,17 +1267,17 @@ onMounted(async () => {
             </button>
             <button
               @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
-              class="h-9 w-9 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
               :class="advancedButtonClass('kontext')"
               title="Reference (Flux)"
             >
               <ImagePlus class="w-4 h-4 md:w-3 md:h-3" />
             </button>
           </div>
-          <div class="flex items-center gap-1.5 text-muted-foreground">
+          <div class="flex items-center gap-1.5 text-muted-foreground shrink-0">
             <button
               @click="showNegPrompt = !showNegPrompt"
-              class="h-8 w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
+              class="h-7 w-7 md:h-8 md:w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
               :class="
                 showNegPrompt
                   ? 'primary-metal-button text-white'
@@ -1277,16 +1288,17 @@ onMounted(async () => {
               <Minus class="w-3.5 h-3.5" />
             </button>
           </div>
-          <div class="h-5 w-px bg-border/80 hidden md:block"></div>
+          <div class="h-5 w-px bg-border/80 hidden md:block shrink-0"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
             compact
+            class="shrink-0"
           />
         </div>
 
         <!-- Floating Input Bar -->
-        <div class="flax-composer rounded-2xl">
+        <div class="flax-composer rounded-2xl px-0.5 md:px-0">
           <div class="flax-composer-input-row flex items-end gap-2">
             <div class="flex-1 relative">
               <textarea
@@ -1294,8 +1306,8 @@ onMounted(async () => {
                 ref="promptInput"
                 rows="1"
                 placeholder="Describe the image you want to generate..."
-                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-4 py-3 md:px-5 md:py-4 pr-14 md:pr-16 text-lg leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: '120px', maxHeight: '360px' }"
+                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
+                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
                 @input="autoResize"

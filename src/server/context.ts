@@ -80,6 +80,7 @@ export function createContext(): AppContext {
   const state = {
     backendConfig: loadBackendConfig(paths.configFile),
     serverLogs: [] as string[],
+    logBus: new EventEmitter(),
     sdProcess: null,
     cliProcess: null,
     server: null,
@@ -88,6 +89,7 @@ export function createContext(): AppContext {
       ngrok: { enabled: false, url: null, error: null },
       cloudflare: { enabled: false, url: null, error: null }
     },
+    downloads: {},
     ngrokListener: null,
     cloudflareTunnel: null,
     progress: null,

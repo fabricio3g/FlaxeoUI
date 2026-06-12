@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useDraggable } from '@vueuse/core'
-import { apiGet, apiPost } from '@/services/api'
 import { Terminal, Trash2, RefreshCw, GripHorizontal, X } from 'lucide-vue-next'
+import { useServerLogs } from '@/composables/useServerLogs'
 
 const props = defineProps<{
   modelValue: boolean
@@ -12,11 +12,10 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-const logs = ref<string[]>([])
-const isLoading = ref(false)
 const autoScroll = ref(true)
 const isPolling = ref(true)
 const logsContainer = ref<HTMLElement | null>(null)
+const { logs, total, isStreaming, refreshLogs, startServerLogStream, stopServerLogStream, clearServerLogs } = useServerLogs()
 
 const panelRef = ref<HTMLElement | null>(null)
 const dragHandleRef = ref<HTMLElement | null>(null)
@@ -28,15 +27,12 @@ const { x, y, style } = useDraggable(panelRef, {
   stopPropagation: true,
 })
 
-let pollInterval: ReturnType<typeof setInterval> | null = null
-
 /**
  * fetchLogs() - Fetch latest logs from server
  */
 async function fetchLogs(): Promise<void> {
   try {
-    const result = await apiGet<{ logs: string[]; total: number }>('/api/logs')
-    logs.value = result.logs
+    await refreshLogs()
 
     if (autoScroll.value) {
       await nextTick()
@@ -52,8 +48,7 @@ async function fetchLogs(): Promise<void> {
  */
 async function clearLogs(): Promise<void> {
   try {
-    await apiPost('/api/logs/clear', {})
-    logs.value = []
+    await clearServerLogs()
   } catch (e) {
     console.error('Failed to clear logs:', e)
   }
@@ -81,15 +76,15 @@ function togglePolling(): void {
 }
 
 function startPolling(): void {
-  if (pollInterval) return
-  pollInterval = setInterval(fetchLogs, 1000)
+  startServerLogStream().then(() => {
+    if (autoScroll.value) {
+      nextTick(scrollToBottom)
+    }
+  })
 }
 
 function stopPolling(): void {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
-  }
+  stopServerLogStream()
 }
 
 function close(): void {
@@ -100,6 +95,15 @@ onMounted(() => {
   fetchLogs()
   startPolling()
 })
+
+watch(
+  () => logs.value.length,
+  async () => {
+    if (!autoScroll.value) return
+    await nextTick()
+    scrollToBottom()
+  }
+)
 
 onUnmounted(() => {
   stopPolling()
@@ -122,7 +126,7 @@ onUnmounted(() => {
         <GripHorizontal class="w-4 h-4 text-muted-foreground" />
         <Terminal class="w-4 h-4 text-muted-foreground" />
         <span class="text-sm font-medium">Server Logs</span>
-        <span class="text-xs text-muted-foreground">({{ logs.length }} entries)</span>
+        <span class="text-xs text-muted-foreground">({{ total }} entries)</span>
       </div>
 
       <div class="flex items-center gap-2">
@@ -141,9 +145,9 @@ onUnmounted(() => {
               ? 'text-green-500 bg-green-500/10'
               : 'text-muted-foreground hover:text-foreground'
           ]"
-          :title="isPolling ? 'Pause auto-refresh' : 'Resume auto-refresh'"
+          :title="isPolling ? 'Pause realtime stream' : 'Resume realtime stream'"
         >
-          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isPolling }" />
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isStreaming }" />
         </button>
 
         <!-- Clear logs -->

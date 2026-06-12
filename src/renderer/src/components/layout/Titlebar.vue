@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import {
   Brush,
   Database,
+  Download,
   Film,
   FolderOpen,
   ImageIcon,
@@ -24,6 +25,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 import Tooltip from '../ui/Tooltip.vue'
 
@@ -68,6 +70,7 @@ const navItems: NavItem[] = [
 const isElectron = ref(false)
 const isDark = ref(false)
 const showModelHub = ref(false)
+const showDownloadManager = ref(false)
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const {
@@ -301,7 +304,9 @@ function handleClose(): void {
       </Tooltip>
     </nav>
 
-    <div class="flex-1"></div>
+    <div class="flex min-w-0 flex-1 items-center px-3 md:hidden">
+      <span class="truncate text-sm font-semibold tracking-tight">Flaxeo</span>
+    </div>
 
     <!-- Window Controls -->
     <div class="flex items-center h-full titlebar-no-drag">
@@ -310,10 +315,31 @@ function handleClose(): void {
         @click="emit('toggleMobileConfig')"
         class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
         type="button"
-        title="Configuration"
+        title="Settings"
+        aria-label="Open mobile settings"
       >
         <PanelLeftClose class="w-4 h-4" />
       </button>
+
+      <button
+        @click="showDownloadManager = true"
+        class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
+        type="button"
+        title="Downloads"
+        aria-label="Open download manager"
+      >
+        <Download class="w-4 h-4" />
+      </button>
+
+      <Tooltip text="Downloads">
+        <button
+          @click="showDownloadManager = true"
+          class="hidden h-8 w-8 mr-1.5 metal-icon-button md:flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
+        >
+          <Download class="w-4 h-4" />
+        </button>
+      </Tooltip>
 
       <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'">
         <button
@@ -353,5 +379,6 @@ function handleClose(): void {
       </template>
     </div>
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
+    <DownloadManagerModal :open="showDownloadManager" @close="showDownloadManager = false" />
   </header>
 </template>

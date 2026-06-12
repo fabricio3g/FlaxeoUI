@@ -115,13 +115,55 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
 
   app.get('/api/logs', (req, res) => {
     const since = parseInt(String(req.query.since || 0), 10)
-    const limit = parseInt(String(req.query.limit || 100), 10)
-    const logs = ctx.state.serverLogs.slice(since, since + limit)
+    const rawLimit = req.query.limit
+    const limit = rawLimit === undefined ? 0 : parseInt(String(rawLimit), 10)
+    const logs = limit > 0
+      ? ctx.state.serverLogs.slice(since, since + limit)
+      : ctx.state.serverLogs.slice(since)
     res.json({ logs, total: ctx.state.serverLogs.length, hasMore: since + logs.length < ctx.state.serverLogs.length })
+  })
+
+  app.get('/api/logs/stream', (req, res) => {
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    })
+    res.flushHeaders()
+
+    const send = (evt: string, data: unknown): void => {
+      res.write(`event: ${evt}\ndata: ${JSON.stringify(data)}\n\n`)
+    }
+    const since = parseInt(String(req.query.since || 0), 10)
+    send('hello', {
+      logs: ctx.state.serverLogs.slice(since),
+      total: ctx.state.serverLogs.length
+    })
+
+    const onLog = (line: string): void => {
+      send('log', { line, total: ctx.state.serverLogs.length })
+    }
+    const onClear = (): void => {
+      send('clear', {})
+    }
+    ctx.state.logBus.on('log', onLog)
+    ctx.state.logBus.on('clear', onClear)
+
+    const keepAlive = setInterval(() => {
+      res.write(': ping\n\n')
+    }, 15000)
+
+    req.on('close', () => {
+      clearInterval(keepAlive)
+      ctx.state.logBus.removeListener('log', onLog)
+      ctx.state.logBus.removeListener('clear', onClear)
+    })
   })
 
   app.post('/api/logs/clear', (_req, res) => {
     ctx.state.serverLogs = []
+    ctx.state.logBus.emit('clear')
     res.json({ success: true })
   })
 

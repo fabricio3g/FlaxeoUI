@@ -75,6 +75,12 @@ body {
   overflow: hidden;
 }
 
+@supports (height: 100dvh) {
+  .h-screen {
+    height: 100dvh;
+  }
+}
+
 html.dark body {
   background:
     radial-gradient(circle at 10% 0%, oklch(0.28 0.06 250 / 0.65), transparent 28rem),
@@ -365,13 +371,12 @@ html.dark .titlebar-shell {
 
 .empty-preview-orb {
   background:
-    radial-gradient(circle at 12% 10%, rgba(0, 0, 0, 0.95), transparent 28rem),
-    radial-gradient(circle at 78% 20%, rgba(35, 255, 78, 0.4), transparent 24rem),
-    radial-gradient(circle at 24% 72%, rgba(31, 255, 218, 0.48), transparent 22rem),
-    #030607;
+    linear-gradient(180deg, rgba(6, 14, 28, 0.05), rgba(6, 14, 28, 0.18)),
+    url('./sky-wallpaper.jpg') center / cover no-repeat;
 }
 
 .empty-preview-noise {
+  display: none;
   position: absolute;
   inset: -30%;
   opacity: 0.64;
@@ -393,12 +398,34 @@ html.dark .titlebar-shell {
 }
 
 .empty-preview-glow {
+  display: none;
   position: absolute;
   border-radius: 999px;
   filter: blur(34px);
   opacity: 0.72;
   mix-blend-mode: screen;
   will-change: transform;
+}
+
+.empty-preview-brand {
+  color: white;
+  font-size: clamp(3rem, 10vw, 7rem);
+  font-weight: 800;
+  letter-spacing: -0.08em;
+  line-height: 0.9;
+  text-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.16),
+    0 18px 42px rgba(15, 23, 42, 0.22);
+}
+
+.empty-preview-brand-subtitle {
+  margin-top: 0.9rem;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: clamp(0.75rem, 1.7vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-shadow: 0 6px 20px rgba(15, 23, 42, 0.28);
+  text-transform: uppercase;
 }
 
 .empty-preview-glow-a {
@@ -576,6 +603,51 @@ html.dark .primary-metal-button:hover:not(:disabled) {
 
 .no-scrollbar {
   scrollbar-width: none;
+}
+
+.mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(4rem + env(safe-area-inset-bottom));
+}
+
+.mobile-sheet-header {
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+}
+
+@media (max-width: 767px) {
+  .window-border,
+  .titlebar-border {
+    border-left-width: 0;
+    border-right-width: 0;
+  }
+
+  .flaxeo-generation-controls {
+    border-radius: 14px;
+  }
+
+  .dot-grid-corners {
+    background-image: none;
+  }
+
+  .empty-preview-brand {
+    font-size: clamp(2.8rem, 17vw, 5rem);
+  }
+
+  .flax-composer-input-row {
+    padding: 0.35rem 0.5rem 0.5rem;
+  }
+
+  .flax-composer-presets {
+    padding: 0.55rem 0.65rem 0.15rem;
+  }
+
+  .flax-composer-negative {
+    max-height: 92px;
+  }
+
+  .gallery-card-overlay {
+    opacity: 1;
+  }
 }
 
 /* Electron titlebar drag region */
@@ -955,6 +1027,65 @@ html.dark .gallery-grid-scroll {
   color: var(--color-destructive-foreground);
 }
 
+.download-manager-shell {
+  border-color: color-mix(in srgb, var(--color-border) 84%, transparent);
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.24);
+}
+
+.download-manager-header {
+  background: color-mix(in srgb, var(--color-card) 82%, var(--color-background));
+}
+
+.download-manager-icon {
+  border: 1px solid color-mix(in srgb, #dbe0ff 58%, #5f69c9 42%);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #818af0 0%, #717ce2 52%, #626edc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 10px 28px rgba(98, 110, 220, 0.22);
+}
+
+.download-manager-list {
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--color-ring) 11%, transparent), transparent 18rem),
+    color-mix(in srgb, var(--color-card) 88%, var(--color-background));
+}
+
+.download-manager-card,
+.download-manager-empty {
+  background: color-mix(in srgb, var(--color-card) 82%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 12px 32px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.download-manager-progress {
+  background: color-mix(in srgb, var(--color-muted) 80%, var(--color-background));
+}
+
+.download-manager-progress > div {
+  background: linear-gradient(90deg, #6674e8, #38bdf8 54%, #2dd4bf);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.24);
+}
+
+.download-manager-stop {
+  border: 1px solid color-mix(in srgb, var(--color-destructive) 34%, transparent);
+  background: color-mix(in srgb, var(--color-destructive) 10%, transparent);
+  color: var(--color-destructive);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.download-manager-stop:hover {
+  border-color: var(--color-destructive);
+  background: var(--color-destructive);
+  color: var(--color-destructive-foreground);
+}
+
 .generating-status {
   position: relative;
   z-index: 10;
@@ -1027,6 +1158,47 @@ html.dark .gallery-grid-scroll {
   margin-top: 0.45rem;
   font-size: 0.72rem;
   color: rgba(15, 23, 42, 0.58);
+}
+
+.generating-status-panel {
+  gap: 0.2rem;
+}
+
+.generating-status-kicker {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.04);
+  padding: 0.22rem 0.55rem;
+  color: rgba(15, 23, 42, 0.56);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.generating-progress-track {
+  width: 100%;
+  height: 0.48rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.generating-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f7df0, #38bdf8 52%, #2dd4bf);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.28);
+  transition: width 0.45s ease;
+}
+
+.generating-status-metrics {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 1rem;
+  color: rgba(15, 23, 42, 0.54);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 html.dark .generating-status {

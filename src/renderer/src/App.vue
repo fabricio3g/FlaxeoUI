@@ -75,7 +75,7 @@ onMounted(async () => {
     />
 
     <!-- Main Content Area -->
-    <div class="flex flex-1 overflow-hidden relative md:p-0">
+    <div class="flex flex-1 min-h-0 overflow-hidden relative md:p-0">
       <!-- Config Panel (detailed settings) -->
       <ConfigPanel
         :collapsed="sidebarCollapsed"
@@ -84,14 +84,14 @@ onMounted(async () => {
           sidebarCollapsed
             ? 'md:flex md:w-12 md:relative md:translate-x-0'
             : 'md:flex md:w-80 md:relative md:translate-x-0',
-          showMobileConfig ? 'absolute inset-0 z-50 w-full translate-x-0 flex' : 'hidden md:flex'
+          showMobileConfig ? 'fixed inset-0 z-50 w-full translate-x-0 flex md:absolute' : 'hidden md:flex'
         ]"
         @close="showMobileConfig = false"
       />
 
       <!-- Main Content -->
       <main
-        class="flex-1 overflow-hidden flex flex-col relative w-full m-2 md:m-3 bg-card rounded-2xl"
+        class="flex-1 min-h-0 overflow-hidden flex flex-col relative w-full m-1.5 mb-0 md:m-3 bg-card rounded-2xl"
       >
         <router-view v-slot="{ Component }">
           <transition

@@ -20,6 +20,7 @@ export function firstString(...values: unknown[]): string | undefined {
 
 export function appendLog(ctx: AppContext, msg: string): void {
   ctx.state.serverLogs.push(msg)
+  ctx.state.logBus.emit('log', msg)
 }
 
 export function listFiles(dir: string): string[] {
@@ -94,10 +95,33 @@ export function fetchJson<T>(url: string): Promise<T> {
   })
 }
 
-export function downloadFile(url: string, destPath: string): Promise<string> {
+export function downloadFile(
+  url: string,
+  destPath: string,
+  options: {
+    onProgress?: (receivedBytes: number, totalBytes: number | null) => void
+    registerCancel?: (cancel: () => void) => void
+  } = {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
+    let settled = false
+    let file: fs.WriteStream | null = null
+    let activeRequest: ReturnType<typeof https.get> | null = null
+    const fail = (error: Error): void => {
+      if (settled) return
+      settled = true
+      file?.destroy()
+      fs.unlink(destPath, () => undefined)
+      reject(error)
+    }
+
+    options.registerCancel?.(() => {
+      activeRequest?.destroy(new Error('Download cancelled'))
+      fail(new Error('Download cancelled'))
+    })
+
     const doDownload = (downloadUrl: string): void => {
-      https
+      activeRequest = https
         .get(
           downloadUrl,
           {
@@ -113,23 +137,32 @@ export function downloadFile(url: string, destPath: string): Promise<string> {
               return
             }
             if (response.statusCode !== 200) {
-              reject(new Error(`Download failed: ${response.statusCode}`))
+              fail(new Error(`Download failed: ${response.statusCode}`))
               return
             }
 
-            const file = fs.createWriteStream(destPath)
+            const total = response.headers['content-length']
+              ? parseInt(response.headers['content-length'], 10)
+              : null
+            let received = 0
+            file = fs.createWriteStream(destPath)
+            response.on('data', (chunk: Buffer) => {
+              received += chunk.length
+              options.onProgress?.(received, total)
+            })
             response.pipe(file)
             file.on('finish', () => {
-              file.close()
+              file?.close()
+              if (settled) return
+              settled = true
               resolve(destPath)
             })
             file.on('error', (error) => {
-              fs.unlink(destPath, () => undefined)
-              reject(error)
+              fail(error)
             })
           }
         )
-        .on('error', reject)
+        .on('error', fail)
     }
 
     console.log(`[Backend] Starting download from ${url} to ${destPath}`)
@@ -145,11 +178,17 @@ export function spawnLoggedProcess(
   options: { cwd?: string; shell?: boolean } = {}
 ): ChildProcess {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0]
-  console.log(`\n${'='.repeat(80)}`)
-  console.log(`[${timestamp}] [${label}] Command: ${command}`)
-  console.log(`[${timestamp}] [${label}] Args: ${args.join(' ')}`)
-  if (options.cwd) console.log(`[${timestamp}] [${label}] Working directory: ${options.cwd}`)
-  console.log(`${'='.repeat(80)}\n`)
+  const header = [
+    `\n${'='.repeat(80)}`,
+    `[${timestamp}] [${label}] Command: ${command}`,
+    `[${timestamp}] [${label}] Args: ${args.join(' ')}`,
+    options.cwd ? `[${timestamp}] [${label}] Working directory: ${options.cwd}` : '',
+    `${'='.repeat(80)}\n`
+  ]
+    .filter(Boolean)
+    .join('\n')
+  console.log(header)
+  appendLog(ctx, `${header}\n`)
 
   const child = spawn(command, args, options)
   child.stdout?.on('data', (data) => {
@@ -161,6 +200,10 @@ export function spawnLoggedProcess(
     const msg = data.toString()
     process.stderr.write(msg)
     appendLog(ctx, msg)
+  })
+  child.on('close', (code) => {
+    const ts = new Date().toISOString().split('T')[1].split('.')[0]
+    appendLog(ctx, `\n[${ts}] [${label}] EXIT: ${code}\n`)
   })
   return child
 }
