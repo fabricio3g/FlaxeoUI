@@ -62,7 +62,7 @@ npm run dev
 
 UI for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
 
-README sky image adapted from Wikimedia Commons: [Field, corn, Liechtenstein, Mountains, Alps, Vaduz, sky, clouds, landscape](https://commons.wikimedia.org/wiki/File:Field,_corn,_Liechtenstein,_Mountains,_Alps,_Vaduz,_sky,_clouds,_landscape.jpg), public domain (`PD-self`) by Wikimedia Commons user Paranoid.
+sky image adapted from Wikimedia Commons: [Field, corn, Liechtenstein, Mountains, Alps, Vaduz, sky, clouds, landscape](https://commons.wikimedia.org/wiki/File:Field,_corn,_Liechtenstein,_Mountains,_Alps,_Vaduz,_sky,_clouds,_landscape.jpg), public domain (`PD-self`) by Wikimedia Commons user Paranoid.
 
 ## License
 
