@@ -12,6 +12,8 @@ import {
   ChevronUp,
   Cpu,
   Database,
+  Film,
+  ImageIcon,
   Info,
   Play,
   Plus,
@@ -998,6 +1000,34 @@ onUnmounted(() => {
               >
                 <Square class="w-3.5 h-3.5" />
                 Stop
+              </button>
+            </div>
+
+            <!-- Image / Video Mode -->
+            <div class="flex p-1.5 metal-surface rounded-lg">
+              <button
+                @click="configStore.updateConfig({ videoMode: false })"
+                class="flex-1 py-2 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                :class="
+                  !config.videoMode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+              >
+                <ImageIcon class="w-4 h-4" />
+                Image
+              </button>
+              <button
+                @click="configStore.updateConfig({ videoMode: true })"
+                class="flex-1 py-2 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                :class="
+                  config.videoMode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+              >
+                <Film class="w-4 h-4" />
+                Video
               </button>
             </div>
           </div>

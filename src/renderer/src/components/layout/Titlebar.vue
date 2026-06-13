@@ -4,7 +4,6 @@ import {
   Brush,
   Database,
   Download,
-  Film,
   FolderOpen,
   ImageIcon,
   Images,
@@ -116,10 +115,6 @@ onUnmounted(() => {
 
 function toggleTheme(): void {
   applyTheme(!isDark.value)
-}
-
-function toggleVideoMode(): void {
-  configStore.updateConfig({ videoMode: !config.value.videoMode })
 }
 
 function isActive(id: string): boolean {
@@ -258,14 +253,6 @@ function handleClose(): void {
         </button>
       </Tooltip>
 
-      <button
-        @click="showModelHub = true"
-        class="h-7 rounded px-2 text-xs font-medium metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
-        type="button"
-      >
-        Model Hub
-      </button>
-
       <Tooltip text="Open Gallery Folder">
         <button
           @click="openGalleryFolder"
@@ -276,33 +263,20 @@ function handleClose(): void {
         </button>
       </Tooltip>
 
-      <div class="mx-1 h-4 w-px bg-border/80"></div>
-
-      <Tooltip :text="config.videoMode ? 'Disable Video Mode' : 'Enable Video Mode'">
-        <button
-          @click.stop="toggleVideoMode"
-          class="h-7 w-7 metal-icon-button flex items-center justify-center titlebar-no-drag"
-          :class="
-            config.videoMode
-              ? 'primary-metal-button'
-              : 'text-muted-foreground hover:text-foreground'
-          "
-          type="button"
-        >
-          <Film class="w-4 h-4" />
-        </button>
-      </Tooltip>
-
-      <Tooltip text="Server Logs">
-        <button
-          @click="emit('toggleLogs')"
-          class="h-7 w-7 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
-          type="button"
-        >
-          <Terminal class="w-4 h-4" />
-        </button>
-      </Tooltip>
     </nav>
+
+    <!-- Center: Model Hub -->
+    <div
+      class="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 titlebar-no-drag"
+    >
+      <button
+        @click="showModelHub = true"
+        class="h-7 rounded px-3 text-xs font-medium metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+        type="button"
+      >
+        Model Hub
+      </button>
+    </div>
 
     <div class="flex min-w-0 flex-1 items-center px-3 md:hidden">
       <span class="truncate text-sm font-semibold tracking-tight">Flaxeo</span>
@@ -331,6 +305,16 @@ function handleClose(): void {
         <Download class="w-4 h-4" />
       </button>
 
+      <button
+        @click="emit('toggleLogs')"
+        class="h-7 w-7 mr-1 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
+        type="button"
+        title="Server Logs"
+        aria-label="Open server logs"
+      >
+        <Terminal class="w-4 h-4" />
+      </button>
+
       <Tooltip text="Downloads">
         <button
           @click="showDownloadManager = true"
@@ -338,6 +322,16 @@ function handleClose(): void {
           type="button"
         >
           <Download class="w-4 h-4" />
+        </button>
+      </Tooltip>
+
+      <Tooltip text="Server Logs">
+        <button
+          @click="emit('toggleLogs')"
+          class="hidden h-7 w-7 mr-1 metal-icon-button md:flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          type="button"
+        >
+          <Terminal class="w-4 h-4" />
         </button>
       </Tooltip>
 
