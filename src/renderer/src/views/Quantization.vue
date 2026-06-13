@@ -120,7 +120,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
+  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
     <!-- Preview / Status Area -->
     <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">

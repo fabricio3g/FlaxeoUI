@@ -8,6 +8,8 @@ import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
+import { buttonMotion, panelMotion } from '@/lib/motion'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -16,6 +18,8 @@ const { config } = storeToRefs(configStore)
 // Inpainting state
 const prompt = ref('')
 const negativePrompt = ref('')
+const editImages = ref<string[]>([])
+const currentEditFilename = ref<string | null>(null)
 const { isGenerating } = useGenerationStatus('edit')
 const progress = useGenerationProgress()
 const error = ref<string | null>(null)
@@ -166,6 +170,15 @@ function loadImage(src: string): void {
   img.src = src
 }
 
+async function useOutputImage(filename: string): Promise<void> {
+  const url = getOutputUrl(filename)
+  const response = await fetch(url)
+  const blob = await response.blob()
+  baseImageFile.value = new File([blob], filename, { type: blob.type || 'image/png' })
+  currentEditFilename.value = filename
+  loadImage(url)
+}
+
 /**
  * handleImageUpload() - Handle direct image upload
  */
@@ -175,6 +188,7 @@ function handleImageUpload(event: Event): void {
   if (!file) return
 
   baseImageFile.value = file
+  currentEditFilename.value = null
   const url = URL.createObjectURL(file)
   loadImage(url)
 }
@@ -278,13 +292,6 @@ function resetViewport(): void {
   pan.value = { x: 0, y: 0 }
 }
 
-function formatETA(secs: number): string {
-  if (!Number.isFinite(secs) || secs <= 0) return '...'
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 /**
  * getMaskDataUrl() - Get the mask as a data URL
  */
@@ -327,12 +334,15 @@ async function handleGenerate(): Promise<void> {
       formData.append('diffusionModel', config.value.standardModel)
     } else {
       formData.append('diffusionModel', config.value.diffusionModel)
-      if (config.value.highNoiseDiffusionModel) formData.append('highNoiseDiffusionModel', config.value.highNoiseDiffusionModel)
-      if (config.value.uncondDiffusionModel) formData.append('uncondDiffusionModel', config.value.uncondDiffusionModel)
+      if (config.value.highNoiseDiffusionModel)
+        formData.append('highNoiseDiffusionModel', config.value.highNoiseDiffusionModel)
+      if (config.value.uncondDiffusionModel)
+        formData.append('uncondDiffusionModel', config.value.uncondDiffusionModel)
       if (config.value.t5xxlModel) formData.append('t5xxl', config.value.t5xxlModel)
       if (config.value.llmModel) formData.append('llm', config.value.llmModel)
       if (config.value.llmVisionModel) formData.append('llmVision', config.value.llmVisionModel)
-      if (config.value.embeddingsConnectorsModel) formData.append('embeddingsConnectors', config.value.embeddingsConnectorsModel)
+      if (config.value.embeddingsConnectorsModel)
+        formData.append('embeddingsConnectors', config.value.embeddingsConnectorsModel)
       if (config.value.clipModel) formData.append('clipL', config.value.clipModel)
       if (config.value.clipGModel) formData.append('clipG', config.value.clipGModel)
       if (config.value.clipVisionModel) formData.append('clipVision', config.value.clipVisionModel)
@@ -353,8 +363,10 @@ async function handleGenerate(): Promise<void> {
     if (config.value.diffusionConvDirect) formData.append('diffusionConvDirect', 'true')
     if (config.value.vaeConvDirect) formData.append('vaeConvDirect', 'true')
     if (config.value.forceSDXLVaeConvScale) formData.append('forceSDXLVaeConvScale', 'true')
-    if (config.value.backendAssignment) formData.append('backendAssignment', config.value.backendAssignment)
-    if (config.value.paramsBackendAssignment) formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
+    if (config.value.backendAssignment)
+      formData.append('backendAssignment', config.value.backendAssignment)
+    if (config.value.paramsBackendAssignment)
+      formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
     if (config.value.threads > 0) formData.append('threads', config.value.threads.toString())
     if (config.value.maxVram !== 0) formData.append('maxVram', config.value.maxVram.toString())
     if (config.value.streamLayers) formData.append('streamLayers', 'true')
@@ -362,15 +374,18 @@ async function handleGenerate(): Promise<void> {
     if (config.value.rngType) formData.append('rngType', config.value.rngType)
     if (config.value.samplerRngType) formData.append('samplerRngType', config.value.samplerRngType)
     if (config.value.loraApplyMode) formData.append('loraApplyMode', config.value.loraApplyMode)
-    if (config.value.quantizationType) formData.append('quantizationType', config.value.quantizationType)
+    if (config.value.quantizationType)
+      formData.append('quantizationType', config.value.quantizationType)
     if (config.value.predictionType) formData.append('predictionType', config.value.predictionType)
     if (config.value.cacheMode) formData.append('cacheMode', config.value.cacheMode)
     if (config.value.cacheOption) formData.append('cacheOption', config.value.cacheOption)
     if (config.value.scmMask) formData.append('scmMask', config.value.scmMask)
     if (config.value.scmPolicy) formData.append('scmPolicy', config.value.scmPolicy)
     if (config.value.flowShift) formData.append('flowShift', config.value.flowShift.toString())
-    if (config.value.extraSampleArgs) formData.append('extraSampleArgs', config.value.extraSampleArgs)
-    if (config.value.extraTilingArgs) formData.append('extraTilingArgs', config.value.extraTilingArgs)
+    if (config.value.extraSampleArgs)
+      formData.append('extraSampleArgs', config.value.extraSampleArgs)
+    if (config.value.extraTilingArgs)
+      formData.append('extraTilingArgs', config.value.extraTilingArgs)
     if (config.value.disableImageMetadata) formData.append('disableImageMetadata', 'true')
 
     const res = await fetch(`${getApiBase()}/api/inpaint`, {
@@ -384,7 +399,11 @@ async function handleGenerate(): Promise<void> {
 
     const result = await res.json()
     if (result.filename) {
-      loadImage(getOutputUrl(result.filename))
+      editImages.value = [
+        result.filename,
+        ...editImages.value.filter((img) => img !== result.filename)
+      ]
+      await useOutputImage(result.filename)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Inpainting failed'
@@ -428,6 +447,7 @@ onMounted(() => {
       .then((res) => res.blob())
       .then((blob) => {
         baseImageFile.value = new File([blob], 'image.png', { type: 'image/png' })
+        currentEditFilename.value = null
         loadImage(editImage)
       })
   }
@@ -440,7 +460,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
+  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
     <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div
         v-if="error"
@@ -460,7 +480,12 @@ onUnmounted(() => {
           @mousedown="startPanning"
           @mousemove="panViewport"
           @mouseup="stopPanning"
-          @mouseleave="() => { stopDrawing(); stopPanning() }"
+          @mouseleave="
+            () => {
+              stopDrawing()
+              stopPanning()
+            }
+          "
           @contextmenu.prevent
         >
           <div
@@ -471,16 +496,26 @@ onUnmounted(() => {
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div class="relative z-10 flex max-w-sm flex-col items-center gap-4 px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.5)]">
+            <div
+              v-motion
+              :initial="panelMotion.initial"
+              :enter="panelMotion.enter"
+              class="relative z-10 flex max-w-sm flex-col items-center gap-4 px-8 text-center text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.5)]"
+            >
               <span class="empty-preview-brand">FlaxeoUI</span>
-              <p class="text-sm font-medium text-white/75">Drop an image here or start from your gallery.</p>
+              <p class="text-sm font-medium text-white/75">
+                Drop an image here or start from your gallery.
+              </p>
               <label
                 class="px-4 py-2 text-xs primary-metal-button text-white rounded cursor-pointer"
               >
                 Upload Image
                 <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
               </label>
-              <button @click="goToGallery" class="gallery-secondary-button relative z-10 flex items-center gap-1.5 px-4 py-2 text-xs font-medium">
+              <button
+                @click="goToGallery"
+                class="gallery-secondary-button relative z-10 flex items-center gap-1.5 px-4 py-2 text-xs font-medium"
+              >
                 <Images class="w-3.5 h-3.5" />
                 Select from Gallery
               </button>
@@ -489,6 +524,9 @@ onUnmounted(() => {
 
           <div
             v-else
+            v-motion
+            :initial="panelMotion.initial"
+            :enter="panelMotion.enter"
             class="relative inline-block max-h-full max-w-full transition-transform duration-75"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
@@ -514,40 +552,48 @@ onUnmounted(() => {
             ></canvas>
           </div>
 
-          <div v-if="baseImage" class="absolute right-3 top-3 flex items-center gap-2 rounded-lg bg-card/85 px-2 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur">
+          <div
+            v-if="baseImage"
+            class="absolute right-3 top-3 flex items-center gap-2 rounded-lg bg-card/85 px-2 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur"
+          >
             <span>{{ Math.round(zoom * 100) }}%</span>
             <button @click="resetViewport" class="hover:text-foreground">Reset</button>
           </div>
+        </div>
 
-          <div
-            v-if="isGenerating"
-            class="absolute inset-0 generating-halftone flex items-center justify-center"
-          >
-            <div class="generating-status generating-status-panel">
-              <div v-if="!progress.hasSteps" class="flex flex-col items-center">
-                <div class="generating-loader-mark" aria-hidden="true">
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                </div>
-                <span class="generating-status-title">Loading model</span>
-                <p class="generating-status-subtitle">Preparing the edit workspace...</p>
-              </div>
-              <div v-else class="flex w-full flex-col items-center gap-3">
-                <span class="generating-status-kicker">{{ progress.label || 'INPAINT' }}</span>
-                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
-                <div class="generating-progress-track">
-                  <div
-                    class="generating-progress-bar"
-                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
-                  ></div>
-                </div>
-                <div class="generating-status-metrics">
-                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
-                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
-                </div>
-              </div>
+        <GenerationProgressPill
+          v-if="isGenerating"
+          class="mt-2"
+          loading-text="Loading model"
+          fallback-label="INPAINT"
+        />
+
+        <div v-if="editImages.length > 0" class="mt-4 w-full shrink-0">
+          <div class="mb-2 flex items-center justify-between px-1">
+            <h3
+              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              <Images class="h-3.5 w-3.5" /> Recent edits ({{ editImages.length }})
+            </h3>
+          </div>
+          <div class="generation-media-strip relative">
+            <div class="flex gap-2 overflow-x-auto p-2 snap-x scroll-smooth no-scrollbar md:gap-3">
+              <button
+                v-for="img in editImages"
+                :key="img"
+                class="generation-media-thumb group relative h-16 w-16 shrink-0 snap-start overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50 md:h-20 md:w-20"
+                :class="
+                  currentEditFilename === img ? 'is-active z-10' : 'opacity-72 hover:opacity-100'
+                "
+                @click="useOutputImage(img)"
+              >
+                <img
+                  :src="getOutputUrl(img)"
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                  :alt="img"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -556,34 +602,67 @@ onUnmounted(() => {
 
     <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
       <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
-        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
-          <div class="flex items-center gap-1 bg-muted/50 rounded-lg border border-border/30 p-1 shrink-0">
-            <div class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1">
+        <div
+          class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs"
+        >
+          <div
+            class="flex items-center gap-1 bg-muted/50 rounded-lg border border-border/30 p-1 shrink-0"
+          >
+            <div
+              class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1"
+            >
               <Brush class="w-3.5 h-3.5 text-muted-foreground" />
               <span class="text-[10px] text-muted-foreground hidden sm:inline">Brush</span>
-              <input v-model.number="brushSize" type="range" min="5" max="100" class="w-16 md:w-20 h-1 accent-primary" />
-              <span class="text-[11px] md:text-xs w-5 md:w-6 text-center font-mono">{{ brushSize }}</span>
+              <input
+                v-model.number="brushSize"
+                type="range"
+                min="5"
+                max="100"
+                class="w-16 md:w-20 h-1 accent-primary"
+              />
+              <span class="text-[11px] md:text-xs w-5 md:w-6 text-center font-mono">{{
+                brushSize
+              }}</span>
             </div>
 
-            <div class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1">
+            <div
+              class="flex items-center gap-1.5 bg-background/50 rounded border border-border/20 px-1.5 py-0.5 md:px-2 md:py-1"
+            >
               <span class="text-[10px] text-muted-foreground hidden sm:inline">Strength</span>
-              <input v-model.number="inpaintStrength" type="range" min="0" max="1" step="0.05" class="w-12 md:w-16 h-1 accent-primary" />
-              <span class="text-[11px] md:text-xs w-6 md:w-8 text-center font-mono">{{ inpaintStrength.toFixed(2) }}</span>
+              <input
+                v-model.number="inpaintStrength"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                class="w-12 md:w-16 h-1 accent-primary"
+              />
+              <span class="text-[11px] md:text-xs w-6 md:w-8 text-center font-mono">{{
+                inpaintStrength.toFixed(2)
+              }}</span>
             </div>
           </div>
 
           <div class="flex-1 hidden md:block"></div>
 
-          <button @click="clearMask" class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
+          <button
+            @click="clearMask"
+            class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5"
+          >
             <Trash2 class="w-3.5 h-3.5" />
             Clear
           </button>
-          <label class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
+          <label
+            class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
+          >
             <Upload class="w-3.5 h-3.5" />
             Upload
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
-          <button @click="goToGallery" class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5">
+          <button
+            @click="goToGallery"
+            class="shrink-0 h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5"
+          >
             <Images class="w-3.5 h-3.5" />
             Gallery
           </button>
@@ -620,7 +699,10 @@ onUnmounted(() => {
                 rows="1"
                 placeholder="Describe what to generate in the masked area..."
                 class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
+                :style="{
+                  minHeight: isMobile ? '64px' : '120px',
+                  maxHeight: isMobile ? '160px' : '360px'
+                }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
                 @input="autoResize"
@@ -628,6 +710,9 @@ onUnmounted(() => {
               <div class="absolute bottom-3 right-3 flex items-end">
                 <button
                   v-if="!isGenerating"
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleGenerate"
                   :disabled="!prompt.trim() || !baseImage"
                   class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
@@ -639,6 +724,9 @@ onUnmounted(() => {
                 </button>
                 <button
                   v-else
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleCancel"
                   class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
                   title="Cancel"

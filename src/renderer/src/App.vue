@@ -7,6 +7,7 @@ import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
+import { routeMotion } from './lib/motion'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,7 +85,9 @@ onMounted(async () => {
           sidebarCollapsed
             ? 'md:flex md:w-12 md:relative md:translate-x-0'
             : 'md:flex md:w-80 md:relative md:translate-x-0',
-          showMobileConfig ? 'fixed inset-0 z-50 w-full translate-x-0 flex md:absolute' : 'hidden md:flex'
+          showMobileConfig
+            ? 'fixed inset-0 z-50 w-full translate-x-0 flex md:absolute'
+            : 'hidden md:flex'
         ]"
         @close="showMobileConfig = false"
       />
@@ -103,7 +106,13 @@ onMounted(async () => {
             leave-to-class="opacity-0"
           >
             <keep-alive>
-              <component :is="Component" />
+              <component
+                :is="Component"
+                v-motion
+                :initial="routeMotion.initial"
+                :enter="routeMotion.enter"
+                :leave="routeMotion.leave"
+              />
             </keep-alive>
           </transition>
         </router-view>

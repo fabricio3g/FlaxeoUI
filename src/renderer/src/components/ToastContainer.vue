@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast'
 import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-vue-next'
+import { subtleButtonMotion, toastMotion } from '@/lib/motion'
 
 const { toasts, remove } = useToast()
 
@@ -26,6 +27,10 @@ const styles = {
         <div
           v-for="toast in toasts"
           :key="toast.id"
+          v-motion
+          :initial="toastMotion.initial"
+          :enter="toastMotion.enter"
+          :leave="toastMotion.leave"
           :class="[
             'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm',
             styles[toast.type]
@@ -34,6 +39,9 @@ const styles = {
           <component :is="icons[toast.type]" class="w-5 h-5 shrink-0" />
           <span class="text-sm font-medium flex-1">{{ toast.message }}</span>
           <button
+            v-motion
+            :hovered="subtleButtonMotion.hovered"
+            :tapped="subtleButtonMotion.tapped"
             @click="remove(toast.id)"
             class="p-0.5 rounded hover:bg-white/20 transition-colors"
           >

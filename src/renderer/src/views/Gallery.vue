@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
 import { useToast } from '@/composables/useToast'
+import { panelMotion, staggeredCardMotion, subtleButtonMotion } from '@/lib/motion'
 
 const router = useRouter()
 const toast = useToast()
@@ -40,7 +41,9 @@ const paginatedImages = computed(() => {
   const start = (currentPage.value - 1) * imagesPerPage
   return images.value.slice(start, start + imagesPerPage)
 })
-const selectedIndex = computed(() => selectedImage.value ? images.value.indexOf(selectedImage.value) : -1)
+const selectedIndex = computed(() =>
+  selectedImage.value ? images.value.indexOf(selectedImage.value) : -1
+)
 const selectedDisplayName = computed(() => selectedImage.value?.split(/[\\/]/).pop() || '')
 
 // ... (fetchGallery, selectImage, deleteImage, downloadImage, sendToEdit, sendToText2Image, copyImagePath, openGalleryFolder, navigatePage unchanged) ...
@@ -227,7 +230,9 @@ onUnmounted(() => {
           </div>
           <div>
             <h1 class="text-xl font-semibold tracking-tight">Gallery</h1>
-            <p class="text-xs text-muted-foreground">{{ images.length }} saved image{{ images.length === 1 ? '' : 's' }}</p>
+            <p class="text-xs text-muted-foreground">
+              {{ images.length }} saved image{{ images.length === 1 ? '' : 's' }}
+            </p>
           </div>
         </div>
 
@@ -254,6 +259,9 @@ onUnmounted(() => {
 
           <!-- Refresh -->
           <button
+            v-motion
+            :hovered="subtleButtonMotion.hovered"
+            :tapped="subtleButtonMotion.tapped"
             @click="fetchGallery"
             :disabled="isLoading"
             class="gallery-icon-button"
@@ -279,7 +287,10 @@ onUnmounted(() => {
       <!-- Image Grid -->
       <div class="gallery-grid-scroll flex-1 overflow-y-auto p-4 md:p-5">
         <!-- Loading State -->
-        <div v-if="isLoading" class="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+        <div
+          v-if="isLoading"
+          class="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground"
+        >
           <RefreshCw class="h-8 w-8 animate-spin" />
           <span class="text-sm font-medium">Loading gallery</span>
         </div>
@@ -293,7 +304,9 @@ onUnmounted(() => {
             <Images class="h-7 w-7" />
           </div>
           <p class="text-sm font-medium text-foreground">No images yet</p>
-          <p class="mt-1 max-w-xs text-xs">Generate images in Text2Image, Edit, or Video and they will appear here.</p>
+          <p class="mt-1 max-w-xs text-xs">
+            Generate images in Text2Image, Edit, or Video and they will appear here.
+          </p>
         </div>
 
         <!-- Grid -->
@@ -307,8 +320,13 @@ onUnmounted(() => {
           "
         >
           <button
-            v-for="img in paginatedImages"
+            v-for="(img, index) in paginatedImages"
             :key="img"
+            v-motion
+            :initial="staggeredCardMotion(index).initial"
+            :enter="staggeredCardMotion(index).enter"
+            :hovered="staggeredCardMotion(index).hovered"
+            :tapped="staggeredCardMotion(index).tapped"
             @click="selectImage(img)"
             class="gallery-card group relative aspect-square overflow-hidden border bg-black transition-all dark:bg-neutral-950"
             :class="
@@ -338,7 +356,9 @@ onUnmounted(() => {
           >
             <ChevronLeft class="w-5 h-5" />
           </button>
-          <span class="text-sm text-muted-foreground">Page {{ currentPage }} of {{ totalPages }}</span>
+          <span class="text-sm text-muted-foreground"
+            >Page {{ currentPage }} of {{ totalPages }}</span
+          >
           <button
             @click="navigatePage('next')"
             :disabled="currentPage === totalPages"
@@ -352,6 +372,9 @@ onUnmounted(() => {
       <!-- Preview Panel -->
       <div
         v-if="selectedImage"
+        v-motion
+        :initial="panelMotion.initial"
+        :enter="panelMotion.enter"
         class="gallery-detail-panel absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
       >
         <!-- Preview Image -->
@@ -364,7 +387,9 @@ onUnmounted(() => {
             <ChevronLeft class="w-5 h-5" />
           </button>
 
-          <div class="gallery-preview-frame group relative h-full w-full bg-black p-2 dark:bg-neutral-950">
+          <div
+            class="gallery-preview-frame group relative h-full w-full bg-black p-2 dark:bg-neutral-950"
+          >
             <img
               :src="getOutputUrl(selectedImage)"
               :alt="selectedImage"
@@ -384,21 +409,13 @@ onUnmounted(() => {
 
         <!-- Navigation -->
         <div class="flex items-center justify-center gap-4 border-t border-border/70 py-2">
-          <button
-            @click="navigateImage('prev')"
-            class="gallery-icon-button"
-            title="Previous image"
-          >
+          <button @click="navigateImage('prev')" class="gallery-icon-button" title="Previous image">
             <ChevronLeft class="w-5 h-5" />
           </button>
           <span class="text-xs text-muted-foreground">
             {{ selectedIndex + 1 }} / {{ images.length }}
           </span>
-          <button
-            @click="navigateImage('next')"
-            class="gallery-icon-button"
-            title="Next image"
-          >
+          <button @click="navigateImage('next')" class="gallery-icon-button" title="Next image">
             <ChevronRight class="w-5 h-5" />
           </button>
         </div>
@@ -413,61 +430,46 @@ onUnmounted(() => {
 
         <!-- Actions -->
         <div class="grid grid-cols-2 gap-2 border-t border-border p-4">
-          <button
-            @click="showImageViewer = true"
-            class="gallery-action-button col-span-2"
-          >
+          <button @click="showImageViewer = true" class="gallery-action-button col-span-2">
             <Maximize2 class="w-4 h-4" />
             Full Screen
           </button>
-          <button
-            @click="sendToText2Image"
-            class="gallery-action-button col-span-2 justify-start"
-          >
+          <button @click="sendToText2Image" class="gallery-action-button col-span-2 justify-start">
             <Sparkles class="w-4 h-4" />
             <span>
               <span class="block text-left">Use in Text2Image</span>
-              <span class="block text-left text-[10px] text-muted-foreground">Restore prompt and parameters</span>
+              <span class="block text-left text-[10px] text-muted-foreground"
+                >Restore prompt and parameters</span
+              >
             </span>
           </button>
-          <button
-            @click="sendToEdit"
-            class="gallery-action-button col-span-2 justify-start"
-          >
+          <button @click="sendToEdit" class="gallery-action-button col-span-2 justify-start">
             <Brush class="w-4 h-4" />
             <span>
               <span class="block text-left">Send to Edit</span>
-              <span class="block text-left text-[10px] text-muted-foreground">Use as the base image</span>
+              <span class="block text-left text-[10px] text-muted-foreground"
+                >Use as the base image</span
+              >
             </span>
           </button>
-          <button
-            @click="sendToVideo"
-            class="gallery-action-button col-span-2 justify-start"
-          >
+          <button @click="sendToVideo" class="gallery-action-button col-span-2 justify-start">
             <Video class="w-4 h-4" />
             <span>
               <span class="block text-left">Send to Video</span>
-              <span class="block text-left text-[10px] text-muted-foreground">Use as I2V reference</span>
+              <span class="block text-left text-[10px] text-muted-foreground"
+                >Use as I2V reference</span
+              >
             </span>
           </button>
-          <button
-            @click="copyImagePath"
-            class="gallery-action-button"
-          >
+          <button @click="copyImagePath" class="gallery-action-button">
             <Copy class="w-4 h-4" />
             Copy
           </button>
-          <button
-            @click="downloadImage"
-            class="gallery-action-button is-primary"
-          >
+          <button @click="downloadImage" class="gallery-action-button is-primary">
             <Download class="w-4 h-4" />
             Download
           </button>
-          <button
-            @click="deleteImage"
-            class="gallery-action-button is-danger col-span-2"
-          >
+          <button @click="deleteImage" class="gallery-action-button is-danger col-span-2">
             <Trash2 class="w-4 h-4" />
             Delete
           </button>

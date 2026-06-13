@@ -2,8 +2,15 @@ import fs from 'fs'
 import path from 'path'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { appendLog, listFiles, spawnLoggedProcess } from '../utils'
-import { addHardwareArgs, addModelArgs, addOptionalArgs, addPromptModelExtras, getSdServerPath } from '../sd'
+import { appendLog, errorMessage, listFiles, spawnLoggedProcess } from '../utils'
+import {
+  addHardwareArgs,
+  addModelArgs,
+  addOptionalArgs,
+  addPromptModelExtras,
+  getSdServerPath,
+  pushArg
+} from '../sd'
 import { downloadFile } from '../utils'
 
 const MODEL_DOWNLOAD_DIRS = new Set([
@@ -26,7 +33,14 @@ const MODEL_DOWNLOAD_DIRS = new Set([
   'embeddings'
 ])
 
-function createDownloadTask(ctx: AppContext, label: string, url: string, targetPath: string): string {
+type GenerationPayload = Record<string, string | number> & { seed: number }
+
+function createDownloadTask(
+  ctx: AppContext,
+  label: string,
+  url: string,
+  targetPath: string
+): string {
   const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   ctx.state.downloads[id] = {
     id,
@@ -42,7 +56,12 @@ function createDownloadTask(ctx: AppContext, label: string, url: string, targetP
   return id
 }
 
-async function trackedDownload(ctx: AppContext, id: string, url: string, targetPath: string): Promise<string> {
+async function trackedDownload(
+  ctx: AppContext,
+  id: string,
+  url: string,
+  targetPath: string
+): Promise<string> {
   return downloadFile(url, targetPath, {
     registerCancel: (cancel) => {
       const task = ctx.state.downloads[id]
@@ -61,7 +80,11 @@ async function trackedDownload(ctx: AppContext, id: string, url: string, targetP
 function publicDownloadTasks(ctx: AppContext) {
   return Object.values(ctx.state.downloads)
     .sort((a, b) => b.startedAt - a.startedAt)
-    .map(({ cancel: _cancel, ...task }) => task)
+    .map((task) => {
+      const publicTask = { ...task }
+      delete publicTask.cancel
+      return publicTask
+    })
 }
 
 function filenameFromUrl(url: string): string {
@@ -97,10 +120,14 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/models/download', async (req, res) => {
     const { url, category, filename } = req.body || {}
-    if (typeof url !== 'string' || !url.startsWith('https://')) return res.status(400).json({ error: 'HTTPS model URL required' })
-    if (typeof category !== 'string' || !MODEL_DOWNLOAD_DIRS.has(category)) return res.status(400).json({ error: 'Invalid model category' })
+    if (typeof url !== 'string' || !url.startsWith('https://'))
+      return res.status(400).json({ error: 'HTTPS model URL required' })
+    if (typeof category !== 'string' || !MODEL_DOWNLOAD_DIRS.has(category))
+      return res.status(400).json({ error: 'Invalid model category' })
 
-    const safeFilename = path.basename(typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url))
+    const safeFilename = path.basename(
+      typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url)
+    )
     const targetDir = path.join(ctx.paths.modelsDir, category)
     const targetPath = path.join(targetDir, safeFilename)
     const id = createDownloadTask(ctx, `Model: ${safeFilename}`, url, targetPath)
@@ -111,15 +138,16 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
       ctx.state.downloads[id].status = 'completed'
       ctx.state.downloads[id].updatedAt = Date.now()
       res.json({ success: true, id, category, filename: safeFilename, path: targetPath })
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
       const task = ctx.state.downloads[id]
+      const message = errorMessage(error)
       if (task) {
-        task.status = error.message === 'Download cancelled' ? 'cancelled' : 'failed'
-        task.error = error.message
+        task.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
+        task.error = message
         task.updatedAt = Date.now()
       }
-      res.status(500).json({ error: error.message })
+      res.status(500).json({ error: message })
     }
   })
 
@@ -157,24 +185,29 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     addOptionalArgs(args, body)
     addHardwareArgs(args, body)
     addPromptModelExtras(ctx, args, body)
-    if (body.vaeTileSize && Number(body.vaeTileSize) > 0) args.push('--vae-tile-size', String(body.vaeTileSize))
-    if (body.controlNet) args.push('--control-net', path.join(ctx.paths.modelsDir, 'controlnet', body.controlNet))
-    if (body.photoMaker) args.push('--photo-maker', path.join(ctx.paths.modelsDir, 'photomaker', body.photoMaker))
-    if (body.defaultSteps) args.push('--steps', String(body.defaultSteps))
-    if (body.defaultCfg) args.push('--cfg-scale', String(body.defaultCfg))
+    if (body.vaeTileSize && Number(body.vaeTileSize) > 0)
+      pushArg(args, '--vae-tile-size', body.vaeTileSize)
+    if (body.controlNet)
+      pushArg(args, '--control-net', path.join(ctx.paths.modelsDir, 'controlnet', body.controlNet))
+    if (body.photoMaker)
+      pushArg(args, '--photo-maker', path.join(ctx.paths.modelsDir, 'photomaker', body.photoMaker))
+    pushArg(args, '--steps', body.defaultSteps)
+    pushArg(args, '--cfg-scale', body.defaultCfg)
 
     try {
       const activeBackend = ctx.getActiveBackendPath()
       ctx.state.serverLogs = []
-      ctx.state.sdProcess = spawnLoggedProcess(ctx, getSdServerPath(ctx), args, 'SD-SERVER', { cwd: activeBackend })
+      ctx.state.sdProcess = spawnLoggedProcess(ctx, getSdServerPath(ctx), args, 'SD-SERVER', {
+        cwd: activeBackend
+      })
       ctx.state.sdProcess.on('close', (code) => {
         console.log(`SD Exit: ${code}`)
         ctx.state.sdProcess = null
         appendLog(ctx, `EXIT: ${code}`)
       })
       res.json({ message: 'Server started', args })
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to start', error: error.message })
+    } catch (error: unknown) {
+      res.status(500).json({ message: 'Failed to start', error: errorMessage(error) })
     }
   })
 
@@ -194,7 +227,7 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
 
     const body = req.body || {}
     const stepsVal = parseInt(body.steps, 10) || 20
-    const payload: Record<string, any> = {
+    const payload: GenerationPayload = {
       prompt: body.prompt,
       negative_prompt: body.negative_prompt || '',
       n: 1,
@@ -223,13 +256,16 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
         const data = await response.json()
         if (!data.data?.[0]) throw new Error('No data received')
         const filename = `gen_${Date.now()}_${i}.png`
-        fs.writeFileSync(path.join(ctx.paths.outputDir, filename), Buffer.from(data.data[0].b64_json, 'base64'))
+        fs.writeFileSync(
+          path.join(ctx.paths.outputDir, filename),
+          Buffer.from(data.data[0].b64_json, 'base64')
+        )
         generatedFiles.push(filename)
       }
       res.json({ message: 'Complete', filenames: generatedFiles })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Gen Error:', error)
-      res.status(500).json({ message: 'Generation failed', error: error.message })
+      res.status(500).json({ message: 'Generation failed', error: errorMessage(error) })
     }
   })
 
@@ -248,9 +284,15 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
 
     send('hello', { ok: true, progress: ctx.state.progress })
 
-    const onProgress = (p: unknown): void => { send('progress', p) }
-    const onStart = (s: unknown): void => { send('start', s) }
-    const onEnd = (): void => { send('end', {}) }
+    const onProgress = (p: unknown): void => {
+      send('progress', p)
+    }
+    const onStart = (s: unknown): void => {
+      send('start', s)
+    }
+    const onEnd = (): void => {
+      send('end', {})
+    }
 
     ctx.state.progressBus.on('progress', onProgress)
     ctx.state.progressBus.on('start', onStart)

@@ -18,6 +18,10 @@ export function firstString(...values: unknown[]): string | undefined {
   return undefined
 }
 
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export function appendLog(ctx: AppContext, msg: string): void {
   ctx.state.serverLogs.push(msg)
   ctx.state.logBus.emit('log', msg)
@@ -76,7 +80,10 @@ export function fetchJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
     https
       .get(url, { headers: { 'User-Agent': 'FlaxeoUI' } }, (response) => {
-        if ((response.statusCode === 301 || response.statusCode === 302) && response.headers.location) {
+        if (
+          (response.statusCode === 301 || response.statusCode === 302) &&
+          response.headers.location
+        ) {
           fetchJson<T>(response.headers.location).then(resolve).catch(reject)
           return
         }
@@ -132,7 +139,10 @@ export function downloadFile(
             }
           },
           (response) => {
-            if ((response.statusCode === 301 || response.statusCode === 302) && response.headers.location) {
+            if (
+              (response.statusCode === 301 || response.statusCode === 302) &&
+              response.headers.location
+            ) {
               doDownload(response.headers.location)
               return
             }
@@ -208,7 +218,10 @@ export function spawnLoggedProcess(
   return child
 }
 
-export function waitForProcess(child: ChildProcess, label: string): Promise<{ cancelled: boolean }> {
+export function waitForProcess(
+  child: ChildProcess,
+  label: string
+): Promise<{ cancelled: boolean }> {
   return new Promise((resolve, reject) => {
     child.on('close', (code) => {
       const ts = new Date().toISOString().split('T')[1].split('.')[0]
@@ -249,14 +262,24 @@ export interface ParsedStep {
 
 const RE_SAMPLING_STEP = /sampling\s+step\s+(\d+)\s*\/\s*(\d+)/i
 const RE_STEP = /(?:^|\s)step\s+(\d+)\s*\/\s*(\d+)/i
-const RE_IT_PER_SEC = /it\/s[:=]\s*([\d.]+)/i
+const RE_BAR_STEP = /\|[^\r\n]*\|\s*(\d+)\s*\/\s*(\d+)\s*-\s*([\d.]+)\s*(s\/it|it\/s)/i
+const RE_IT_PER_SEC = /(?:it\/s[:=]\s*([\d.]+)|([\d.]+)\s*it\/s)/i
 
 export function parseStepLine(line: string): ParsedStep | null {
+  const barMatch = line.match(RE_BAR_STEP)
+  if (barMatch) {
+    const current = parseInt(barMatch[1], 10)
+    const total = parseInt(barMatch[2], 10)
+    const speed = parseFloat(barMatch[3])
+    const itPerSec = barMatch[4].toLowerCase() === 's/it' && speed > 0 ? 1 / speed : speed
+    return { current, total, itPerSec }
+  }
+
   const samplingMatch = line.match(RE_SAMPLING_STEP) || line.match(RE_STEP)
   if (!samplingMatch) return null
   const current = parseInt(samplingMatch[1], 10)
   const total = parseInt(samplingMatch[2], 10)
   const itMatch = line.match(RE_IT_PER_SEC)
-  const itPerSec = itMatch ? parseFloat(itMatch[1]) : 0
+  const itPerSec = itMatch ? parseFloat(itMatch[1] || itMatch[2]) : 0
   return { current, total, itPerSec }
 }

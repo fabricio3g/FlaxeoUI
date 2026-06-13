@@ -126,64 +126,78 @@ onUnmounted(() => {
 
     <div
       v-if="showPresets"
-      class="absolute left-0 bottom-full z-50 mb-2 w-[min(520px,calc(100vw-2rem))] rounded-xl border border-border/70 bg-popover p-3 text-popover-foreground shadow-xl space-y-2"
+      class="preset-modal absolute right-0 bottom-full z-50 mb-2 w-[min(420px,calc(100vw-2rem))] p-4 space-y-3"
     >
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-medium text-muted-foreground flex items-center gap-1">
-        <Save class="w-3.5 h-3.5" />
-        Prompt Presets
+      <div class="preset-modal-header">
+        <span class="preset-modal-title">
+          <Save class="w-3.5 h-3.5" />
+          Prompt Presets
+          <span class="text-[10px] font-medium text-muted-foreground">({{ presets.length }})</span>
         </span>
-        <span class="text-[10px] text-muted-foreground">{{ presets.length }} saved</span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_6rem] gap-2">
-        <input
-          v-model="presetName"
-          type="text"
-          placeholder="Preset name..."
-          class="h-8 min-w-0 px-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-          @keyup.enter="saveCurrentPreset"
-        />
         <button
-          @click="saveCurrentPreset"
-          :disabled="!presetName.trim()"
-          class="h-8 text-xs font-medium rounded-md transition-colors"
-          :class="
-            presetName.trim()
-              ? 'primary-metal-button text-white'
-              : 'bg-muted text-muted-foreground cursor-not-allowed'
-          "
+          @click="showPresets = false"
+          class="preset-modal-close"
+          title="Close"
+          type="button"
         >
-          Save
+          <X class="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-        <div class="relative">
-          <Search class="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <div class="space-y-1.5">
+        <label class="preset-modal-label">Save current prompt</label>
+        <div class="flex gap-2">
           <input
-            v-model="presetSearch"
+            v-model="presetName"
             type="text"
-            placeholder="Search prompts..."
-            class="h-8 w-full pl-7 pr-2 text-xs rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+            placeholder="Preset name..."
+            class="preset-modal-input flex-1 min-w-0"
+            @keyup.enter="saveCurrentPreset"
           />
+          <button
+            @click="saveCurrentPreset"
+            :disabled="!presetName.trim()"
+            class="h-8 px-3 text-xs font-medium rounded-lg transition-colors shrink-0"
+            :class="
+              presetName.trim()
+                ? 'primary-metal-button text-white'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            "
+          >
+            Save
+          </button>
         </div>
-
-        <Select
-          :model-value="selectedPresetId"
-          size="sm"
-          placeholder="Select prompt..."
-          :options="presetOptions"
-          class="h-8"
-          @update:model-value="selectPreset"
-        />
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="space-y-1.5">
+        <label class="preset-modal-label">Load or manage</label>
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+          <div class="relative">
+            <Search class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              v-model="presetSearch"
+              type="text"
+              placeholder="Search presets..."
+              class="preset-modal-input w-full pl-8"
+            />
+          </div>
+
+          <Select
+            :model-value="selectedPresetId"
+            size="sm"
+            placeholder="Select..."
+            :options="presetOptions"
+            class="h-8 min-w-[8rem]"
+            @update:model-value="selectPreset"
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-1">
         <button
           @click="loadSelectedPreset"
           :disabled="!selectedPreset"
-          class="h-8 flex-1 text-xs font-medium rounded-md transition-colors"
+          class="h-8 flex-1 text-xs font-medium rounded-lg transition-colors"
           :class="
             selectedPreset
               ? 'primary-metal-button text-white'
@@ -195,10 +209,10 @@ onUnmounted(() => {
         <button
           @click="overwriteSelectedPreset"
           :disabled="!selectedPreset"
-          class="h-8 flex-1 text-xs font-medium rounded-md transition-colors"
+          class="h-8 flex-1 text-xs font-medium rounded-lg transition-colors"
           :class="
             selectedPreset
-              ? 'bg-muted/60 hover:bg-muted text-foreground'
+              ? 'bg-muted hover:bg-muted/80 text-foreground border border-border/50'
               : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
           "
         >
@@ -207,13 +221,14 @@ onUnmounted(() => {
         <button
           @click="deleteSelectedPreset"
           :disabled="!selectedPreset"
-          class="h-8 flex-1 rounded-md transition-colors flex items-center justify-center"
+          class="h-8 w-8 rounded-lg transition-colors flex items-center justify-center"
           :class="
             selectedPreset
-              ? 'bg-muted/60 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground'
+              ? 'bg-muted hover:bg-destructive hover:text-destructive-foreground text-muted-foreground border border-border/50'
               : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
           "
           title="Delete prompt preset"
+          type="button"
         >
           <Trash2 class="w-3.5 h-3.5" />
         </button>

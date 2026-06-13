@@ -2,11 +2,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiGet, getApiBase, getOutputUrl } from '@/services/api'
+import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
 import { ArrowUp, Minus, Upload, X } from 'lucide-vue-next'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
+import { buttonMotion, panelMotion } from '@/lib/motion'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -17,6 +19,7 @@ const negativePrompt = ref('')
 const { isGenerating } = useGenerationStatus('video')
 const progress = useGenerationProgress()
 const generatedVideo = ref<string | null>(null)
+const generatedVideos = ref<string[]>([])
 const error = ref<string | null>(null)
 const showNegPrompt = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
@@ -52,13 +55,6 @@ function onPromptKeydown(e: KeyboardEvent): void {
 
 function handleWindowResize(): void {
   isMobile.value = window.innerWidth < 768
-}
-
-function formatETA(secs: number): string {
-  if (!Number.isFinite(secs) || secs <= 0) return '...'
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 /**
@@ -101,6 +97,10 @@ function clearReferenceImage(): void {
   referenceFile.value = null
 }
 
+function selectGeneratedVideo(filename: string): void {
+  generatedVideo.value = getOutputUrl(filename)
+}
+
 /**
  * handleGenerate() - Generate video
  */
@@ -131,11 +131,13 @@ async function handleGenerate(): Promise<void> {
     // Add model info
     if (config.value.loadMode === 'split') {
       formData.append('diffusion_model', config.value.diffusionModel)
-      if (config.value.highNoiseDiffusionModel) formData.append('highNoiseDiffusionModel', config.value.highNoiseDiffusionModel)
+      if (config.value.highNoiseDiffusionModel)
+        formData.append('highNoiseDiffusionModel', config.value.highNoiseDiffusionModel)
       if (config.value.t5xxlModel) formData.append('t5xxl', config.value.t5xxlModel)
       if (config.value.llmModel) formData.append('llm', config.value.llmModel)
       if (config.value.llmVisionModel) formData.append('llmVision', config.value.llmVisionModel)
-      if (config.value.embeddingsConnectorsModel) formData.append('embeddingsConnectors', config.value.embeddingsConnectorsModel)
+      if (config.value.embeddingsConnectorsModel)
+        formData.append('embeddingsConnectors', config.value.embeddingsConnectorsModel)
       if (config.value.vaeModel) formData.append('vae', config.value.vaeModel)
       if (config.value.audioVaeModel) formData.append('audioVae', config.value.audioVaeModel)
       if (config.value.vaeFormat) formData.append('vaeFormat', config.value.vaeFormat)
@@ -151,8 +153,10 @@ async function handleGenerate(): Promise<void> {
     if (config.value.diffusionConvDirect) formData.append('diffusionConvDirect', 'true')
     if (config.value.vaeConvDirect) formData.append('vaeConvDirect', 'true')
     if (config.value.forceSDXLVaeConvScale) formData.append('forceSDXLVaeConvScale', 'true')
-    if (config.value.backendAssignment) formData.append('backendAssignment', config.value.backendAssignment)
-    if (config.value.paramsBackendAssignment) formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
+    if (config.value.backendAssignment)
+      formData.append('backendAssignment', config.value.backendAssignment)
+    if (config.value.paramsBackendAssignment)
+      formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
     if (config.value.threads > 0) formData.append('threads', config.value.threads.toString())
     if (config.value.maxVram !== 0) formData.append('maxVram', config.value.maxVram.toString())
     if (config.value.streamLayers) formData.append('streamLayers', 'true')
@@ -162,10 +166,13 @@ async function handleGenerate(): Promise<void> {
     if (config.value.scmMask) formData.append('scmMask', config.value.scmMask)
     if (config.value.scmPolicy) formData.append('scmPolicy', config.value.scmPolicy)
     if (config.value.loraApplyMode) formData.append('loraApplyMode', config.value.loraApplyMode)
-    if (config.value.quantizationType) formData.append('quantizationType', config.value.quantizationType)
+    if (config.value.quantizationType)
+      formData.append('quantizationType', config.value.quantizationType)
     if (config.value.predictionType) formData.append('predictionType', config.value.predictionType)
-    if (config.value.extraSampleArgs) formData.append('extraSampleArgs', config.value.extraSampleArgs)
-    if (config.value.extraTilingArgs) formData.append('extraTilingArgs', config.value.extraTilingArgs)
+    if (config.value.extraSampleArgs)
+      formData.append('extraSampleArgs', config.value.extraSampleArgs)
+    if (config.value.extraTilingArgs)
+      formData.append('extraTilingArgs', config.value.extraTilingArgs)
     if (config.value.disableImageMetadata) formData.append('disableImageMetadata', 'true')
 
     // I2V reference image
@@ -184,7 +191,11 @@ async function handleGenerate(): Promise<void> {
 
     const result = await response.json()
     if (result.filename) {
-      generatedVideo.value = getOutputUrl(result.filename)
+      generatedVideos.value = [
+        result.filename,
+        ...generatedVideos.value.filter((video) => video !== result.filename)
+      ]
+      selectGeneratedVideo(result.filename)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Video generation failed'
@@ -225,7 +236,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
+  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
     <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
       <div
         v-if="error"
@@ -238,9 +249,14 @@ onUnmounted(() => {
       </div>
 
       <div class="mx-auto h-full w-full max-w-5xl min-h-0">
-        <div class="relative flex h-full min-h-0 items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners">
+        <div
+          class="relative flex h-full min-h-0 items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners"
+        >
           <video
             v-if="generatedVideo"
+            v-motion
+            :initial="panelMotion.initial"
+            :enter="panelMotion.enter"
             :src="generatedVideo"
             controls
             autoplay
@@ -248,46 +264,64 @@ onUnmounted(() => {
             class="h-full max-h-full max-w-full object-contain"
           ></video>
 
-          <div v-else class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white">
+          <div
+            v-else
+            class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white"
+          >
             <div class="empty-preview-noise"></div>
             <div class="empty-preview-glow empty-preview-glow-a"></div>
             <div class="empty-preview-glow empty-preview-glow-b"></div>
             <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div v-if="!isGenerating" class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center">
+            <div
+              v-if="!isGenerating"
+              v-motion
+              :initial="panelMotion.initial"
+              :enter="panelMotion.enter"
+              class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center"
+            >
               <span class="empty-preview-brand">FlaxeoUI</span>
               <span class="empty-preview-brand-subtitle">Imagine it into motion</span>
             </div>
           </div>
+        </div>
 
-          <div
-            v-if="isGenerating"
-            class="absolute inset-0 generating-halftone flex items-center justify-center"
-          >
-            <div class="generating-status generating-status-panel">
-              <div v-if="!progress.hasSteps" class="flex flex-col items-center">
-                <div class="generating-loader-mark" aria-hidden="true">
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                </div>
-                <span class="generating-status-title">Loading model</span>
-                <p class="generating-status-subtitle">Preparing motion generation...</p>
-              </div>
-              <div v-else class="flex w-full flex-col items-center gap-3">
-                <span class="generating-status-kicker">{{ progress.label || 'VIDEO' }}</span>
-                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
-                <div class="generating-progress-track">
-                  <div
-                    class="generating-progress-bar"
-                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
-                  ></div>
-                </div>
-                <div class="generating-status-metrics">
-                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
-                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
-                </div>
-              </div>
+        <GenerationProgressPill
+          v-if="isGenerating"
+          class="mt-2"
+          loading-text="Loading model"
+          fallback-label="VIDEO"
+        />
+
+        <div v-if="generatedVideos.length > 0" class="mt-4 w-full shrink-0">
+          <div class="mb-2 flex items-center justify-between px-1">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Recent videos ({{ generatedVideos.length }})
+            </h3>
+          </div>
+          <div class="generation-media-strip relative">
+            <div class="flex gap-2 overflow-x-auto p-2 snap-x scroll-smooth no-scrollbar md:gap-3">
+              <button
+                v-for="video in generatedVideos"
+                :key="video"
+                class="generation-media-thumb group relative h-16 w-24 shrink-0 snap-start overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50 md:h-20 md:w-32"
+                :class="
+                  generatedVideo === getOutputUrl(video)
+                    ? 'is-active z-10'
+                    : 'opacity-72 hover:opacity-100'
+                "
+                @click="selectGeneratedVideo(video)"
+              >
+                <video
+                  :src="getOutputUrl(video)"
+                  class="h-full w-full object-cover"
+                  muted
+                  preload="metadata"
+                ></video>
+                <span
+                  class="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                  >Video</span
+                >
+              </button>
             </div>
           </div>
         </div>
@@ -296,45 +330,88 @@ onUnmounted(() => {
 
     <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
       <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
-        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
+        <div
+          class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs"
+        >
           <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30 shrink-0">
             <button
               @click="setVideoMode('t2v')"
               class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
-              :class="videoMode === 't2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              :class="
+                videoMode === 't2v'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
             >
               Text to Video
             </button>
             <button
               @click="setVideoMode('i2v')"
               class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
-              :class="videoMode === 'i2v' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              :class="
+                videoMode === 'i2v'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
             >
               Image to Video
             </button>
           </div>
 
-          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs">
+          <div
+            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs"
+          >
             <span class="text-muted-foreground text-[10px]">W</span>
-            <input v-model.number="videoWidth" type="number" step="16" class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none" />
+            <input
+              v-model.number="videoWidth"
+              type="number"
+              step="16"
+              class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none"
+            />
             <span class="text-muted-foreground">×</span>
             <span class="text-muted-foreground text-[10px]">H</span>
-            <input v-model.number="videoHeight" type="number" step="16" class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none" />
+            <input
+              v-model.number="videoHeight"
+              type="number"
+              step="16"
+              class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none"
+            />
           </div>
 
-          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1">
+          <div
+            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1"
+          >
             <span class="text-[10px] text-muted-foreground">Frames</span>
-            <input v-model.number="videoFrames" type="number" min="9" max="129" step="4" class="w-11 md:w-14 bg-transparent text-center focus:outline-none" />
+            <input
+              v-model.number="videoFrames"
+              type="number"
+              min="9"
+              max="129"
+              step="4"
+              class="w-11 md:w-14 bg-transparent text-center focus:outline-none"
+            />
           </div>
 
-          <div class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1">
+          <div
+            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1"
+          >
             <span class="text-[10px] text-muted-foreground">Flow</span>
-            <input v-model.number="flowShift" type="number" min="0" max="10" step="0.5" class="w-11 md:w-14 bg-transparent text-center focus:outline-none" />
+            <input
+              v-model.number="flowShift"
+              type="number"
+              min="0"
+              max="10"
+              step="0.5"
+              class="w-11 md:w-14 bg-transparent text-center focus:outline-none"
+            />
           </div>
 
           <div class="flex-1 hidden md:block"></div>
 
-          <label v-if="videoMode === 'i2v'" class="h-8 shrink-0 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5">
+          <label
+            v-if="videoMode === 'i2v'"
+            class="h-8 shrink-0 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
+          >
             <Upload class="w-3.5 h-3.5" />
             Reference
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
@@ -364,10 +441,17 @@ onUnmounted(() => {
         </div>
 
         <div v-if="videoMode === 'i2v' && referenceImage" class="px-2 md:px-5 pb-2">
-          <div class="flex items-center gap-3 p-2 bg-muted/30 rounded-lg border border-border/30 inline-flex">
-            <img :src="referenceImage" class="h-14 rounded-md border border-border/50" />
+          <div
+            class="flex items-center gap-3 p-2 bg-card rounded-xl border border-border/50 inline-flex shadow-sm"
+          >
+            <div class="flaxeo-image-card group !w-12 !h-12">
+              <img :src="referenceImage" />
+            </div>
             <div class="text-xs text-muted-foreground">Reference loaded</div>
-            <button @click="clearReferenceImage" class="p-1 hover:bg-background rounded ml-2">
+            <button
+              @click="clearReferenceImage"
+              class="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors ml-1"
+            >
               <X class="w-4 h-4" />
             </button>
           </div>
@@ -382,7 +466,10 @@ onUnmounted(() => {
                 rows="1"
                 placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
                 class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
+                :style="{
+                  minHeight: isMobile ? '64px' : '120px',
+                  maxHeight: isMobile ? '160px' : '360px'
+                }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
                 @input="autoResize"
@@ -390,6 +477,9 @@ onUnmounted(() => {
               <div class="absolute bottom-3 right-3 flex items-end">
                 <button
                   v-if="!isGenerating"
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleGenerate"
                   :disabled="!prompt.trim()"
                   class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
@@ -401,6 +491,9 @@ onUnmounted(() => {
                 </button>
                 <button
                   v-else
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleCancel"
                   class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
                   title="Cancel"

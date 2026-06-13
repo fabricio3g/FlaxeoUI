@@ -26,8 +26,10 @@ import { useToast } from '@/composables/useToast'
 import { useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+import { buttonMotion, panelMotion } from '@/lib/motion'
 
 const toast = useToast()
 
@@ -215,6 +217,26 @@ function setSize(preset: (typeof sizePresets)[0]): void {
   }
   isManual.value = false
   configStore.setDimensions(preset.width, preset.height)
+}
+
+function selectSizePreset(preset: (typeof sizePresets)[0]): void {
+  setSize(preset)
+  showSizeMenu.value = false
+}
+
+function clearControlNetImage(): void {
+  config.value.controlImagePath = ''
+  controlNetFile.value = null
+}
+
+function clearInitImage(): void {
+  config.value.initImagePath = ''
+  initImageFile.value = null
+}
+
+function clearKontextImage(): void {
+  config.value.kontextRefImage = ''
+  kontextRefFile.value = null
 }
 
 // Handle file uploads
@@ -639,13 +661,6 @@ const isLastImage = computed(() => {
   return galleryImages.value.indexOf(currentFile) >= galleryImages.value.length - 1
 })
 
-function formatETA(secs: number): string {
-  if (!Number.isFinite(secs) || secs <= 0) return '...'
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 function navigateImage(direction: number) {
   if (!previewImage.value) return
   const currentFile = previewImage.value.split('/').pop() || ''
@@ -731,7 +746,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-muted/30 text-foreground">
+  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
     <!-- Preview Area -->
     <div class="flex-1 relative min-h-0 overflow-hidden p-1.5 md:p-6">
       <div
@@ -748,6 +763,9 @@ onMounted(async () => {
         >
           <img
             v-if="previewImage"
+            v-motion
+            :initial="panelMotion.initial"
+            :enter="panelMotion.enter"
             :src="previewImage"
             class="h-full max-h-full max-w-full object-contain"
             alt="Generated image"
@@ -762,48 +780,16 @@ onMounted(async () => {
             <div class="empty-preview-glow empty-preview-glow-c"></div>
             <div
               v-if="!isGenerating"
+              v-motion
+              :initial="panelMotion.initial"
+              :enter="panelMotion.enter"
               class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center"
             >
               <span class="empty-preview-brand">FlaxeoUI</span>
-              <span class="empty-preview-brand-subtitle">{{ greetingTitle }} · {{ greetingMessage }}</span>
+              <span class="empty-preview-brand-subtitle"
+                >{{ greetingTitle }} · {{ greetingMessage }}</span
+              >
             </div>
-          </div>
-          <div
-            v-if="isGenerating && !previewImage?.includes('temp/preview.png')"
-            class="absolute inset-0 generating-halftone flex items-center justify-center"
-          >
-            <div class="generating-status generating-status-panel max-w-sm w-full px-6">
-              <div v-if="!progress.hasSteps" class="text-center">
-                <div class="generating-loader-mark" aria-hidden="true">
-                  <span></span><span></span><span></span><span></span> <span></span><span></span
-                  ><span></span><span></span> <span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span>
-                </div>
-                <span class="generating-status-title">Loading model</span>
-                <p class="generating-status-subtitle">Preparing to paint your idea...</p>
-              </div>
-              <div v-else class="flex flex-col items-center gap-3">
-                <span class="generating-status-kicker">{{ progress.label || 'CLI-GEN' }}</span>
-                <span class="generating-status-title">Step {{ progress.current }} / {{ progress.total }}</span>
-                <div class="generating-progress-track">
-                  <div
-                    class="generating-progress-bar"
-                    :style="{ width: (progress.total > 0 ? (progress.current / progress.total) * 100 : 0) + '%' }"
-                  ></div>
-                </div>
-                <div class="generating-status-metrics">
-                  <span v-if="progress.etaSeconds > 0">ETA {{ formatETA(progress.etaSeconds) }}</span>
-                  <span v-if="progress.itPerSec > 0">{{ progress.itPerSec.toFixed(1) }} it/s</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            v-if="isGenerating && previewImage?.includes('temp/preview.png')"
-            class="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur text-white text-xs rounded flex items-center gap-2"
-          >
-            <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-            Live Preview
           </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
@@ -847,28 +833,36 @@ onMounted(async () => {
           </div>
         </div>
 
+        <GenerationProgressPill
+          v-if="isGenerating"
+          class="mt-2"
+          loading-text="Loading model"
+          fallback-label="CLI-GEN"
+          :live-preview="previewImage?.includes('temp/preview.png')"
+        />
+
         <div v-if="galleryImages.length > 0" class="mt-4 w-full shrink-0">
-          <div class="flex items-center justify-between mb-2 px-1">
+          <div class="mb-2 flex items-center justify-between px-1">
             <h3
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2"
+              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
             >
-              <Image class="w-3.5 h-3.5" /> Gallery ({{ galleryImages.length }})
+              <Image class="h-3.5 w-3.5" /> Recent generations ({{ galleryImages.length }})
             </h3>
           </div>
-          <div class="relative group/carousel">
+          <div class="generation-media-strip relative group/carousel">
             <div
               ref="carouselRef"
-              class="flex gap-3 overflow-x-auto pb-4 pt-1 px-1 snap-x scroll-smooth no-scrollbar"
+              class="flex gap-2 overflow-x-auto p-2 snap-x scroll-smooth no-scrollbar md:gap-3"
             >
               <button
                 v-for="img in galleryImages"
                 :key="img"
                 @click="selectGalleryImage(img)"
-                class="h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-colors relative group snap-start focus:outline-none focus:ring-2 focus:ring-primary/50"
+                class="generation-media-thumb group relative h-16 w-16 shrink-0 snap-start overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50 md:h-20 md:w-20"
                 :class="
                   previewImage === getOutputUrl(img)
-                    ? 'border-primary ring-2 ring-primary/20 shadow-lg scale-105 z-10'
-                    : 'border-transparent hover:border-border/80 opacity-70 hover:opacity-100'
+                    ? 'is-active z-10'
+                    : 'opacity-72 hover:opacity-100'
                 "
               >
                 <img
@@ -893,9 +887,13 @@ onMounted(async () => {
     <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
       <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
         <!-- Quick Controls Row -->
-        <div class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs">
+        <div
+          class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs"
+        >
           <!-- Generation Params -->
-          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+          <div
+            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          >
             <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Batch</span>
             <input
               v-model.number="config.batchCount"
@@ -905,7 +903,9 @@ onMounted(async () => {
               class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+          <div
+            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          >
             <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Steps</span>
             <input
               v-model.number="config.steps"
@@ -915,7 +915,9 @@ onMounted(async () => {
               class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+          <div
+            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          >
             <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">CFG</span>
             <input
               v-model.number="config.cfgScale"
@@ -926,8 +928,12 @@ onMounted(async () => {
               class="w-7 md:w-9 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 min-w-0 shrink-0">
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70 shrink-0">Sampler</span>
+          <div
+            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 min-w-0 shrink-0"
+          >
+            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70 shrink-0"
+              >Sampler</span
+            >
             <Select
               v-model="config.sampler"
               size="sm"
@@ -951,7 +957,7 @@ onMounted(async () => {
               <button
                 v-for="preset in sizePresets"
                 :key="preset.label"
-                @click="setSize(preset); showSizeMenu = false"
+                @click="selectSizePreset(preset)"
                 class="w-full text-left px-2 py-1 text-[10px] font-medium rounded hover:bg-muted/60 transition-colors"
                 :class="
                   activePreset?.label === preset.label
@@ -963,7 +969,10 @@ onMounted(async () => {
               </button>
             </div>
           </div>
-          <div v-if="isManual" class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+          <div
+            v-if="isManual"
+            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          >
             <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">W</span>
             <input
               v-model.number="config.width"
@@ -972,7 +981,10 @@ onMounted(async () => {
               class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div v-if="isManual" class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0">
+          <div
+            v-if="isManual"
+            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          >
             <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">H</span>
             <input
               v-model.number="config.height"
@@ -981,7 +993,9 @@ onMounted(async () => {
               class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
-          <div class="flex items-center gap-1 h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1">
+          <div
+            class="flex items-center gap-1 h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1"
+          >
             <Eye class="w-3 h-3 text-muted-foreground" />
             <Select
               v-model="config.livePreviewMethod"
@@ -1007,35 +1021,33 @@ onMounted(async () => {
 
             <div
               v-if="activeTab"
-              class="border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur z-50
-                     md:absolute md:bottom-full md:right-0 md:mb-3 md:w-[520px] md:rounded-lg
-                      fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:inset-auto rounded-2xl max-h-[54vh] overflow-y-auto"
+              class="border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur z-50 md:absolute md:bottom-full md:right-0 md:mb-3 md:w-[520px] md:rounded-lg fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:inset-auto rounded-2xl"
             >
               <div v-if="activeTab === 'photomaker'" class="space-y-3">
                 <div class="flex flex-col md:flex-row items-start gap-3">
                   <div class="flex-1">
-                    <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                      >ID Images (Max 4)</label
-                    >
+                    <span class="preset-modal-label">ID Images (Max 4)</span>
                     <div class="flex gap-2 flex-wrap">
                       <div
                         v-for="(img, idx) in config.photoMakerImages"
                         :key="idx"
-                        class="relative group w-14 h-14 rounded-md overflow-hidden border border-border"
+                        class="flaxeo-image-card group"
                       >
-                        <img :src="getFileUrl(img)" class="w-full h-full object-cover" />
+                        <img :src="getFileUrl(img)" />
                         <button
                           @click="removePMImage(idx)"
-                          class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                          class="flaxeo-image-remove"
+                          title="Remove image"
                         >
-                          <X class="w-4 h-4" />
+                          <X class="w-3 h-3" />
                         </button>
                       </div>
                       <label
                         v-if="config.photoMakerImages.length < 4"
-                        class="w-14 h-14 rounded-md border border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                        class="flaxeo-image-upload"
+                        title="Add ID image"
                       >
-                        <Plus class="w-5 h-5 text-muted-foreground" />
+                        <Plus class="w-5 h-5" />
                         <input
                           type="file"
                           multiple
@@ -1063,29 +1075,17 @@ onMounted(async () => {
               <div v-if="activeTab === 'controlnet'" class="space-y-3">
                 <div class="flex flex-col md:flex-row items-start gap-3">
                   <div>
-                    <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                      >Control Image</label
-                    >
-                    <div
-                      class="relative group w-20 h-20 rounded-md overflow-hidden border border-border bg-muted/20"
-                    >
+                    <span class="preset-modal-label">Control Image</span>
+                    <div class="flaxeo-image-card group">
                       <img
                         v-if="config.controlImagePath"
                         :src="getFileUrl(config.controlImagePath)"
-                        class="w-full h-full object-cover"
                       />
                       <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors"
+                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
                       >
-                        <Upload
-                          v-if="!config.controlImagePath"
-                          class="w-6 h-6 text-muted-foreground/50"
-                        />
-                        <span
-                          v-if="!config.controlImagePath"
-                          class="text-[10px] text-muted-foreground/70 mt-1"
-                          >Upload</span
-                        >
+                        <Upload v-if="!config.controlImagePath" class="w-5 h-5" />
+                        <span v-if="!config.controlImagePath">Upload</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1095,8 +1095,9 @@ onMounted(async () => {
                       </label>
                       <button
                         v-if="config.controlImagePath"
-                        @click="config.controlImagePath = ''; controlNetFile = null"
-                        class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click.stop="clearControlNetImage"
+                        class="flaxeo-image-remove"
+                        title="Remove control image"
                       >
                         <X class="w-3 h-3" />
                       </button>
@@ -1129,29 +1130,17 @@ onMounted(async () => {
               <div v-if="activeTab === 'img2img'">
                 <div class="flex flex-col md:flex-row items-start gap-3">
                   <div>
-                    <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                      >Init Image</label
-                    >
-                    <div
-                      class="relative group w-20 h-20 rounded-md overflow-hidden border border-border bg-muted/20"
-                    >
+                    <span class="preset-modal-label">Init Image</span>
+                    <div class="flaxeo-image-card group">
                       <img
                         v-if="config.initImagePath"
                         :src="getFileUrl(config.initImagePath)"
-                        class="w-full h-full object-cover"
                       />
                       <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors"
+                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
                       >
-                        <Upload
-                          v-if="!config.initImagePath"
-                          class="w-6 h-6 text-muted-foreground/50"
-                        />
-                        <span
-                          v-if="!config.initImagePath"
-                          class="text-[10px] text-muted-foreground/70 mt-1"
-                          >Upload</span
-                        >
+                        <Upload v-if="!config.initImagePath" class="w-5 h-5" />
+                        <span v-if="!config.initImagePath">Upload</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1161,8 +1150,9 @@ onMounted(async () => {
                       </label>
                       <button
                         v-if="config.initImagePath"
-                        @click="config.initImagePath = ''; initImageFile = null"
-                        class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click.stop="clearInitImage"
+                        class="flaxeo-image-remove"
+                        title="Remove init image"
                       >
                         <X class="w-3 h-3" />
                       </button>
@@ -1191,29 +1181,17 @@ onMounted(async () => {
               <div v-if="activeTab === 'kontext'">
                 <div class="flex flex-col md:flex-row items-start gap-3">
                   <div>
-                    <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                      >Ref Image</label
-                    >
-                    <div
-                      class="relative group w-20 h-20 rounded-md overflow-hidden border border-border bg-muted/20"
-                    >
+                    <span class="preset-modal-label">Ref Image</span>
+                    <div class="flaxeo-image-card group">
                       <img
                         v-if="config.kontextRefImage"
                         :src="getFileUrl(config.kontextRefImage)"
-                        class="w-full h-full object-cover"
                       />
                       <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-colors"
+                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
                       >
-                        <Upload
-                          v-if="!config.kontextRefImage"
-                          class="w-6 h-6 text-muted-foreground/50"
-                        />
-                        <span
-                          v-if="!config.kontextRefImage"
-                          class="text-[10px] text-muted-foreground/70 mt-1"
-                          >Upload</span
-                        >
+                        <Upload v-if="!config.kontextRefImage" class="w-5 h-5" />
+                        <span v-if="!config.kontextRefImage">Upload</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1223,8 +1201,9 @@ onMounted(async () => {
                       </label>
                       <button
                         v-if="config.kontextRefImage"
-                        @click="config.kontextRefImage = ''; kontextRefFile = null"
-                        class="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click.stop="clearKontextImage"
+                        class="flaxeo-image-remove"
+                        title="Remove reference image"
                       >
                         <X class="w-3 h-3" />
                       </button>
@@ -1307,7 +1286,10 @@ onMounted(async () => {
                 rows="1"
                 placeholder="Describe the image you want to generate..."
                 class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{ minHeight: isMobile ? '64px' : '120px', maxHeight: isMobile ? '160px' : '360px' }"
+                :style="{
+                  minHeight: isMobile ? '64px' : '120px',
+                  maxHeight: isMobile ? '160px' : '360px'
+                }"
                 :disabled="isGenerating"
                 @keydown="onPromptKeydown"
                 @input="autoResize"
@@ -1320,6 +1302,9 @@ onMounted(async () => {
               <div class="absolute bottom-3 right-3 flex items-end">
                 <button
                   v-if="!isGenerating"
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleGenerate"
                   :disabled="!prompt.trim()"
                   class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
@@ -1331,6 +1316,9 @@ onMounted(async () => {
                 </button>
                 <button
                   v-else
+                  v-motion
+                  :hovered="buttonMotion.hovered"
+                  :tapped="buttonMotion.tapped"
                   @click="handleCancel"
                   class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
                   title="Cancel"
