@@ -60,13 +60,12 @@ const {
 } = useRuntimeStatus()
 const isBooting = ref(false)
 const showModelHub = ref(false)
-let hideTimeout: ReturnType<typeof setTimeout> | null = null
 
 type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings'
 
+let hideTimeout: ReturnType<typeof setTimeout> | null = null
 const activeCollapsedSection = ref<CollapsedSection | null>(null)
 const pinnedCollapsedSection = ref<CollapsedSection | null>(null)
-const collapsedFlyoutHovered = ref(false)
 const collapsedSelectOpen = ref(false)
 
 // Presets
@@ -115,23 +114,6 @@ const configWarnings = computed(() => {
   return warnings
 })
 
-const activeModelSummary = computed(() => {
-  const parts = [
-    config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
-  ]
-  if (config.value.vaeModel) parts.push(config.value.vaeModel)
-  if (config.value.t5xxlModel) parts.push(config.value.t5xxlModel)
-  if (config.value.llmModel) parts.push(config.value.llmModel)
-  if (config.value.clipModel) parts.push(config.value.clipModel)
-  if (config.value.clipGModel) parts.push(config.value.clipGModel)
-  if (config.value.clipVisionModel) parts.push(config.value.clipVisionModel)
-  if (config.value.highNoiseDiffusionModel) parts.push(config.value.highNoiseDiffusionModel)
-  if (config.value.uncondDiffusionModel) parts.push(config.value.uncondDiffusionModel)
-  if (config.value.llmVisionModel) parts.push(config.value.llmVisionModel)
-  if (config.value.embeddingsConnectorsModel) parts.push(config.value.embeddingsConnectorsModel)
-  return parts.filter(Boolean).slice(0, 4)
-})
-
 const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Component }> = [
   { id: 'backend', label: 'Backend', icon: Server },
   { id: 'presets', label: 'Presets', icon: Save },
@@ -148,6 +130,23 @@ const collapsedSectionTargets: Partial<
   generation: 'generation',
   hardware: 'hardware'
 }
+
+const activeModelSummary = computed(() => {
+  const parts = [
+    config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
+  ]
+  if (config.value.vaeModel) parts.push(config.value.vaeModel)
+  if (config.value.t5xxlModel) parts.push(config.value.t5xxlModel)
+  if (config.value.llmModel) parts.push(config.value.llmModel)
+  if (config.value.clipModel) parts.push(config.value.clipModel)
+  if (config.value.clipGModel) parts.push(config.value.clipGModel)
+  if (config.value.clipVisionModel) parts.push(config.value.clipVisionModel)
+  if (config.value.highNoiseDiffusionModel) parts.push(config.value.highNoiseDiffusionModel)
+  if (config.value.uncondDiffusionModel) parts.push(config.value.uncondDiffusionModel)
+  if (config.value.llmVisionModel) parts.push(config.value.llmVisionModel)
+  if (config.value.embeddingsConnectorsModel) parts.push(config.value.embeddingsConnectorsModel)
+  return parts.filter(Boolean).slice(0, 4)
+})
 
 const activeCollapsedMeta = computed(() =>
   collapsedSections.find((section) => section.id === activeCollapsedSection.value)
@@ -213,7 +212,7 @@ function pinCollapsedFlyout(section: CollapsedSection): void {
 function hideCollapsedFlyout(section: CollapsedSection): void {
   if (pinnedCollapsedSection.value !== section && !collapsedSelectOpen.value) {
     hideTimeout = setTimeout(() => {
-      activeCollapsedSection.value = null
+      if (pinnedCollapsedSection.value !== section) activeCollapsedSection.value = null
     }, 200)
   }
 }
@@ -225,35 +224,14 @@ function closeCollapsedFlyout(): void {
   }
   pinnedCollapsedSection.value = null
   activeCollapsedSection.value = null
-  collapsedFlyoutHovered.value = false
   collapsedSelectOpen.value = false
-}
-
-function keepCollapsedFlyout(): void {
-  collapsedFlyoutHovered.value = true
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-}
-
-function leaveCollapsedFlyout(): void {
-  collapsedFlyoutHovered.value = false
-  if (activeCollapsedSection.value) hideCollapsedFlyout(activeCollapsedSection.value)
 }
 
 function handleCollapsedSelectOpen(open: boolean): void {
   collapsedSelectOpen.value = open
-  if (open) {
-    if (hideTimeout) {
-      clearTimeout(hideTimeout)
-      hideTimeout = null
-    }
-    return
-  }
-
-  if (activeCollapsedSection.value && !collapsedFlyoutHovered.value) {
-    hideCollapsedFlyout(activeCollapsedSection.value)
+  if (open && hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
   }
 }
 
@@ -441,7 +419,7 @@ onUnmounted(() => {
 <template>
   <aside
     class="config-panel-shell w-full flex flex-col min-h-0 h-full"
-    :class="collapsed ? 'config-panel-collapsed overflow-hidden z-50' : 'config-panel-expanded overflow-hidden'"
+    :class="collapsed ? 'config-panel-collapsed overflow-visible z-50' : 'config-panel-expanded overflow-hidden'"
   >
     <div
       v-if="collapsed"
@@ -455,14 +433,19 @@ onUnmounted(() => {
           position="right"
         >
           <button
-            class="group relative flex h-8 w-8 items-center justify-center metal-icon-button titlebar-no-drag"
+            class="collapsed-sidebar-btn group relative flex h-8 w-8 items-center justify-center titlebar-no-drag"
             :class="[
               section.id === 'warnings' && configWarnings.length > 0
                 ? 'text-yellow-500 hover:text-yellow-500'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+              activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
+                ? 'bg-card border-border'
+                : 'border-transparent'
             ]"
             type="button"
-            @click="expandFromCollapsed(section.id)"
+            @mouseenter="showCollapsedFlyout(section.id)"
+            @mouseleave="hideCollapsedFlyout(section.id)"
+            @click="pinCollapsedFlyout(section.id)"
           >
             <component :is="section.icon" class="w-4 h-4" />
             <span
@@ -483,30 +466,26 @@ onUnmounted(() => {
 
       <div
         v-if="activeCollapsedSection"
-        class="absolute left-full top-0 z-50 ml-2 w-[260px] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl"
-        @mouseenter="keepCollapsedFlyout"
-        @mouseleave="leaveCollapsedFlyout"
+        class="absolute left-full top-0 z-50 ml-2 w-[260px] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl border border-border bg-popover p-3 shadow-lg"
+         @mouseenter="showCollapsedFlyout(activeCollapsedSection)"
+        @mouseleave="hideCollapsedFlyout(activeCollapsedSection)"
       >
-        <div class="mb-4 flex items-center justify-between gap-3 border-b border-border/70 pb-3">
-          <div class="flex min-w-0 items-start gap-3">
-            <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center metal-icon-button text-foreground"
-            >
-              <component
-                v-if="activeCollapsedMeta"
-                :is="activeCollapsedMeta.icon"
-                class="h-4 w-4"
-              />
-            </div>
+        <div class="mb-3 flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+          <div class="flex min-w-0 items-center gap-2">
+            <component
+              v-if="activeCollapsedMeta"
+              :is="activeCollapsedMeta.icon"
+              class="h-4 w-4 text-muted-foreground"
+            />
             <div class="min-w-0">
               <h3 class="truncate text-sm font-semibold">{{ activeCollapsedMeta?.label }}</h3>
-              <p class="mt-0.5 truncate text-[11px] text-muted-foreground">
+              <p class="truncate text-[11px] text-muted-foreground">
                 {{ collapsedSectionSummary(activeCollapsedSection) }}
               </p>
             </div>
           </div>
           <button
-            class="metal-icon-button p-1 text-muted-foreground hover:text-foreground"
+            class="collapsed-sidebar-btn p-1 text-muted-foreground hover:text-foreground"
             @click="closeCollapsedFlyout"
           >
             <X class="w-4 h-4" />
@@ -516,14 +495,12 @@ onUnmounted(() => {
         <div v-if="activeCollapsedSection === 'backend'" class="space-y-3">
           <div class="rounded-lg bg-muted/30 p-3 text-sm space-y-2">
             <div class="flex items-center justify-between">
-              <span>Backend</span
-              ><span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{
-                backendVersion
-              }}</span>
+              <span>Backend</span>
+              <span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{ backendVersion }}</span>
             </div>
             <div class="flex items-center justify-between">
-              <span>Server</span
-              ><span :class="sdServerRunning ? 'text-green-500' : 'text-muted-foreground'">{{
+              <span>Server</span>
+              <span :class="sdServerRunning ? 'text-green-500' : 'text-muted-foreground'">{{
                 sdServerRunning ? 'Online' : 'Offline'
               }}</span>
             </div>
