@@ -529,19 +529,27 @@ onUnmounted(() => {
               CLI
             </button>
           </div>
-          <div v-if="config.backendMode === 'server'" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div v-if="config.backendMode === 'server'" class="flex gap-2">
             <button
               @click="startServer"
               :disabled="sdServerRunning || isBooting || !backendValid"
-              class="rounded-lg bg-green-600 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+              :class="
+                sdServerRunning || isBooting || !backendValid
+                  ? 'text-muted-foreground'
+                  : 'text-green-600'
+              "
             >
-              {{ isBooting ? 'Booting' : 'Start' }}
+              <Play class="w-3.5 h-3.5" />
+              {{ isBooting ? 'Booting...' : 'Start' }}
             </button>
             <button
               @click="stopServer"
               :disabled="!sdServerRunning"
-              class="rounded-lg bg-red-600 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+              :class="!sdServerRunning ? 'text-muted-foreground' : 'text-red-600'"
             >
+              <Square class="w-3.5 h-3.5" />
               Stop
             </button>
           </div>
