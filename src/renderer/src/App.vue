@@ -7,7 +7,7 @@ import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
-import { routeMotion } from './lib/motion'
+
 
 const route = useRoute()
 const router = useRouter()
@@ -97,24 +97,20 @@ onMounted(async () => {
       <main
         class="main-panel flex-1 min-h-0 overflow-hidden flex flex-col relative w-full m-2 ml-0"
       >
-        <router-view v-slot="{ Component }">
+        <router-view v-slot="{ Component, route }">
           <transition
-            name="fade"
+            name="route"
             mode="out-in"
-            enter-active-class="transition-opacity duration-150"
-            leave-active-class="transition-opacity duration-150"
-            enter-from-class="opacity-0"
-            leave-to-class="opacity-0"
+            enter-active-class="transition-all duration-300 ease-out"
+            leave-active-class="transition-all duration-200 ease-in"
+            enter-from-class="opacity-0 translate-y-3 scale-[0.98]"
+            leave-to-class="opacity-0 -translate-y-2 scale-[0.99]"
           >
-            <keep-alive>
-              <component
-                :is="Component"
-                v-motion
-                :initial="routeMotion.initial"
-                :enter="routeMotion.enter"
-                :leave="routeMotion.leave"
-              />
-            </keep-alive>
+            <div :key="route.path" class="h-full w-full">
+              <keep-alive>
+                <component :is="Component" />
+              </keep-alive>
+            </div>
           </transition>
         </router-view>
       </main>
