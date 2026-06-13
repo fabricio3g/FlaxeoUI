@@ -45,6 +45,7 @@ withDefaults(
 
 const emit = defineEmits<{
   close: []
+  expand: []
 }>()
 
 // Backend status
@@ -140,6 +141,14 @@ const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Comp
   { id: 'warnings', label: 'Warnings', icon: AlertTriangle }
 ]
 
+const collapsedSectionTargets: Partial<
+  Record<CollapsedSection, keyof typeof expandedSections.value>
+> = {
+  presets: 'presets',
+  generation: 'generation',
+  hardware: 'hardware'
+}
+
 const activeCollapsedMeta = computed(() =>
   collapsedSections.find((section) => section.id === activeCollapsedSection.value)
 )
@@ -176,6 +185,12 @@ const presetOptions = computed(() => [
  */
 function toggleSection(section: keyof typeof expandedSections.value): void {
   expandedSections.value[section] = !expandedSections.value[section]
+}
+
+function expandFromCollapsed(section: CollapsedSection): void {
+  const target = collapsedSectionTargets[section]
+  if (target) expandedSections.value[target] = true
+  emit('expand')
 }
 
 function showCollapsedFlyout(section: CollapsedSection): void {
@@ -425,14 +440,14 @@ onUnmounted(() => {
 
 <template>
   <aside
-    class="config-panel-shell w-full flex flex-col min-h-0 h-full md:h-auto md:shadow-none md:backdrop-blur-xl md:rounded-sm"
-    :class="collapsed ? 'overflow-visible z-50 titlebar-shell' : 'overflow-hidden md:bg-card/95'"
+    class="config-panel-shell w-full flex flex-col min-h-0 h-full"
+    :class="collapsed ? 'config-panel-collapsed overflow-hidden z-50' : 'config-panel-expanded overflow-hidden'"
   >
     <div
       v-if="collapsed"
-      class="relative md:flex h-full flex-col items-center gap-1 py-3 titlebar-no-drag"
+      class="relative md:flex h-full flex-col items-center gap-0.5 py-2 titlebar-no-drag"
     >
-      <div class="flex flex-col items-center gap-1">
+      <div class="flex flex-col items-center gap-0.5">
         <Tooltip
           v-for="section in collapsedSections"
           :key="section.id"
@@ -442,25 +457,17 @@ onUnmounted(() => {
           <button
             class="group relative flex h-8 w-8 items-center justify-center metal-icon-button titlebar-no-drag"
             :class="[
-              activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
-                ? 'primary-metal-button'
-                : 'text-muted-foreground hover:text-foreground',
-              section.id === 'warnings' &&
-              configWarnings.length > 0 &&
-              activeCollapsedSection !== section.id &&
-              pinnedCollapsedSection !== section.id
-                ? 'text-yellow-500'
-                : ''
+              section.id === 'warnings' && configWarnings.length > 0
+                ? 'text-yellow-500 hover:text-yellow-500'
+                : 'text-muted-foreground hover:text-foreground'
             ]"
             type="button"
-            @mouseenter="showCollapsedFlyout(section.id)"
-            @mouseleave="hideCollapsedFlyout(section.id)"
-            @click="pinCollapsedFlyout(section.id)"
+            @click="expandFromCollapsed(section.id)"
           >
             <component :is="section.icon" class="w-4 h-4" />
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
-              class="absolute -right-1 -top-1 min-w-4 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
+              class="absolute right-0 top-0 min-w-3.5 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
               >{{ configWarnings.length }}</span
             >
           </button>
@@ -476,7 +483,7 @@ onUnmounted(() => {
 
       <div
         v-if="activeCollapsedSection"
-        class="absolute left-full top-0 z-50 ml-3 w-80 max-h-[calc(100vh-1rem)] overflow-y-auto rounded-sm border border-border/70 bg-card p-4 shadow-xl"
+        class="absolute left-full top-0 z-50 ml-2 w-[260px] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl"
         @mouseenter="keepCollapsedFlyout"
         @mouseleave="leaveCollapsedFlyout"
       >
@@ -948,7 +955,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Scrollable Content -->
-      <div class="config-panel-scroll flex-1 overflow-y-auto p-4 pb-8 md:p-5 md:pb-5 space-y-5">
+      <div class="config-panel-scroll flex-1 overflow-y-auto p-4 pb-8 md:p-3 md:pb-3 space-y-4">
         <!-- Server / CLI Toggle (always visible) -->
         <section>
           <div class="space-y-2">

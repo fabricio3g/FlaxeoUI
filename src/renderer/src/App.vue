@@ -76,25 +76,26 @@ onMounted(async () => {
     />
 
     <!-- Main Content Area -->
-    <div class="flex flex-1 min-h-0 overflow-hidden relative md:p-0">
+    <div class="flex flex-1 min-h-0 overflow-hidden relative gap-2 p-0">
       <!-- Config Panel (detailed settings) -->
       <ConfigPanel
         :collapsed="sidebarCollapsed"
-        class="shrink-0 transition-[width] duration-200 ease-out bg-card sidebar-border md:mt-3 md:mb-3 md:ml-3 md:rounded-sm"
+        class="shrink-0 transition-[width] duration-300 ease-out"
         :class="[
           sidebarCollapsed
-            ? 'md:flex md:w-12 md:relative md:translate-x-0'
-            : 'md:flex md:w-80 md:relative md:translate-x-0',
+            ? 'md:flex md:w-11 md:relative md:translate-x-0'
+            : 'md:flex md:w-[260px] md:relative md:translate-x-0',
           showMobileConfig
             ? 'fixed inset-0 z-50 w-full translate-x-0 flex md:absolute'
             : 'hidden md:flex'
         ]"
         @close="showMobileConfig = false"
+        @expand="sidebarCollapsed = false"
       />
 
       <!-- Main Content -->
       <main
-        class="flex-1 min-h-0 overflow-hidden flex flex-col relative w-full m-1.5 mb-0 md:m-3 bg-card rounded-2xl"
+        class="main-panel flex-1 min-h-0 overflow-hidden flex flex-col relative w-full m-2 ml-0"
       >
         <router-view v-slot="{ Component }">
           <transition

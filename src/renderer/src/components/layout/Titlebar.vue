@@ -163,12 +163,12 @@ function handleClose(): void {
 
 <template>
   <header
-    class="titlebar-shell relative z-[10000] h-11 flex items-center justify-between select-none backdrop-blur-xl rounded-tl-lg titlebar-drag titlebar-border"
+    class="titlebar-shell relative z-[10000] h-8 flex items-center justify-between select-none titlebar-drag titlebar-border"
   >
-    <nav class="titlebar-shell h-full hidden md:flex items-center gap-1 px-3 titlebar-no-drag">
+    <nav class="titlebar-shell h-full hidden md:flex items-center gap-0 px-3 titlebar-no-drag">
       <button
         @click="emit('toggleSidebar')"
-        class="h-8 w-8 shrink-0 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+        class="h-7 w-7 shrink-0 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
         :aria-label="props.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         type="button"
       >
@@ -176,12 +176,12 @@ function handleClose(): void {
         <PanelLeftClose v-else class="w-4 h-4" />
       </button>
 
-      <div class="mx-1 h-5 w-px bg-border/80"></div>
+      <div class="mx-1 h-4 w-px bg-border/80"></div>
 
       <Tooltip v-for="item in navItems" :key="item.id" :text="item.label">
         <button
           @click="handleNavClick(item.id)"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center titlebar-no-drag"
+          class="h-7 w-7 metal-icon-button flex items-center justify-center titlebar-no-drag"
           :class="[
             isActive(item.id)
               ? 'primary-metal-button'
@@ -194,10 +194,10 @@ function handleClose(): void {
       </Tooltip>
 
       <div
-        class="runtime-status-dot-wrap group relative flex h-8 items-center justify-center titlebar-no-drag"
+        class="runtime-status-dot-wrap group relative flex h-7 items-center justify-center titlebar-no-drag"
       >
         <button
-          class="runtime-status-dot-button flex h-8 w-8 items-center justify-center"
+          class="runtime-status-dot-button flex h-7 w-7 items-center justify-center"
           type="button"
           :aria-label="runtimeLabel"
         >
@@ -246,12 +246,12 @@ function handleClose(): void {
         </div>
       </div>
 
-      <div class="mx-1 h-5 w-px bg-border/80"></div>
+      <div class="mx-1 h-4 w-px bg-border/80"></div>
 
       <Tooltip text="Open Models Folder">
         <button
           @click="openModelsFolder"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          class="h-7 w-7 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
           type="button"
         >
           <Database class="w-4 h-4" />
@@ -260,7 +260,7 @@ function handleClose(): void {
 
       <button
         @click="showModelHub = true"
-        class="h-8 rounded-lg px-3 text-xs font-medium metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+        class="h-7 rounded px-2 text-xs font-medium metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
         type="button"
       >
         Model Hub
@@ -269,19 +269,19 @@ function handleClose(): void {
       <Tooltip text="Open Gallery Folder">
         <button
           @click="openGalleryFolder"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          class="h-7 w-7 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
           type="button"
         >
           <FolderOpen class="w-4 h-4" />
         </button>
       </Tooltip>
 
-      <div class="mx-1 h-5 w-px bg-border/80"></div>
+      <div class="mx-1 h-4 w-px bg-border/80"></div>
 
       <Tooltip :text="config.videoMode ? 'Disable Video Mode' : 'Enable Video Mode'">
         <button
           @click.stop="toggleVideoMode"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center titlebar-no-drag"
+          class="h-7 w-7 metal-icon-button flex items-center justify-center titlebar-no-drag"
           :class="
             config.videoMode
               ? 'primary-metal-button'
@@ -296,7 +296,7 @@ function handleClose(): void {
       <Tooltip text="Server Logs">
         <button
           @click="emit('toggleLogs')"
-          class="h-8 w-8 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          class="h-7 w-7 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
           type="button"
         >
           <Terminal class="w-4 h-4" />
@@ -313,7 +313,7 @@ function handleClose(): void {
       <!-- Mobile config toggle (shown on small screens only) -->
       <button
         @click="emit('toggleMobileConfig')"
-        class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
+        class="h-7 w-7 mr-1 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
         type="button"
         title="Settings"
         aria-label="Open mobile settings"
@@ -323,7 +323,7 @@ function handleClose(): void {
 
       <button
         @click="showDownloadManager = true"
-        class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
+        class="h-7 w-7 mr-1 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
         type="button"
         title="Downloads"
         aria-label="Open download manager"
@@ -334,7 +334,7 @@ function handleClose(): void {
       <Tooltip text="Downloads">
         <button
           @click="showDownloadManager = true"
-          class="hidden h-8 w-8 mr-1.5 metal-icon-button md:flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          class="hidden h-7 w-7 mr-1 metal-icon-button md:flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
           type="button"
         >
           <Download class="w-4 h-4" />
@@ -344,7 +344,7 @@ function handleClose(): void {
       <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'">
         <button
           @click="toggleTheme"
-          class="h-8 w-8 mr-1.5 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
+          class="h-7 w-7 mr-1 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag"
           type="button"
         >
           <Sun v-if="isDark" class="w-4 h-4" />
@@ -355,7 +355,7 @@ function handleClose(): void {
       <template v-if="isElectron">
         <button
           @click="handleMinimize"
-          class="h-full w-12 flex items-center justify-center hover:bg-muted/60 transition-colors"
+          class="h-full w-[46px] flex items-center justify-center hover:bg-muted/60 transition-colors"
           title="Minimize"
         >
           <Minus class="w-3.5 h-3.5 text-muted-foreground" />
@@ -363,7 +363,7 @@ function handleClose(): void {
 
         <button
           @click="handleMaximize"
-          class="h-full w-12 flex items-center justify-center hover:bg-muted/60 transition-colors"
+          class="h-full w-[46px] flex items-center justify-center hover:bg-muted/60 transition-colors"
           title="Maximize"
         >
           <Square class="w-3 h-3 text-muted-foreground" />
@@ -371,7 +371,7 @@ function handleClose(): void {
 
         <button
           @click="handleClose"
-          class="h-full w-12 flex items-center justify-center hover:bg-destructive/90 hover:text-white transition-colors"
+          class="h-full w-[46px] flex items-center justify-center hover:bg-destructive/90 hover:text-white transition-colors"
           title="Close"
         >
           <X class="w-4 h-4" />
