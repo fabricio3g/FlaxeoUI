@@ -13,11 +13,13 @@ export interface Release {
   tag: string
   name: string
   published: string
-  assets: Array<{
-    name: string
-    size: number
-    url: string
-  }>
+  assets: ReleaseAsset[]
+}
+
+export interface ReleaseAsset {
+  name: string
+  size: number
+  url: string
 }
 
 /**
@@ -69,14 +71,14 @@ export function useBackend() {
   /**
    * downloadRelease() - Downloads and installs a specific release
    * @param release - The release object to install
+   * @param selectedAsset - Optional release asset/variant to download
    */
-  async function downloadRelease(release: Release): Promise<void> {
+  async function downloadRelease(release: Release, selectedAsset?: ReleaseAsset): Promise<void> {
     if (release.assets.length === 0) return
 
     isDownloading.value = true
     try {
-      // Find the appropriate asset for the current platform
-      const asset = release.assets[0] // TODO: Platform detection
+      const asset = selectedAsset || release.assets[0]
       await apiPost('/api/backend/download', {
         url: asset.url,
         variant: asset.name,
