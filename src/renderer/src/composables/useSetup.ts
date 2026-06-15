@@ -5,6 +5,7 @@ import { useModels } from './useModels'
 const setupComplete = ref(false)
 const skipped = ref(false)
 const stateLoaded = ref(false)
+const isDev = ref(false)
 
 export function useSetup() {
   const { backendValid } = useRuntimeStatus()
@@ -24,6 +25,7 @@ export function useSetup() {
 
   const isSetupNeeded = computed(() => {
     if (!stateLoaded.value) return false
+    if (isDev.value) return true
     if (!setupComplete.value) return true
     if (!backendValid.value) return true
     if (!hasAnyModel.value && !skipped.value) return true
@@ -34,8 +36,10 @@ export function useSetup() {
     try {
       const state = await window.electronAPI?.getInitState()
       setupComplete.value = state?.setupComplete ?? false
+      isDev.value = state?.isDev ?? false
     } catch {
       setupComplete.value = false
+      isDev.value = false
     } finally {
       stateLoaded.value = true
     }
