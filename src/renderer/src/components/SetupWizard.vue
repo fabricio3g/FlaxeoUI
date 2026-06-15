@@ -42,6 +42,7 @@ const step = ref<Step>('welcome')
 const selectedPackId = ref<string>('flux1-dev')
 const runtimePoll = ref<number | null>(null)
 const runtimeDownloading = ref(false)
+const runtimeError = ref('')
 const modelDownloading = ref(false)
 const modelDownloadStatus = ref<Record<string, string>>({})
 const modelDownloadProgress = ref<Record<string, number>>({})
@@ -60,19 +61,47 @@ function fileKey(file: HubFile): string {
   return `${file.category}/${file.filename}`
 }
 
+async function loadReleases(): Promise<void> {
+  runtimeError.value = ''
+  try {
+    await backend.fetchReleases()
+    if (backend.releases.value.length === 0) {
+      runtimeError.value = 'No releases found. You may be rate-limited by GitHub or offline.'
+    }
+  } catch (e) {
+    runtimeError.value = e instanceof Error ? e.message : 'Failed to fetch releases.'
+  }
+}
+
 async function startRuntimeInstall(): Promise<void> {
+  runtimeError.value = ''
   runtimeDownloading.value = true
-  await backend.fetchReleases()
+
+  if (backend.releases.value.length === 0) {
+    await loadReleases()
+  }
+
   const latest = backend.releases.value[0]
-  if (!latest) {
+  if (!latest || latest.assets.length === 0) {
+    runtimeDownloading.value = false
+    runtimeError.value = 'No downloadable release is available right now.'
+    return
+  }
+
+  try {
+    await backend.downloadRelease(latest)
+    await backend.fetchConfig()
+    if (backendValid.value) {
+      runtimeDownloading.value = false
+      step.value = 'model'
+      return
+    }
+  } catch (e) {
+    runtimeError.value = e instanceof Error ? e.message : 'Runtime install failed.'
     runtimeDownloading.value = false
     return
   }
-  try {
-    await backend.downloadRelease(latest)
-  } catch (e) {
-    console.error('Runtime install failed:', e)
-  }
+
   runtimePoll.value = window.setInterval(async () => {
     await backend.fetchConfig()
     if (backendValid.value) {
@@ -138,6 +167,7 @@ function back(): void {
 
 onMounted(async () => {
   await backend.fetchConfig()
+  await loadReleases()
   if (backendValid.value) {
     step.value = 'model'
   }
@@ -298,10 +328,17 @@ watch(backendValid, (valid) => {
             </div>
 
             <div
-              v-if="!backendValid && backend.config.value.activeBackendPath"
+              v-if="runtimeError"
+              class="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive"
+            >
+              {{ runtimeError }}
+            </div>
+
+            <div
+              v-else-if="!backendValid && !runtimeDownloading"
               class="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-600"
             >
-              Backend not valid yet. If the download is taking a while, you can skip and finish setup later from Settings.
+              If the download is taking a while, you can skip and finish setup later from Settings.
             </div>
           </div>
 
