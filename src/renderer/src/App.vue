@@ -7,10 +7,12 @@ import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
-
+import { useSetup } from './composables/useSetup'
+import SetupWizard from './components/SetupWizard.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { isSetupNeeded, loadState, skipForNow, reopenSetup } = useSetup()
 
 // State
 const showMobileConfig = ref(false)
@@ -61,6 +63,8 @@ onMounted(async () => {
   } catch (e) {
     console.log('Running outside Electron or getInitState not available')
   }
+
+  await loadState()
 })
 </script>
 
@@ -70,9 +74,11 @@ onMounted(async () => {
     <Titlebar
       :current-tab="currentTab"
       :sidebar-collapsed="sidebarCollapsed"
+      :setup-needed="isSetupNeeded"
       @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed"
       @toggle-mobile-config="showMobileConfig = !showMobileConfig"
       @toggle-logs="showFloatingLogs = !showFloatingLogs"
+      @open-setup="reopenSetup"
     />
 
     <!-- Main Content Area -->
@@ -124,5 +130,12 @@ onMounted(async () => {
 
     <!-- Floating Log Panel -->
     <FloatingLogPanel v-model="showFloatingLogs" />
+
+    <!-- First-time Setup Wizard -->
+    <SetupWizard
+      v-if="isSetupNeeded"
+      @done="skipForNow"
+      @skip="skipForNow"
+    />
   </div>
 </template>

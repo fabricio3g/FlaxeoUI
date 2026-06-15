@@ -15,6 +15,57 @@ let mainWindow: BrowserWindow | null = null
 let serverProcess: ChildProcess | null = null
 let serverPort = 3000
 
+interface AppState {
+  firstRun: boolean
+  setupComplete: boolean
+}
+
+const defaultAppState: AppState = {
+  firstRun: true,
+  setupComplete: false
+}
+
+/**
+ * getStateFilePath() - Returns the path to the persisted app state JSON file
+ */
+function getStateFilePath(): string {
+  return join(app.getPath('userData'), 'flaxeo-state.json')
+}
+
+/**
+ * readAppState() - Reads persisted app state, creating defaults if missing
+ */
+function readAppState(): AppState {
+  const statePath = getStateFilePath()
+  try {
+    if (!fs.existsSync(statePath)) return { ...defaultAppState }
+    const raw = fs.readFileSync(statePath, 'utf-8')
+    const parsed = JSON.parse(raw)
+    return {
+      firstRun: typeof parsed.firstRun === 'boolean' ? parsed.firstRun : defaultAppState.firstRun,
+      setupComplete:
+        typeof parsed.setupComplete === 'boolean'
+          ? parsed.setupComplete
+          : defaultAppState.setupComplete
+    }
+  } catch (e) {
+    console.error('[Main] Failed to read app state:', e)
+    return { ...defaultAppState }
+  }
+}
+
+/**
+ * writeAppState() - Persists app state to disk
+ */
+function writeAppState(state: AppState): void {
+  try {
+    const statePath = getStateFilePath()
+    fs.writeFileSync(statePath, JSON.stringify(state, null, 2))
+  } catch (e) {
+    console.error('[Main] Failed to write app state:', e)
+  }
+}
+
 /**
  * getResourcePath() - Gets the correct path for resources in dev/production
  */
@@ -224,8 +275,10 @@ ipcMain.on('open-custom-folder', () => {
  * IPC Handlers - Settings & Server Info
  */
 ipcMain.handle('get-init-state', () => {
+  const state = readAppState()
   return {
-    firstRun: false,
+    firstRun: state.firstRun,
+    setupComplete: state.setupComplete,
     port: serverPort,
     isDev: is.dev
   }
@@ -233,7 +286,17 @@ ipcMain.handle('get-init-state', () => {
 
 ipcMain.handle('get-server-port', () => serverPort)
 
-ipcMain.handle('set-first-run-complete', () => true)
+ipcMain.handle('set-first-run-complete', () => {
+  const state = readAppState()
+  writeAppState({ ...state, firstRun: false, setupComplete: true })
+  return true
+})
+
+ipcMain.handle('reopen-setup', () => {
+  const state = readAppState()
+  writeAppState({ ...state, setupComplete: false })
+  return true
+})
 
 ipcMain.handle('toggle-local-network', (_event, enabled: boolean) => {
   console.log('[Main] Toggle local network:', enabled)

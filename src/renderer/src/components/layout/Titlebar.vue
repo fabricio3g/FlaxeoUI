@@ -37,12 +37,14 @@ interface NavItem {
 const props = defineProps<{
   currentTab: string
   sidebarCollapsed: boolean
+  setupNeeded?: boolean
 }>()
 
 const emit = defineEmits<{
   toggleSidebar: []
   toggleMobileConfig: []
   toggleLogs: []
+  openSetup: []
 }>()
 
 const router = useRouter()
@@ -296,6 +298,16 @@ function handleClose(): void {
       </button>
 
       <button
+        v-if="props.setupNeeded"
+        class="h-7 mr-1 rounded px-2 text-xs font-medium flex items-center gap-1.5 bg-yellow-500/12 text-yellow-600 hover:bg-yellow-500/20 titlebar-no-drag md:hidden"
+        type="button"
+        @click="emit('openSetup')"
+      >
+        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+        Setup
+      </button>
+
+      <button
         @click="showDownloadManager = true"
         class="h-7 w-7 mr-1 metal-icon-button flex items-center justify-center text-muted-foreground hover:text-foreground titlebar-no-drag md:hidden"
         type="button"
@@ -313,6 +325,16 @@ function handleClose(): void {
         aria-label="Open server logs"
       >
         <Terminal class="w-4 h-4" />
+      </button>
+
+      <button
+        v-if="props.setupNeeded"
+        class="hidden h-7 mr-1 rounded px-2 text-xs font-medium md:flex items-center gap-1.5 bg-yellow-500/12 text-yellow-600 hover:bg-yellow-500/20 titlebar-no-drag"
+        type="button"
+        @click="emit('openSetup')"
+      >
+        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+        Setup
       </button>
 
       <Tooltip text="Downloads">

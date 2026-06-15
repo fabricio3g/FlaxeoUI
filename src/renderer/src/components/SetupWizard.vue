@@ -1,0 +1,469 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  Download,
+  ExternalLink,
+  Film,
+  ImageIcon,
+  Loader2,
+  Sparkles,
+  Video,
+  Wand2,
+  X
+} from 'lucide-vue-next'
+import { useConfigStore } from '@/stores/config'
+import { useBackend } from '@/composables/useBackend'
+import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import { apiPost } from '@/services/api'
+import {
+  hubModels,
+  STARTER_PACK_IDS,
+  STARTER_PACK_META,
+  type HubFile,
+  type HubModel
+} from '@/lib/starterPacks'
+import { panelMotion } from '@/lib/motion'
+
+type Step = 'welcome' | 'runtime' | 'model' | 'finish'
+
+const emit = defineEmits<{
+  done: []
+  skip: []
+}>()
+
+const configStore = useConfigStore()
+const backend = useBackend()
+const { backendValid } = useRuntimeStatus()
+
+const step = ref<Step>('welcome')
+const selectedPackId = ref<string>('flux1-dev')
+const runtimePoll = ref<number | null>(null)
+const runtimeDownloading = ref(false)
+const modelDownloading = ref(false)
+const modelDownloadStatus = ref<Record<string, string>>({})
+const modelDownloadProgress = ref<Record<string, number>>({})
+const packDownloadPoll = ref<number | null>(null)
+
+const selectedPack = computed(() =>
+  hubModels.find((model) => model.id === selectedPackId.value) || hubModels[0]
+)
+
+const stepIndex = computed(() => {
+  const map: Record<Step, number> = { welcome: 0, runtime: 1, model: 2, finish: 3 }
+  return map[step.value]
+})
+
+function fileKey(file: HubFile): string {
+  return `${file.category}/${file.filename}`
+}
+
+async function startRuntimeInstall(): Promise<void> {
+  runtimeDownloading.value = true
+  await backend.fetchReleases()
+  const latest = backend.releases.value[0]
+  if (!latest) {
+    runtimeDownloading.value = false
+    return
+  }
+  try {
+    await backend.downloadRelease(latest)
+  } catch (e) {
+    console.error('Runtime install failed:', e)
+  }
+  runtimePoll.value = window.setInterval(async () => {
+    await backend.fetchConfig()
+    if (backendValid.value) {
+      stopRuntimePoll()
+      runtimeDownloading.value = false
+      step.value = 'model'
+    }
+  }, 1500)
+}
+
+function stopRuntimePoll(): void {
+  if (runtimePoll.value) {
+    clearInterval(runtimePoll.value)
+    runtimePoll.value = null
+  }
+}
+
+async function downloadFile(file: HubFile): Promise<void> {
+  const key = fileKey(file)
+  modelDownloadStatus.value[key] = 'Downloading...'
+  try {
+    await apiPost('/api/models/download', file)
+    modelDownloadStatus.value[key] = 'Downloaded'
+  } catch (error) {
+    modelDownloadStatus.value[key] = error instanceof Error ? error.message : 'Failed'
+  }
+}
+
+async function startModelDownload(): Promise<void> {
+  modelDownloading.value = true
+  configStore.applyPreset(selectedPack.value.presetId)
+  for (const file of selectedPack.value.files) {
+    if (!modelDownloading.value) return
+    await downloadFile(file)
+  }
+  modelDownloading.value = false
+  step.value = 'finish'
+}
+
+function cancelModelDownload(): void {
+  modelDownloading.value = false
+}
+
+async function finish(): Promise<void> {
+  emit('done')
+}
+
+function skip(): void {
+  emit('skip')
+}
+
+function next(): void {
+  if (step.value === 'welcome') step.value = 'runtime'
+  else if (step.value === 'runtime') step.value = 'model'
+  else if (step.value === 'model') step.value = 'finish'
+}
+
+function back(): void {
+  if (step.value === 'runtime') step.value = 'welcome'
+  else if (step.value === 'model') step.value = 'runtime'
+  else if (step.value === 'finish') step.value = 'model'
+}
+
+onMounted(async () => {
+  await backend.fetchConfig()
+  if (backendValid.value) {
+    step.value = 'model'
+  }
+})
+
+watch(backendValid, (valid) => {
+  if (valid && step.value === 'runtime' && runtimeDownloading.value) {
+    stopRuntimePoll()
+    runtimeDownloading.value = false
+    step.value = 'model'
+  }
+})
+</script>
+
+<template>
+  <Teleport to="body">
+    <div
+      class="fixed inset-0 z-[200] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm titlebar-no-drag"
+    >
+      <div
+        v-motion
+        :initial="panelMotion.initial"
+        :enter="panelMotion.enter"
+        class="setup-wizard-shell flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+      >
+        <!-- Header -->
+        <header
+          class="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-3"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-primary text-primary-foreground shadow-sm"
+            >
+              <Sparkles class="h-4 w-4" />
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold">Setup Wizard</h2>
+              <p class="text-[11px] text-muted-foreground">
+                Step {{ stepIndex + 1 }} of 4
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div
+              v-for="i in 4"
+              :key="i"
+              class="h-1.5 w-6 rounded-full transition-colors"
+              :class="i <= stepIndex + 1 ? 'bg-primary' : 'bg-muted'"
+            ></div>
+          </div>
+          <button
+            class="metal-icon-button p-1.5 text-muted-foreground hover:text-foreground"
+            type="button"
+            @click="skip"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-5 md:p-6">
+          <!-- Welcome -->
+          <div v-if="step === 'welcome'" class="space-y-6 text-center">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <Wand2 class="h-8 w-8" />
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold">Welcome to Flaxeo</h3>
+              <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Let's get you ready to generate. The wizard will install the runtime, download a starter model, and configure the app for you.
+              </p>
+            </div>
+
+            <div class="mx-auto grid max-w-lg gap-3 text-left">
+              <div class="metal-surface flex items-center gap-3 p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <Download class="h-4 w-4" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">Install the runtime</p>
+                  <p class="text-xs text-muted-foreground">Downloads the latest sd-cli backend for your platform.</p>
+                </div>
+              </div>
+              <div class="metal-surface flex items-center gap-3 p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <ImageIcon class="h-4 w-4" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">Pick a starter model</p>
+                  <p class="text-xs text-muted-foreground">SDXL, FLUX.1 Dev, or Wan2.1 video.</p>
+                </div>
+              </div>
+              <div class="metal-surface flex items-center gap-3 p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <Check class="h-4 w-4" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">Start generating</p>
+                  <p class="text-xs text-muted-foreground">Preset applied automatically. You're set.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Runtime -->
+          <div v-else-if="step === 'runtime'" class="space-y-5">
+            <div>
+              <h3 class="text-xl font-bold">Install the runtime</h3>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Flaxeo needs the <code class="rounded bg-muted px-1 py-0.5 text-xs">sd-cli</code> backend to run inference. Click below to download the latest release.
+              </p>
+            </div>
+
+            <div class="metal-surface p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-primary text-primary-foreground"
+                  >
+                    <Download class="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold">
+                      {{ backend.releases.value[0]?.name || 'Latest release' }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      {{ backend.releases.value[0]?.tag || 'fetching...' }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  class="primary-metal-button flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50"
+                  :disabled="runtimeDownloading || backend.isDownloading.value || backendValid"
+                  @click="startRuntimeInstall"
+                >
+                  <Loader2
+                    v-if="runtimeDownloading || backend.isDownloading.value"
+                    class="h-3.5 w-3.5 animate-spin"
+                  />
+                  <Check v-else-if="backendValid" class="h-3.5 w-3.5" />
+                  <Download v-else class="h-3.5 w-3.5" />
+                  {{ backendValid ? 'Installed' : runtimeDownloading ? 'Installing...' : 'Install' }}
+                </button>
+              </div>
+
+              <div v-if="runtimeDownloading || backendValid" class="mt-4">
+                <div class="mb-1.5 flex items-center justify-between text-xs">
+                  <span class="text-muted-foreground">{{ backendValid ? 'Ready' : 'Downloading & verifying...' }}</span>
+                  <span class="text-muted-foreground">{{ backendValid ? '100%' : 'in progress' }}</span>
+                </div>
+                <div class="download-manager-progress h-2 overflow-hidden rounded-full">
+                  <div
+                    class="h-full rounded-full transition-all duration-300"
+                    :class="backendValid ? 'w-full bg-green-500' : 'w-2/3 animate-pulse bg-primary'"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="!backendValid && backend.config.value.activeBackendPath"
+              class="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-600"
+            >
+              Backend not valid yet. If the download is taking a while, you can skip and finish setup later from Settings.
+            </div>
+          </div>
+
+          <!-- Model -->
+          <div v-else-if="step === 'model'" class="space-y-5">
+            <div>
+              <h3 class="text-xl font-bold">Choose a starter model</h3>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Pick one pack to download now. You can always get more from the Model Hub later.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <button
+                v-for="packId in STARTER_PACK_IDS"
+                :key="packId"
+                class="metal-surface relative flex flex-col items-start gap-2 p-4 text-left transition-all"
+                :class="selectedPackId === packId ? 'ring-1 ring-ring' : 'hover:border-border/80'"
+                @click="selectedPackId = packId"
+              >
+                <span
+                  v-if="STARTER_PACK_META[packId].recommended"
+                  class="absolute right-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
+                >
+                  Recommended
+                </span>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+                  <component
+                    :is="packId === 'wan21' ? Video : packId === 'flux1-dev' ? Sparkles : ImageIcon"
+                    class="h-5 w-5"
+                  />
+                </div>
+                <div>
+                  <p class="text-sm font-semibold">{{ hubModels.find((m) => m.id === packId)?.name }}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ STARTER_PACK_META[packId].blurb }}
+                  </p>
+                </div>
+                <div class="mt-auto flex w-full items-center justify-between pt-3 text-xs text-muted-foreground">
+                  <span>≈ {{ STARTER_PACK_META[packId].sizeGb }} GB</span>
+                  <span>≥ {{ STARTER_PACK_META[packId].minVramGb }} GB VRAM</span>
+                </div>
+              </button>
+            </div>
+
+            <div class="metal-surface p-4">
+              <p class="mb-2 text-sm font-medium">Files to download</p>
+              <div class="space-y-2">
+                <div
+                  v-for="file in selectedPack.files"
+                  :key="fileKey(file)"
+                  class="flex items-center justify-between gap-3 text-xs"
+                >
+                  <span class="truncate">{{ file.label }}</span>
+                  <span
+                    class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    :class="file.required ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'"
+                  >
+                    {{ file.required ? 'Required' : 'Optional' }}
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="modelDownloading" class="mt-4">
+                <div class="mb-1.5 flex items-center justify-between text-xs">
+                  <span class="text-muted-foreground">Downloading pack...</span>
+                  <span class="text-muted-foreground">in progress</span>
+                </div>
+                <div class="download-manager-progress h-2 overflow-hidden rounded-full">
+                  <div class="h-full w-2/3 animate-pulse rounded-full bg-primary"></div>
+                </div>
+              </div>
+
+              <div class="mt-4 flex gap-2">
+                <button
+                  class="primary-metal-button flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium disabled:opacity-50"
+                  :disabled="modelDownloading"
+                  @click="startModelDownload"
+                >
+                  <Loader2 v-if="modelDownloading" class="h-3.5 w-3.5 animate-spin" />
+                  <Download v-else class="h-3.5 w-3.5" />
+                  {{ modelDownloading ? 'Downloading...' : 'Download selected pack' }}
+                </button>
+                <button
+                  v-if="modelDownloading"
+                  class="metal-icon-button rounded-lg px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground"
+                  @click="cancelModelDownload"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Finish -->
+          <div v-else-if="step === 'finish'" class="space-y-6 text-center">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500 text-white shadow-lg">
+              <Check class="h-8 w-8" />
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold">You're all set</h3>
+              <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                The <strong>{{ selectedPack.name }}</strong> preset has been applied. You can start generating now or change models anytime from the Model Hub.
+              </p>
+            </div>
+
+            <div class="mx-auto flex max-w-xs flex-col gap-2">
+              <button class="primary-metal-button flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium" @click="finish">
+                Start generating
+                <ArrowRight class="h-4 w-4" />
+              </button>
+              <button
+                class="metal-icon-button py-2 text-xs text-muted-foreground hover:text-foreground"
+                @click="skip"
+              >
+                Open Model Hub instead
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <footer
+          class="flex items-center justify-between gap-3 border-t border-border/70 px-5 py-3"
+        >
+          <button
+            v-if="step !== 'welcome' && step !== 'finish'"
+            class="metal-icon-button flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
+            type="button"
+            :disabled="modelDownloading || runtimeDownloading"
+            @click="back"
+          >
+            <ChevronLeft class="h-3.5 w-3.5" />
+            Back
+          </button>
+          <div v-else></div>
+
+          <div class="flex items-center gap-2">
+            <button
+              v-if="step === 'welcome'"
+              class="text-xs text-muted-foreground hover:text-foreground"
+              @click="skip"
+            >
+              Skip for now
+            </button>
+            <button
+              v-if="step === 'welcome'"
+              class="primary-metal-button flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium"
+              @click="next"
+            >
+              Get started
+              <ArrowRight class="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </Teleport>
+</template>
+
+<style scoped>
+.setup-wizard-shell {
+  background: color-mix(in srgb, var(--color-card) 92%, var(--color-background));
+}
+</style>

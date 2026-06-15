@@ -11,7 +11,9 @@ import {
   Copy
 } from 'lucide-vue-next'
 import Select from '@/components/ui/Select.vue'
+import { useSetup } from '@/composables/useSetup'
 
+const { reopenSetup } = useSetup()
 
 interface BackendConfig {
   activeVersion: string
@@ -298,13 +300,22 @@ onMounted(async () => {
       <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Active Backend</h2>
-          <button
-            @click="openCustomFolder"
-            class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1"
-          >
-            <FolderOpen class="w-4 h-4" />
-            Custom Folder
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              @click="reopenSetup"
+              class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw class="w-3.5 h-3.5" />
+              Run setup wizard
+            </button>
+            <button
+              @click="openCustomFolder"
+              class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Custom Folder
+            </button>
+          </div>
         </div>
 
         <div class="flex items-center gap-3">
