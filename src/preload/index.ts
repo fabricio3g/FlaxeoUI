@@ -23,10 +23,11 @@ const api = {
   /**
    * Settings & State
    */
-  getInitState: (): Promise<{ firstRun: boolean; setupComplete: boolean; port: number; isDev: boolean }> =>
+  getInitState: (): Promise<{ firstRun: boolean; setupComplete: boolean; skipped: boolean; port: number; isDev: boolean }> =>
     ipcRenderer.invoke('get-init-state'),
   setFirstRunComplete: (): Promise<boolean> => ipcRenderer.invoke('set-first-run-complete'),
   reopenSetup: (): Promise<boolean> => ipcRenderer.invoke('reopen-setup'),
+  setSetupSkipped: (): Promise<boolean> => ipcRenderer.invoke('set-setup-skipped'),
   toggleLocalNetwork: (enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('toggle-local-network', enabled)
 }

@@ -18,11 +18,13 @@ let serverPort = 3000
 interface AppState {
   firstRun: boolean
   setupComplete: boolean
+  skipped: boolean
 }
 
 const defaultAppState: AppState = {
   firstRun: true,
-  setupComplete: false
+  setupComplete: false,
+  skipped: false
 }
 
 /**
@@ -46,7 +48,8 @@ function readAppState(): AppState {
       setupComplete:
         typeof parsed.setupComplete === 'boolean'
           ? parsed.setupComplete
-          : defaultAppState.setupComplete
+          : defaultAppState.setupComplete,
+      skipped: typeof parsed.skipped === 'boolean' ? parsed.skipped : defaultAppState.skipped
     }
   } catch (e) {
     console.error('[Main] Failed to read app state:', e)
@@ -279,6 +282,7 @@ ipcMain.handle('get-init-state', () => {
   return {
     firstRun: state.firstRun,
     setupComplete: state.setupComplete,
+    skipped: state.skipped,
     port: serverPort,
     isDev: is.dev
   }
@@ -288,13 +292,19 @@ ipcMain.handle('get-server-port', () => serverPort)
 
 ipcMain.handle('set-first-run-complete', () => {
   const state = readAppState()
-  writeAppState({ ...state, firstRun: false, setupComplete: true })
+  writeAppState({ ...state, firstRun: false, setupComplete: true, skipped: false })
   return true
 })
 
 ipcMain.handle('reopen-setup', () => {
   const state = readAppState()
-  writeAppState({ ...state, setupComplete: false })
+  writeAppState({ ...state, setupComplete: false, skipped: false })
+  return true
+})
+
+ipcMain.handle('set-setup-skipped', () => {
+  const state = readAppState()
+  writeAppState({ ...state, skipped: true })
   return true
 })
 

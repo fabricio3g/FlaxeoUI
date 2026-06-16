@@ -16,9 +16,10 @@ interface CustomElectronAPI {
   openCustomFolder: () => void
 
   // Settings
-  getInitState: () => Promise<{ firstRun: boolean; setupComplete: boolean; port: number; isDev: boolean }>
+  getInitState: () => Promise<{ firstRun: boolean; setupComplete: boolean; skipped: boolean; port: number; isDev: boolean }>
   setFirstRunComplete: () => Promise<boolean>
   reopenSetup: () => Promise<boolean>
+  setSetupSkipped: () => Promise<boolean>
   toggleLocalNetwork: (enabled: boolean) => Promise<void>
 }
 

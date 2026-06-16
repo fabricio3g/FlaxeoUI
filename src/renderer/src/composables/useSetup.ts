@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRuntimeStatus } from './useRuntimeStatus'
 import { useModels } from './useModels'
 
@@ -25,10 +25,11 @@ export function useSetup() {
 
   const isSetupNeeded = computed(() => {
     if (!stateLoaded.value) return false
+    if (skipped.value) return false
     if (isDev.value) return true
     if (!setupComplete.value) return true
     if (!backendValid.value) return true
-    if (!hasAnyModel.value && !skipped.value) return true
+    if (!hasAnyModel.value) return true
     return false
   })
 
@@ -36,9 +37,11 @@ export function useSetup() {
     try {
       const state = await window.electronAPI?.getInitState()
       setupComplete.value = state?.setupComplete ?? false
+      skipped.value = state?.skipped ?? false
       isDev.value = state?.isDev ?? false
     } catch {
       setupComplete.value = false
+      skipped.value = false
       isDev.value = false
     } finally {
       stateLoaded.value = true
@@ -65,13 +68,14 @@ export function useSetup() {
     }
   }
 
-  function skipForNow(): void {
+  async function skipForNow(): Promise<void> {
     skipped.value = true
+    try {
+      await window.electronAPI?.setSetupSkipped()
+    } catch (e) {
+      console.error('Failed to persist setup skipped state:', e)
+    }
   }
-
-  watch(backendValid, (valid) => {
-    if (!valid) skipped.value = false
-  })
 
   return {
     setupComplete,

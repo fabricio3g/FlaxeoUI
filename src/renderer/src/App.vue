@@ -12,7 +12,7 @@ import SetupWizard from './components/SetupWizard.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { isSetupNeeded, loadState, skipForNow, reopenSetup } = useSetup()
+const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
 
 // State
 const showMobileConfig = ref(false)
@@ -134,7 +134,7 @@ onMounted(async () => {
     <!-- First-time Setup Wizard -->
     <SetupWizard
       v-if="isSetupNeeded"
-      @done="skipForNow"
+      @done="completeSetup"
       @skip="skipForNow"
     />
   </div>
