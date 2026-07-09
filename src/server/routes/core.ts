@@ -181,7 +181,6 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     addModelArgs(ctx, args, body)
 
     if (body.loraDir) args.push('--lora-model-dir', path.join(ctx.paths.modelsDir, 'loras'))
-    args.push('--lora-apply-mode', body.loraApplyMode || 'auto')
     addOptionalArgs(args, body)
     addHardwareArgs(args, body)
     addPromptModelExtras(ctx, args, body)

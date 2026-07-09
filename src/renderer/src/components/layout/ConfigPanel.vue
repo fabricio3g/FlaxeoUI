@@ -308,6 +308,8 @@ async function startServer(): Promise<void> {
       extraTilingArgs: config.value.extraTilingArgs,
       disableImageMetadata: config.value.disableImageMetadata,
       vaeTileSize: config.value.vaeTileSize,
+      loraDir: config.value.loras.length > 0,
+      loraApplyMode: config.value.loraApplyMode,
       defaultSteps: config.value.steps,
       defaultCfg: config.value.cfgScale
     }

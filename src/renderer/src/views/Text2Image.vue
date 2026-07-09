@@ -30,6 +30,7 @@ import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import { buttonMotion, panelMotion } from '@/lib/motion'
+import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
 const toast = useToast()
 
@@ -312,6 +313,7 @@ function buildGenerationParams(): any {
     })
     finalPrompt = finalPrompt + ' ' + embeddingTokens.join(' ')
   }
+  finalPrompt = appendLoraPromptTokens(finalPrompt, c.loras)
 
   const params: any = {
     prompt: finalPrompt,

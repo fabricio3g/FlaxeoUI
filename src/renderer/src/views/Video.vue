@@ -9,6 +9,7 @@ import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { buttonMotion, panelMotion } from '@/lib/motion'
+import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -114,7 +115,7 @@ async function handleGenerate(): Promise<void> {
 
   try {
     const formData = new FormData()
-    formData.append('prompt', prompt.value)
+    formData.append('prompt', appendLoraPromptTokens(prompt.value, config.value.loras))
     formData.append('negative_prompt', negativePrompt.value)
     formData.append('width', videoWidth.value.toString())
     formData.append('height', videoHeight.value.toString())
