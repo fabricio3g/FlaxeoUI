@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, Minus, Upload, X } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, ChevronUp, Upload, X } from '@/lib/icons'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Select from '@/components/ui/Select.vue'
 import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { buttonMotion, panelMotion } from '@/lib/motion'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
@@ -22,18 +25,65 @@ const progress = useGenerationProgress()
 const generatedVideo = ref<string | null>(null)
 const generatedVideos = ref<string[]>([])
 const error = ref<string | null>(null)
-const showNegPrompt = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
+const promptMode = ref<'positive' | 'negative'>('positive')
+
+const promptModeOptions = [
+  { value: 'positive', label: 'Positive' },
+  { value: 'negative', label: 'Negative' }
+]
+
+const activePrompt = computed({
+  get: () => (promptMode.value === 'positive' ? prompt.value : negativePrompt.value),
+  set: (value: string) => {
+    if (promptMode.value === 'positive') prompt.value = value
+    else negativePrompt.value = value
+  }
+})
 
 // Video mode: T2V (text to video) or I2V (image to video)
 const videoMode = ref<'t2v' | 'i2v'>('t2v')
+
+const videoModeOptions = [
+  { value: 't2v', label: 'Text to Video' },
+  { value: 'i2v', label: 'Image to Video' }
+]
 
 // Video parameters
 const videoWidth = ref(832)
 const videoHeight = ref(480)
 const videoFrames = ref(33)
 const flowShift = ref(3.0)
+const showResolutionMenu = ref(false)
+
+const resolutionPresets = [
+  { label: '4:3', width: 640, height: 480 },
+  { label: '3:2', width: 720, height: 480 },
+  { label: '16:9', width: 640, height: 360 },
+  { label: '1:1', width: 512, height: 512 },
+  { label: '9:16', width: 360, height: 640 },
+  { label: '2:3', width: 512, height: 768 }
+]
+
+const resolutionLabel = computed(() => {
+  const preset = resolutionPresets.find(
+    (item) => item.width === videoWidth.value && item.height === videoHeight.value
+  )
+  return preset?.label || `${videoWidth.value} × ${videoHeight.value}`
+})
+
+function selectResolution(preset: (typeof resolutionPresets)[number]): void {
+  videoWidth.value = preset.width
+  videoHeight.value = preset.height
+  showResolutionMenu.value = false
+}
+
+function applyCustomResolution(): void {
+  videoWidth.value = Math.max(64, Number(videoWidth.value) || 832)
+  videoHeight.value = Math.max(64, Number(videoHeight.value) || 480)
+  showResolutionMenu.value = false
+}
 
 // I2V reference image
 const referenceImage = ref<string | null>(null)
@@ -48,10 +98,14 @@ function autoResize(): void {
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (promptMode.value === 'positive' && e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleGenerate()
   }
+}
+
+function setPromptMode(value: string): void {
+  if (value === 'positive' || value === 'negative') promptMode.value = value
 }
 
 function handleWindowResize(): void {
@@ -63,6 +117,10 @@ function handleWindowResize(): void {
  */
 function setVideoMode(mode: 't2v' | 'i2v'): void {
   videoMode.value = mode
+}
+
+function handleVideoMode(value: string): void {
+  if (value === 't2v' || value === 'i2v') setVideoMode(value)
 }
 
 /**
@@ -158,6 +216,8 @@ async function handleGenerate(): Promise<void> {
       formData.append('backendAssignment', config.value.backendAssignment)
     if (config.value.paramsBackendAssignment)
       formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
+    if (config.value.autoFit) formData.append('autoFit', 'true')
+    if (config.value.splitMode) formData.append('splitMode', config.value.splitMode)
     if (config.value.threads > 0) formData.append('threads', config.value.threads.toString())
     if (config.value.maxVram !== 0) formData.append('maxVram', config.value.maxVram.toString())
     if (config.value.streamLayers) formData.append('streamLayers', 'true')
@@ -220,9 +280,22 @@ async function handleCancel(): Promise<void> {
   isGenerating.value = false
 }
 
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && showResolutionMenu.value) {
+    showResolutionMenu.value = false
+  }
+}
+
+function handleResolutionMenuClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement
+  if (!target.closest('.resolution-menu')) showResolutionMenu.value = false
+}
+
 onMounted(() => {
   handleWindowResize()
   window.addEventListener('resize', handleWindowResize)
+  window.addEventListener('keydown', handleGlobalKeydown)
+  document.addEventListener('click', handleResolutionMenuClick)
 
   const referenceUrl = sessionStorage.getItem('videoReferenceImage')
   if (!referenceUrl) return
@@ -233,55 +306,54 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
+  document.removeEventListener('click', handleResolutionMenuClick)
 })
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
-    <div class="flex-1 relative min-h-0 overflow-hidden border-b border-border/60 p-1.5 md:p-6">
+  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <div class="relative flex-1 min-h-0 overflow-hidden p-1.5 md:p-6">
       <div
         v-if="error"
-        class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
+        class="absolute top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground shadow-sm"
       >
         {{ error }}
         <button @click="error = null" class="hover:opacity-70">
-          <X class="w-4 h-4" />
+          <X class="h-4 w-4" />
         </button>
       </div>
 
-      <div class="mx-auto h-full w-full max-w-5xl min-h-0">
-        <div
-          class="relative flex h-full min-h-0 items-center justify-center rounded-2xl metal-surface overflow-hidden dot-grid-corners"
-        >
-          <video
-            v-if="generatedVideo"
-            v-motion
-            :initial="panelMotion.initial"
-            :enter="panelMotion.enter"
-            :src="generatedVideo"
-            controls
-            autoplay
-            loop
-            class="h-full max-h-full max-w-full object-contain"
-          ></video>
-
+      <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
           <div
-            v-else
-            class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white"
+            class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden"
           >
-            <div class="empty-preview-noise"></div>
-            <div class="empty-preview-glow empty-preview-glow-a"></div>
-            <div class="empty-preview-glow empty-preview-glow-b"></div>
-            <div class="empty-preview-glow empty-preview-glow-c"></div>
-            <div
-              v-if="!isGenerating"
+            <video
+              v-if="generatedVideo"
               v-motion
               :initial="panelMotion.initial"
               :enter="panelMotion.enter"
-              class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center"
+              :src="generatedVideo"
+              controls
+              autoplay
+              loop
+              class="h-full max-h-full max-w-full object-contain"
+            ></video>
+
+            <div
+              v-else
+              class="flex flex-col items-center justify-center px-6 text-center"
             >
-              <span class="empty-preview-brand">FlaxeoUI</span>
-              <span class="empty-preview-brand-subtitle">Imagine it into motion</span>
+              <div v-if="!isGenerating" v-motion :initial="panelMotion.initial" :enter="panelMotion.enter" class="flex max-w-md flex-col items-center">
+                <h2 class="text-xl font-semibold tracking-tight">What will you move?</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Describe a scene or add a reference image to begin.</p>
+              </div>
+            <div v-else class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <span class="relative flex h-2 w-2">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-50"></span>
+                <span class="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
+              </span>
+              Creating video
             </div>
           </div>
         </div>
@@ -299,16 +371,16 @@ onUnmounted(() => {
               Recent videos ({{ generatedVideos.length }})
             </h3>
           </div>
-          <div class="generation-media-strip relative">
-            <div class="flex gap-2 overflow-x-auto p-2 snap-x scroll-smooth no-scrollbar md:gap-3">
+          <div class="relative rounded-lg border border-border bg-card p-2">
+            <div class="flex gap-2 overflow-x-auto p-1 snap-x scroll-smooth no-scrollbar md:gap-3">
               <button
                 v-for="video in generatedVideos"
                 :key="video"
-                class="generation-media-thumb group relative h-16 w-24 shrink-0 snap-start overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50 md:h-20 md:w-32"
+                class="relative h-16 w-24 shrink-0 snap-start overflow-hidden rounded-md border border-transparent transition-all md:h-20 md:w-32 focus:outline-none focus:ring-2 focus:ring-ring/40 hover:opacity-100"
                 :class="
                   generatedVideo === getOutputUrl(video)
-                    ? 'is-active z-10'
-                    : 'opacity-72 hover:opacity-100'
+                    ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
+                    : 'opacity-70'
                 "
                 @click="selectGeneratedVideo(video)"
               >
@@ -319,7 +391,7 @@ onUnmounted(() => {
                   preload="metadata"
                 ></video>
                 <span
-                  class="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                  class="absolute bottom-1 left-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-semibold text-background"
                   >Video</span
                 >
               </button>
@@ -329,191 +401,259 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
-      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
+    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
+      <div class="relative mx-auto flex w-full max-w-4xl flex-col rounded-lg border border-border bg-card shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
+        <!-- Top inline row: Positive/Negative + video mode selector -->
         <div
-          class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs"
+          class="flex flex-nowrap items-center gap-1 overflow-x-auto whitespace-nowrap px-2 pt-2 text-xs md:px-3 md:pt-3"
         >
-          <div class="flex p-1 bg-muted/50 rounded-lg border border-border/30 shrink-0">
-            <button
-              @click="setVideoMode('t2v')"
-              class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
-              :class="
-                videoMode === 't2v'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+          <SegmentedControl
+            :model-value="promptMode"
+            :options="promptModeOptions"
+            size="sm"
+            aria-label="Prompt mode"
+            @update:model-value="setPromptMode"
+          />
+          <SegmentedControl
+            :model-value="videoMode"
+            :options="videoModeOptions"
+            size="sm"
+            class="shrink-0"
+            @update:model-value="handleVideoMode"
+          />
+        </div>
+
+        <!-- Textarea + send/cancel -->
+        <div class="flex items-end gap-2 px-2 pt-1.5 pb-2 md:px-3">
+          <div class="relative flex-1">
+            <textarea
+              v-model="activePrompt"
+              ref="promptInput"
+              rows="1"
+              :placeholder="
+                promptMode === 'positive'
+                  ? 'Describe the motion, subject, and visual direction...'
+                  : 'Describe motion or visual details to avoid...'
               "
-            >
-              Text to Video
-            </button>
+              class="flex w-full resize-none rounded-md border-0 bg-transparent px-3 py-2.5 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:px-4 md:py-3 overflow-y-auto"
+              :style="{
+                minHeight: isMobile ? '72px' : '88px',
+                maxHeight: isMobile ? '160px' : '220px'
+              }"
+              :disabled="isGenerating"
+              @keydown="onPromptKeydown"
+              @input="autoResize"
+            ></textarea>
+            <div class="absolute bottom-3 right-3 flex items-end">
+              <button
+                v-if="!isGenerating"
+                v-motion
+                :hovered="buttonMotion.hovered"
+                :tapped="buttonMotion.tapped"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Generate Video"
+                aria-label="Generate video"
+              >
+                <ArrowUp class="size-3.5 stroke-[2.5]" />
+              </button>
+              <button
+                v-else
+                v-motion
+                :hovered="buttonMotion.hovered"
+                :tapped="buttonMotion.tapped"
+                @click="handleCancel"
+                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Cancel"
+                aria-label="Cancel generation"
+              >
+                <X class="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reference image chip -->
+        <div
+          v-if="videoMode === 'i2v' && referenceImage"
+          class="border-t border-border px-3 py-2"
+        >
+          <div
+            class="inline-flex items-center gap-3 rounded-md border border-border bg-background p-2 shadow-xs"
+          >
+            <div class="relative size-12 overflow-hidden rounded-md border border-border">
+              <img :src="referenceImage" class="h-full w-full object-cover" />
+            </div>
+            <div class="text-xs text-muted-foreground">Reference loaded</div>
             <button
-              @click="setVideoMode('i2v')"
-              class="h-7 md:h-8 px-2.5 md:px-3 text-xs font-medium rounded-lg transition-colors"
-              :class="
-                videoMode === 'i2v'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
+              type="button"
+              @click="clearReferenceImage"
+              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              Image to Video
+              <X class="h-4 w-4" />
             </button>
           </div>
+        </div>
 
-          <div
-            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs"
-          >
-            <span class="text-muted-foreground text-[10px]">W</span>
-            <input
-              v-model.number="videoWidth"
-              type="number"
-              step="16"
-              class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none"
-            />
-            <span class="text-muted-foreground">×</span>
-            <span class="text-muted-foreground text-[10px]">H</span>
-            <input
-              v-model.number="videoHeight"
-              type="number"
-              step="16"
-              class="w-11 md:w-14 px-1 bg-transparent text-center focus:outline-none"
-            />
+        <!-- Quick Controls (Size, Frames, Flow, Steps, CFG, Scheduler, Sampler, Reference upload, PromptPresets) -->
+        <div
+          class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-3 pb-2 text-xs"
+        >
+          <div class="relative shrink-0">
+            <button
+              type="button"
+              class="inline-flex h-7 items-center gap-1 rounded-md px-2 font-medium transition-colors focus-visible:outline-none"
+              :class="showResolutionMenu ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+              :aria-expanded="showResolutionMenu"
+              aria-label="Resolution"
+              @click.stop="showResolutionMenu = !showResolutionMenu"
+            >
+              <span>{{ resolutionLabel }}</span>
+              <ChevronUp v-if="showResolutionMenu" class="h-3 w-3" />
+              <ChevronDown v-else class="h-3 w-3" />
+            </button>
+            <div
+              v-if="showResolutionMenu"
+              class="resolution-menu absolute right-0 bottom-full z-[100] mb-1 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+              @click.stop
+            >
+              <div class="grid grid-cols-4 gap-1.5">
+                <button
+                  v-for="preset in resolutionPresets"
+                  :key="preset.label"
+                  type="button"
+                  class="flex flex-col items-center justify-center rounded-md border p-2 text-xs transition-colors hover:bg-accent"
+                  :class="
+                    resolutionLabel === preset.label
+                      ? 'border-foreground/30 bg-foreground/5 text-foreground'
+                      : 'border-transparent text-muted-foreground'
+                  "
+                  @click="selectResolution(preset)"
+                >
+                  <span class="font-semibold">{{ preset.label }}</span>
+                  <small class="text-[10px] text-muted-foreground">{{ preset.width }} × {{ preset.height }}</small>
+                </button>
+              </div>
+              <div class="mt-3 border-t border-border pt-3">
+                <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</span>
+                <div class="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    v-model.number="videoWidth"
+                    type="number"
+                    min="64"
+                    step="16"
+                    aria-label="Custom width"
+                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  />
+                  <span class="text-muted-foreground">×</span>
+                  <input
+                    v-model.number="videoHeight"
+                    type="number"
+                    min="64"
+                    step="16"
+                    aria-label="Custom height"
+                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  />
+                  <button
+                    type="button"
+                    class="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    @click="applyCustomResolution"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div
-            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1"
-          >
-            <span class="text-[10px] text-muted-foreground">Frames</span>
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Frames</span>
             <input
               v-model.number="videoFrames"
               type="number"
               min="9"
               max="129"
               step="4"
-              class="w-11 md:w-14 bg-transparent text-center focus:outline-none"
+              aria-label="Video frames"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
 
-          <div
-            class="flex items-center h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 text-xs gap-1"
-          >
-            <span class="text-[10px] text-muted-foreground">Flow</span>
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Flow</span>
             <input
               v-model.number="flowShift"
               type="number"
               min="0"
               max="10"
               step="0.5"
-              class="w-11 md:w-14 bg-transparent text-center focus:outline-none"
+              aria-label="Flow shift"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
 
-          <div class="flex-1 hidden md:block"></div>
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Steps</span>
+            <input
+              v-model.number="config.steps"
+              type="number"
+              min="1"
+              max="150"
+              aria-label="Steps"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">CFG</span>
+            <input
+              v-model.number="config.cfgScale"
+              type="number"
+              min="0"
+              max="30"
+              step="0.5"
+              aria-label="CFG scale"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Scheduler</span>
+            <Select
+              v-model="config.scheduler"
+              size="sm"
+              aria-label="Scheduler"
+              :options="schedulerOptions"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Sampler</span>
+            <Select
+              v-model="config.sampler"
+              size="sm"
+              aria-label="Sampler"
+              :options="samplerOptions"
+            />
+          </div>
+
+          <div class="hidden flex-1 md:block"></div>
 
           <label
             v-if="videoMode === 'i2v'"
-            class="h-8 shrink-0 px-3 text-xs font-medium bg-card border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors flex items-center gap-1.5"
+            class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            title="Upload reference image"
           >
-            <Upload class="w-3.5 h-3.5" />
-            Reference
+            <Upload class="h-3.5 w-3.5" />
+            <span>Reference</span>
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
 
-          <div class="flex items-center gap-1.5 text-muted-foreground shrink-0">
-            <button
-              @click="showNegPrompt = !showNegPrompt"
-              class="h-7 w-7 md:h-8 md:w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
-              :class="
-                showNegPrompt
-                  ? 'primary-metal-button text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-              title="Negative Prompt"
-            >
-              <Minus class="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div class="h-5 w-px bg-border/80 hidden md:block shrink-0"></div>
+          <div class="hidden h-5 w-px shrink-0 bg-border md:block"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
             compact
             class="shrink-0"
           />
-        </div>
-
-        <div v-if="videoMode === 'i2v' && referenceImage" class="px-2 md:px-5 pb-2">
-          <div
-            class="flex items-center gap-3 p-2 bg-card rounded-xl border border-border/50 inline-flex shadow-sm"
-          >
-            <div class="flaxeo-image-card group !w-12 !h-12">
-              <img :src="referenceImage" />
-            </div>
-            <div class="text-xs text-muted-foreground">Reference loaded</div>
-            <button
-              @click="clearReferenceImage"
-              class="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors ml-1"
-            >
-              <X class="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div class="flax-composer rounded-2xl px-0.5 md:px-0">
-          <div class="flax-composer-input-row flex items-end gap-2">
-            <div class="flex-1 relative">
-              <textarea
-                v-model="prompt"
-                ref="promptInput"
-                rows="1"
-                placeholder="A lovely cat walking on grass, realistic, cinematic lighting..."
-                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{
-                  minHeight: isMobile ? '64px' : '120px',
-                  maxHeight: isMobile ? '160px' : '360px'
-                }"
-                :disabled="isGenerating"
-                @keydown="onPromptKeydown"
-                @input="autoResize"
-              ></textarea>
-              <div class="absolute bottom-3 right-3 flex items-end">
-                <button
-                  v-if="!isGenerating"
-                  v-motion
-                  :hovered="buttonMotion.hovered"
-                  :tapped="buttonMotion.tapped"
-                  @click="handleGenerate"
-                  :disabled="!prompt.trim()"
-                  class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Generate Video"
-                >
-                  <span class="flax-composer-send-icon inline-flex">
-                    <ArrowUp class="w-4.5 h-4.5 stroke-[2.5]" />
-                  </span>
-                </button>
-                <button
-                  v-else
-                  v-motion
-                  :hovered="buttonMotion.hovered"
-                  :tapped="buttonMotion.tapped"
-                  @click="handleCancel"
-                  class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
-                  title="Cancel"
-                >
-                  <X class="w-4.5 h-4.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="showNegPrompt" class="mt-2 border-t border-border/50 pt-2">
-            <textarea
-              v-model="negativePrompt"
-              rows="2"
-              placeholder="Things to avoid: blurry, distorted, low quality, bad motion..."
-              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-4 md:py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
-              :disabled="isGenerating"
-            ></textarea>
-          </div>
         </div>
       </div>
     </div>

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { storeToRefs } from 'pinia'
-import { apiPost } from '@/services/api'
 import {
   Activity,
   AlertTriangle,
@@ -26,22 +25,28 @@ import {
   Trash2,
   X,
   Zap
-} from 'lucide-vue-next'
+} from '@/lib/icons'
 import type { Component } from 'vue'
 import Select from '@/components/ui/Select.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
+import { useServerControls } from '@/composables/useServerControls'
 
 const configStore = useConfigStore()
 const { config, presets, selectedPresetId } = storeToRefs(configStore)
 const { models, fetchModels } = useModels()
 
-withDefaults(
+type ConfigPanelFocus = 'all' | 'model' | 'generation' | 'assets' | 'lora' | 'embedding'
+
+const props = withDefaults(
   defineProps<{
     collapsed?: boolean
+    focus?: ConfigPanelFocus
   }>(),
   {
-    collapsed: false
+    collapsed: false,
+    focus: 'all'
   }
 )
 
@@ -60,7 +65,7 @@ const {
   startRuntimeStatusPolling,
   stopRuntimeStatusPolling
 } = useRuntimeStatus()
-const isBooting = ref(false)
+const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
 const showModelHub = ref(false)
 
 type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings'
@@ -125,6 +130,21 @@ const collapsedSections: Array<{ id: CollapsedSection; label: string; icon: Comp
   { id: 'warnings', label: 'Warnings', icon: AlertTriangle }
 ]
 
+const backendModeOptions = [
+  { value: 'server', label: 'Server', icon: Server },
+  { value: 'cli', label: 'CLI', icon: Terminal }
+]
+
+const mediaModeOptions = [
+  { value: 'image', label: 'Image', icon: ImageIcon },
+  { value: 'video', label: 'Video', icon: Film }
+]
+
+const loadModeOptions = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'split', label: 'Flow' }
+]
+
 const collapsedSectionTargets: Partial<
   Record<CollapsedSection, keyof typeof expandedSections.value>
 > = {
@@ -148,6 +168,15 @@ const activeModelSummary = computed(() => {
   if (config.value.llmVisionModel) parts.push(config.value.llmVisionModel)
   if (config.value.embeddingsConnectorsModel) parts.push(config.value.embeddingsConnectorsModel)
   return parts.filter(Boolean).slice(0, 4)
+})
+
+const panelTitle = computed(() => {
+  if (props.focus === 'model') return 'Model setup'
+  if (props.focus === 'generation') return 'Generation settings'
+  if (props.focus === 'lora') return 'LoRA setup'
+  if (props.focus === 'embedding') return 'Embedding setup'
+  if (props.focus === 'assets') return 'Prompt assets'
+  return 'Generation setup'
 })
 
 const activeCollapsedMeta = computed(() =>
@@ -237,111 +266,17 @@ function handleCollapsedSelectOpen(open: boolean): void {
   }
 }
 
-/**
- * startServer() - Start the sd-server with current configuration
- */
-async function startServer(): Promise<void> {
-  isBooting.value = true
-  try {
-    const payload = {
-      loadMode: config.value.loadMode,
-      diffusionModel:
-        config.value.loadMode === 'standard'
-          ? config.value.standardModel
-          : config.value.diffusionModel,
-      highNoiseDiffusionModel: config.value.highNoiseDiffusionModel,
-      uncondDiffusionModel: config.value.uncondDiffusionModel,
-      t5xxl: config.value.t5xxlModel,
-      llm: config.value.llmModel,
-      llmVision: config.value.llmVisionModel,
-      clipL: config.value.clipModel,
-      clipG: config.value.clipGModel,
-      vae: config.value.vaeModel,
-      vaeFormat: config.value.vaeFormat,
-      audioVae: config.value.audioVaeModel,
-      embeddingsConnectors: config.value.embeddingsConnectorsModel,
-      controlNet: config.value.controlNetModel,
-      photoMaker: config.value.photoMakerModel,
-      scheduler: config.value.scheduler,
-      samplingMethod: config.value.sampler,
-      rngType: config.value.rngType,
-      samplerRngType: config.value.samplerRngType,
-      flashAttention: config.value.flashAttention,
-      vaeTiling: config.value.vaeTiling,
-      clipOnCpu: config.value.clipOnCpu,
-      vaeOnCpu: config.value.vaeOnCpu,
-      controlNetOnCpu: config.value.controlNetOnCpu,
-      offloadToCpu: config.value.cpuOffload,
-      diffusionConvDirect: config.value.diffusionConvDirect,
-      vaeConvDirect: config.value.vaeConvDirect,
-      forceSDXLVaeConvScale: config.value.forceSDXLVaeConvScale,
-      backendAssignment: config.value.backendAssignment,
-      paramsBackendAssignment: config.value.paramsBackendAssignment,
-      threads: config.value.threads,
-      maxVram: config.value.maxVram,
-      streamLayers: config.value.streamLayers,
-      mmap: config.value.mmap,
-      circular: config.value.circular,
-      circularX: config.value.circularX,
-      circularY: config.value.circularY,
-      qwenImageZeroCondT: config.value.qwenImageZeroCondT,
-      chromaEnableT5Mask: config.value.chromaEnableT5Mask,
-      chromaDisableDitMask: config.value.chromaDisableDitMask,
-      chromaT5MaskPad: config.value.chromaT5MaskPad,
-      quantType: config.value.quantizationType,
-      quantizationType: config.value.quantizationType,
-      tensorTypeRules: config.value.tensorTypeRules,
-      predictionType: config.value.predictionType,
-      cacheMode: config.value.cacheMode,
-      cacheOption: config.value.cacheOption,
-      scmMask: config.value.scmMask,
-      scmPolicy: config.value.scmPolicy,
-      flowShift: config.value.flowShift,
-      eta: config.value.eta,
-      slgScale: config.value.slgScale,
-      skipLayerStart: config.value.skipLayerStart,
-      skipLayerEnd: config.value.skipLayerEnd,
-      skipLayers: config.value.skipLayers,
-      sigmas: config.value.sigmas,
-      imgCfgScale: config.value.imgCfgScale,
-      extraSampleArgs: config.value.extraSampleArgs,
-      extraTilingArgs: config.value.extraTilingArgs,
-      disableImageMetadata: config.value.disableImageMetadata,
-      vaeTileSize: config.value.vaeTileSize,
-      loraDir: config.value.loras.length > 0,
-      loraApplyMode: config.value.loraApplyMode,
-      defaultSteps: config.value.steps,
-      defaultCfg: config.value.cfgScale
-    }
-
-    await apiPost('/api/start', payload)
-    setTimeout(() => {
-      fetchRuntimeStatus()
-    }, 1000)
-  } catch (e) {
-    console.error('Failed to start server:', e)
-  } finally {
-    isBooting.value = false
-  }
-}
-
-/**
- * stopServer() - Stop the sd-server
- */
-async function stopServer(): Promise<void> {
-  try {
-    await apiPost('/api/stop', {})
-    setTimeout(() => {
-      fetchRuntimeStatus()
-    }, 500)
-  } catch (e) {
-    console.error('Failed to stop server:', e)
-  }
-}
-
 // Backend mode toggle
 function setBackendMode(mode: 'server' | 'cli'): void {
   configStore.updateConfig({ backendMode: mode })
+}
+
+function handleBackendMode(value: string): void {
+  if (value === 'server' || value === 'cli') setBackendMode(value)
+}
+
+function handleLoadMode(value: string): void {
+  if (value === 'standard' || value === 'split') setLoadMode(value)
 }
 
 function saveCurrentPreset(): void {
@@ -373,7 +308,13 @@ function deleteSelectedPreset(): void {
 
 // Load mode toggle
 function setLoadMode(mode: 'standard' | 'split'): void {
-  configStore.updateConfig({ loadMode: mode })
+  const selectedModel = config.value.standardModel || config.value.diffusionModel
+  configStore.updateConfig({
+    loadMode: mode,
+    ...(mode === 'standard'
+      ? { standardModel: config.value.standardModel || selectedModel }
+      : { diffusionModel: config.value.diffusionModel || selectedModel })
+  })
 }
 
 // Video mode toggle
@@ -400,21 +341,6 @@ onMounted(() => {
   startRuntimeStatusPolling()
 })
 
-// Auto-select first model if none selected
-watch(
-  () => models.value.diffusion,
-  (newModels) => {
-    if (newModels && newModels.length > 0) {
-      if (!config.value.standardModel) {
-        configStore.updateConfig({ standardModel: newModels[0] })
-      }
-      if (!config.value.diffusionModel) {
-        configStore.updateConfig({ diffusionModel: newModels[0] })
-      }
-    }
-  }
-)
-
 onUnmounted(() => {
   stopRuntimeStatusPolling()
 })
@@ -422,11 +348,15 @@ onUnmounted(() => {
 
 <template>
   <aside
-    class="config-panel-shell w-full flex flex-col min-h-0 h-full"
-    :class="collapsed ? 'config-panel-collapsed overflow-visible z-50' : 'config-panel-expanded overflow-hidden'"
+    class="flex h-full w-full min-h-0 flex-col border-r border-border bg-background"
+    :class="
+      props.collapsed
+        ? 'z-50 overflow-visible'
+        : 'overflow-hidden'
+    "
   >
     <div
-      v-if="collapsed"
+      v-if="props.collapsed"
       class="relative md:flex h-full flex-col items-center gap-0.5 py-2 titlebar-no-drag"
     >
       <div class="flex flex-col items-center gap-0.5">
@@ -509,35 +439,18 @@ onUnmounted(() => {
               }}</span>
             </div>
           </div>
-          <div class="flex p-1 metal-surface rounded-lg">
-            <button
-              @click="setBackendMode('server')"
-              class="flex-1 py-2 text-sm rounded-lg"
-              :class="
-                config.backendMode === 'server'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              Server
-            </button>
-            <button
-              @click="setBackendMode('cli')"
-              class="flex-1 py-2 text-sm rounded-lg"
-              :class="
-                config.backendMode === 'cli'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              CLI
-            </button>
-          </div>
+          <SegmentedControl
+            :model-value="config.backendMode"
+            :options="backendModeOptions"
+            class="w-full"
+            size="sm"
+            @update:model-value="handleBackendMode"
+          />
           <div v-if="config.backendMode === 'server'" class="flex gap-2">
             <button
               @click="startServer"
               :disabled="sdServerRunning || isBooting || !backendValid"
-              class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+              class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
               :class="
                 sdServerRunning || isBooting || !backendValid
                   ? 'text-muted-foreground'
@@ -550,7 +463,7 @@ onUnmounted(() => {
             <button
               @click="stopServer"
               :disabled="!sdServerRunning"
-              class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+              class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
               :class="!sdServerRunning ? 'text-muted-foreground' : 'text-red-600'"
             >
               <Square class="w-3.5 h-3.5" />
@@ -577,7 +490,7 @@ onUnmounted(() => {
             <button
               @click="saveCurrentPreset"
               :disabled="!presetName.trim()"
-              class="primary-metal-button rounded-md px-3 text-sm disabled:opacity-40"
+              class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
               Save
             </button>
@@ -601,30 +514,13 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="activeCollapsedSection === 'models'" class="space-y-3">
-          <div class="flex p-1 metal-surface rounded-lg">
-            <button
-              @click="setLoadMode('standard')"
-              class="flex-1 py-2 text-sm rounded-lg"
-              :class="
-                config.loadMode === 'standard'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              Standard
-            </button>
-            <button
-              @click="setLoadMode('split')"
-              class="flex-1 py-2 text-sm rounded-lg"
-              :class="
-                config.loadMode === 'split'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              Split
-            </button>
-          </div>
+          <SegmentedControl
+            :model-value="config.loadMode"
+            :options="loadModeOptions"
+            class="w-full"
+            size="sm"
+            @update:model-value="handleLoadMode"
+          />
           <template v-if="config.loadMode === 'standard'">
             <Select
               v-model="config.standardModel"
@@ -927,12 +823,31 @@ onUnmounted(() => {
     </div>
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
 
-    <template v-if="!collapsed">
+    <template v-if="!props.collapsed">
+      <div class="hidden h-12 items-center justify-between border-b border-border px-4 md:flex">
+        <div class="flex min-w-0 items-center gap-2 text-sm font-semibold">
+          <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+          <span class="truncate">{{ panelTitle }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span>
+          <button
+            type="button"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            title="Close setup"
+            aria-label="Close setup"
+            @click="emit('close')"
+          >
+            <X class="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
       <!-- Mobile Header -->
       <div class="mobile-sheet-header md:hidden flex items-center justify-between px-5 py-3 border-b border-border shrink-0 bg-card">
         <h2 class="text-sm font-bold flex items-center gap-2">
           <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
-          Configuration
+          {{ panelTitle }}
         </h2>
         <button
           @click="emit('close')"
@@ -944,43 +859,23 @@ onUnmounted(() => {
       </div>
 
       <!-- Scrollable Content -->
-      <div class="config-panel-scroll flex-1 overflow-y-auto p-4 pb-8 md:p-3 md:pb-3 space-y-4">
+      <div class="flex-1 space-y-4 overflow-y-auto p-4 pb-8 md:p-3 md:pb-3">
         <!-- Server / CLI Toggle (always visible) -->
-        <section>
+        <section v-if="props.focus === 'all'">
           <div class="space-y-2">
-            <div class="flex p-1.5 metal-surface rounded-lg">
-              <button
-                @click="setBackendMode('server')"
-                class="flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                :class="
-                  config.backendMode === 'server'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                <Server class="w-4 h-4" />
-                Server
-              </button>
-              <button
-                @click="setBackendMode('cli')"
-                class="flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                :class="
-                  config.backendMode === 'cli'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                <Terminal class="w-4 h-4" />
-                CLI
-              </button>
-            </div>
+            <SegmentedControl
+              :model-value="config.backendMode"
+              :options="backendModeOptions"
+              class="w-full"
+              @update:model-value="handleBackendMode"
+            />
 
             <!-- Server Controls (only in server mode) -->
             <div v-if="config.backendMode === 'server'" class="flex gap-2">
               <button
                 @click="startServer"
                 :disabled="sdServerRunning || isBooting || !backendValid"
-                class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+                class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
                 :class="
                   sdServerRunning || isBooting || !backendValid
                     ? 'text-muted-foreground'
@@ -993,7 +888,7 @@ onUnmounted(() => {
               <button
                 @click="stopServer"
                 :disabled="!sdServerRunning"
-                class="flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 metal-surface transition-colors"
+                class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
                 :class="
                   !sdServerRunning
                     ? 'text-muted-foreground'
@@ -1006,37 +901,17 @@ onUnmounted(() => {
             </div>
 
             <!-- Image / Video Mode -->
-            <div class="flex p-1.5 metal-surface rounded-lg">
-              <button
-                @click="configStore.updateConfig({ videoMode: false })"
-                class="flex-1 py-2 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                :class="
-                  !config.videoMode
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                <ImageIcon class="w-4 h-4" />
-                Image
-              </button>
-              <button
-                @click="configStore.updateConfig({ videoMode: true })"
-                class="flex-1 py-2 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                :class="
-                  config.videoMode
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-              >
-                <Film class="w-4 h-4" />
-                Video
-              </button>
-            </div>
+            <SegmentedControl
+              :model-value="config.videoMode ? 'video' : 'image'"
+              :options="mediaModeOptions"
+              class="w-full"
+              @update:model-value="configStore.updateConfig({ videoMode: $event === 'video' })"
+            />
           </div>
         </section>
 
         <!-- PRESETS -->
-        <section class="pt-3">
+        <section v-if="props.focus === 'all'" class="pt-3">
           <button
             @click="toggleSection('presets')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1062,7 +937,7 @@ onUnmounted(() => {
               <button
                 @click="deleteSelectedPreset"
                 :disabled="!selectedPreset || selectedPreset.builtin"
-                class="h-9 w-9 metal-icon-button flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-30"
                 title="Delete preset"
               >
                 <Trash2 class="w-3.5 h-3.5" />
@@ -1080,39 +955,21 @@ onUnmounted(() => {
               <button
                 @click="saveCurrentPreset"
                 :disabled="!presetName.trim()"
-                class="h-9 px-3 text-sm font-medium rounded-lg primary-metal-button text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Save
               </button>
             </div>
           </div>
         </section>
-        <section class="pt-3">
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
           <!-- Standard / Split Toggle (always visible) -->
-          <div class="flex p-1.5 metal-surface rounded-lg mb-3">
-            <button
-              @click="setLoadMode('standard')"
-              class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors"
-              :class="
-                config.loadMode === 'standard'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              Standard
-            </button>
-            <button
-              @click="setLoadMode('split')"
-              class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors"
-              :class="
-                config.loadMode === 'split'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              "
-            >
-              Flow
-            </button>
-          </div>
+          <SegmentedControl
+            :model-value="config.loadMode"
+            :options="loadModeOptions"
+            class="mb-3 w-full"
+            @update:model-value="handleLoadMode"
+          />
 
           <div class="space-y-4">
 
@@ -1403,7 +1260,7 @@ onUnmounted(() => {
         </section>
 
         <!-- GENERATION SETTINGS -->
-        <section class="pt-3">
+        <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
           <button
             @click="toggleSection('generation')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1414,9 +1271,55 @@ onUnmounted(() => {
           </button>
 
           <div
-            v-show="expandedSections.generation"
+            v-show="expandedSections.generation || props.focus === 'generation'"
             class="space-y-5 "
           >
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Batch</label>
+                <input
+                  v-model.number="config.batchCount"
+                  type="number"
+                  min="1"
+                  max="16"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Width</label>
+                <input
+                  v-model.number="config.width"
+                  type="number"
+                  min="64"
+                  step="64"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Height</label>
+                <input
+                  v-model.number="config.height"
+                  type="number"
+                  min="64"
+                  step="64"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Live preview</label>
+              <Select
+                v-model="config.livePreviewMethod"
+                size="md"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  { label: 'Projection', value: 'proj' },
+                  { label: 'TAE', value: 'tae' },
+                  { label: 'VAE', value: 'vae' }
+                ]"
+              />
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Steps</label>
@@ -1578,7 +1481,10 @@ onUnmounted(() => {
         </section>
 
         <!-- LORA MODULES -->
-        <section class="pt-3">
+        <section
+          v-if="props.focus === 'all' || props.focus === 'assets' || props.focus === 'lora'"
+          class="pt-3"
+        >
           <button
             @click="toggleSection('loras')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1592,7 +1498,7 @@ onUnmounted(() => {
           </button>
 
           <div
-            v-show="expandedSections.loras"
+            v-show="expandedSections.loras || props.focus === 'assets' || props.focus === 'lora'"
             class="space-y-2"
           >
             <div
@@ -1622,16 +1528,29 @@ onUnmounted(() => {
               </div>
               <button
                 @click="configStore.removeLora(index)"
-                class="self-end p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                class="inline-flex items-center justify-center self-end rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Remove LoRA"
               >
                 <Trash2 class="w-4 h-4" />
               </button>
             </div>
 
+            <div>
+              <label class="text-sm text-muted-foreground block mb-1">Apply mode</label>
+              <Select
+                v-model="config.loraApplyMode"
+                size="md"
+                :options="[
+                  { label: 'Auto', value: 'auto' },
+                  { label: 'Immediately', value: 'immediately' },
+                  { label: 'At Runtime', value: 'at_runtime' }
+                ]"
+              />
+            </div>
+
             <button
               @click="addNewLora"
-              class="w-full h-8 text-xs font-semibold flex items-center justify-center gap-1.5 rounded-lg metal-surface hover:text-foreground transition-colors"
+              class="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border bg-card text-xs font-semibold transition-colors hover:bg-accent hover:text-foreground"
             >
               <Plus class="w-3.5 h-3.5" />
               Add LoRA
@@ -1640,7 +1559,10 @@ onUnmounted(() => {
         </section>
 
         <!-- EMBEDDINGS -->
-        <section class="pt-3">
+        <section
+          v-if="props.focus === 'all' || props.focus === 'assets' || props.focus === 'embedding'"
+          class="pt-3"
+        >
           <button
             @click="toggleSection('embeddings')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1656,7 +1578,11 @@ onUnmounted(() => {
           </button>
 
           <div
-            v-show="expandedSections.embeddings"
+            v-show="
+              expandedSections.embeddings ||
+              props.focus === 'assets' ||
+              props.focus === 'embedding'
+            "
             class="space-y-2"
           >
             <div
@@ -1682,7 +1608,7 @@ onUnmounted(() => {
               </div>
               <button
                 @click="configStore.removeEmbedding(emb)"
-                class="p-2.5 metal-icon-button text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                class="inline-flex items-center justify-center rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Remove Embedding"
               >
                 <Trash2 class="w-4 h-4" />
@@ -1691,7 +1617,7 @@ onUnmounted(() => {
 
             <button
               @click="addNewEmbedding"
-              class="w-full h-8 text-xs font-semibold flex items-center justify-center gap-1.5 rounded-lg metal-surface hover:text-foreground transition-colors"
+              class="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border bg-card text-xs font-semibold transition-colors hover:bg-accent hover:text-foreground"
             >
               <Plus class="w-3.5 h-3.5" />
               Add Embedding
@@ -1700,7 +1626,7 @@ onUnmounted(() => {
         </section>
 
         <!-- SAMPLING -->
-        <section class="pt-3">
+        <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
           <button
             @click="toggleSection('sampling')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1711,7 +1637,7 @@ onUnmounted(() => {
           </button>
 
           <div
-            v-show="expandedSections.sampling"
+            v-show="expandedSections.sampling || props.focus === 'generation'"
             class="space-y-5 "
           >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1853,7 +1779,7 @@ onUnmounted(() => {
         </section>
 
         <!-- HARDWARE -->
-        <section class="pt-3">
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
           <button
             @click="toggleSection('hardware')"
             class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
@@ -1864,7 +1790,7 @@ onUnmounted(() => {
           </button>
 
           <div
-            v-show="expandedSections.hardware"
+            v-show="expandedSections.hardware || props.focus === 'model'"
             class="space-y-5 "
           >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1911,6 +1837,10 @@ onUnmounted(() => {
                 Stream Layers
               </label>
               <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input v-model="config.autoFit" type="checkbox" class="rounded" />
+                Auto Fit
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
                 <input v-model="config.mmap" type="checkbox" class="rounded" />
                 mmap
               </label>
@@ -1926,6 +1856,7 @@ onUnmounted(() => {
                 <input
                   v-model="config.backendAssignment"
                   type="text"
+                  :disabled="config.autoFit"
                   placeholder="auto, cpu, cuda0, vulkan0"
                   class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
@@ -1935,6 +1866,7 @@ onUnmounted(() => {
                 <input
                   v-model="config.paramsBackendAssignment"
                   type="text"
+                  :disabled="config.autoFit"
                   placeholder="cpu or diffusion=gpu,te=cpu"
                   class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
@@ -1944,6 +1876,9 @@ onUnmounted(() => {
             <p class="text-[10px] text-muted-foreground leading-tight">
               Backend names depend on the active stable-diffusion.cpp release: CPU, CUDA, Vulkan,
               ROCm, Metal, OpenCL, or SYCL builds expose different devices.
+            </p>
+            <p v-if="config.autoFit" class="text-[10px] text-muted-foreground leading-tight">
+              Auto Fit ignores explicit runtime and parameter backend assignments.
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1964,6 +1899,17 @@ onUnmounted(() => {
                   step="0.1"
                   placeholder="0"
                   class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Split Mode</label>
+                <Select
+                  v-model="config.splitMode"
+                  size="md"
+                  :options="[
+                    { label: 'Layer (default)', value: 'layer' },
+                    { label: 'Row (CUDA)', value: 'row' }
+                  ]"
                 />
               </div>
             </div>
@@ -2013,19 +1959,6 @@ onUnmounted(() => {
               />
             </div>
 
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">LoRA Apply Mode</label>
-              <Select
-                v-model="config.loraApplyMode"
-                size="md"
-                :options="[
-                  { label: 'Auto', value: 'auto' },
-                  { label: 'Immediately', value: 'immediately' },
-                  { label: 'At Runtime', value: 'at_runtime' }
-                ]"
-              />
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <label class="flex items-center gap-2 text-sm cursor-pointer">
                 <input v-model="config.circular" type="checkbox" class="rounded" />
@@ -2066,7 +1999,7 @@ onUnmounted(() => {
         </section>
 
         <!-- LOGS (for server mode) -->
-        <section v-if="config.backendMode === 'server'" class="pt-3">
+        <section v-if="props.focus === 'all' && config.backendMode === 'server'" class="pt-3">
           <h3 class="text-sm font-semibold text-foreground mb-2">:: Logs ::</h3>
           <div
             class="h-32 bg-muted/20 rounded-md p-2 overflow-y-auto text-[10px] font-mono text-foreground leading-tight"

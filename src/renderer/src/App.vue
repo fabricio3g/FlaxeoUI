@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { Play, SlidersHorizontal, Square } from '@/lib/icons'
 import Titlebar from './components/layout/Titlebar.vue'
+import Sidebar from './components/layout/Sidebar.vue'
 import ConfigPanel from './components/layout/ConfigPanel.vue'
 import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
@@ -9,29 +12,54 @@ import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
 import { useSetup } from './composables/useSetup'
 import SetupWizard from './components/SetupWizard.vue'
+import { useConfigStore } from './stores/config'
+import SegmentedControl from './components/ui/SegmentedControl.vue'
+import Select from './components/ui/Select.vue'
+import { useRuntimeStatus } from './composables/useRuntimeStatus'
+import { useServerControls } from './composables/useServerControls'
+import { useModels } from './composables/useModels'
 
 const route = useRoute()
 const router = useRouter()
+const configStore = useConfigStore()
+const { config } = storeToRefs(configStore)
+const { sdServerRunning, backendValid, fetchRuntimeStatus } = useRuntimeStatus()
+const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
+const { models, fetchModels } = useModels()
 const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
 
-// State
 const showMobileConfig = ref(false)
-const sidebarCollapsed = ref(false)
+const activeConfigPanel = ref<'model' | 'generation' | null>(null)
 const showFloatingLogs = ref(false)
-const isElectron = ref(false)
-const serverPort = ref<number>(3000)
 
-/**
- * currentTab - Computed property tracking the active route
- */
+const activeModelValue = computed(() =>
+  config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
+)
+const modelOptions = computed(() => [
+  { label: 'No model', value: '' },
+  ...models.value.diffusion.map((model) => ({
+    label: model.split(/[\\/]/).pop() || model,
+    value: model
+  }))
+])
+const backendModeOptions = [
+  { value: 'cli', label: 'CLI' },
+  { value: 'server', label: 'Server' }
+]
+
 const currentTab = computed(() => {
   const name = route.name as string
   return name?.toLowerCase() || 'text2image'
 })
 
-/**
- * Route name mapping - maps lowercase tab IDs to actual route names
- */
+const showWorkspaceControls = computed(() =>
+  ['text2image', 'edit', 'video'].includes(currentTab.value)
+)
+
+const configPanelVisible = computed(
+  () => showWorkspaceControls.value && (activeConfigPanel.value !== null || showMobileConfig.value)
+)
+
 const routeMap: Record<string, string> = {
   text2image: 'Text2Image',
   edit: 'Edit',
@@ -41,23 +69,48 @@ const routeMap: Record<string, string> = {
   quantization: 'Quantization'
 }
 
-/**
- * navigateToTab() - Handles navigation between main application views
- */
 function navigateToTab(tab: string): void {
   const routeName = routeMap[tab] || tab
   router.push({ name: routeName })
 }
 
-onMounted(async () => {
-  // Check format
-  isElectron.value = !!window.electronAPI
+function openConfigPanel(panel: 'model' | 'generation'): void {
+  const isMobileViewport = window.matchMedia('(max-width: 767px)').matches
+  showMobileConfig.value = isMobileViewport
+  activeConfigPanel.value = panel
+}
 
-  // Get server port from Electron and initialize API
+function closeConfigPanel(): void {
+  activeConfigPanel.value = null
+  showMobileConfig.value = false
+}
+
+function selectModel(value: string): void {
+  if (!value) {
+    configStore.updateConfig({ standardModel: '', diffusionModel: '' })
+    return
+  }
+
+  configStore.updateConfig(
+    config.value.loadMode === 'standard'
+      ? { standardModel: value }
+      : { diffusionModel: value }
+  )
+  openConfigPanel('model')
+}
+
+function handleBackendMode(value: string): void {
+  if (value === 'cli' || value === 'server') configStore.updateConfig({ backendMode: value })
+}
+
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && configPanelVisible.value) closeConfigPanel()
+}
+
+onMounted(async () => {
   try {
     const state = await window.electronAPI?.getInitState()
     if (state?.port) {
-      serverPort.value = state.port
       initializeApi(state.port)
     }
   } catch (e) {
@@ -65,73 +118,138 @@ onMounted(async () => {
   }
 
   await loadState()
+  await fetchModels()
+  window.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
 <template>
-  <div class="flex flex-col h-screen text-foreground overflow-hidden select-none window-border">
-    <!-- Custom Titlebar for Electron Only -->
-    <Titlebar
+  <div class="flex h-screen w-screen flex-row overflow-hidden bg-background text-foreground">
+    <Sidebar
+      class="hidden md:flex"
       :current-tab="currentTab"
-      :sidebar-collapsed="sidebarCollapsed"
-      :setup-needed="isSetupNeeded"
-      @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed"
-      @toggle-mobile-config="showMobileConfig = !showMobileConfig"
-      @toggle-logs="showFloatingLogs = !showFloatingLogs"
-      @open-setup="reopenSetup"
+      @navigate="navigateToTab"
     />
 
-    <!-- Main Content Area -->
-    <div class="flex flex-1 min-h-0 overflow-hidden relative gap-2 p-0">
-      <!-- Config Panel (detailed settings) -->
-      <ConfigPanel
-        :collapsed="sidebarCollapsed"
-        class="shrink-0 transition-[width] duration-300 ease-out"
-        :class="[
-          sidebarCollapsed
-            ? 'md:flex md:w-11 md:relative md:translate-x-0'
-            : 'md:flex md:w-[260px] md:relative md:translate-x-0',
-          showMobileConfig
-            ? 'fixed inset-0 z-50 w-full translate-x-0 flex md:absolute'
-            : 'hidden md:flex'
-        ]"
-        @close="showMobileConfig = false"
-        @expand="sidebarCollapsed = false"
+    <div class="flex min-w-0 min-h-0 flex-1 flex-col">
+      <Titlebar
+        :current-tab="currentTab"
+        :setup-needed="isSetupNeeded"
+        @toggle-mobile-config="showMobileConfig = !showMobileConfig"
+        @toggle-logs="showFloatingLogs = !showFloatingLogs"
+        @open-setup="reopenSetup"
       />
 
-      <!-- Main Content -->
-      <main
-        class="main-panel flex-1 min-h-0 overflow-hidden flex flex-col relative w-full m-2 ml-0"
-      >
-        <router-view v-slot="{ Component, route }">
-          <transition
-            name="route"
-            mode="out-in"
-            enter-active-class="transition-all duration-300 ease-out"
-            leave-active-class="transition-all duration-200 ease-in"
-            enter-from-class="opacity-0 translate-y-3 scale-[0.98]"
-            leave-to-class="opacity-0 -translate-y-2 scale-[0.99]"
+      <div class="relative flex flex-1 min-h-0 overflow-hidden">
+        <div
+          class="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden"
+          :class="{ 'bg-background': !showWorkspaceControls }"
+        >
+          <div
+            v-if="showWorkspaceControls"
+            class="absolute left-3 top-3 z-30 flex items-center gap-1.5 whitespace-nowrap titlebar-no-drag"
+            @click.stop
           >
-            <div :key="route.path" class="h-full w-full">
-              <keep-alive>
-                <component :is="Component" />
-              </keep-alive>
+            <SegmentedControl
+              :model-value="config.backendMode"
+              :options="backendModeOptions"
+              size="sm"
+              aria-label="Backend mode"
+              @update:model-value="handleBackendMode"
+            />
+            <Select
+              :model-value="activeModelValue"
+              :options="modelOptions"
+              size="sm"
+              placeholder="No model"
+              aria-label="Select diffusion model"
+              class="min-w-[12rem]"
+              @update:model-value="selectModel"
+            />
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :aria-expanded="activeConfigPanel === 'generation'"
+              @click="openConfigPanel('generation')"
+            >
+              <SlidersHorizontal class="h-3.5 w-3.5" />
+              <span>Generation</span>
+            </button>
+            <div
+              v-if="config.backendMode === 'server'"
+              class="inline-flex items-center gap-1 rounded-md border border-border bg-muted p-0.5"
+            >
+              <button
+                type="button"
+                :disabled="sdServerRunning || isBooting || !backendValid"
+                class="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 hover:text-foreground"
+                :class="
+                  sdServerRunning || isBooting || !backendValid
+                    ? 'text-muted-foreground'
+                    : 'bg-background text-foreground shadow-sm'
+                "
+                @click="startServer"
+              >
+                <Play class="h-3 w-3" />
+                {{ isBooting ? 'Booting' : 'Start' }}
+              </button>
+              <button
+                type="button"
+                :disabled="!sdServerRunning || isBooting"
+                class="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 hover:text-foreground"
+                :class="
+                  sdServerRunning
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                "
+                @click="stopServer"
+              >
+                <Square class="h-3 w-3" />
+                Stop
+              </button>
             </div>
-          </transition>
-        </router-view>
-      </main>
+          </div>
+
+          <div
+            v-if="configPanelVisible"
+            class="absolute inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
+            :class="[showMobileConfig ? 'md:hidden' : 'hidden md:block']"
+            @click="closeConfigPanel"
+          >
+            <div
+              class="flex h-[min(80vh,720px)] w-[min(72rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+              @click.stop
+            >
+              <ConfigPanel
+                :collapsed="false"
+                :focus="activeConfigPanel || 'generation'"
+                @close="closeConfigPanel"
+                @expand="activeConfigPanel = 'generation'"
+              />
+            </div>
+          </div>
+
+          <main class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden">
+            <router-view v-slot="{ Component, route }">
+              <keep-alive>
+                <component :is="Component" :key="route.fullPath" />
+              </keep-alive>
+            </router-view>
+          </main>
+        </div>
+      </div>
+
+      <MobileNav class="md:hidden" :current-tab="currentTab" @navigate="navigateToTab" />
     </div>
 
-    <!-- Mobile Bottom Nav -->
-    <MobileNav class="md:hidden" :current-tab="currentTab" @navigate="navigateToTab" />
-
-    <!-- Toast Notifications -->
     <ToastContainer />
 
-    <!-- Floating Log Panel -->
     <FloatingLogPanel v-model="showFloatingLogs" />
 
-    <!-- First-time Setup Wizard -->
     <SetupWizard
       v-if="isSetupNeeded"
       @done="completeSetup"

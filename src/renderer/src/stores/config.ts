@@ -70,6 +70,8 @@ export interface GenerationConfig {
   forceSDXLVaeConvScale: boolean
   backendAssignment: string
   paramsBackendAssignment: string
+  autoFit: boolean
+  splitMode: 'layer' | 'row'
   threads: number
   maxVram: number
   streamLayers: boolean
@@ -187,6 +189,8 @@ const defaultConfig: GenerationConfig = {
   forceSDXLVaeConvScale: false,
   backendAssignment: '',
   paramsBackendAssignment: '',
+  autoFit: false,
+  splitMode: 'layer',
   threads: -1,
   maxVram: 0,
   streamLayers: false,

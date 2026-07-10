@@ -104,7 +104,8 @@ export function addGenerationArgs(
   args.push('--cfg-scale', String(body.cfg_scale || defaults.cfg))
   args.push('-W', String(roundTo(body.width, defaults.width, defaults.multiple)))
   args.push('-H', String(roundTo(body.height, defaults.height, defaults.multiple)))
-  args.push('-s', String(body.seed || -1))
+  const seed = body.seed === '' || body.seed == null ? -1 : body.seed
+  args.push('-s', String(seed))
   args.push('-o', outputPath)
 }
 
@@ -155,8 +156,12 @@ export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): 
   pushBoolArg(args, '--chroma-enable-t5-mask', body.chromaEnableT5Mask)
   pushBoolArg(args, '--chroma-disable-dit-mask', body.chromaDisableDitMask)
   pushBoolArg(args, '--disable-image-metadata', body.disableImageMetadata)
-  pushArg(args, '--backend', body.backendAssignment)
-  pushArg(args, '--params-backend', body.paramsBackendAssignment)
+  if (!asBool(body.autoFit)) {
+    pushArg(args, '--backend', body.backendAssignment)
+    pushArg(args, '--params-backend', body.paramsBackendAssignment)
+  }
+  pushBoolArg(args, '--auto-fit', body.autoFit)
+  pushArg(args, '--split-mode', body.splitMode)
   pushNumericArg(args, '--threads', body.threads, (value) => value > 0)
   pushNumericArg(args, '--max-vram', body.maxVram, (value) => value !== 0)
   pushNumericArg(args, '--chroma-t5-mask-pad', body.chromaT5MaskPad, (value) => value > 0)

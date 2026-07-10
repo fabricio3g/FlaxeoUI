@@ -16,9 +16,10 @@ import {
   Sparkles,
   Maximize2,
   Video
-} from 'lucide-vue-next'
+} from '@/lib/icons'
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import { useToast } from '@/composables/useToast'
 import { panelMotion, staggeredCardMotion, subtleButtonMotion } from '@/lib/motion'
 
@@ -30,6 +31,10 @@ const images = ref<string[]>([])
 const isLoading = ref(false)
 const selectedImage = ref<string | null>(null)
 const viewMode = ref<'grid' | 'large'>('grid')
+const viewModeOptions = [
+  { value: 'grid', label: 'Compact grid', icon: Grid },
+  { value: 'large', label: 'Large grid', icon: LayoutGrid }
+]
 const showImageViewer = ref(false) // New state for full screen
 
 // ... (pagination logic unchanged) ...
@@ -69,6 +74,10 @@ async function fetchGallery(): Promise<void> {
  */
 function selectImage(filename: string): void {
   selectedImage.value = filename
+}
+
+function handleViewMode(value: string): void {
+  if (value === 'grid' || value === 'large') viewMode.value = value
 }
 
 /**
@@ -208,7 +217,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="gallery-view flex h-full flex-col overflow-hidden bg-muted/30 text-foreground">
+  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
     <!-- ... header/grid stuff ... -->
 
     <!-- (Adding ImageViewer at root) -->
@@ -222,10 +231,10 @@ onUnmounted(() => {
     />
 
     <!-- Header -->
-    <div class="shrink-0 border-b border-border/70 bg-card/80 p-4 backdrop-blur-xl">
+    <div class="shrink-0 border-b border-border bg-card px-4 py-3 md:px-5">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="flex items-center gap-3">
-          <div class="gallery-header-icon flex h-10 w-10 items-center justify-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-foreground">
             <Images class="h-5 w-5" />
           </div>
           <div>
@@ -238,24 +247,14 @@ onUnmounted(() => {
 
         <div class="flex items-center gap-2">
           <!-- View Mode Toggle -->
-          <div class="gallery-segment flex bg-muted/50 p-1">
-            <button
-              @click="viewMode = 'grid'"
-              class="gallery-icon-button"
-              :class="viewMode === 'grid' ? 'is-active' : ''"
-              title="Compact grid"
-            >
-              <Grid class="w-4 h-4" />
-            </button>
-            <button
-              @click="viewMode = 'large'"
-              class="gallery-icon-button"
-              :class="viewMode === 'large' ? 'is-active' : ''"
-              title="Large grid"
-            >
-              <LayoutGrid class="w-4 h-4" />
-            </button>
-          </div>
+          <SegmentedControl
+            :model-value="viewMode"
+            :options="viewModeOptions"
+            size="sm"
+            icon-only
+            aria-label="Gallery view"
+            @update:model-value="handleViewMode"
+          />
 
           <!-- Refresh -->
           <button
@@ -264,7 +263,7 @@ onUnmounted(() => {
             :tapped="subtleButtonMotion.tapped"
             @click="fetchGallery"
             :disabled="isLoading"
-            class="gallery-icon-button"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             title="Refresh gallery"
           >
             <RefreshCw class="w-4 h-4" :class="isLoading && 'animate-spin'" />
@@ -273,7 +272,7 @@ onUnmounted(() => {
           <!-- Open Folder -->
           <button
             @click="openGalleryFolder"
-            class="gallery-icon-button"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             title="Open gallery folder"
           >
             <FolderOpen class="w-4 h-4" />
@@ -285,7 +284,7 @@ onUnmounted(() => {
     <!-- Content Area -->
     <div class="flex min-h-0 flex-1 overflow-hidden">
       <!-- Image Grid -->
-      <div class="gallery-grid-scroll flex-1 overflow-y-auto p-4 md:p-5">
+      <div class="flex-1 overflow-y-auto bg-background p-4 md:p-5">
         <!-- Loading State -->
         <div
           v-if="isLoading"
@@ -298,9 +297,9 @@ onUnmounted(() => {
         <!-- Empty State -->
         <div
           v-else-if="images.length === 0"
-          class="gallery-empty-state flex h-full flex-col items-center justify-center text-center text-muted-foreground"
+          class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
         >
-          <div class="gallery-empty-icon mb-4 flex h-14 w-14 items-center justify-center">
+          <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-muted text-foreground">
             <Images class="h-7 w-7" />
           </div>
           <p class="text-sm font-medium text-foreground">No images yet</p>
@@ -328,11 +327,11 @@ onUnmounted(() => {
             :hovered="staggeredCardMotion(index).hovered"
             :tapped="staggeredCardMotion(index).tapped"
             @click="selectImage(img)"
-            class="gallery-card group relative aspect-square overflow-hidden border bg-black transition-all dark:bg-neutral-950"
+            class="group relative aspect-square overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
             :class="
               selectedImage === img
-                ? 'is-selected border-primary ring-2 ring-primary/25'
-                : 'border-border/50 hover:border-primary/40'
+                ? 'border-foreground/30 ring-2 ring-ring/40'
+                : 'border-border/60 hover:border-foreground/20'
             "
           >
             <img
@@ -341,8 +340,8 @@ onUnmounted(() => {
               class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
-            <div class="gallery-card-overlay absolute inset-x-0 bottom-0 p-2 text-left">
-              <p class="truncate text-[11px] font-medium text-white/90">{{ img }}</p>
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/70 to-transparent p-2 text-left opacity-0 transition-opacity group-hover:opacity-100">
+              <p class="truncate text-[11px] font-medium text-background">{{ img }}</p>
             </div>
           </button>
         </div>
@@ -352,7 +351,7 @@ onUnmounted(() => {
           <button
             @click="navigatePage('prev')"
             :disabled="currentPage === 1"
-            class="gallery-icon-button disabled:cursor-not-allowed disabled:opacity-30"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <ChevronLeft class="w-5 h-5" />
           </button>
@@ -362,7 +361,7 @@ onUnmounted(() => {
           <button
             @click="navigatePage('next')"
             :disabled="currentPage === totalPages"
-            class="gallery-icon-button disabled:cursor-not-allowed disabled:opacity-30"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <ChevronRight class="w-5 h-5" />
           </button>
@@ -375,20 +374,21 @@ onUnmounted(() => {
         v-motion
         :initial="panelMotion.initial"
         :enter="panelMotion.enter"
-        class="gallery-detail-panel absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
+        class="absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
       >
         <!-- Preview Image -->
         <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
           <!-- Mobile Close -->
           <button
+            type="button"
             @click="selectedImage = null"
-            class="absolute left-2 top-2 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 md:hidden"
+            class="absolute left-2 top-2 z-10 inline-flex size-9 items-center justify-center rounded-full bg-foreground/60 text-background transition-colors hover:bg-foreground/80 md:hidden"
           >
-            <ChevronLeft class="w-5 h-5" />
+            <ChevronLeft class="h-5 w-5" />
           </button>
 
           <div
-            class="gallery-preview-frame group relative h-full w-full bg-black p-2 dark:bg-neutral-950"
+            class="group relative flex h-full w-full items-center justify-center rounded-lg border border-border bg-card p-2"
           >
             <img
               :src="getOutputUrl(selectedImage)"
@@ -409,13 +409,23 @@ onUnmounted(() => {
 
         <!-- Navigation -->
         <div class="flex items-center justify-center gap-4 border-t border-border/70 py-2">
-          <button @click="navigateImage('prev')" class="gallery-icon-button" title="Previous image">
+          <button
+            type="button"
+            @click="navigateImage('prev')"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            title="Previous image"
+          >
             <ChevronLeft class="w-5 h-5" />
           </button>
           <span class="text-xs text-muted-foreground">
             {{ selectedIndex + 1 }} / {{ images.length }}
           </span>
-          <button @click="navigateImage('next')" class="gallery-icon-button" title="Next image">
+          <button
+            type="button"
+            @click="navigateImage('next')"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            title="Next image"
+          >
             <ChevronRight class="w-5 h-5" />
           </button>
         </div>
@@ -430,12 +440,20 @@ onUnmounted(() => {
 
         <!-- Actions -->
         <div class="grid grid-cols-2 gap-2 border-t border-border p-4">
-          <button @click="showImageViewer = true" class="gallery-action-button col-span-2">
-            <Maximize2 class="w-4 h-4" />
+          <button
+            type="button"
+            @click="showImageViewer = true"
+            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Maximize2 class="h-4 w-4" />
             Full Screen
           </button>
-          <button @click="sendToText2Image" class="gallery-action-button col-span-2 justify-start">
-            <Sparkles class="w-4 h-4" />
+          <button
+            type="button"
+            @click="sendToText2Image"
+            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Sparkles class="h-4 w-4" />
             <span>
               <span class="block text-left">Use in Text2Image</span>
               <span class="block text-left text-[10px] text-muted-foreground"
@@ -443,8 +461,12 @@ onUnmounted(() => {
               >
             </span>
           </button>
-          <button @click="sendToEdit" class="gallery-action-button col-span-2 justify-start">
-            <Brush class="w-4 h-4" />
+          <button
+            type="button"
+            @click="sendToEdit"
+            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Brush class="h-4 w-4" />
             <span>
               <span class="block text-left">Send to Edit</span>
               <span class="block text-left text-[10px] text-muted-foreground"
@@ -452,8 +474,12 @@ onUnmounted(() => {
               >
             </span>
           </button>
-          <button @click="sendToVideo" class="gallery-action-button col-span-2 justify-start">
-            <Video class="w-4 h-4" />
+          <button
+            type="button"
+            @click="sendToVideo"
+            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Video class="h-4 w-4" />
             <span>
               <span class="block text-left">Send to Video</span>
               <span class="block text-left text-[10px] text-muted-foreground"
@@ -461,16 +487,28 @@ onUnmounted(() => {
               >
             </span>
           </button>
-          <button @click="copyImagePath" class="gallery-action-button">
-            <Copy class="w-4 h-4" />
+          <button
+            type="button"
+            @click="copyImagePath"
+            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Copy class="h-4 w-4" />
             Copy
           </button>
-          <button @click="downloadImage" class="gallery-action-button is-primary">
-            <Download class="w-4 h-4" />
+          <button
+            type="button"
+            @click="downloadImage"
+            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Download class="h-4 w-4" />
             Download
           </button>
-          <button @click="deleteImage" class="gallery-action-button is-danger col-span-2">
-            <Trash2 class="w-4 h-4" />
+          <button
+            type="button"
+            @click="deleteImage"
+            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <Trash2 class="h-4 w-4" />
             Delete
           </button>
         </div>

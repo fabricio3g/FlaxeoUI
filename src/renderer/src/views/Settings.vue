@@ -9,7 +9,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Copy
-} from 'lucide-vue-next'
+} from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
 import { useSetup } from '@/composables/useSetup'
 
@@ -285,35 +285,39 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-card">
-    <div class="mx-auto space-y-6 px-4 md:px-8 max-w-6xl">
+  <div class="workspace-view flex-1 overflow-y-auto bg-background p-4 md:p-6">
+    <div class="mx-auto max-w-6xl space-y-6 px-4 md:px-8">
       <!-- Header -->
       <header class="flex items-center gap-3">
-        <SettingsIcon class="w-8 h-8 text-foreground" />
+        <SettingsIcon class="h-8 w-8 text-foreground" />
         <div>
-          <h1 class="text-2xl font-bold">Settings</h1>
+          <h1 class="text-2xl font-bold tracking-tight">Settings</h1>
           <p class="text-sm text-muted-foreground">Backend binary and network settings</p>
         </div>
       </header>
 
       <!-- Active Backend Status -->
       <section class="space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-3">
           <h2 class="text-lg font-semibold">Active Backend</h2>
           <div class="flex items-center gap-2">
             <button
               @click="reopenSetup"
-              class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+              title="Run setup wizard"
+              type="button"
+              class="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              <RefreshCw class="w-3.5 h-3.5" />
-              Run setup wizard
+              <RefreshCw class="h-3.5 w-3.5" />
+              <span>Run setup wizard</span>
             </button>
             <button
               @click="openCustomFolder"
-              class="metal-icon-button px-3 py-1.5 text-xs flex items-center gap-1"
+              title="Open custom folder"
+              type="button"
+              class="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              <FolderOpen class="w-4 h-4" />
-              Custom Folder
+              <FolderOpen class="h-4 w-4" />
+              <span>Custom Folder</span>
             </button>
           </div>
         </div>
@@ -426,10 +430,10 @@ onMounted(async () => {
           @click="downloadAndInstall"
           :disabled="!selectedRelease || !selectedVariant || isDownloading"
            class="w-full py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-          :class="
+            :class="
             !selectedRelease || !selectedVariant || isDownloading
               ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'primary-metal-button'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
           "
         >
           <Loader2 v-if="isDownloading" class="w-4 h-4 animate-spin" />
@@ -555,10 +559,12 @@ onMounted(async () => {
             ></div>
             <span class="text-sm">{{ serverOnline ? 'Online' : 'Offline' }}</span>
             <button
+              type="button"
               @click="checkServerStatus"
-              class="ml-2 p-1.5 metal-icon-button"
+              class="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              aria-label="Refresh server status"
             >
-              <RefreshCw class="w-4 h-4" />
+              <RefreshCw class="h-4 w-4" />
             </button>
           </div>
         </div>

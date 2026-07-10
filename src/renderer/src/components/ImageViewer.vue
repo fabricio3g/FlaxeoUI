@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { X, Info, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { X, Info, Copy, Check, ChevronLeft, ChevronRight } from '@/lib/icons'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
@@ -28,10 +28,6 @@ async function fetchMetadata() {
   metadata.value = null
 
   try {
-    // Attempt to fetch params from headers or basic info
-    // We reuse the verify-params or image info endpoint logic if available
-    // But commonly apps like this store metadata in PNG chunks.
-    // Let's use the existing endpoint logic:
     const data = await apiPost('/api/image/params', { filename: props.filename })
     if (data && !data.error) {
       metadata.value = data
@@ -46,7 +42,6 @@ async function fetchMetadata() {
 function handleCopy() {
   if (!metadata.value) return
 
-  // Format metadata for copy
   const text = [
     metadata.value.prompt,
     metadata.value.negative_prompt ? `Negative prompt: ${metadata.value.negative_prompt}` : '',
@@ -82,153 +77,143 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-md"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 backdrop-blur-md"
     @click.self="emit('close')"
   >
     <!-- Top Bar -->
     <div
-      class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-background/50 to-transparent"
+      class="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-foreground/60 to-transparent p-4"
     >
-      <div class="text-sm font-medium opacity-70 truncate max-w-md ml-4 text-white drop-shadow-md">
+      <div class="ml-4 max-w-md truncate text-sm font-medium text-background drop-shadow-md">
         {{ filename }}
       </div>
 
-      <div class="flex items-center gap-2 mr-2">
+      <div class="mr-2 flex items-center gap-2">
         <button
+          type="button"
           @click="showInfo = !showInfo"
-          class="p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors backdrop-blur-sm"
-          :class="{ 'bg-primary/80': showInfo }"
+          class="inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="{ 'bg-primary/80 hover:bg-primary/80': showInfo }"
           title="Toggle Info"
+          aria-label="Toggle image info"
         >
-          <Info class="w-5 h-5" />
+          <Info class="h-5 w-5" />
         </button>
         <button
+          type="button"
           @click="emit('close')"
-          class="p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors backdrop-blur-sm"
+          class="inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           title="Close"
+          aria-label="Close"
         >
-          <X class="w-5 h-5" />
+          <X class="h-5 w-5" />
         </button>
       </div>
     </div>
 
     <!-- Navigation Buttons -->
     <button
+      type="button"
       @click="emit('prev')"
-      class="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors backdrop-blur-sm z-10"
+      class="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex size-11 items-center justify-center rounded-full bg-foreground/30 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      aria-label="Previous image"
     >
-      <ChevronLeft class="w-8 h-8" />
+      <ChevronLeft class="h-7 w-7" />
     </button>
 
     <button
+      type="button"
       @click="emit('next')"
-      class="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors backdrop-blur-sm z-10"
+      class="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex size-11 items-center justify-center rounded-full bg-foreground/30 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      aria-label="Next image"
     >
-      <ChevronRight class="w-8 h-8" />
+      <ChevronRight class="h-7 w-7" />
     </button>
 
     <!-- Main Image -->
     <div
-      class="w-full h-full flex items-center justify-center bg-black p-4 transition-all duration-300 dark:bg-neutral-950"
-      :class="{ 'pr-96': showInfo }"
+      class="flex h-full w-full items-center justify-center bg-foreground p-4 transition-all duration-300"
+      :class="{ 'pr-[26rem]': showInfo }"
+      @click.stop
     >
       <img
         :src="src"
         :alt="alt"
-        class="max-w-full max-h-full object-contain drop-shadow-2xl"
-        @click.stop
+        class="max-h-full max-w-full object-contain drop-shadow-lg"
       />
     </div>
 
     <!-- Info Panel -->
     <div
-      class="absolute top-0 right-0 bottom-0 w-96 bg-card border-l border-border shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out z-20 overflow-hidden"
+      class="absolute inset-y-0 right-0 z-20 flex w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden border-l border-border bg-popover text-popover-foreground shadow-lg transition-transform duration-300 ease-in-out"
       :class="showInfo ? 'translate-x-0' : 'translate-x-full'"
       @click.stop
     >
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-bold">Image Info</h3>
+      <div class="flex items-center justify-between border-b border-border p-4">
+        <h3 class="text-base font-semibold tracking-tight">Image Info</h3>
         <button
+          type="button"
           @click="handleCopy"
-          class="p-2 rounded-md hover:bg-muted transition-colors"
+          class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           title="Copy Parameters"
+          aria-label="Copy parameters"
         >
-          <Check v-if="isCopied" class="w-4 h-4 text-green-500" />
-          <Copy v-else class="w-4 h-4" />
+          <Check v-if="isCopied" class="h-4 w-4 text-emerald-500" />
+          <Copy v-else class="h-4 w-4" />
         </button>
       </div>
 
-      <div v-if="isLoading" class="flex-1 flex items-center justify-center text-muted-foreground">
+      <div v-if="isLoading" class="flex flex-1 items-center justify-center text-sm text-muted-foreground">
         Loading info...
       </div>
 
       <div
         v-else-if="!metadata"
-        class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-4"
+        class="flex flex-1 flex-col items-center justify-center p-4 text-center text-sm text-muted-foreground"
       >
-        <Info class="w-12 h-12 mb-4 opacity-20" />
+        <Info class="mb-4 h-12 w-12 opacity-20" />
         <p>No metadata found for this image.</p>
       </div>
 
-      <div v-else class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+      <div v-else class="flex-1 space-y-4 overflow-y-auto p-4">
         <!-- Prompt -->
         <div>
-          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block"
-            >Prompt</label
-          >
-          <p class="text-sm bg-muted/50 p-3 rounded-lg leading-relaxed">{{ metadata.prompt }}</p>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prompt</label>
+          <p class="rounded-md border border-border bg-muted/50 p-3 text-sm leading-relaxed">{{ metadata.prompt }}</p>
         </div>
 
         <!-- Negative Prompt -->
         <div v-if="metadata.negative_prompt">
-          <label class="text-xs font-semibold uppercase text-muted-foreground mb-1 block"
-            >Negative Prompt</label
-          >
-          <p class="text-sm bg-muted/50 p-3 rounded-lg leading-relaxed">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Negative Prompt</label>
+          <p class="rounded-md border border-border bg-muted/50 p-3 text-sm leading-relaxed">
             {{ metadata.negative_prompt }}
           </p>
         </div>
 
         <!-- Details Grid -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-muted/30 p-2 rounded">
-            <span class="text-xs text-muted-foreground block">Steps</span>
-            <span class="text-sm font-mono">{{ metadata.steps }}</span>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-md border border-border bg-muted/30 p-2">
+            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Steps</span>
+            <span class="font-mono text-sm">{{ metadata.steps }}</span>
           </div>
-          <div class="bg-muted/30 p-2 rounded">
-            <span class="text-xs text-muted-foreground block">CFG Scale</span>
-            <span class="text-sm font-mono">{{ metadata.cfg_scale }}</span>
+          <div class="rounded-md border border-border bg-muted/30 p-2">
+            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">CFG Scale</span>
+            <span class="font-mono text-sm">{{ metadata.cfg_scale }}</span>
           </div>
-          <div class="bg-muted/30 p-2 rounded">
-            <span class="text-xs text-muted-foreground block">Seed</span>
-            <span class="text-sm font-mono">{{ metadata.seed }}</span>
+          <div class="rounded-md border border-border bg-muted/30 p-2">
+            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Seed</span>
+            <span class="font-mono text-sm">{{ metadata.seed }}</span>
           </div>
-          <div class="bg-muted/30 p-2 rounded">
-            <span class="text-xs text-muted-foreground block">Size</span>
-            <span class="text-sm font-mono">{{ metadata.width }}x{{ metadata.height }}</span>
+          <div class="rounded-md border border-border bg-muted/30 p-2">
+            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Size</span>
+            <span class="font-mono text-sm">{{ metadata.width }}×{{ metadata.height }}</span>
           </div>
-          <div class="bg-muted/30 p-2 rounded col-span-2">
-            <span class="text-xs text-muted-foreground block">Model</span>
-            <span class="text-sm font-mono truncate">{{ metadata.model }}</span>
+          <div class="col-span-2 rounded-md border border-border bg-muted/30 p-2">
+            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Model</span>
+            <span class="truncate font-mono text-sm">{{ metadata.model }}</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.2);
-  border-radius: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
-}
-</style>

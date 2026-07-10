@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast'
-import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-vue-next'
+import { X, CheckCircle, XCircle, AlertTriangle, Info } from '@/lib/icons'
 import { subtleButtonMotion, toastMotion } from '@/lib/motion'
 
 const { toasts, remove } = useToast()

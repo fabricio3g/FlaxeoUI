@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
+import { Check, ChevronDown } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 import {
   SelectContent,
   SelectGroup,
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
   SelectViewport
-} from 'radix-vue'
+} from 'reka-ui'
 
 interface SelectOption {
   label: string
@@ -74,19 +75,28 @@ const displayValue = computed<string>(() => {
   return props.modelValue
 })
 
-const triggerClasses =
-  'flax-select-trigger flex w-full min-w-0 items-center justify-between gap-1 rounded-md border border-border/70 bg-card text-left font-medium tracking-[-0.01em] transition-colors focus:outline-none focus:ring-1 focus:ring-ring data-[placeholder]:text-muted-foreground data-[state=open]:ring-1 data-[state=open]:ring-ring'
+const triggerClasses = cn(
+  'flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-background text-left font-medium transition-colors outline-none',
+  'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30',
+  'data-[placeholder]:text-muted-foreground data-[state=open]:border-ring data-[state=open]:ring-2 data-[state=open]:ring-ring/30',
+  'disabled:cursor-not-allowed disabled:opacity-50'
+)
 
 const sizeClasses: Record<string, string> = {
-  sm: 'text-sm px-2.5 py-1.5',
-  md: 'text-sm px-3 py-2'
+  sm: 'h-8 px-2.5 text-xs',
+  md: 'h-9 px-3 text-sm'
 }
 
-const contentClasses =
-  'flax-select-content z-[300] max-h-60 min-w-[var(--radix-select-trigger-width)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-border/70 bg-card shadow-md'
+const contentClasses = cn(
+  'z-[300] max-h-60 min-w-[var(--reka-select-trigger-width)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md'
+)
 
-const itemClasses =
-  'flax-select-item relative flex min-w-0 cursor-default select-none items-center rounded px-2 py-1.5 text-sm font-medium tracking-[-0.01em] outline-none data-[highlighted]:bg-muted/60 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors'
+const itemClasses = cn(
+  'relative flex min-w-0 cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-7 text-sm font-medium outline-none transition-colors',
+  'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+  'data-[state=checked]:bg-accent/60 data-[state=checked]:text-foreground',
+  'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+)
 
 const viewportClasses = 'p-1'
 </script>
@@ -98,7 +108,11 @@ const viewportClasses = 'p-1'
     @update:model-value="handleValueChange"
     @update:open="handleOpenChange"
   >
-    <SelectTrigger :class="[triggerClasses, sizeClasses[size], props.class]">
+    <SelectTrigger
+      data-slot="select-trigger"
+      :data-size="size"
+      :class="cn(triggerClasses, sizeClasses[size], props.class)"
+    >
       <SelectValue :placeholder="placeholder" class="min-w-0 flex-1 truncate">
         {{ displayValue }}
       </SelectValue>
@@ -108,18 +122,23 @@ const viewportClasses = 'p-1'
     </SelectTrigger>
 
     <SelectPortal>
-      <SelectContent :class="contentClasses" :position="'popper'">
+      <SelectContent data-slot="select-content" :class="contentClasses" :position="'popper'">
         <SelectViewport :class="viewportClasses">
           <SelectGroup>
             <SelectItem
               v-for="option in safeOptions"
               :key="option.value"
               :value="option.value"
+              data-slot="select-item"
               :class="itemClasses"
             >
               <SelectItemText class="block w-full min-w-0 whitespace-nowrap">
                 {{ option.label }}
               </SelectItemText>
+              <Check
+                v-if="option.value === safeModelValue"
+                class="absolute right-2 h-3.5 w-3.5 text-foreground"
+              />
             </SelectItem>
           </SelectGroup>
         </SelectViewport>

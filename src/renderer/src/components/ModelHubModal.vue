@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Download, ExternalLink, Loader2, X } from 'lucide-vue-next'
+import { Download, ExternalLink, Loader2, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { apiPost } from '@/services/api'
 import { hubModels, type HubModel, type HubFile } from '@/lib/starterPacks'
@@ -48,7 +48,12 @@ async function downloadPack(): Promise<void> {
       <aside class="w-56 shrink-0 border-r border-border/70 bg-muted/30 p-3">
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-sm font-semibold">Model Hub</h2>
-          <button class="metal-icon-button p-1.5 text-muted-foreground hover:text-foreground" @click="emit('close')">
+          <button
+            type="button"
+            class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            @click="emit('close')"
+            aria-label="Close"
+          >
             <X class="h-4 w-4" />
           </button>
         </div>
@@ -56,7 +61,7 @@ async function downloadPack(): Promise<void> {
           v-for="model in hubModels"
           :key="model.id"
           class="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs transition-colors"
-          :class="activeModelId === model.id ? 'primary-metal-button' : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+          :class="activeModelId === model.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
           @click="activeModelId = model.id"
         >
           {{ model.name }}
@@ -70,7 +75,11 @@ async function downloadPack(): Promise<void> {
               <h3 class="text-xl font-semibold">{{ activeModel.name }}</h3>
               <p class="mt-1 max-w-2xl text-sm text-muted-foreground">{{ activeModel.description }}</p>
             </div>
-            <a :href="activeModel.docsUrl" target="_blank" class="metal-icon-button flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+            <a
+              :href="activeModel.docsUrl"
+              target="_blank"
+              class="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
               Docs
               <ExternalLink class="h-3.5 w-3.5" />
             </a>
@@ -79,7 +88,11 @@ async function downloadPack(): Promise<void> {
 
         <div class="flex-1 overflow-y-auto p-5">
           <div class="mb-4 flex flex-wrap gap-2">
-            <button class="primary-metal-button rounded-lg px-4 py-2 text-xs font-medium" @click="applyPreset()">
+            <button
+              type="button"
+              class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              @click="applyPreset()"
+            >
               Apply Configuration
             </button>
             <button
@@ -113,7 +126,7 @@ async function downloadPack(): Promise<void> {
                 </div>
               </div>
               <button
-                class="metal-icon-button flex shrink-0 items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :disabled="!!downloading"
                 @click="downloadFile(file)"
               >

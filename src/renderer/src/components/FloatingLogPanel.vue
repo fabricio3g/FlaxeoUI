@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useDraggable } from '@vueuse/core'
-import { Terminal, Trash2, RefreshCw, GripHorizontal, X } from 'lucide-vue-next'
+import { Terminal, Trash2, RefreshCw, GripHorizontal, X } from '@/lib/icons'
 import { useServerLogs } from '@/composables/useServerLogs'
 
 const props = defineProps<{
@@ -115,57 +115,67 @@ onUnmounted(() => {
     v-if="modelValue"
     ref="panelRef"
     :style="style"
-    class="fixed z-[10001] w-[600px] h-[400px] metal-surface rounded-xl flex flex-col overflow-hidden shadow-2xl"
+    class="fixed z-[10001] flex h-[400px] w-[600px] flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
   >
     <!-- Drag Handle / Title Bar -->
     <div
       ref="dragHandleRef"
-      class="flex items-center justify-between px-3 py-2 border-b border-border/60 cursor-move select-none"
+      class="flex cursor-move select-none items-center justify-between border-b border-border px-3 py-2"
     >
       <div class="flex items-center gap-2">
-        <GripHorizontal class="w-4 h-4 text-muted-foreground" />
-        <Terminal class="w-4 h-4 text-muted-foreground" />
+        <GripHorizontal class="h-4 w-4 text-muted-foreground" />
+        <Terminal class="h-4 w-4 text-muted-foreground" />
         <span class="text-sm font-medium">Server Logs</span>
         <span class="text-xs text-muted-foreground">({{ total }} entries)</span>
       </div>
 
       <div class="flex items-center gap-2">
         <!-- Auto-scroll toggle -->
-        <label class="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
-          <input type="checkbox" v-model="autoScroll" class="w-3 h-3 rounded border-border" />
+        <label class="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            v-model="autoScroll"
+            class="size-3 rounded border-border bg-background text-foreground focus:ring-1 focus:ring-ring/40"
+          />
           Auto-scroll
         </label>
 
         <!-- Polling toggle -->
         <button
+          type="button"
           @click="togglePolling"
-          :class="[
-            'p-1.5 rounded-md transition-colors',
+          class="inline-flex size-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="
             isPolling
-              ? 'text-green-500 bg-green-500/10'
-              : 'text-muted-foreground hover:text-foreground'
-          ]"
+              ? 'bg-emerald-500/10 text-emerald-600'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          "
           :title="isPolling ? 'Pause realtime stream' : 'Resume realtime stream'"
+          aria-label="Toggle log streaming"
         >
-          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isStreaming }" />
+          <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': isStreaming }" />
         </button>
 
         <!-- Clear logs -->
         <button
+          type="button"
           @click="clearLogs"
-          class="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           title="Clear logs"
+          aria-label="Clear logs"
         >
-          <Trash2 class="w-3.5 h-3.5" />
+          <Trash2 class="h-3.5 w-3.5" />
         </button>
 
         <!-- Close -->
         <button
+          type="button"
           @click="close"
-          class="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           title="Close"
+          aria-label="Close"
         >
-          <X class="w-3.5 h-3.5" />
+          <X class="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -173,21 +183,21 @@ onUnmounted(() => {
     <!-- Logs content -->
     <div
       ref="logsContainer"
-      class="flex-1 overflow-auto font-mono text-xs p-2 bg-black/90 text-green-400 select-text"
+      class="flex-1 select-text overflow-auto bg-foreground/95 p-2 font-mono text-xs text-emerald-300 dark:text-emerald-300"
     >
-      <div v-if="logs.length === 0" class="text-muted-foreground italic">
+      <div v-if="logs.length === 0" class="italic text-muted-foreground">
         No logs yet. Start a generation to see output.
       </div>
 
       <div
         v-for="(log, index) in logs"
         :key="index"
-        class="whitespace-pre-wrap break-all leading-relaxed hover:bg-white/5"
+        class="whitespace-pre-wrap break-all leading-relaxed hover:bg-background/10"
         :class="{
           'text-red-400': log.includes('error') || log.includes('ERROR') || log.includes('[ERR]'),
-          'text-yellow-400': log.includes('warning') || log.includes('WARN'),
-          'text-blue-400': log.includes('EXIT:'),
-          'text-cyan-400': log.includes('[SD]') || log.includes('[CLI]')
+          'text-yellow-300': log.includes('warning') || log.includes('WARN'),
+          'text-blue-300': log.includes('EXIT:'),
+          'text-cyan-300': log.includes('[SD]') || log.includes('[CLI]')
         }"
       >
         {{ log }}

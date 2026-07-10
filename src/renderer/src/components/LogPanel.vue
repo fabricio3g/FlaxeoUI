@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Terminal, Trash2, RefreshCw } from 'lucide-vue-next'
+import { Terminal, Trash2, RefreshCw } from '@/lib/icons'
 import { useServerLogs } from '@/composables/useServerLogs'
 
 const autoScroll = ref(true)

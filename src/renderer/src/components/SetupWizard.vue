@@ -13,7 +13,7 @@ import {
   Video,
   Wand2,
   X
-} from 'lucide-vue-next'
+} from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { useBackend } from '@/composables/useBackend'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
@@ -236,16 +236,16 @@ watch(selectedRelease, (release) => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-[200] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm titlebar-no-drag"
+      class="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm titlebar-no-drag"
     >
       <div
         v-motion
         :initial="panelMotion.initial"
         :enter="panelMotion.enter"
-        class="setup-wizard-shell flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+        class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
       >
         <!-- Header -->
-        <header class="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-3">
+        <header class="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div>
             <h2 class="text-sm font-semibold">Setup Wizard</h2>
             <p class="text-[11px] text-muted-foreground">Step {{ stepIndex + 1 }} of 4</p>
@@ -259,9 +259,10 @@ watch(selectedRelease, (release) => {
             ></div>
           </div>
           <button
-            class="metal-icon-button p-1.5 text-muted-foreground hover:text-foreground"
             type="button"
+            class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             @click="skip"
+            aria-label="Skip setup wizard"
           >
             <X class="h-4 w-4" />
           </button>
@@ -272,12 +273,12 @@ watch(selectedRelease, (release) => {
           <!-- Welcome -->
           <div v-if="step === 'welcome'" class="space-y-6 text-center">
             <div
-              class="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg"
+              class="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground"
             >
               <Wand2 class="h-8 w-8" />
             </div>
             <div>
-              <h3 class="text-2xl font-bold">Welcome to Flaxeo</h3>
+              <h3 class="text-2xl font-bold tracking-tight">Welcome to Flaxeo</h3>
               <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 Let's get you ready to generate. The wizard will install the runtime, download a
                 starter model, and configure the app for you.
@@ -285,8 +286,8 @@ watch(selectedRelease, (release) => {
             </div>
 
             <div class="mx-auto grid max-w-lg gap-3 text-left">
-              <div class="metal-surface flex items-center gap-3 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <div class="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                   <Download class="h-4 w-4" />
                 </div>
                 <div>
@@ -296,8 +297,8 @@ watch(selectedRelease, (release) => {
                   </p>
                 </div>
               </div>
-              <div class="metal-surface flex items-center gap-3 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <div class="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                   <ImageIcon class="h-4 w-4" />
                 </div>
                 <div>
@@ -305,8 +306,8 @@ watch(selectedRelease, (release) => {
                   <p class="text-xs text-muted-foreground">SDXL, FLUX.1 Dev, or Wan2.1 video.</p>
                 </div>
               </div>
-              <div class="metal-surface flex items-center gap-3 p-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <div class="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                   <Check class="h-4 w-4" />
                 </div>
                 <div>
@@ -322,7 +323,7 @@ watch(selectedRelease, (release) => {
           <!-- Runtime -->
           <div v-else-if="step === 'runtime'" class="space-y-5">
             <div>
-              <h3 class="text-xl font-bold">Install the runtime</h3>
+              <h3 class="text-xl font-bold tracking-tight">Install the runtime</h3>
               <p class="mt-1 text-sm text-muted-foreground">
                 Flaxeo needs the
                 <code class="rounded bg-muted px-1 py-0.5 text-xs">sd-cli</code> backend to run
@@ -330,13 +331,13 @@ watch(selectedRelease, (release) => {
               </p>
             </div>
 
-            <div class="metal-surface p-4">
+            <div class="rounded-lg border border-border bg-card p-4">
               <div class="space-y-2">
                 <div
                   class="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
                 >
                   <div
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-primary text-primary-foreground"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-primary text-primary-foreground"
                   >
                     <Download class="h-4 w-4" />
                   </div>
@@ -367,7 +368,8 @@ watch(selectedRelease, (release) => {
                     "
                   />
                   <button
-                    class="primary-metal-button flex h-8 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-medium disabled:opacity-50"
+                    type="button"
+                    class="inline-flex h-8 shrink-0 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     :disabled="
                       runtimeDownloading ||
                       backend.isDownloading.value ||
@@ -407,10 +409,10 @@ watch(selectedRelease, (release) => {
                     backendValid ? '100%' : 'in progress'
                   }}</span>
                 </div>
-                <div class="download-manager-progress h-2 overflow-hidden rounded-full">
+                <div class="h-2 overflow-hidden rounded-full bg-muted">
                   <div
                     class="h-full rounded-full transition-all duration-300"
-                    :class="backendValid ? 'w-full bg-green-500' : 'w-2/3 animate-pulse bg-primary'"
+                    :class="backendValid ? 'w-full bg-emerald-500' : 'w-2/3 animate-pulse bg-primary'"
                   ></div>
                 </div>
               </div>
@@ -418,14 +420,14 @@ watch(selectedRelease, (release) => {
 
             <div
               v-if="runtimeError"
-              class="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive"
+              class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
             >
               {{ runtimeError }}
             </div>
 
             <div
               v-else-if="!backendValid && !runtimeDownloading"
-              class="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-600"
+              class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300"
             >
               If the download is taking a while, you can skip and finish setup later from Settings.
             </div>
@@ -434,7 +436,7 @@ watch(selectedRelease, (release) => {
           <!-- Model -->
           <div v-else-if="step === 'model'" class="space-y-5">
             <div>
-              <h3 class="text-xl font-bold">Choose a starter model</h3>
+              <h3 class="text-xl font-bold tracking-tight">Choose a starter model</h3>
               <p class="mt-1 text-sm text-muted-foreground">
                 Pick one pack to download now. You can always get more from the Model Hub later.
               </p>
@@ -444,8 +446,9 @@ watch(selectedRelease, (release) => {
               <button
                 v-for="packId in STARTER_PACK_IDS"
                 :key="packId"
-                class="metal-surface relative flex flex-col items-start gap-2 p-4 text-left transition-all"
-                :class="selectedPackId === packId ? 'ring-1 ring-ring' : 'hover:border-border/80'"
+                type="button"
+                class="relative flex flex-col items-start gap-2 rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                :class="selectedPackId === packId ? 'border-foreground/40 ring-1 ring-ring/40' : 'hover:bg-accent'"
                 @click="selectedPackId = packId"
               >
                 <span
@@ -454,7 +457,7 @@ watch(selectedRelease, (release) => {
                 >
                   Recommended
                 </span>
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+                <div class="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
                   <component
                     :is="packId === 'wan21' ? Video : packId === 'flux1-dev' ? Sparkles : ImageIcon"
                     class="h-5 w-5"
@@ -477,7 +480,7 @@ watch(selectedRelease, (release) => {
               </button>
             </div>
 
-            <div class="metal-surface p-4">
+            <div class="rounded-lg border border-border bg-card p-4">
               <p class="mb-2 text-sm font-medium">Files to download</p>
               <div class="space-y-2">
                 <div
@@ -504,14 +507,15 @@ watch(selectedRelease, (release) => {
                   <span class="text-muted-foreground">Downloading pack...</span>
                   <span class="text-muted-foreground">in progress</span>
                 </div>
-                <div class="download-manager-progress h-2 overflow-hidden rounded-full">
+                <div class="h-2 overflow-hidden rounded-full bg-muted">
                   <div class="h-full w-2/3 animate-pulse rounded-full bg-primary"></div>
                 </div>
               </div>
 
               <div class="mt-4 flex gap-2">
                 <button
-                  class="primary-metal-button flex h-8 flex-1 items-center justify-center gap-2 rounded-md px-4 text-xs font-medium disabled:opacity-50"
+                  type="button"
+                  class="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   :disabled="modelDownloading"
                   @click="startModelDownload"
                 >
@@ -521,7 +525,8 @@ watch(selectedRelease, (release) => {
                 </button>
                 <button
                   v-if="modelDownloading"
-                  class="metal-icon-button h-8 rounded-md px-3 text-xs text-muted-foreground hover:text-foreground"
+                  type="button"
+                  class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   @click="cancelModelDownload"
                 >
                   Cancel
@@ -533,12 +538,12 @@ watch(selectedRelease, (release) => {
           <!-- Finish -->
           <div v-else-if="step === 'finish'" class="space-y-6 text-center">
             <div
-              class="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-green-500 text-white shadow-lg"
+              class="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-500 text-white"
             >
               <Check class="h-8 w-8" />
             </div>
             <div>
-              <h3 class="text-2xl font-bold">You're all set</h3>
+              <h3 class="text-2xl font-bold tracking-tight">You're all set</h3>
               <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 The <strong>{{ selectedPack.name }}</strong> preset has been applied. You can start
                 generating now or change models anytime from the Model Hub.
@@ -547,14 +552,16 @@ watch(selectedRelease, (release) => {
 
             <div class="mx-auto flex max-w-xs flex-col gap-2">
               <button
-                class="primary-metal-button flex h-8 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium"
+                type="button"
+                class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 @click="finish"
               >
                 Start generating
                 <ArrowRight class="h-4 w-4" />
               </button>
               <button
-                class="metal-icon-button h-8 rounded-md px-3 text-xs text-muted-foreground hover:text-foreground"
+                type="button"
+                class="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 @click="skip"
               >
                 Open Model Hub instead
@@ -564,11 +571,11 @@ watch(selectedRelease, (release) => {
         </div>
 
         <!-- Footer -->
-        <footer class="flex items-center justify-between gap-3 border-t border-border/70 px-5 py-3">
+        <footer class="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
           <button
             v-if="step !== 'welcome' && step !== 'finish'"
-            class="metal-icon-button flex h-8 items-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:text-foreground"
             type="button"
+            class="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             :disabled="modelDownloading || runtimeDownloading"
             @click="back"
           >
@@ -580,14 +587,16 @@ watch(selectedRelease, (release) => {
           <div class="flex items-center gap-2">
             <button
               v-if="step === 'welcome'"
-              class="metal-icon-button h-8 rounded-md px-3 text-xs text-muted-foreground hover:text-foreground"
+              type="button"
+              class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               @click="skip"
             >
               Skip for now
             </button>
             <button
               v-if="step === 'welcome'"
-              class="primary-metal-button flex h-8 items-center gap-2 rounded-md px-4 text-xs font-medium"
+              type="button"
+              class="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               @click="next"
             >
               Get started
@@ -599,9 +608,3 @@ watch(selectedRelease, (release) => {
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-.setup-wizard-shell {
-  background: color-mix(in srgb, var(--color-card) 92%, var(--color-background));
-}
-</style>

@@ -347,7 +347,11 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       args.push('-i', initImg)
       const maskPath = fileFromUpload(req, 'mask')
       if (maskPath) args.push('--mask', maskPath)
-      args.push('--strength', String(parseFloat(body.strength) || 0.75))
+      const parsedStrength = parseFloat(String(body.strength))
+      const strength = Number.isFinite(parsedStrength)
+        ? Math.min(1, Math.max(0, parsedStrength))
+        : 0.75
+      args.push('--strength', String(strength))
       addGenerationArgs(args, body, outputPath, { width: 1024, height: 1024, cfg: 7, multiple: 64 })
       addOptionalArgs(args, body)
       addHardwareArgs(args, body, String(body.prompt || ''))
@@ -461,8 +465,25 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     const { sourceType, sourceModel, outputFormat, outputName } = req.body || {}
     if (!sourceType || !sourceModel || !outputFormat || !outputName)
       return res.status(400).json({ success: false, error: 'Missing required parameters' })
-    const sourcePath = path.join(ctx.paths.modelsDir, sourceType, sourceModel)
-    const outputPath = path.join(ctx.paths.modelsDir, sourceType, outputName)
+    const allowedSourceTypes = new Set([
+      'diffusion',
+      'uncond_diffusion',
+      'vae',
+      'llm',
+      't5xxl',
+      'clip',
+      'clip_vision'
+    ])
+    if (!allowedSourceTypes.has(String(sourceType)))
+      return res.status(400).json({ success: false, error: 'Unsupported source model category' })
+
+    const safeSourceModel = path.basename(String(sourceModel))
+    const safeOutputName = path.basename(String(outputName))
+    if (safeSourceModel !== String(sourceModel) || safeOutputName !== String(outputName))
+      return res.status(400).json({ success: false, error: 'Invalid model filename' })
+
+    const sourcePath = path.join(ctx.paths.modelsDir, sourceType, safeSourceModel)
+    const outputPath = path.join(ctx.paths.modelsDir, sourceType, safeOutputName)
     if (!fs.existsSync(sourcePath))
       return res.status(400).json({ success: false, error: 'Source model not found' })
     if (fs.existsSync(outputPath))

@@ -7,7 +7,6 @@
     "css": "src/renderer/src/assets/main.css",
     "baseColor": "zinc"
   },
-  "framework": "vite",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",

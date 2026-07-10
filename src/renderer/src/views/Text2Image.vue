@@ -6,7 +6,6 @@ import { apiPost, apiGet, getOutputUrl, apiPostForm, getFileUrl, getApiBase } fr
 import {
   ArrowUp,
   Download,
-  Minus,
   Trash2,
   X,
   User,
@@ -14,21 +13,21 @@ import {
   ImagePlus,
   Plus,
   Upload,
-  Copy,
-  ChevronUp,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Image,
-  Eye
-} from 'lucide-vue-next'
+} from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
 import { useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
+import ConfigPanel from '@/components/layout/ConfigPanel.vue'
 import Select from '@/components/ui/Select.vue'
-import Tooltip from '@/components/ui/Tooltip.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import { buttonMotion, panelMotion } from '@/lib/motion'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
@@ -47,12 +46,10 @@ const galleryImages = ref<string[]>([])
 const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
-const currentTime = ref(new Date())
 // const serverStats = ref<any>(null) // Unused
 
 // Preview polling
 let previewPollInterval: ReturnType<typeof setInterval> | null = null
-let clockInterval: ReturnType<typeof setInterval> | null = null
 
 /**
  * getPreviewImageUrl() - Get the current preview image URL with cache bust
@@ -101,10 +98,44 @@ const initImageFile = ref<File | null>(null)
 
 // Advanced sections state
 const activeTab = ref<string>('')
-const showSizeMenu = ref(false)
-const showNegPrompt = ref(false)
+const promptMode = ref<'positive' | 'negative'>('positive')
+const showPromptAssets = ref(false)
+const promptAssetFocus = ref<'lora' | 'embedding'>('lora')
+const showResolutionMenu = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
+
+const promptModeOptions = [
+  { value: 'positive', label: 'Positive' },
+  { value: 'negative', label: 'Negative' }
+]
+
+const activePrompt = computed({
+  get: () => (promptMode.value === 'positive' ? prompt.value : negativePrompt.value),
+  set: (value: string) => {
+    if (promptMode.value === 'positive') prompt.value = value
+    else negativePrompt.value = value
+  }
+})
+
+const promptSuggestions = [
+  {
+    label: 'Editorial portrait',
+    prompt: 'Editorial portrait of a person in soft window light, 85mm photography, natural skin texture'
+  },
+  {
+    label: 'Product concept',
+    prompt: 'Premium product concept on a sculptural pedestal, studio lighting, clean art direction'
+  },
+  {
+    label: 'Cinematic landscape',
+    prompt: 'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
+  },
+  {
+    label: 'Abstract poster',
+    prompt: 'Bold abstract poster with geometric forms, tactile paper texture, precise editorial layout'
+  }
+]
 
 function autoResize(): void {
   const el = promptInput.value
@@ -116,66 +147,57 @@ function autoResize(): void {
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (promptMode.value === 'positive' && e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleGenerate()
   }
 }
 
-// Size presets
-const sizePresets = [
-  { label: '512×512', width: 512, height: 512 },
-  { label: '512×768', width: 512, height: 768 },
-  { label: '768×512', width: 768, height: 512 },
-  { label: '768×1344', width: 768, height: 1344 },
-  { label: '1024×1024', width: 1024, height: 1024 },
-  { label: '1024×1536', width: 1024, height: 1536 },
-  { label: '1536×1024', width: 1536, height: 1024 },
-  { label: '1920×1080', width: 1920, height: 1080 },
-  { label: 'Manual', width: 0, height: 0 }
+function setPromptMode(value: string): void {
+  if (value === 'positive' || value === 'negative') promptMode.value = value
+}
+
+function openPromptAssetModal(focus: 'lora' | 'embedding'): void {
+  promptAssetFocus.value = focus
+  showPromptAssets.value = true
+  activeTab.value = ''
+}
+
+function usePromptSuggestion(suggestion: string): void {
+  prompt.value = suggestion
+  requestAnimationFrame(() => promptInput.value?.focus())
+}
+
+const resolutionPresets = [
+  { label: '4:3', width: 1024, height: 768 },
+  { label: '3:2', width: 1152, height: 768 },
+  { label: '16:9', width: 1152, height: 648 },
+  { label: '2.35:1', width: 1176, height: 512 },
+  { label: '1:1', width: 1024, height: 1024 },
+  { label: '4:5', width: 1024, height: 1280 },
+  { label: '2:3', width: 1024, height: 1536 },
+  { label: '9:16', width: 768, height: 1365 }
 ]
 
-const isManual = ref(false)
-
-const SAMPLER_OPTIONS = [
-  { label: 'Euler', value: 'euler' },
-  { label: 'Euler A', value: 'euler_a' },
-  { label: 'Heun', value: 'heun' },
-  { label: 'DPM2', value: 'dpm2' },
-  { label: 'DPM++ 2S a', value: 'dpm++2s_a' },
-  { label: 'DPM++ 2M', value: 'dpm++2m' },
-  { label: 'DPM++ 2M v2', value: 'dpm++2mv2' },
-  { label: 'IPNDM', value: 'ipndm' },
-  { label: 'IPNDM V', value: 'ipndm_v' },
-  { label: 'LCM', value: 'lcm' },
-  { label: 'DDIM Trailing', value: 'ddim_trailing' },
-  { label: 'TCD', value: 'tcd' },
-  { label: 'Res Multistep', value: 'res_multistep' },
-  { label: 'Res 2S', value: 'res_2s' },
-  { label: 'ER-SDE', value: 'er_sde' },
-  { label: 'Euler CFG++', value: 'euler_cfg_pp' },
-  { label: 'Euler A CFG++', value: 'euler_a_cfg_pp' }
-]
-
-const activePreset = computed(() => {
-  if (isManual.value) return sizePresets.find((p) => p.label === 'Manual')
-  return sizePresets.find((p) => p.width === config.value.width && p.height === config.value.height)
+const resolutionLabel = computed(() => {
+  const preset = resolutionPresets.find(
+    (item) => item.width === config.value.width && item.height === config.value.height
+  )
+  return preset?.label || `${config.value.width}×${config.value.height}`
 })
 
-const greetingTitle = computed(() => {
-  const hour = currentTime.value.getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-})
+function selectResolution(preset: (typeof resolutionPresets)[number]): void {
+  configStore.setDimensions(preset.width, preset.height)
+  showResolutionMenu.value = false
+}
 
-const greetingMessage = computed(() => {
-  const time = currentTime.value.toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit'
-  })
-  return time
-})
+function applyCustomResolution(): void {
+  configStore.setDimensions(
+    Math.max(64, Number(config.value.width) || 1024),
+    Math.max(64, Number(config.value.height) || 1024)
+  )
+  showResolutionMenu.value = false
+}
 
 function advancedConfigured(tab: string): boolean {
   if (tab === 'photomaker') {
@@ -198,32 +220,21 @@ function advancedConfigured(tab: string): boolean {
 }
 
 function advancedButtonClass(tab: string): string {
-  if (activeTab.value === tab) return 'primary-metal-button'
-  if (advancedConfigured(tab))
-    return 'text-primary border-primary/40 bg-primary/10 hover:text-primary'
-  return 'text-muted-foreground hover:text-foreground'
+  if (activeTab.value === tab) return 'bg-foreground text-background'
+    if (advancedConfigured(tab))
+    return 'text-foreground border-foreground/30 bg-foreground/5'
+    return 'text-muted-foreground hover:text-foreground'
 }
 
-const advancedPopoverArrowClass = computed(() => {
-  if (activeTab.value === 'photomaker') return 'right-[110px]'
-  if (activeTab.value === 'controlnet') return 'right-[78px]'
-  if (activeTab.value === 'img2img') return 'right-[46px]'
-  return 'right-[14px]'
-})
-
-function setSize(preset: (typeof sizePresets)[0]): void {
-  if (preset.label === 'Manual') {
-    isManual.value = true
-    return
+const advancedTabLabel = computed(() => {
+  const labels: Record<string, string> = {
+    photomaker: 'PhotoMaker',
+    controlnet: 'ControlNet',
+    img2img: 'Image to Image',
+    kontext: 'Reference image'
   }
-  isManual.value = false
-  configStore.setDimensions(preset.width, preset.height)
-}
-
-function selectSizePreset(preset: (typeof sizePresets)[0]): void {
-  setSize(preset)
-  showSizeMenu.value = false
-}
+  return labels[activeTab.value] || 'Advanced settings'
+})
 
 function clearControlNetImage(): void {
   config.value.controlImagePath = ''
@@ -379,6 +390,8 @@ function buildGenerationParams(): any {
     forceSDXLVaeConvScale: c.forceSDXLVaeConvScale,
     backendAssignment: c.backendAssignment,
     paramsBackendAssignment: c.paramsBackendAssignment,
+    autoFit: c.autoFit,
+    splitMode: c.splitMode,
     threads: c.threads,
     maxVram: c.maxVram,
     streamLayers: c.streamLayers,
@@ -675,20 +688,26 @@ function navigateImage(direction: number) {
   }
 }
 
-function handleSizeMenuClick(e: MouseEvent): void {
-  const target = e.target as HTMLElement
-  if (!target.closest('.size-menu')) {
-    showSizeMenu.value = false
-  }
-}
-
 function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && showPromptAssets.value) {
+    showPromptAssets.value = false
+    return
+  }
+  if (e.key === 'Escape' && showResolutionMenu.value) {
+    showResolutionMenu.value = false
+    return
+  }
   if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return
   if (e.key === 'ArrowLeft') navigateImage(-1)
   if (e.key === 'ArrowRight') navigateImage(1)
   if (e.key === 'Delete' && previewImage.value && !isGenerating.value) {
     if (confirm('Delete current image?')) deletePreview()
   }
+}
+
+function handleResolutionMenuClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement
+  if (!target.closest('.resolution-menu')) showResolutionMenu.value = false
 }
 
 // Fetch gallery on mount
@@ -714,15 +733,11 @@ onMounted(async () => {
   }
   window.addEventListener('resize', handleResize)
 
-  clockInterval = setInterval(() => {
-    currentTime.value = new Date()
-  }, 1000)
-
   // Check if sd-server is running
   await checkServerStatus()
 
   window.addEventListener('keydown', handleKeydown)
-  document.addEventListener('click', handleSizeMenuClick)
+  document.addEventListener('click', handleResolutionMenuClick)
 
   // Check for params from Gallery
   const paramsImage = sessionStorage.getItem('text2imageParams')
@@ -737,31 +752,27 @@ onMounted(async () => {
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
     window.removeEventListener('keydown', handleKeydown)
-    document.removeEventListener('click', handleSizeMenuClick)
+    document.removeEventListener('click', handleResolutionMenuClick)
     stopPreviewPolling()
-    if (clockInterval) {
-      clearInterval(clockInterval)
-      clockInterval = null
-    }
   })
 })
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden studio-canvas-bg text-foreground">
+  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
     <!-- Preview Area -->
-    <div class="flex-1 relative min-h-0 overflow-hidden p-1.5 md:p-6">
+    <div class="relative flex-1 min-h-0 overflow-hidden px-3 pt-3 md:px-8 md:pt-8">
       <div
         v-if="error"
-        class="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm flex items-center gap-2 z-50"
+        class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground shadow-sm"
       >
         {{ error }}
-        <button @click="error = null" class="hover:opacity-70"><X class="w-4 h-4" /></button>
+        <button @click="error = null" class="hover:opacity-70"><X class="h-4 w-4" /></button>
       </div>
 
-      <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
+      <div class="mx-auto flex h-full w-full max-w-4xl min-h-0 flex-col">
         <div
-          class="relative flex min-h-0 flex-1 items-center justify-center rounded-2xl metal-surface group overflow-hidden dot-grid-corners"
+          class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg group"
         >
           <img
             v-if="previewImage"
@@ -772,65 +783,73 @@ onMounted(async () => {
             class="h-full max-h-full max-w-full object-contain"
             alt="Generated image"
           />
-          <div
-            v-else
-            class="empty-preview-orb absolute inset-0 flex flex-col items-center justify-center overflow-hidden text-white"
-          >
-            <div class="empty-preview-noise"></div>
-            <div class="empty-preview-glow empty-preview-glow-a"></div>
-            <div class="empty-preview-glow empty-preview-glow-b"></div>
-            <div class="empty-preview-glow empty-preview-glow-c"></div>
+          <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
             <div
               v-if="!isGenerating"
               v-motion
               :initial="panelMotion.initial"
               :enter="panelMotion.enter"
-              class="relative z-10 flex max-w-lg flex-col items-center px-8 text-center"
+              class="flex max-w-2xl flex-col items-center px-6 text-center"
             >
-              <span class="empty-preview-brand">FlaxeoUI</span>
-              <span class="empty-preview-brand-subtitle"
-                >{{ greetingTitle }} · {{ greetingMessage }}</span
-              >
+              <h1 class="text-2xl font-semibold tracking-tight text-foreground">What will you create?</h1>
+              <div class="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Prompt ideas">
+                <button
+                  v-for="suggestion in promptSuggestions"
+                  :key="suggestion.label"
+                  type="button"
+                  class="inline-flex h-7 items-center rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  @click="usePromptSuggestion(suggestion.prompt)"
+                >
+                  {{ suggestion.label }}
+                </button>
+              </div>
+            </div>
+            <div v-else class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <span class="relative flex h-2 w-2">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-50"></span>
+                <span class="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
+              </span>
+              Creating image
             </div>
           </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
-            class="absolute inset-0 pointer-events-none flex items-center justify-between px-4"
+            class="pointer-events-none absolute inset-0 flex items-center justify-between px-4"
           >
             <button
               @click="navigateImage(-1)"
-              class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-colors backdrop-blur-sm"
+              class="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background transition-colors hover:bg-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="{ 'opacity-0 cursor-default': isFirstImage }"
               :disabled="isFirstImage"
             >
-              <ChevronLeft class="w-8 h-8" />
+              <ChevronLeft class="size-5" />
             </button>
             <button
               @click="navigateImage(1)"
-              class="pointer-events-auto p-2 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-colors backdrop-blur-sm"
+              class="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background transition-colors hover:bg-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="{ 'opacity-0 cursor-default': isLastImage }"
               :disabled="isLastImage"
             >
-              <ChevronRight class="w-8 h-8" />
+              <ChevronRight class="size-5" />
             </button>
           </div>
           <div
             v-if="previewImage && !isGenerating"
-            class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            class="absolute right-2 top-2 z-10 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100"
           >
             <button
               @click="deletePreview"
-              class="p-2 rounded-xl bg-card/85 hover:bg-destructive hover:text-destructive-foreground transition-colors shadow-sm backdrop-blur"
+              class="inline-flex size-9 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Delete image"
             >
-              <Trash2 class="w-4 h-4" />
+              <Trash2 class="size-4" />
             </button>
             <a
               :href="previewImage"
               :download="previewImage.split('/').pop()"
-              class="p-2 rounded-xl bg-card/85 hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm backdrop-blur"
+              class="inline-flex size-9 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Download image"
-              ><Download class="w-4 h-4"
+              ><Download class="size-4"
             /></a>
           </div>
         </div>
@@ -851,425 +870,294 @@ onMounted(async () => {
               <Image class="h-3.5 w-3.5" /> Recent generations ({{ galleryImages.length }})
             </h3>
           </div>
-          <div class="generation-media-strip relative group/carousel">
+          <div class="relative rounded-lg border border-border bg-card p-2 group/carousel">
             <div
               ref="carouselRef"
-              class="flex gap-2 overflow-x-auto p-2 snap-x scroll-smooth no-scrollbar md:gap-3"
+              class="flex gap-2 overflow-x-auto p-1 snap-x scroll-smooth no-scrollbar md:gap-3"
             >
               <button
                 v-for="img in galleryImages"
                 :key="img"
                 @click="selectGalleryImage(img)"
-                class="generation-media-thumb group relative h-16 w-16 shrink-0 snap-start overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50 md:h-20 md:w-20"
+                class="relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-md border border-transparent transition-all md:h-20 md:w-20 focus:outline-none focus:ring-2 focus:ring-ring/40 hover:opacity-100"
                 :class="
                   previewImage === getOutputUrl(img)
-                    ? 'is-active z-10'
-                    : 'opacity-72 hover:opacity-100'
+                    ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
+                    : 'opacity-70'
                 "
               >
                 <img
                   :src="getOutputUrl(img)"
-                  class="w-full h-full object-cover"
+                  class="h-full w-full object-cover"
                   loading="lazy"
                   :alt="img"
                 />
               </button>
             </div>
             <div
-              class="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none"
+              class="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent"
             ></div>
             <div
-              class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none"
+              class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent"
             ></div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="shrink-0 px-3 md:px-5 pb-3 md:pb-4 pt-2 md:pt-3">
-      <div class="flaxeo-generation-controls relative overflow-visible rounded-3xl">
-        <!-- Quick Controls Row -->
+    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
+      <div class="relative mx-auto flex w-full max-w-4xl flex-col rounded-lg border border-border bg-card shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
+        <!-- Top inline row: Positive / Negative + LoRA + Embedding -->
         <div
-          class="px-2 md:px-5 py-1.5 md:py-3 flex items-center gap-1.5 md:gap-2 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap md:flex-wrap text-xs"
+          class="flex flex-nowrap items-center gap-1 whitespace-nowrap px-2 pt-2 text-xs md:px-3 md:pt-3"
+          role="tablist"
+          aria-label="Prompt mode"
         >
-          <!-- Generation Params -->
-          <div
-            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
+          <SegmentedControl
+            :model-value="promptMode"
+            :options="promptModeOptions"
+            size="sm"
+            aria-label="Prompt mode"
+            @update:model-value="setPromptMode"
+          />
+          <button
+            type="button"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none"
+            :class="config.loras.length ? 'bg-foreground/5 text-foreground' : ''"
+            title="Configure LoRA modules"
+            @click="openPromptAssetModal('lora')"
           >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Batch</span>
-            <input
-              v-model.number="config.batchCount"
-              type="number"
-              min="1"
-              max="16"
-              class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
+            <span>LoRA</span>
+            <span v-if="config.loras.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.loras.length }}</span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none"
+            :class="config.embeddings.length ? 'bg-foreground/5 text-foreground' : ''"
+            title="Configure embeddings"
+            @click="openPromptAssetModal('embedding')"
+          >
+            <span>Embedding</span>
+            <span v-if="config.embeddings.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.embeddings.length }}</span>
+          </button>
+        </div>
+
+        <!-- Textarea + send button -->
+        <div class="flex items-end gap-2 px-2 pt-1.5 pb-2 md:px-3">
+          <div class="relative flex-1">
+            <textarea
+              v-model="activePrompt"
+              ref="promptInput"
+              rows="1"
+              :placeholder="
+                promptMode === 'positive'
+                  ? 'Describe the image you want to generate...'
+                  : 'Describe what should stay out of the image...'
+              "
+              class="flex w-full resize-none rounded-md border-0 bg-transparent px-3 py-2.5 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:px-4 md:py-3 overflow-y-auto"
+              :style="{
+                minHeight: isMobile ? '72px' : '88px',
+                maxHeight: isMobile ? '160px' : '220px'
+              }"
+              :disabled="isGenerating"
+              @keydown="onPromptKeydown"
+              @input="autoResize"
+            ></textarea>
+            <span
+              v-if="promptMode === 'positive' && config.embeddings.length > 0"
+              class="absolute right-2 top-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+              >{{ config.embeddings.length }} embeds</span
+            >
+            <div class="absolute bottom-3 right-3 flex items-end">
+              <button
+                v-if="!isGenerating"
+                v-motion
+                :hovered="buttonMotion.hovered"
+                :tapped="buttonMotion.tapped"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Generate"
+                aria-label="Generate image"
+              >
+                <ArrowUp class="size-3.5 stroke-[2.5]" />
+              </button>
+              <button
+                v-else
+                v-motion
+                :hovered="buttonMotion.hovered"
+                :tapped="buttonMotion.tapped"
+                @click="handleCancel"
+                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Cancel"
+                aria-label="Cancel generation"
+              >
+                <X class="size-3.5" />
+              </button>
+            </div>
           </div>
-          <div
-            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
-          >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">Steps</span>
+        </div>
+
+        <!-- Section 4: Quick controls (Steps, CFG, Seed, Scheduler, Sampler, Resolution, advanced tools) -->
+        <div
+          class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-2 pb-2 text-xs md:px-3"
+        >
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Steps</span>
             <input
               v-model.number="config.steps"
               type="number"
               min="1"
-              max="100"
-              class="w-6 md:w-8 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              max="150"
+              aria-label="Steps"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div
-            class="flex items-center gap-1.5 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
-          >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">CFG</span>
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">CFG</span>
             <input
               v-model.number="config.cfgScale"
               type="number"
               min="0"
               max="30"
               step="0.5"
-              class="w-7 md:w-9 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              aria-label="CFG scale"
+              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div
-            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 min-w-0 shrink-0"
-          >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70 shrink-0"
-              >Sampler</span
-            >
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Seed</span>
+            <input
+              v-model.number="config.seed"
+              type="number"
+              min="-1"
+              aria-label="Seed"
+              title="Use -1 for a random seed"
+              class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Scheduler</span>
+            <Select
+              v-model="config.scheduler"
+              size="sm"
+              aria-label="Scheduler"
+              :options="schedulerOptions"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Sampler</span>
             <Select
               v-model="config.sampler"
               size="sm"
-              placeholder="Sampler"
-              :options="SAMPLER_OPTIONS"
-              class="!border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 !text-[11px] md:!text-xs !font-bold !w-[70px] md:!w-[80px]"
+              aria-label="Sampler"
+              :options="samplerOptions"
             />
           </div>
-          <div class="relative size-menu shrink-0">
+          <div class="relative shrink-0">
             <button
-              @click="showSizeMenu = !showSizeMenu"
-              class="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] md:text-xs font-medium rounded-lg transition-colors shrink-0 leading-none bg-card border border-border h-7 md:h-8"
+              type="button"
+              class="inline-flex h-7 items-center gap-1 rounded-md px-2 font-medium transition-colors focus-visible:outline-none"
+              :class="showResolutionMenu ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+              :aria-expanded="showResolutionMenu"
+              aria-label="Resolution"
+              @click.stop="showResolutionMenu = !showResolutionMenu"
             >
-              <span>{{ activePreset?.label ?? config.width + '×' + config.height }}</span>
-              <ChevronUp class="w-3 h-3" />
+              <span>{{ resolutionLabel }}</span>
+              <ChevronUp v-if="showResolutionMenu" class="h-3 w-3" />
+              <ChevronDown v-else class="h-3 w-3" />
             </button>
             <div
-              v-if="showSizeMenu"
-              class="absolute bottom-full left-0 z-50 mb-1 w-28 rounded-lg border border-border/70 bg-popover p-1 text-popover-foreground shadow-lg"
+              v-if="showResolutionMenu"
+              class="resolution-menu absolute right-0 bottom-full z-[100] mb-1 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+              @click.stop
             >
-              <button
-                v-for="preset in sizePresets"
-                :key="preset.label"
-                @click="selectSizePreset(preset)"
-                class="w-full text-left px-2 py-1 text-[10px] font-medium rounded hover:bg-muted/60 transition-colors"
-                :class="
-                  activePreset?.label === preset.label
-                    ? 'text-foreground bg-muted/40'
-                    : 'text-muted-foreground'
-                "
-              >
-                {{ preset.label === 'Manual' ? 'Manual' : preset.width + '×' + preset.height }}
-              </button>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button
+                  v-for="preset in resolutionPresets"
+                  :key="preset.label"
+                  type="button"
+                  class="flex flex-col items-center justify-center rounded-md border p-2 text-xs transition-colors hover:bg-accent"
+                  :class="
+                    resolutionLabel === preset.label
+                      ? 'border-foreground/30 bg-foreground/5 text-foreground'
+                      : 'border-transparent text-muted-foreground'
+                  "
+                  @click="selectResolution(preset)"
+                >
+                  <span class="font-semibold">{{ preset.label }}</span>
+                  <small class="text-[10px] text-muted-foreground">{{ preset.width }}×{{ preset.height }}</small>
+                </button>
+              </div>
+              <div class="mt-3 border-t border-border pt-3">
+                <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</span>
+                <div class="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    v-model.number="config.width"
+                    type="number"
+                    min="64"
+                    step="64"
+                    aria-label="Custom width"
+                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  />
+                  <span class="text-muted-foreground">×</span>
+                  <input
+                    v-model.number="config.height"
+                    type="number"
+                    min="64"
+                    step="64"
+                    aria-label="Custom height"
+                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  />
+                  <button
+                    type="button"
+                    class="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    @click="applyCustomResolution"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-          <div
-            v-if="isManual"
-            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
-          >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">W</span>
-            <input
-              v-model.number="config.width"
-              type="number"
-              step="64"
-              class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-          </div>
-          <div
-            v-if="isManual"
-            class="flex items-center gap-1 h-7 md:h-8 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 shrink-0"
-          >
-            <span class="text-[10px] md:text-[11px] font-semibold text-foreground/70">H</span>
-            <input
-              v-model.number="config.height"
-              type="number"
-              step="64"
-              class="w-10 md:w-12 bg-transparent text-[11px] md:text-xs font-bold text-foreground focus:outline-none text-center appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-          </div>
-          <div
-            class="flex items-center gap-1 h-7 md:h-8 shrink-0 bg-card border border-border rounded-lg px-1.5 py-0.5 md:px-2 md:py-1"
-          >
-            <Eye class="w-3 h-3 text-muted-foreground" />
-            <Select
-              v-model="config.livePreviewMethod"
-              size="sm"
-              placeholder="None"
-              class="!w-auto !min-w-[56px] md:!min-w-[68px] !h-6 md:!h-8 !border-0 !bg-transparent !p-0 !shadow-none !focus:ring-0 text-[10px]"
-              :options="[
-                { label: 'None', value: '' },
-                { label: 'Proj', value: 'proj' },
-                { label: 'TAE', value: 'tae' },
-                { label: 'VAE', value: 'vae' }
-              ]"
-            />
-          </div>
-          <div class="flex-1 hidden md:block"></div>
-          <div class="relative flex items-center gap-1 shrink-0">
-            <!-- Mobile Backdrop for Popovers -->
-            <div
-              v-if="activeTab"
-              class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-              @click="activeTab = ''"
-            ></div>
-
-            <div
-              v-if="activeTab"
-              class="border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur z-50 md:absolute md:bottom-full md:right-0 md:mb-3 md:w-[520px] md:rounded-lg fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:inset-auto rounded-2xl"
-            >
-              <div v-if="activeTab === 'photomaker'" class="space-y-3">
-                <div class="flex flex-col md:flex-row items-start gap-3">
-                  <div class="flex-1">
-                    <span class="preset-modal-label">ID Images (Max 4)</span>
-                    <div class="flex gap-2 flex-wrap">
-                      <div
-                        v-for="(img, idx) in config.photoMakerImages"
-                        :key="idx"
-                        class="flaxeo-image-card group"
-                      >
-                        <img :src="getFileUrl(img)" />
-                        <button
-                          @click="removePMImage(idx)"
-                          class="flaxeo-image-remove"
-                          title="Remove image"
-                        >
-                          <X class="w-3 h-3" />
-                        </button>
-                      </div>
-                      <label
-                        v-if="config.photoMakerImages.length < 4"
-                        class="flaxeo-image-upload"
-                        title="Add ID image"
-                      >
-                        <Plus class="w-5 h-5" />
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          class="hidden"
-                          @change="handlePMUpload"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                  <div class="w-full md:w-48">
-                    <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                      >Style Strength ({{ config.photoMakerStyleStrength }})</label
-                    >
-                    <input
-                      v-model.number="config.photoMakerStyleStrength"
-                      type="range"
-                      min="0"
-                      max="100"
-                      class="w-full accent-primary"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div v-if="activeTab === 'controlnet'" class="space-y-3">
-                <div class="flex flex-col md:flex-row items-start gap-3">
-                  <div>
-                    <span class="preset-modal-label">Control Image</span>
-                    <div class="flaxeo-image-card group">
-                      <img
-                        v-if="config.controlImagePath"
-                        :src="getFileUrl(config.controlImagePath)"
-                      />
-                      <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
-                      >
-                        <Upload v-if="!config.controlImagePath" class="w-5 h-5" />
-                        <span v-if="!config.controlImagePath">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          class="hidden"
-                          @change="handleCNUpload"
-                        />
-                      </label>
-                      <button
-                        v-if="config.controlImagePath"
-                        @click.stop="clearControlNetImage"
-                        class="flaxeo-image-remove"
-                        title="Remove control image"
-                      >
-                        <X class="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <div class="flex-1 space-y-3 min-w-0">
-                    <div>
-                      <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                        >Strength ({{ config.controlNetStrength }})</label
-                      >
-                      <input
-                        v-model.number="config.controlNetStrength"
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.1"
-                        class="w-full accent-primary"
-                      />
-                    </div>
-                    <label class="flex items-center gap-2 text-xs"
-                      ><input
-                        v-model="config.applyCanny"
-                        type="checkbox"
-                        class="rounded border-border"
-                      />Apply Canny Preprocessor</label
-                    >
-                  </div>
-                </div>
-              </div>
-              <div v-if="activeTab === 'img2img'">
-                <div class="flex flex-col md:flex-row items-start gap-3">
-                  <div>
-                    <span class="preset-modal-label">Init Image</span>
-                    <div class="flaxeo-image-card group">
-                      <img
-                        v-if="config.initImagePath"
-                        :src="getFileUrl(config.initImagePath)"
-                      />
-                      <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
-                      >
-                        <Upload v-if="!config.initImagePath" class="w-5 h-5" />
-                        <span v-if="!config.initImagePath">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          class="hidden"
-                          @change="handleInitImageUpload"
-                        />
-                      </label>
-                      <button
-                        v-if="config.initImagePath"
-                        @click.stop="clearInitImage"
-                        class="flaxeo-image-remove"
-                        title="Remove init image"
-                      >
-                        <X class="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <div class="flex-1 space-y-3 min-w-0">
-                    <div>
-                      <label class="text-[11px] font-medium text-muted-foreground block mb-2"
-                        >Denoising Strength ({{ config.img2imgStrength }})</label
-                      >
-                      <input
-                        v-model.number="config.img2imgStrength"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        class="w-full accent-primary"
-                      />
-                      <div class="flex justify-between text-[10px] text-muted-foreground mt-1">
-                        <span>Original</span><span>Generated</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="activeTab === 'kontext'">
-                <div class="flex flex-col md:flex-row items-start gap-3">
-                  <div>
-                    <span class="preset-modal-label">Ref Image</span>
-                    <div class="flaxeo-image-card group">
-                      <img
-                        v-if="config.kontextRefImage"
-                        :src="getFileUrl(config.kontextRefImage)"
-                      />
-                      <label
-                        class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
-                      >
-                        <Upload v-if="!config.kontextRefImage" class="w-5 h-5" />
-                        <span v-if="!config.kontextRefImage">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          class="hidden"
-                          @change="handleKontextUpload"
-                        />
-                      </label>
-                      <button
-                        v-if="config.kontextRefImage"
-                        @click.stop="clearKontextImage"
-                        class="flaxeo-image-remove"
-                        title="Remove reference image"
-                      >
-                        <X class="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <p class="text-[11px] leading-4 text-muted-foreground flex-1 pt-1">
-                    Use this for context-aware editing or reference-guided generation with
-                    consistent styles.
-                  </p>
-                </div>
-              </div>
-              <div
-                class="hidden md:block absolute -bottom-1 h-2 w-2 rotate-45 border-b border-r border-border/70 bg-popover/95"
-                :class="advancedPopoverArrowClass"
-              ></div>
-            </div>
+          <div class="relative flex shrink-0 items-center gap-1">
             <button
               @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
-              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('photomaker')"
               title="PhotoMaker"
+              aria-label="Open PhotoMaker settings"
             >
-              <User class="w-4 h-4 md:w-3 md:h-3" />
+              <User class="size-4" />
             </button>
             <button
               @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
-              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('controlnet')"
               title="ControlNet"
+              aria-label="Open ControlNet settings"
             >
-              <Activity class="w-4 h-4 md:w-3 md:h-3" />
+              <Activity class="size-4" />
             </button>
             <button
               @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
-              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('img2img')"
               title="Image to Image"
+              aria-label="Open Image to Image settings"
             >
-              <Image class="w-4 h-4 md:w-3 md:h-3" />
+              <Image class="size-4" />
             </button>
             <button
               @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
-              class="h-8 w-8 md:h-7 md:w-7 metal-icon-button flex items-center justify-center rounded-lg"
+              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('kontext')"
               title="Reference (Flux)"
+              aria-label="Open Reference (Flux) settings"
             >
-              <ImagePlus class="w-4 h-4 md:w-3 md:h-3" />
+              <ImagePlus class="size-4" />
             </button>
           </div>
-          <div class="flex items-center gap-1.5 text-muted-foreground shrink-0">
-            <button
-              @click="showNegPrompt = !showNegPrompt"
-              class="h-7 w-7 md:h-8 md:w-8 metal-icon-button flex items-center justify-center transition-colors duration-150 rounded-lg"
-              :class="
-                showNegPrompt
-                  ? 'primary-metal-button text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-              title="Negative Prompt"
-            >
-              <Minus class="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div class="h-5 w-px bg-border/80 hidden md:block shrink-0"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
@@ -1277,71 +1165,235 @@ onMounted(async () => {
             class="shrink-0"
           />
         </div>
+      </div>
+    </div>
 
-        <!-- Floating Input Bar -->
-        <div class="flax-composer rounded-2xl px-0.5 md:px-0">
-          <div class="flax-composer-input-row flex items-end gap-2">
-            <div class="flex-1 relative">
-              <textarea
-                v-model="prompt"
-                ref="promptInput"
-                rows="1"
-                placeholder="Describe the image you want to generate..."
-                class="flax-composer-textarea w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-5 md:py-4 pr-14 md:pr-16 text-[15px] md:text-lg leading-6 md:leading-7 text-foreground transition-shadow duration-150 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50 overflow-y-auto"
-                :style="{
-                  minHeight: isMobile ? '64px' : '120px',
-                  maxHeight: isMobile ? '160px' : '360px'
-                }"
-                :disabled="isGenerating"
-                @keydown="onPromptKeydown"
-                @input="autoResize"
-              ></textarea>
-              <span
-                v-if="config.embeddings.length > 0"
-                class="absolute top-1 right-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px]"
-                >{{ config.embeddings.length }} embeds</span
-              >
-              <div class="absolute bottom-3 right-3 flex items-end">
-                <button
-                  v-if="!isGenerating"
-                  v-motion
-                  :hovered="buttonMotion.hovered"
-                  :tapped="buttonMotion.tapped"
-                  @click="handleGenerate"
-                  :disabled="!prompt.trim()"
-                  class="flax-composer-send metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Generate"
+    <div
+      v-if="showPromptAssets"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
+      @click="showPromptAssets = false"
+    >
+      <div
+        class="flex h-[min(80vh,720px)] w-[min(72rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+        @click.stop
+      >
+        <ConfigPanel
+          :collapsed="false"
+          :focus="promptAssetFocus"
+          @close="showPromptAssets = false"
+        />
+      </div>
+    </div>
+
+    <!-- Advanced tool modal (PhotoMaker / ControlNet / Img2Img / Kontext) -->
+    <Teleport to="body">
+      <div
+        v-if="activeTab"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
+        @click="activeTab = ''"
+      >
+        <div
+          class="relative w-[28rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+          role="dialog"
+          aria-modal="true"
+          @click.stop
+        >
+          <header class="flex items-start justify-between border-b border-border p-4">
+            <div>
+              <h2 class="text-base font-semibold tracking-tight">{{ advancedTabLabel }}</h2>
+              <p class="mt-0.5 text-xs text-muted-foreground">Configure this generation tool.</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :aria-label="`Close ${advancedTabLabel}`"
+              :title="`Close ${advancedTabLabel}`"
+              @click="activeTab = ''"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </header>
+          <div class="space-y-4 p-4">
+            <div v-if="activeTab === 'photomaker'" class="space-y-3">
+              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">ID Images (Max 4)</span>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="(img, idx) in config.photoMakerImages"
+                  :key="idx"
+                  class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30"
                 >
-                  <span class="flax-composer-send-icon inline-flex"
-                    ><ArrowUp class="w-4.5 h-4.5 stroke-[2.5]"
-                  /></span>
-                </button>
-                <button
-                  v-else
-                  v-motion
-                  :hovered="buttonMotion.hovered"
-                  :tapped="buttonMotion.tapped"
-                  @click="handleCancel"
-                  class="metal-icon-button flex items-center justify-center h-8 w-8 rounded-lg"
-                  title="Cancel"
+                  <img :src="getFileUrl(img)" class="h-full w-full object-cover" />
+                  <button
+                    @click="removePMImage(idx)"
+                    class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    title="Remove image"
+                  >
+                    <X class="h-3 w-3" />
+                  </button>
+                </div>
+                <label
+                  v-if="config.photoMakerImages.length < 4"
+                  class="flex size-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-accent hover:text-foreground"
+                  title="Add ID image"
                 >
-                  <X class="w-4.5 h-4.5" />
-                </button>
+                  <Plus class="h-5 w-5" />
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    class="hidden"
+                    @change="handlePMUpload"
+                  />
+                </label>
+              </div>
+              <div>
+                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >Style Strength ({{ config.photoMakerStyleStrength }})</label
+                >
+                <input
+                  v-model.number="config.photoMakerStyleStrength"
+                  type="range"
+                  min="0"
+                  max="100"
+                  class="w-full accent-primary"
+                />
               </div>
             </div>
-          </div>
-
-          <div v-if="showNegPrompt" class="mt-2 border-t border-border/50 pt-2">
-            <textarea
-              v-model="negativePrompt"
-              rows="2"
-              placeholder="Things to avoid: blurry, low quality, distorted..."
-              class="flax-composer-negative w-full resize-none metal-surface !rounded-xl px-3 py-2 md:px-4 md:py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/50"
-              :disabled="isGenerating"
-            ></textarea>
+            <div v-if="activeTab === 'controlnet'" class="space-y-3">
+              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Control Image</span>
+              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+                <img
+                  v-if="config.controlImagePath"
+                  :src="getFileUrl(config.controlImagePath)"
+                  class="h-full w-full object-cover"
+                />
+                <label
+                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
+                >
+                  <Upload v-if="!config.controlImagePath" class="h-5 w-5" />
+                  <span v-if="!config.controlImagePath" class="mt-1 text-[10px] font-semibold">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleCNUpload"
+                  />
+                </label>
+                <button
+                  v-if="config.controlImagePath"
+                  @click.stop="clearControlNetImage"
+                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Remove control image"
+                >
+                  <X class="h-3 w-3" />
+                </button>
+              </div>
+              <div>
+                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >Strength ({{ config.controlNetStrength }})</label
+                >
+                <input
+                  v-model.number="config.controlNetStrength"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  class="w-full accent-primary"
+                />
+              </div>
+              <label class="flex items-center gap-2 text-xs">
+                <input
+                  v-model="config.applyCanny"
+                  type="checkbox"
+                  class="rounded border-border"
+                />
+                Apply Canny Preprocessor
+              </label>
+            </div>
+            <div v-if="activeTab === 'img2img'" class="space-y-3">
+              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Init Image</span>
+              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+                <img
+                  v-if="config.initImagePath"
+                  :src="getFileUrl(config.initImagePath)"
+                  class="h-full w-full object-cover"
+                />
+                <label
+                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
+                >
+                  <Upload v-if="!config.initImagePath" class="h-5 w-5" />
+                  <span v-if="!config.initImagePath" class="mt-1 text-[10px] font-semibold">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleInitImageUpload"
+                  />
+                </label>
+                <button
+                  v-if="config.initImagePath"
+                  @click.stop="clearInitImage"
+                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Remove init image"
+                >
+                  <X class="h-3 w-3" />
+                </button>
+              </div>
+              <div>
+                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >Denoising Strength ({{ config.img2imgStrength }})</label
+                >
+                <input
+                  v-model.number="config.img2imgStrength"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  class="w-full accent-primary"
+                />
+                <div class="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                  <span>Original</span><span>Generated</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="activeTab === 'kontext'" class="space-y-3">
+              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Ref Image</span>
+              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+                <img
+                  v-if="config.kontextRefImage"
+                  :src="getFileUrl(config.kontextRefImage)"
+                  class="h-full w-full object-cover"
+                />
+                <label
+                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
+                >
+                  <Upload v-if="!config.kontextRefImage" class="h-5 w-5" />
+                  <span v-if="!config.kontextRefImage" class="mt-1 text-[10px] font-semibold">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleKontextUpload"
+                  />
+                </label>
+                <button
+                  v-if="config.kontextRefImage"
+                  @click.stop="clearKontextImage"
+                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Remove reference image"
+                >
+                  <X class="h-3 w-3" />
+                </button>
+              </div>
+              <p class="text-[11px] leading-4 text-muted-foreground">
+                Use this for context-aware editing or reference-guided generation with consistent
+                styles.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Teleport>
+
   </div>
 </template>
