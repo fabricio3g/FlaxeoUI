@@ -1170,11 +1170,11 @@ onMounted(async () => {
 
     <div
       v-if="showPromptAssets"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
       @click="showPromptAssets = false"
     >
       <div
-        class="flex h-[min(80vh,720px)] w-[min(72rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+        class="flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
         @click.stop
       >
         <ConfigPanel
@@ -1189,7 +1189,7 @@ onMounted(async () => {
     <Teleport to="body">
       <div
         v-if="activeTab"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
         @click="activeTab = ''"
       >
         <div

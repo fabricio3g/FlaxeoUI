@@ -216,8 +216,7 @@ onUnmounted(() => {
 
           <div
             v-if="configPanelVisible"
-            class="absolute inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
-            :class="[showMobileConfig ? 'md:hidden' : 'hidden md:block']"
+            class="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
             @click="closeConfigPanel"
           >
             <div
