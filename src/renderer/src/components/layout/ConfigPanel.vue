@@ -824,13 +824,13 @@ onUnmounted(() => {
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
 
     <template v-if="!props.collapsed">
-      <div class="hidden h-12 items-center justify-between border-b border-border px-4 md:flex">
+      <div class="hidden h-12 items-center justify-between px-4 md:flex">
         <div class="flex min-w-0 items-center gap-2 text-sm font-semibold">
           <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
           <span class="truncate">{{ panelTitle }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span>
+          <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span>
           <button
             type="button"
             class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -844,7 +844,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Mobile Header -->
-      <div class="mobile-sheet-header md:hidden flex items-center justify-between px-5 py-3 border-b border-border shrink-0 bg-card">
+      <div class="mobile-sheet-header md:hidden flex items-center justify-between px-5 py-3 shrink-0 bg-card">
         <h2 class="text-sm font-bold flex items-center gap-2">
           <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
           {{ panelTitle }}
