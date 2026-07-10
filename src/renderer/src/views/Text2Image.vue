@@ -933,7 +933,7 @@ onMounted(async () => {
             <span>Embedding</span>
             <span v-if="config.embeddings.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.embeddings.length }}</span>
           </button>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Preview</span>
             <Select
               v-model="config.livePreviewMethod"
@@ -948,7 +948,7 @@ onMounted(async () => {
                 { label: 'VAE', value: 'vae' }
               ]"
             />
-          </div>
+          </label>
         </div>
 
         <!-- Textarea + send button -->
@@ -1039,7 +1039,7 @@ onMounted(async () => {
               class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Scheduler</span>
             <Select
               v-model="config.scheduler"
@@ -1048,8 +1048,8 @@ onMounted(async () => {
               class="border-0 bg-transparent"
               :options="schedulerOptions"
             />
-          </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          </label>
+          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Sampler</span>
             <Select
               v-model="config.sampler"
@@ -1058,7 +1058,7 @@ onMounted(async () => {
               class="border-0 bg-transparent"
               :options="samplerOptions"
             />
-          </div>
+          </label>
           <div class="relative shrink-0">
             <button
               type="button"

@@ -606,7 +606,7 @@ onUnmounted(() => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Scheduler</span>
             <Select
               v-model="config.scheduler"
@@ -615,8 +615,8 @@ onUnmounted(() => {
               class="border-0 bg-transparent"
               :options="schedulerOptions"
             />
-          </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          </label>
+          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Sampler</span>
             <Select
               v-model="config.sampler"
@@ -625,7 +625,7 @@ onUnmounted(() => {
               class="border-0 bg-transparent"
               :options="samplerOptions"
             />
-          </div>
+          </label>
 
           <div class="hidden flex-1 md:block"></div>
 
