@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast'
 import { X, CheckCircle, XCircle, AlertTriangle, Info } from '@/lib/icons'
-import { subtleButtonMotion, toastMotion } from '@/lib/motion'
 
 const { toasts, remove } = useToast()
 
@@ -13,39 +12,33 @@ const icons = {
 }
 
 const styles = {
-  success: 'bg-green-500/90 text-white',
-  error: 'bg-red-500/90 text-white',
-  warning: 'bg-yellow-500/90 text-black',
+  success: 'bg-emerald-500/90 text-white',
+  error: 'bg-destructive/90 text-white',
+  warning: 'bg-amber-500/90 text-black',
   info: 'bg-blue-500/90 text-white'
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div class="fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2">
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          v-motion
-          :initial="toastMotion.initial"
-          :enter="toastMotion.enter"
-          :leave="toastMotion.leave"
           :class="[
-            'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm',
+            'flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg backdrop-blur-sm',
             styles[toast.type]
           ]"
         >
-          <component :is="icons[toast.type]" class="w-5 h-5 shrink-0" />
-          <span class="text-sm font-medium flex-1">{{ toast.message }}</span>
+          <component :is="icons[toast.type]" class="h-5 w-5 shrink-0" />
+          <span class="flex-1 text-sm font-medium">{{ toast.message }}</span>
           <button
-            v-motion
-            :hovered="subtleButtonMotion.hovered"
-            :tapped="subtleButtonMotion.tapped"
+            type="button"
             @click="remove(toast.id)"
-            class="p-0.5 rounded hover:bg-white/20 transition-colors"
+            class="rounded p-0.5 transition-colors hover:bg-white/20 active:scale-95"
           >
-            <X class="w-4 h-4" />
+            <X class="h-4 w-4" />
           </button>
         </div>
       </TransitionGroup>

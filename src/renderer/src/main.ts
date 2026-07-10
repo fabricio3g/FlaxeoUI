@@ -1,7 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { MotionPlugin } from '@vueuse/motion'
 
 import App from './App.vue'
 import './assets/main.css'
@@ -42,7 +41,6 @@ const app = createApp(App)
 // Configure plugins
 app.use(createPinia()) // State management
 app.use(router) // Routing
-app.use(MotionPlugin) // Animations from @vueuse/motion
 
 // Mount application
 app.mount('#app')

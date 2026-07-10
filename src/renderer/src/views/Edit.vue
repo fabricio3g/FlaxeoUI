@@ -12,7 +12,6 @@ import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import { buttonMotion, panelMotion } from '@/lib/motion'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
 const router = useRouter()
@@ -585,7 +584,7 @@ onUnmounted(() => {
             v-if="!baseImage"
             class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
           >
-            <div v-motion :initial="panelMotion.initial" :enter="panelMotion.enter" class="flex max-w-sm flex-col items-center">
+            <div class="flex max-w-sm flex-col items-center">
               <h2 class="text-xl font-semibold tracking-tight">Start with an image</h2>
               <p class="mt-1 text-sm text-muted-foreground">Choose a source image to edit or paint a mask over.</p>
               <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -609,10 +608,7 @@ onUnmounted(() => {
 
           <div
             v-else
-            v-motion
-            :initial="panelMotion.initial"
-            :enter="panelMotion.enter"
-            class="relative inline-block max-h-full max-w-full transition-transform duration-75"
+            class="animate-in fade-in duration-200 relative inline-block max-h-full max-w-full transition-transform duration-75"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
           >
@@ -793,12 +789,9 @@ onUnmounted(() => {
             <div class="absolute bottom-3 right-3 flex items-end">
               <button
                 v-if="!isGenerating"
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
                 @click="handleGenerate"
                 :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Inpaint"
                 aria-label="Inpaint"
               >
@@ -806,11 +799,8 @@ onUnmounted(() => {
               </button>
               <button
                 v-else
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
                 @click="handleCancel"
-                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Cancel"
                 aria-label="Cancel generation"
               >

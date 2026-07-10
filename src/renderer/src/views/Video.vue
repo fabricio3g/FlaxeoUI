@@ -11,7 +11,6 @@ import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import { buttonMotion, panelMotion } from '@/lib/motion'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
 const configStore = useConfigStore()
@@ -330,21 +329,18 @@ onUnmounted(() => {
           >
             <video
               v-if="generatedVideo"
-              v-motion
-              :initial="panelMotion.initial"
-              :enter="panelMotion.enter"
               :src="generatedVideo"
               controls
               autoplay
               loop
-              class="h-full max-h-full max-w-full object-contain"
+              class="animate-in fade-in duration-200 h-full max-h-full max-w-full object-contain"
             ></video>
 
             <div
               v-else
               class="flex flex-col items-center justify-center px-6 text-center"
             >
-              <div v-if="!isGenerating" v-motion :initial="panelMotion.initial" :enter="panelMotion.enter" class="flex max-w-md flex-col items-center">
+              <div v-if="!isGenerating" class="flex max-w-md flex-col items-center">
                 <h2 class="text-xl font-semibold tracking-tight">What will you move?</h2>
                 <p class="mt-1 text-sm text-muted-foreground">Describe a scene or add a reference image to begin.</p>
               </div>
@@ -447,12 +443,9 @@ onUnmounted(() => {
             <div class="absolute bottom-3 right-3 flex items-end">
               <button
                 v-if="!isGenerating"
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
                 @click="handleGenerate"
                 :disabled="promptMode !== 'positive' || !prompt.trim()"
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Generate Video"
                 aria-label="Generate video"
               >
@@ -460,11 +453,8 @@ onUnmounted(() => {
               </button>
               <button
                 v-else
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
                 @click="handleCancel"
-                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Cancel"
                 aria-label="Cancel generation"
               >

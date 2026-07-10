@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { Loader2 } from '@/lib/icons'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
-import { panelMotion } from '@/lib/motion'
 
 const props = withDefaults(
   defineProps<{
@@ -32,10 +31,7 @@ function formatETA(secs: number): string {
 
 <template>
   <div
-    v-motion
-    :initial="panelMotion.initial"
-    :enter="panelMotion.enter"
-    class="inline-flex items-center gap-3 rounded-full border border-border bg-card px-3 py-1 shadow-sm"
+    class="animate-in fade-in slide-in-from-bottom-1 duration-200 fill-mode-both inline-flex items-center gap-3 rounded-full border border-border bg-card px-3 py-1 shadow-sm"
   >
     <div class="flex min-w-0 items-center gap-2">
       <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />

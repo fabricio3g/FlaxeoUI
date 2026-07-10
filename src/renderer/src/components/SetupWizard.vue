@@ -25,7 +25,6 @@ import {
   type HubFile,
   type HubModel
 } from '@/lib/starterPacks'
-import { panelMotion } from '@/lib/motion'
 import Select from '@/components/ui/Select.vue'
 import type { Release, ReleaseAsset } from '@/composables/useBackend'
 
@@ -239,10 +238,7 @@ watch(selectedRelease, (release) => {
       class="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm titlebar-no-drag"
     >
       <div
-        v-motion
-        :initial="panelMotion.initial"
-        :enter="panelMotion.enter"
-        class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+        class="animate-in fade-in zoom-in-95 duration-200 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
       >
         <!-- Header -->
         <header class="flex items-center justify-between gap-3 border-b border-border px-5 py-3">

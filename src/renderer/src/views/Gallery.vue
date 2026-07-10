@@ -21,7 +21,6 @@ import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import { useToast } from '@/composables/useToast'
-import { panelMotion, staggeredCardMotion, subtleButtonMotion } from '@/lib/motion'
 
 const router = useRouter()
 const toast = useToast()
@@ -258,12 +257,10 @@ onUnmounted(() => {
 
           <!-- Refresh -->
           <button
-            v-motion
-            :hovered="subtleButtonMotion.hovered"
-            :tapped="subtleButtonMotion.tapped"
+            type="button"
             @click="fetchGallery"
             :disabled="isLoading"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-all hover:scale-110 active:scale-95 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             title="Refresh gallery"
           >
             <RefreshCw class="w-4 h-4" :class="isLoading && 'animate-spin'" />
@@ -321,13 +318,9 @@ onUnmounted(() => {
           <button
             v-for="(img, index) in paginatedImages"
             :key="img"
-            v-motion
-            :initial="staggeredCardMotion(index).initial"
-            :enter="staggeredCardMotion(index).enter"
-            :hovered="staggeredCardMotion(index).hovered"
-            :tapped="staggeredCardMotion(index).tapped"
+            :style="`animation-delay: ${index * 40}ms`"
             @click="selectImage(img)"
-            class="group relative aspect-square overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
+            class="animate-in fade-in fill-mode-both group relative aspect-square overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
             :class="
               selectedImage === img
                 ? 'border-foreground/30 ring-2 ring-ring/40'
@@ -371,10 +364,7 @@ onUnmounted(() => {
       <!-- Preview Panel -->
       <div
         v-if="selectedImage"
-        v-motion
-        :initial="panelMotion.initial"
-        :enter="panelMotion.enter"
-        class="absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
+        class="animate-in fade-in slide-in-from-right duration-200 absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
       >
         <!-- Preview Image -->
         <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">

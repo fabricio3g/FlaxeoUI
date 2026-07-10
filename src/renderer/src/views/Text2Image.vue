@@ -28,7 +28,6 @@ import ConfigPanel from '@/components/layout/ConfigPanel.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
-import { buttonMotion, panelMotion } from '@/lib/motion'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
 const toast = useToast()
@@ -776,19 +775,13 @@ onMounted(async () => {
         >
           <img
             v-if="previewImage"
-            v-motion
-            :initial="panelMotion.initial"
-            :enter="panelMotion.enter"
             :src="previewImage"
-            class="h-full max-h-full max-w-full object-contain"
+            class="animate-in fade-in duration-200 h-full max-h-full max-w-full object-contain"
             alt="Generated image"
           />
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
             <div
               v-if="!isGenerating"
-              v-motion
-              :initial="panelMotion.initial"
-              :enter="panelMotion.enter"
               class="flex max-w-2xl flex-col items-center px-6 text-center"
             >
               <h1 class="text-2xl font-semibold tracking-tight text-foreground">What will you create?</h1>
@@ -970,25 +963,19 @@ onMounted(async () => {
             >
             <div class="absolute bottom-3 right-3 flex items-end">
               <button
-                v-if="!isGenerating"
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
-                @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim()"
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  v-if="!isGenerating"
+                  @click="handleGenerate"
+                  :disabled="promptMode !== 'positive' || !prompt.trim()"
+                  class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Generate"
                 aria-label="Generate image"
               >
                 <ArrowUp class="size-3.5 stroke-[2.5]" />
               </button>
               <button
-                v-else
-                v-motion
-                :hovered="buttonMotion.hovered"
-                :tapped="buttonMotion.tapped"
-                @click="handleCancel"
-                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  v-else
+                  @click="handleCancel"
+                  class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Cancel"
                 aria-label="Cancel generation"
               >
