@@ -912,17 +912,10 @@ onUnmounted(() => {
 
         <!-- PRESETS -->
         <section v-if="props.focus === 'all'" class="pt-3">
-          <button
-            @click="toggleSection('presets')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            <span>Presets</span>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-muted-foreground">{{ presets.length }}</span>
-              <ChevronDown v-if="!expandedSections.presets" class="w-4 h-4 text-muted-foreground" />
-              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
+          <div class="flex w-full items-center justify-between py-1">
+            <span class="text-sm font-semibold text-foreground">Presets</span>
+            <span class="text-xs text-muted-foreground">{{ presets.length }}</span>
+          </div>
 
           <div v-show="expandedSections.presets" class="space-y-3 pt-2">
             <div class="flex items-center gap-1">
@@ -1261,14 +1254,9 @@ onUnmounted(() => {
 
         <!-- GENERATION SETTINGS -->
         <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
-          <button
-            @click="toggleSection('generation')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Generation Settings
-            <ChevronDown v-if="!expandedSections.generation" class="w-4 h-4 text-muted-foreground" />
-            <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div class="py-1">
+            <span class="text-sm font-semibold text-foreground">Generation Settings</span>
+          </div>
 
           <div
             v-show="expandedSections.generation || props.focus === 'generation'"
@@ -1485,17 +1473,12 @@ onUnmounted(() => {
           v-if="props.focus === 'all' || props.focus === 'assets' || props.focus === 'lora'"
           class="pt-3"
         >
-          <button
-            @click="toggleSection('loras')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            LoRA Modules
+          <div class="flex w-full items-center justify-between py-1">
+            <span class="text-sm font-semibold text-foreground">LoRA Modules</span>
             <div class="flex items-center gap-2">
-              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{ config.loras.length }}</span>
-              <ChevronDown v-if="!expandedSections.loras" class="w-4 h-4 text-muted-foreground" />
-              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
+              <span class="rounded-md bg-muted px-2 py-1 text-xs font-medium">{{ config.loras.length }}</span>
             </div>
-          </button>
+          </div>
 
           <div
             v-show="expandedSections.loras || props.focus === 'assets' || props.focus === 'lora'"
@@ -1563,19 +1546,10 @@ onUnmounted(() => {
           v-if="props.focus === 'all' || props.focus === 'assets' || props.focus === 'embedding'"
           class="pt-3"
         >
-          <button
-            @click="toggleSection('embeddings')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Embeddings
-            <div class="flex items-center gap-2">
-              <span class="text-xs bg-muted px-2 py-1 rounded-md font-medium">{{
-                config.embeddings.length
-              }}</span>
-              <ChevronDown v-if="!expandedSections.embeddings" class="w-4 h-4 text-muted-foreground" />
-              <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
+          <div class="flex w-full items-center justify-between py-1">
+            <span class="text-sm font-semibold text-foreground">Embeddings</span>
+            <span class="rounded-md bg-muted px-2 py-1 text-xs font-medium">{{ config.embeddings.length }}</span>
+          </div>
 
           <div
             v-show="
@@ -1627,14 +1601,9 @@ onUnmounted(() => {
 
         <!-- SAMPLING -->
         <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
-          <button
-            @click="toggleSection('sampling')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Sampling
-            <ChevronDown v-if="!expandedSections.sampling" class="w-4 h-4 text-muted-foreground" />
-            <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div class="py-1">
+            <span class="text-sm font-semibold text-foreground">Sampling</span>
+          </div>
 
           <div
             v-show="expandedSections.sampling || props.focus === 'generation'"
@@ -1780,14 +1749,9 @@ onUnmounted(() => {
 
         <!-- HARDWARE -->
         <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
-          <button
-            @click="toggleSection('hardware')"
-            class="w-full flex items-center justify-between text-sm font-semibold text-foreground"
-          >
-            Hardware
-            <ChevronDown v-if="!expandedSections.hardware" class="w-4 h-4 text-muted-foreground" />
-            <ChevronUp v-else class="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div class="py-1">
+            <span class="text-sm font-semibold text-foreground">Hardware</span>
+          </div>
 
           <div
             v-show="expandedSections.hardware || props.focus === 'model'"
