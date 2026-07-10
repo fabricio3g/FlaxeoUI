@@ -933,18 +933,22 @@ onMounted(async () => {
             <span>Embedding</span>
             <span v-if="config.embeddings.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.embeddings.length }}</span>
           </button>
-          <Select
-            v-model="config.livePreviewMethod"
-            size="sm"
-            placeholder="None"
-            aria-label="Live preview"
-            :options="[
-              { label: 'None', value: '' },
-              { label: 'Projection', value: 'proj' },
-              { label: 'TAE', value: 'tae' },
-              { label: 'VAE', value: 'vae' }
-            ]"
-          />
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <span class="text-muted-foreground">Preview</span>
+            <Select
+              v-model="config.livePreviewMethod"
+              size="sm"
+              placeholder="None"
+              aria-label="Live preview"
+              class="w-24"
+              :options="[
+                { label: 'None', value: '' },
+                { label: 'Proj', value: 'proj' },
+                { label: 'TAE', value: 'tae' },
+                { label: 'VAE', value: 'vae' }
+              ]"
+            />
+          </div>
         </div>
 
         <!-- Textarea + send button -->
