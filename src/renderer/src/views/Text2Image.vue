@@ -940,7 +940,7 @@ onMounted(async () => {
               size="sm"
               placeholder="None"
               aria-label="Live preview"
-              class="w-24"
+              class="w-24 border-0 bg-transparent"
               :options="[
                 { label: 'None', value: '' },
                 { label: 'Proj', value: 'proj' },
@@ -1039,21 +1039,23 @@ onMounted(async () => {
               class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Scheduler</span>
             <Select
               v-model="config.scheduler"
               size="sm"
               aria-label="Scheduler"
+              class="border-0 bg-transparent"
               :options="schedulerOptions"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
             <span class="text-muted-foreground">Sampler</span>
             <Select
               v-model="config.sampler"
               size="sm"
               aria-label="Sampler"
+              class="border-0 bg-transparent"
               :options="samplerOptions"
             />
           </div>
