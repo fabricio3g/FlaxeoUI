@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -139,6 +138,102 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
+
+/* ------------------------------------------------------------------ */
+/* Animation utilities (extracted from tw-animate-css v1.4.0)          */
+/* ------------------------------------------------------------------ */
+
+@property --tw-enter-opacity { syntax: "*"; inherits: false; initial-value: 1; }
+@property --tw-enter-scale { syntax: "*"; inherits: false; initial-value: 1; }
+@property --tw-enter-translate-x { syntax: "*"; inherits: false; initial-value: 0; }
+@property --tw-enter-translate-y { syntax: "*"; inherits: false; initial-value: 0; }
+@property --tw-exit-opacity { syntax: "*"; inherits: false; initial-value: 1; }
+@property --tw-exit-scale { syntax: "*"; inherits: false; initial-value: 1; }
+@property --tw-exit-translate-x { syntax: "*"; inherits: false; initial-value: 0; }
+@property --tw-exit-translate-y { syntax: "*"; inherits: false; initial-value: 0; }
+
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, var(--tw-enter-opacity-initial));
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, var(--tw-enter-scale-initial)), var(--tw-enter-scale, var(--tw-enter-scale-initial)), var(--tw-enter-scale, var(--tw-enter-scale-initial)));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, var(--tw-exit-opacity-initial));
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, var(--tw-exit-scale-initial)), var(--tw-exit-scale, var(--tw-exit-scale-initial)), var(--tw-exit-scale, var(--tw-exit-scale-initial)));
+  }
+}
+
+@utility animate-in {
+  animation-name: enter;
+  animation-duration: var(--tw-animation-duration, 150ms);
+  --tw-enter-opacity-initial: 1;
+  --tw-enter-scale-initial: 1;
+  --tw-enter-translate-x-initial: 0;
+  --tw-enter-translate-y-initial: 0;
+}
+@utility animate-out {
+  animation-name: exit;
+  animation-duration: var(--tw-animation-duration, 150ms);
+  --tw-exit-opacity-initial: 1;
+  --tw-exit-scale-initial: 1;
+  --tw-exit-translate-x-initial: 0;
+  --tw-exit-translate-y-initial: 0;
+}
+
+@utility fade-in { --tw-enter-opacity: 0; }
+@utility fade-in-0 { --tw-enter-opacity: 0; }
+@utility fade-out { --tw-exit-opacity: 0; }
+@utility fade-out-0 { --tw-exit-opacity: 0; }
+
+@utility zoom-in { --tw-enter-scale: 0; }
+@utility zoom-in-95 { --tw-enter-scale: 0.95; }
+@utility zoom-out { --tw-exit-scale: 0; }
+@utility zoom-out-95 { --tw-exit-scale: 0.95; }
+
+@utility slide-in-from-top { --tw-enter-translate-y: -100%; }
+@utility slide-in-from-top-1 { --tw-enter-translate-y: calc(-1 * var(--spacing)); }
+@utility slide-in-from-top-2 { --tw-enter-translate-y: calc(-2 * var(--spacing)); }
+@utility slide-in-from-bottom { --tw-enter-translate-y: 100%; }
+@utility slide-in-from-bottom-1 { --tw-enter-translate-y: var(--spacing); }
+@utility slide-in-from-bottom-2 { --tw-enter-translate-y: calc(2 * var(--spacing)); }
+@utility slide-in-from-left { --tw-enter-translate-x: -100%; }
+@utility slide-in-from-left-1 { --tw-enter-translate-x: calc(-1 * var(--spacing)); }
+@utility slide-in-from-left-2 { --tw-enter-translate-x: calc(-2 * var(--spacing)); }
+@utility slide-in-from-right { --tw-enter-translate-x: 100%; }
+@utility slide-in-from-right-1 { --tw-enter-translate-x: var(--spacing); }
+@utility slide-in-from-right-2 { --tw-enter-translate-x: calc(2 * var(--spacing)); }
+
+@utility slide-out-to-top { --tw-exit-translate-y: -100%; }
+@utility slide-out-to-top-1 { --tw-exit-translate-y: calc(-1 * var(--spacing)); }
+@utility slide-out-to-top-2 { --tw-exit-translate-y: calc(-2 * var(--spacing)); }
+@utility slide-out-to-bottom { --tw-exit-translate-y: 100%; }
+@utility slide-out-to-bottom-1 { --tw-exit-translate-y: var(--spacing); }
+@utility slide-out-to-bottom-2 { --tw-exit-translate-y: calc(2 * var(--spacing)); }
+@utility slide-out-to-left { --tw-exit-translate-x: -100%; }
+@utility slide-out-to-right { --tw-exit-translate-x: 100%; }
+
+@utility duration-75 { --tw-animation-duration: 75ms; animation-duration: 75ms; }
+@utility duration-100 { --tw-animation-duration: 100ms; animation-duration: 100ms; }
+@utility duration-150 { --tw-animation-duration: 150ms; animation-duration: 150ms; }
+@utility duration-200 { --tw-animation-duration: 200ms; animation-duration: 200ms; }
+@utility duration-300 { --tw-animation-duration: 300ms; animation-duration: 300ms; }
+@utility duration-500 { --tw-animation-duration: 500ms; animation-duration: 500ms; }
+
+@utility delay-0 { --tw-animation-delay: 0s; animation-delay: 0s; }
+@utility delay-100 { --tw-animation-delay: 100ms; animation-delay: 100ms; }
+@utility delay-200 { --tw-animation-delay: 200ms; animation-delay: 200ms; }
+@utility delay-300 { --tw-animation-delay: 300ms; animation-delay: 300ms; }
+@utility delay-500 { --tw-animation-delay: 500ms; animation-delay: 500ms; }
+
+@utility fill-mode-none { animation-fill-mode: none; }
+@utility fill-mode-forwards { animation-fill-mode: forwards; }
+@utility fill-mode-backwards { animation-fill-mode: backwards; }
+@utility fill-mode-both { animation-fill-mode: both; }
 
 @layer base {
   *,
