@@ -33,7 +33,7 @@ export function buildExportFilename(opts: {
   if (opts.seed != null && opts.seed !== '' && Number(opts.seed) >= 0) {
     parts.push(`s${opts.seed}`)
   }
-  return `${parts.join('_')}${ext}`.replace(/[^\w.\-]+/g, '_')
+  return `${parts.join('_')}${ext}`.replace(/[^\w.-]+/g, '_')
 }
 
 function clickDownloadLink(href: string, filename: string): void {
@@ -52,7 +52,7 @@ function clickDownloadLink(href: string, filename: string): void {
  * API routes and blob: URLs (plain <a download> often fails for http URLs in Electron).
  */
 export async function downloadUrlAs(url: string, filename: string): Promise<void> {
-  const safeName = filename.replace(/[^\w.\-]+/g, '_') || 'image.png'
+  const safeName = filename.replace(/[^\w.-]+/g, '_') || 'image.png'
 
   // Already a local object URL — download attribute works directly
   if (url.startsWith('blob:') || url.startsWith('data:')) {
