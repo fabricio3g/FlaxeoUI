@@ -3,17 +3,20 @@ import {
   Activity as MotionActivity,
   ArrowRight as MotionArrowRight,
   ArrowUp as MotionArrowUp,
+  Brush as MotionBrush,
   Check as MotionCheck,
   ChevronDown as MotionChevronDown,
   ChevronLeft as MotionChevronLeft,
   ChevronRight as MotionChevronRight,
   ChevronUp as MotionChevronUp,
+  Clapperboard as MotionClapperboard,
   Copy as MotionCopy,
   Cpu as MotionCpu,
   DatabaseBackup as MotionDatabaseBackup,
   Download as MotionDownload,
   FolderOpen as MotionFolderOpen,
-  GalleryVerticalEnd as MotionGalleryVerticalEnd,
+  Frame as MotionFrame,
+  GalleryVertical as MotionGalleryVertical,
   GripHorizontal as MotionGripHorizontal,
   LayoutGrid as MotionLayoutGrid,
   Maximize2 as MotionMaximize2,
@@ -24,6 +27,7 @@ import {
   Search as MotionSearch,
   Settings as MotionSettings,
   SlidersHorizontal as MotionSlidersHorizontal,
+  Shrink as MotionShrink,
   Sun as MotionSun,
   Terminal as MotionTerminal,
   Upload as MotionUpload,
@@ -34,7 +38,6 @@ import {
 } from '@respeak/lucide-motion-vue'
 import {
   AlertTriangle as StaticAlertTriangle,
-  Brush as StaticBrush,
   CheckCircle as StaticCheckCircle,
   CheckCircle2 as StaticCheckCircle2,
   Eraser as StaticEraser,
@@ -48,11 +51,9 @@ import {
   Loader2 as StaticLoader2,
   Minus as StaticMinus,
   Save as StaticSave,
-  Scale as StaticScale,
   Server as StaticServer,
   Sparkles as StaticSparkles,
   Square as StaticSquare,
-  Video as StaticVideo,
   Trash2 as StaticTrash2,
   XCircle as StaticXCircle
 } from 'lucide-vue-next'
@@ -86,7 +87,7 @@ export const Activity = animatedIcon(MotionActivity, 'lucide-animated')
 export const AlertTriangle = fallbackIcon(StaticAlertTriangle)
 export const ArrowRight = animatedIcon(MotionArrowRight, 'lucide-animated')
 export const ArrowUp = animatedIcon(MotionArrowUp, 'lucide-animated')
-export const Brush = fallbackIcon(StaticBrush)
+export const Brush = animatedIcon(MotionBrush, 'lucide-animated')
 export const Check = animatedIcon(MotionCheck, 'lucide-animated')
 export const CheckCircle = fallbackIcon(StaticCheckCircle)
 export const CheckCircle2 = fallbackIcon(StaticCheckCircle2)
@@ -106,9 +107,9 @@ export const FolderOpen = animatedIcon(MotionFolderOpen)
 export const Grid = fallbackIcon(StaticGrid)
 export const GripHorizontal = animatedIcon(MotionGripHorizontal)
 export const Image = fallbackIcon(StaticImage)
-export const ImageIcon = animatedIcon(MotionGalleryVerticalEnd, 'lucide-animated')
+export const ImageIcon = animatedIcon(MotionFrame, 'lucide-animated')
 export const ImagePlus = fallbackIcon(StaticImagePlus)
-export const Images = animatedIcon(MotionGalleryVerticalEnd, 'lucide-animated')
+export const Images = animatedIcon(MotionGalleryVertical, 'lucide-animated')
 export const Info = fallbackIcon(StaticInfo)
 export const LayoutGrid = animatedIcon(MotionLayoutGrid)
 export const Loader2 = fallbackIcon(StaticLoader2)
@@ -119,7 +120,7 @@ export const Play = animatedIcon(MotionPlay, 'lucide-animated')
 export const Plus = animatedIcon(MotionPlus, 'alt')
 export const RefreshCw = animatedIcon(MotionRefreshCw, 'lucide-animated')
 export const Save = fallbackIcon(StaticSave)
-export const Scale = fallbackIcon(StaticScale)
+export const Scale = animatedIcon(MotionShrink, 'lucide-animated')
 export const Search = animatedIcon(MotionSearch, 'lucide-animated')
 export const Server = fallbackIcon(StaticServer)
 export const Settings = animatedIcon(MotionSettings, 'lucide-animated')
@@ -131,7 +132,7 @@ export const Terminal = animatedIcon(MotionTerminal, 'alt')
 export const Trash2 = fallbackIcon(StaticTrash2)
 export const Upload = animatedIcon(MotionUpload, 'lucide-animated')
 export const User = animatedIcon(MotionUser, 'lucide-animated')
-export const Video = fallbackIcon(StaticVideo)
+export const Video = animatedIcon(MotionClapperboard, 'lucide-animated')
 export const Wand2 = animatedIcon(MotionWandSparkles)
 export const X = animatedIcon(MotionX, 'alt')
 export const XCircle = fallbackIcon(StaticXCircle)

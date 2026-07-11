@@ -349,7 +349,8 @@ onUnmounted(() => {
 
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
             <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
-              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
+              <BrandMark size="lg" class="text-foreground" />
+              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
                 What will you move?
               </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -421,7 +422,7 @@ onUnmounted(() => {
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Top inline row: Positive/Negative + video mode selector -->
-        <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
+        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -450,7 +451,7 @@ onUnmounted(() => {
                   ? 'Describe the motion, subject, and visual direction...'
                   : 'Describe motion or visual details to avoid...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -463,31 +464,6 @@ onUnmounted(() => {
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
               aria-hidden="true"
             >{{ promptMode === 'positive' ? 'Describe the motion, subject, and visual direction...' : 'Describe motion or visual details to avoid...' }}</span>
-            <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="flaxeo-action">
-                <button
-                  v-if="!isGenerating"
-                  key="generate"
-                  @click="handleGenerate"
-                  :disabled="promptMode !== 'positive' || !prompt.trim()"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Generate Video"
-                  aria-label="Generate video"
-                >
-                  <ArrowUp class="size-3.5 stroke-[2.5]" />
-                </button>
-                <button
-                  v-else
-                  key="cancel"
-                  @click="handleCancel"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Cancel"
-                  aria-label="Cancel generation"
-                >
-                  <Square class="size-3 fill-current" />
-                </button>
-              </Transition>
-            </div>
           </div>
         </div>
 
@@ -514,9 +490,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Quick Controls (Size, Frames, Flow, Steps, CFG, Scheduler, Sampler, Reference upload, PromptPresets) -->
-        <div
-          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
-        >
+        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <div class="relative shrink-0">
             <button
               type="button"
@@ -667,8 +641,6 @@ onUnmounted(() => {
             :options="samplerOptions"
           />
 
-          <div class="hidden flex-1 md:block"></div>
-
           <label
             v-if="videoMode === 'i2v'"
             class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
@@ -685,6 +657,31 @@ onUnmounted(() => {
             compact
             class="shrink-0"
           />
+          <div class="relative ml-auto size-8 shrink-0">
+            <Transition name="flaxeo-action">
+              <button
+                v-if="!isGenerating"
+                key="generate"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Generate Video"
+                aria-label="Generate video"
+              >
+                <ArrowUp class="size-3.5 stroke-[2.5]" />
+              </button>
+              <button
+                v-else
+                key="cancel"
+                @click="handleCancel"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Cancel"
+                aria-label="Cancel generation"
+              >
+                <Square class="size-3 fill-current" />
+              </button>
+            </Transition>
+          </div>
         </div>
       </div>
     </div>

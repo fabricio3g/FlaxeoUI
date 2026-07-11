@@ -8,7 +8,9 @@ import {
   Sun,
   Terminal,
   Video,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from '@/lib/icons'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -16,17 +18,20 @@ import { useConfigStore } from '@/stores/config'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
+import BrandMark from '@/components/BrandMark.vue'
 import Tooltip from '../ui/Tooltip.vue'
 
 const props = defineProps<{
   currentTab: string
   setupNeeded?: boolean
+  collapsed?: boolean
 }>()
 
 const emit = defineEmits<{
   toggleMobileConfig: []
   toggleLogs: []
   openSetup: []
+  toggleSidebar: []
 }>()
 
 const isElectron = ref(false)
@@ -61,7 +66,7 @@ const statusHint = computed(() => {
 
 const currentViewLabel = computed(() => {
   const labels: Record<string, string> = {
-    text2image: 'Text2Image',
+    text2image: 'Image',
     edit: 'Edit',
     video: 'Video',
     gallery: 'Gallery',
@@ -120,10 +125,21 @@ function iconBtnClasses(active = false): string {
     class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
   >
     <div class="hidden h-full items-center gap-2 px-2 titlebar-no-drag md:flex">
-      <span class="text-sm tracking-tight leading-none">
-        <span class="font-extrabold">F</span>laxeo Image
-      </span>
-      <span class="text-xs font-medium text-muted-foreground leading-none">
+      <Tooltip v-if="props.collapsed" text="Expand sidebar" position="bottom">
+        <button
+          type="button"
+          class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+          aria-label="Expand sidebar"
+          @click="emit('toggleSidebar')"
+        >
+          <ChevronRight class="h-4 w-4" />
+        </button>
+      </Tooltip>
+      <BrandMark v-if="props.collapsed" size="sm" class="text-foreground" />
+      <span
+        v-if="props.collapsed"
+        class="text-xs font-medium text-muted-foreground leading-none"
+      >
         {{ currentViewLabel }}
       </span>
 
@@ -194,7 +210,7 @@ function iconBtnClasses(active = false): string {
     </div>
 
     <div class="flex min-w-0 flex-1 items-center px-3 text-sm tracking-tight md:hidden">
-      <span><span class="font-extrabold">F</span>laxeo Image</span>
+      <BrandMark size="sm" class="text-foreground" />
     </div>
 
     <div class="flex h-full items-center titlebar-no-drag">

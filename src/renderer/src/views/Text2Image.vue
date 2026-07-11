@@ -26,7 +26,7 @@ import { useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import ConfigPanel from '@/components/layout/ConfigPanel.vue'
+import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
@@ -111,8 +111,6 @@ const initImageFile = ref<File | null>(null)
 // Advanced sections state
 const activeTab = ref<string>('')
 const promptMode = ref<'positive' | 'negative'>('positive')
-const showPromptAssets = ref(false)
-const promptAssetFocus = ref<'lora' | 'embedding'>('lora')
 const showResolutionMenu = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
@@ -170,12 +168,6 @@ function onPromptKeydown(e: KeyboardEvent): void {
 
 function setPromptMode(value: string): void {
   if (value === 'positive' || value === 'negative') promptMode.value = value
-}
-
-function openPromptAssetModal(focus: 'lora' | 'embedding'): void {
-  promptAssetFocus.value = focus
-  showPromptAssets.value = true
-  activeTab.value = ''
 }
 
 function usePromptSuggestion(suggestion: string): void {
@@ -721,10 +713,6 @@ function navigateImage(direction: number) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && showPromptAssets.value) {
-    showPromptAssets.value = false
-    return
-  }
   if (e.key === 'Escape' && showResolutionMenu.value) {
     showResolutionMenu.value = false
     return
@@ -826,9 +814,10 @@ onMounted(async () => {
             alt="Generated image"
           />
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
-            <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
+              <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
+              <BrandMark size="xl" class="text-foreground" />
               <h1
-                class="content-item text-4xl font-semibold tracking-[-0.035em]"
+                class="content-item mt-4 text-4xl font-light tracking-[-0.035em]"
               >
                 What will you create?
               </h1>
@@ -965,25 +954,89 @@ onMounted(async () => {
     </div>
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
+      <div class="mx-auto mb-2 flex w-full max-w-4xl justify-end px-1">
+        <div
+          class="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-background/80 p-1 shadow-sm backdrop-blur"
+        >
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="advancedButtonClass('photomaker')"
+            title="PhotoMaker"
+            aria-label="Open PhotoMaker settings"
+            @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
+          >
+            <User class="size-4" />
+          </button>
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="advancedButtonClass('controlnet')"
+            title="ControlNet"
+            aria-label="Open ControlNet settings"
+            @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
+          >
+            <Activity class="size-4" />
+          </button>
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="advancedButtonClass('img2img')"
+            title="Image to Image"
+            aria-label="Open Image to Image settings"
+            @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
+          >
+            <Image class="size-4" />
+          </button>
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="advancedButtonClass('kontext')"
+            title="Reference (Flux)"
+            aria-label="Open Reference (Flux) settings"
+            @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
+          >
+            <ImagePlus class="size-4" />
+          </button>
+          <PromptPresetControls
+            v-model:prompt="prompt"
+            v-model:negative-prompt="negativePrompt"
+            compact
+            class="shrink-0"
+          />
+        </div>
+      </div>
       <div
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Prompt mode -->
-        <div
-          class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4"
-          role="tablist"
-          aria-label="Prompt mode"
-        >
-          <SegmentedControl
-            :model-value="promptMode"
-            :options="promptModeOptions"
+        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
+          <div role="tablist" aria-label="Prompt mode">
+            <SegmentedControl
+              :model-value="promptMode"
+              :options="promptModeOptions"
+              size="sm"
+              aria-label="Prompt mode"
+              @update:model-value="setPromptMode"
+            />
+          </div>
+          <Select
+            v-model="config.livePreviewMethod"
+            label="Preview"
             size="sm"
-            aria-label="Prompt mode"
-            @update:model-value="setPromptMode"
+            placeholder="None"
+            aria-label="Live preview"
+            class="ml-auto w-auto shrink-0 rounded-full border-0 bg-transparent shadow-none hover:bg-accent"
+            :options="[
+              { label: 'None', value: '' },
+              { label: 'Proj', value: 'proj' },
+              { label: 'TAE', value: 'tae' },
+              { label: 'VAE', value: 'vae' }
+            ]"
           />
         </div>
 
-        <!-- Textarea + send button -->
+        <!-- Textarea -->
         <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
           <div class="relative flex-1">
             <textarea
@@ -995,7 +1048,7 @@ onMounted(async () => {
                   ? 'Describe the image you want to generate...'
                   : 'Describe what should stay out of the image...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -1013,62 +1066,11 @@ onMounted(async () => {
               class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
               >{{ config.embeddings.length }} embeds</span
             >
-            <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="flaxeo-action">
-                <button
-                  v-if="!isGenerating"
-                  key="generate"
-                  @click="handleGenerate"
-                  :disabled="promptMode !== 'positive' || !prompt.trim()"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Generate"
-                  aria-label="Generate image"
-                >
-                  <ArrowUp class="size-3.5 stroke-[2.5]" />
-                </button>
-                <button
-                  v-else
-                  key="cancel"
-                  @click="handleCancel"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Cancel"
-                  aria-label="Cancel generation"
-                >
-                  <Square class="size-3 fill-current" />
-                </button>
-              </Transition>
-            </div>
           </div>
         </div>
 
         <!-- Quick controls: Steps, CFG, Seed, Scheduler, Sampler, Resolution -->
-        <div
-          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
-        >
-          <button
-            type="button"
-            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="config.loras.length ? 'text-foreground' : ''"
-            title="Configure LoRA modules"
-            @click="openPromptAssetModal('lora')"
-          >
-            LoRA
-            <span v-if="config.loras.length" class="font-mono text-[10px]">
-              {{ config.loras.length }}
-            </span>
-          </button>
-          <button
-            type="button"
-            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="config.embeddings.length ? 'text-foreground' : ''"
-            title="Configure embeddings"
-            @click="openPromptAssetModal('embedding')"
-          >
-            Embedding
-            <span v-if="config.embeddings.length" class="font-mono text-[10px]">
-              {{ config.embeddings.length }}
-            </span>
-          </button>
+        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <div
             class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
           >
@@ -1124,20 +1126,6 @@ onMounted(async () => {
             aria-label="Sampler"
             class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
             :options="samplerOptions"
-          />
-          <Select
-            v-model="config.livePreviewMethod"
-            label="Preview"
-            size="sm"
-            placeholder="None"
-            aria-label="Live preview"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent shadow-none hover:bg-accent"
-            :options="[
-              { label: 'None', value: '' },
-              { label: 'Proj', value: 'proj' },
-              { label: 'TAE', value: 'tae' },
-              { label: 'VAE', value: 'vae' }
-            ]"
           />
           <div class="relative shrink-0">
             <button
@@ -1214,81 +1202,35 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          <div class="ml-auto flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="advancedButtonClass('photomaker')"
-              title="PhotoMaker"
-              aria-label="Open PhotoMaker settings"
-              @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
-            >
-              <User class="size-4" />
-            </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="advancedButtonClass('controlnet')"
-              title="ControlNet"
-              aria-label="Open ControlNet settings"
-              @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
-            >
-              <Activity class="size-4" />
-            </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="advancedButtonClass('img2img')"
-              title="Image to Image"
-              aria-label="Open Image to Image settings"
-              @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
-            >
-              <Image class="size-4" />
-            </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="advancedButtonClass('kontext')"
-              title="Reference (Flux)"
-              aria-label="Open Reference (Flux) settings"
-              @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
-            >
-              <ImagePlus class="size-4" />
-            </button>
-            <PromptPresetControls
-              v-model:prompt="prompt"
-              v-model:negative-prompt="negativePrompt"
-              compact
-              class="shrink-0"
-            />
+          <div class="relative ml-auto size-8 shrink-0">
+            <Transition name="flaxeo-action">
+              <button
+                v-if="!isGenerating"
+                key="generate"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Generate"
+                aria-label="Generate image"
+              >
+                <ArrowUp class="size-3.5 stroke-[2.5]" />
+              </button>
+              <button
+                v-else
+                key="cancel"
+                @click="handleCancel"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Cancel"
+                aria-label="Cancel generation"
+              >
+                <Square class="size-3 fill-current" />
+              </button>
+            </Transition>
           </div>
+
         </div>
       </div>
     </div>
-
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showPromptAssets"
-          class="aui-dialog-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm"
-          @click.self="showPromptAssets = false"
-        >
-          <Transition name="modal-surface" appear>
-            <div
-              v-if="showPromptAssets"
-              class="aui-dialog-surface flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl"
-              @click.stop
-            >
-              <ConfigPanel
-                :collapsed="false"
-                :focus="promptAssetFocus"
-                @close="showPromptAssets = false"
-              />
-            </div>
-          </Transition>
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- Advanced tool modal (PhotoMaker / ControlNet / Img2Img / Kontext) -->
     <Teleport to="body">

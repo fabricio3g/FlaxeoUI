@@ -29,8 +29,15 @@ const { models, fetchModels } = useModels()
 const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
 
 const showMobileConfig = ref(false)
-const activeConfigPanel = ref<'model' | 'generation' | null>(null)
+type WorkspaceConfigPanel = 'model' | 'generation' | 'lora' | 'embedding'
+const activeConfigPanel = ref<WorkspaceConfigPanel | null>(null)
 const showFloatingLogs = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
+
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('flaxeo-sidebar-collapsed', String(sidebarCollapsed.value))
+}
 
 const activeModelValue = computed(() =>
   config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
@@ -74,7 +81,7 @@ function navigateToTab(tab: string): void {
   router.push({ name: routeName })
 }
 
-function openConfigPanel(panel: 'model' | 'generation'): void {
+function openConfigPanel(panel: WorkspaceConfigPanel): void {
   const isMobileViewport = window.matchMedia('(max-width: 767px)').matches
   showMobileConfig.value = isMobileViewport
   activeConfigPanel.value = panel
@@ -129,12 +136,14 @@ onUnmounted(() => {
   <div
     class="isolate flex h-screen w-screen flex-row overflow-hidden bg-background text-foreground antialiased"
   >
-    <Sidebar class="hidden md:flex" :current-tab="currentTab" @navigate="navigateToTab" />
+    <Sidebar class="hidden md:flex" :current-tab="currentTab" :collapsed="sidebarCollapsed" @navigate="navigateToTab" @toggle-collapse="toggleSidebar" />
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <Titlebar
         :current-tab="currentTab"
         :setup-needed="isSetupNeeded"
+        :collapsed="sidebarCollapsed"
+        @toggle-sidebar="toggleSidebar"
         @toggle-mobile-config="showMobileConfig = !showMobileConfig"
         @toggle-logs="showFloatingLogs = !showFloatingLogs"
         @open-setup="reopenSetup"
@@ -174,6 +183,30 @@ onUnmounted(() => {
             >
               <SlidersHorizontal class="h-3.5 w-3.5" />
               <span>Generation</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :class="activeConfigPanel === 'lora' || config.loras.length ? 'text-foreground' : ''"
+              :aria-expanded="activeConfigPanel === 'lora'"
+              @click="openConfigPanel('lora')"
+            >
+              <span>LoRA</span>
+              <span v-if="config.loras.length" class="font-mono text-[10px]">
+                {{ config.loras.length }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :class="activeConfigPanel === 'embedding' || config.embeddings.length ? 'text-foreground' : ''"
+              :aria-expanded="activeConfigPanel === 'embedding'"
+              @click="openConfigPanel('embedding')"
+            >
+              <span>Embedding</span>
+              <span v-if="config.embeddings.length" class="font-mono text-[10px]">
+                {{ config.embeddings.length }}
+              </span>
             </button>
             <div
               v-if="config.backendMode === 'server'"

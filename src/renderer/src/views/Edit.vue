@@ -596,7 +596,8 @@ onUnmounted(() => {
             class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
             <div class="content-item flex max-w-sm flex-col items-center">
-              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
+              <BrandMark size="lg" class="text-foreground" />
+              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
                 Start with an image
               </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -756,7 +757,7 @@ onUnmounted(() => {
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Top inline row: Positive/Negative + Brush/Strength controls -->
-        <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
+        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -820,7 +821,7 @@ onUnmounted(() => {
                   ? 'Describe what to generate in the masked area...'
                   : 'Describe what to avoid in the masked area...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -833,38 +834,11 @@ onUnmounted(() => {
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
               aria-hidden="true"
             >{{ promptMode === 'positive' ? 'Describe what to generate in the masked area...' : 'Describe what to avoid in the masked area...' }}</span>
-            <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="flaxeo-action">
-                <button
-                  v-if="!isGenerating"
-                  key="generate"
-                  @click="handleGenerate"
-                  :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Inpaint"
-                  aria-label="Inpaint"
-                >
-                  <ArrowUp class="size-3.5 stroke-[2.5]" />
-                </button>
-                <button
-                  v-else
-                  key="cancel"
-                  @click="handleCancel"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Cancel"
-                  aria-label="Cancel generation"
-                >
-                  <Square class="size-3 fill-current" />
-                </button>
-              </Transition>
-            </div>
           </div>
         </div>
 
         <!-- Quick Controls (Steps, CFG, Seed, Scheduler, Sampler, PromptPresets) below -->
-        <div
-          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
-        >
+        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <div
             class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
           >
@@ -922,13 +896,37 @@ onUnmounted(() => {
             :options="samplerOptions"
           />
 
-          <div class="hidden flex-1 sm:block"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
             compact
             class="shrink-0"
           />
+          <div class="relative ml-auto size-8 shrink-0">
+            <Transition name="flaxeo-action">
+              <button
+                v-if="!isGenerating"
+                key="generate"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Inpaint"
+                aria-label="Inpaint"
+              >
+                <ArrowUp class="size-3.5 stroke-[2.5]" />
+              </button>
+              <button
+                v-else
+                key="cancel"
+                @click="handleCancel"
+                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                title="Cancel"
+                aria-label="Cancel generation"
+              >
+                <Square class="size-3 fill-current" />
+              </button>
+            </Transition>
+          </div>
         </div>
       </div>
     </div>

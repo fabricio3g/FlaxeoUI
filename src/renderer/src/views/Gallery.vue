@@ -385,7 +385,8 @@ onUnmounted(() => {
         class="flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
       >
         <div class="content-item flex max-w-sm flex-col items-center">
-          <p class="text-3xl font-semibold tracking-[-0.03em]">
+          <BrandMark size="lg" class="text-foreground" />
+          <p class="mt-5 text-xl font-light tracking-[-0.03em]">
             Your gallery is empty
           </p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">

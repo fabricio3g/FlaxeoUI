@@ -182,7 +182,8 @@ onMounted(() => {
             class="absolute inset-0 flex items-center justify-center px-6 text-center"
           >
             <div class="content-item flex max-w-sm flex-col items-center px-8 py-8">
-              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
+              <BrandMark size="lg" class="text-foreground" />
+              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
                 Convert a model
               </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
