@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import type { AppContext, JsonObject } from './types'
-import { asBool, firstString, modelPath, roundTo } from './utils'
+import { asBool, firstString, modelDirectory, modelPath, roundTo } from './utils'
 
 export function getSdCliPath(ctx: AppContext): string {
   return getBackendBinaryPath(ctx, 'sd-cli')
@@ -173,10 +173,10 @@ export function addPromptModelExtras(
   body: JsonObject,
   prompt = ''
 ): void {
-  const embeddingsDir = path.join(ctx.paths.modelsDir, 'embeddings')
+  const embeddingsDir = modelDirectory(ctx, 'embeddings')
   if (fs.existsSync(embeddingsDir)) args.push('--embd-dir', embeddingsDir)
   if (prompt.includes('<lora:'))
-    args.push('--lora-model-dir', path.join(ctx.paths.modelsDir, 'loras'))
+    args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
   pushArg(args, '--type', body.quantizationType)
   pushArg(args, '--tensor-type-rules', body.tensorTypeRules)
 }

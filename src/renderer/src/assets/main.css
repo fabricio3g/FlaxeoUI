@@ -293,6 +293,14 @@
   box-shadow: var(--surface-shadow-focus);
 }
 
+.aui-dialog-backdrop {
+  background-color: rgb(0 0 0 / 0.35);
+}
+
+.dark .aui-dialog-backdrop {
+  background-color: rgb(0 0 0 / 0.55);
+}
+
 .aui-dialog-surface,
 [data-slot='select-content'] {
   transform-origin: var(--reka-popper-transform-origin, center);

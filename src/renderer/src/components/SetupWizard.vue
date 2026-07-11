@@ -238,7 +238,7 @@ watch(selectedRelease, (release) => {
       class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-[200] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm duration-200 motion-reduce:animate-none titlebar-no-drag sm:p-5"
     >
       <div
-        class="aui-dialog-surface fade-in zoom-in-95 animate-in flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 duration-200 motion-reduce:animate-none"
+        class="aui-dialog-surface fade-in zoom-in-95 animate-in flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 duration-200 motion-reduce:animate-none dark:shadow-black/40"
       >
         <!-- Header -->
         <header

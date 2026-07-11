@@ -7,6 +7,7 @@ import {
   asBool,
   errorMessage,
   firstString,
+  modelDirectory,
   modelPath,
   parseStepLine,
   removeDir,
@@ -540,8 +541,9 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     if (safeSourceModel !== String(sourceModel) || safeOutputName !== String(outputName))
       return res.status(400).json({ success: false, error: 'Invalid model filename' })
 
-    const sourcePath = path.join(ctx.paths.modelsDir, sourceType, safeSourceModel)
-    const outputPath = path.join(ctx.paths.modelsDir, sourceType, safeOutputName)
+    const sourceDirectory = modelDirectory(ctx, String(sourceType))
+    const sourcePath = path.join(sourceDirectory, safeSourceModel)
+    const outputPath = path.join(sourceDirectory, safeOutputName)
     if (!fs.existsSync(sourcePath))
       return res.status(400).json({ success: false, error: 'Source model not found' })
     if (fs.existsSync(outputPath))

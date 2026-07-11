@@ -1,19 +1,112 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, type Component } from 'vue'
 import { apiGet, apiPost } from '@/services/api'
 import {
-  Settings as SettingsIcon,
-  Download,
-  Loader2,
-  FolderOpen,
-  RefreshCw,
+  Activity,
   AlertTriangle,
-  Copy
+  Check,
+  Copy,
+  Database,
+  Download,
+  FolderOpen,
+  Loader2,
+  RefreshCw,
+  Sun
 } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
 import { useSetup } from '@/composables/useSetup'
+import { useTheme, type ThemePreference } from '@/composables/useTheme'
+import {
+  isModelDirectoryKey,
+  type StorageDirectoryId,
+  type StorageSettings
+} from '../../../shared/storage'
 
 const { reopenSetup } = useSetup()
+const { themePreference, setTheme } = useTheme()
+
+type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
+
+const activeCategory = ref<SettingsCategory>('backend')
+const settingsCategories: Array<{
+  id: SettingsCategory
+  label: string
+  description: string
+  icon: Component
+}> = [
+  {
+    id: 'backend',
+    label: 'Backend',
+    description: 'Runtime selection, binary health, and API status.',
+    icon: Database
+  },
+  {
+    id: 'installation',
+    label: 'Installation',
+    description: 'Download and install compatible backend releases.',
+    icon: Download
+  },
+  {
+    id: 'network',
+    label: 'Network',
+    description: 'Control local and public access to the server.',
+    icon: Activity
+  },
+  {
+    id: 'storage',
+    label: 'Storage',
+    description: 'Choose where generated images, temporary files, and models are stored.',
+    icon: FolderOpen
+  },
+  {
+    id: 'appearance',
+    label: 'Appearance',
+    description: 'Choose how Flaxeo follows light and dark mode.',
+    icon: Sun
+  }
+]
+
+const activeCategoryDetails = computed(
+  () => settingsCategories.find((category) => category.id === activeCategory.value)!
+)
+
+const themeOptions: Array<{
+  value: ThemePreference
+  label: string
+}> = [
+  { value: 'light', label: 'White' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' }
+]
+
+const storageLocations = [
+  { id: 'output', label: 'Image output' },
+  { id: 'temp', label: 'Temporary files' }
+] as const
+
+const modelLocations = [
+  { id: 'diffusion', label: 'Diffusion' },
+  { id: 'uncond_diffusion', label: 'Unconditional diffusion' },
+  { id: 'vae', label: 'VAE' },
+  { id: 'audio_vae', label: 'Audio VAE' },
+  { id: 'llm', label: 'LLM' },
+  { id: 'llm_vision', label: 'Vision LLM' },
+  { id: 't5xxl', label: 'T5-XXL' },
+  { id: 'embeddings_connectors', label: 'Embedding connectors' },
+  { id: 'clip', label: 'CLIP' },
+  { id: 'clip_vision', label: 'CLIP Vision' },
+  { id: 'loras', label: 'LoRA' },
+  { id: 'controlnet', label: 'ControlNet' },
+  { id: 'photomaker', label: 'PhotoMaker' },
+  { id: 'upscale', label: 'Upscalers' },
+  { id: 'hires_upscalers', label: 'Hi-res upscalers' },
+  { id: 'taesd', label: 'TAESD' },
+  { id: 'embeddings', label: 'Embeddings' }
+] as const
+
+const storageSettings = ref<StorageSettings | null>(null)
+const storageBusy = ref<StorageDirectoryId | null>(null)
+const storageError = ref('')
 
 interface BackendConfig {
   activeVersion: string
@@ -271,7 +364,72 @@ async function copyUrl(url: string): Promise<void> {
   }
 }
 
+function storagePath(id: StorageDirectoryId): string {
+  const settings = storageSettings.value
+  if (!settings) return ''
+  if (id === 'output') return settings.outputDir
+  if (id === 'temp') return settings.tempDir
+  return settings.modelDirs[id]
+}
+
+function storageIsCustom(id: StorageDirectoryId): boolean {
+  const overrides = storageSettings.value?.overrides
+  if (!overrides) return false
+  if (id === 'output') return !!overrides.outputDir
+  if (id === 'temp') return !!overrides.tempDir
+  return isModelDirectoryKey(id) && !!overrides.modelDirs?.[id]
+}
+
+async function loadStorageSettings(): Promise<void> {
+  if (!window.electronAPI?.getStorageSettings) {
+    storageError.value = 'Storage locations can only be changed in the desktop app.'
+    return
+  }
+
+  try {
+    storageError.value = ''
+    storageSettings.value = await window.electronAPI.getStorageSettings()
+  } catch (error) {
+    storageError.value = error instanceof Error ? error.message : 'Failed to load storage locations.'
+  }
+}
+
+async function chooseStorageDirectory(id: StorageDirectoryId): Promise<void> {
+  try {
+    storageBusy.value = id
+    storageError.value = ''
+    const updated = await window.electronAPI.chooseStorageDirectory(id)
+    if (updated) storageSettings.value = updated
+  } catch (error) {
+    storageError.value = error instanceof Error ? error.message : 'Failed to change directory.'
+  } finally {
+    storageBusy.value = null
+  }
+}
+
+async function resetStorageDirectory(id: StorageDirectoryId): Promise<void> {
+  try {
+    storageBusy.value = id
+    storageError.value = ''
+    storageSettings.value = await window.electronAPI.resetStorageDirectory(id)
+  } catch (error) {
+    storageError.value = error instanceof Error ? error.message : 'Failed to reset directory.'
+  } finally {
+    storageBusy.value = null
+  }
+}
+
+async function openStorageDirectory(id: StorageDirectoryId): Promise<void> {
+  try {
+    storageError.value = ''
+    await window.electronAPI.openStorageDirectory(id)
+  } catch (error) {
+    storageError.value = error instanceof Error ? error.message : 'Failed to open directory.'
+  }
+}
+
 onMounted(async () => {
+  await loadStorageSettings()
   await checkServerStatus()
   await fetchConfig()
   await fetchReleases()
@@ -281,371 +439,593 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="workspace-view h-full overflow-y-auto bg-background text-foreground">
-    <div class="mx-auto w-full max-w-4xl space-y-5 px-4 py-5 md:px-6 md:py-7">
-      <header class="flex items-start gap-3 pb-1">
-        <div
-          class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/30"
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col bg-background text-foreground md:flex-row"
+  >
+    <aside
+      class="shrink-0 border-b border-border/80 bg-muted/15 px-3 py-3 md:w-44 md:border-b-0 md:border-r md:px-3 md:py-5"
+    >
+      <nav
+        class="no-scrollbar flex gap-1 overflow-x-auto pr-12 md:flex-col md:overflow-visible md:pr-0"
+        aria-label="Settings categories"
+      >
+        <button
+          v-for="category in settingsCategories"
+          :key="category.id"
+          type="button"
+          class="inline-flex h-9 shrink-0 items-center gap-2.5 rounded-md px-3 text-left text-sm font-normal transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:w-full"
+          :class="
+            activeCategory === category.id
+              ? 'bg-accent text-accent-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          "
+          :aria-current="activeCategory === category.id ? 'page' : undefined"
+          @click="activeCategory = category.id"
         >
-          <SettingsIcon class="size-4 text-muted-foreground" />
-        </div>
-        <div class="min-w-0">
-          <h1 class="text-base font-medium tracking-tight">Settings</h1>
-          <p class="mt-0.5 text-xs leading-5 text-muted-foreground">
-            Manage the backend runtime and network access.
-          </p>
-        </div>
+          <component :is="category.icon" class="size-4 shrink-0" />
+          <span>{{ category.label }}</span>
+        </button>
+      </nav>
+    </aside>
+
+    <section class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <header class="relative z-10 shrink-0 px-4 py-4 pr-14 md:px-6 md:py-5">
+        <h2 id="settings-title" class="text-lg font-semibold tracking-[-0.02em]">
+          {{ activeCategoryDetails.label }}
+        </h2>
+        <p class="mt-1 text-sm leading-5 text-muted-foreground">
+          {{ activeCategoryDetails.description }}
+        </p>
+        <div
+          class="pointer-events-none absolute inset-x-0 top-full h-6 bg-linear-to-b from-background to-transparent"
+          aria-hidden="true"
+        ></div>
       </header>
 
-      <section
-        class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
-      >
-        <div
-          class="flex flex-col gap-3 border-b border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div>
-            <h2 class="text-sm font-medium">Backend</h2>
-            <p class="mt-0.5 text-[11px] text-muted-foreground">
-              Runtime selection and binary status
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              @click="reopenSetup"
-              title="Run setup wizard"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+      <div class="flex-1 overflow-y-auto p-4 md:p-6">
+        <div class="mx-auto w-full max-w-2xl space-y-4">
+          <section
+            v-if="activeCategory === 'backend'"
+            class="fade-in animate-in overflow-hidden duration-200"
+          >
+            <div class="flex flex-wrap items-center justify-end gap-3 px-1 pb-4">
+              <button
+                type="button"
+                @click="reopenSetup"
+                title="Run setup wizard"
+                class="inline-flex h-8 items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <RefreshCw class="size-3.5" />
+                Setup wizard
+              </button>
+              <button
+                type="button"
+                @click="openCustomFolder"
+                title="Open custom folder"
+                class="inline-flex h-8 items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <FolderOpen class="size-3.5" />
+                Custom folder
+              </button>
+            </div>
+
+            <div
+              class="flex flex-col gap-3 px-1 py-2 sm:flex-row sm:items-center sm:justify-between"
             >
-              <RefreshCw class="size-3.5" />
-              Setup wizard
-            </button>
-            <button
-              type="button"
-              @click="openCustomFolder"
-              title="Open custom folder"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              <div class="min-w-0">
+                <p class="aui-label text-[11px] font-medium text-muted-foreground">
+                  Active version
+                </p>
+                <p class="mt-1 truncate text-sm font-medium">
+                  {{ config.activeVersion || 'Not configured' }}
+                </p>
+              </div>
+              <span
+                class="aui-status-badge inline-flex w-fit items-center gap-1.5 text-[10px] font-medium"
+                :class="
+                  config.activeBackendValid
+                    ? 'text-foreground'
+                    : 'text-destructive'
+                "
+              >
+                <span
+                  class="size-1.5 rounded-full"
+                  :class="config.activeBackendValid ? 'bg-foreground' : 'bg-destructive'"
+                ></span>
+                {{ config.activeBackendValid ? 'Valid binary' : 'Binary not found' }}
+              </span>
+            </div>
+
+            <div
+              v-if="config.installedVersions.length > 0 || config.customBinaryExists"
+              class="mt-4 px-1 pt-2"
             >
-              <FolderOpen class="size-3.5" />
-              Custom folder
-            </button>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="min-w-0">
-            <p class="aui-label text-[11px] font-medium text-muted-foreground">Active version</p>
-            <p class="mt-1 truncate text-sm font-medium">
-              {{ config.activeVersion || 'Not configured' }}
-            </p>
-          </div>
-          <span
-            class="aui-status-badge inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium"
-            :class="
-              config.activeBackendValid
-                ? 'border-border bg-muted/40 text-foreground'
-                : 'border-destructive/25 bg-destructive/10 text-destructive'
-            "
-          >
-            <span
-              class="size-1.5 rounded-full"
-              :class="config.activeBackendValid ? 'bg-foreground' : 'bg-destructive'"
-            ></span>
-            {{ config.activeBackendValid ? 'Valid binary' : 'Binary not found' }}
-          </span>
-        </div>
-
-        <div
-          v-if="config.installedVersions.length > 0 || config.customBinaryExists"
-          class="border-t border-border/70 px-4 py-4"
-        >
-          <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-            >Switch version</label
-          >
-          <Select
-            :model-value="config.activeVersion"
-            @update:model-value="(val) => setActiveVersion(val)"
-            size="md"
-            class="aui-field sm:max-w-sm"
-            :options="[
-              {
-                label: `Custom ${config.customBinaryExists ? '(Found)' : '(Not Found)'}`,
-                value: 'custom'
-              },
-              ...config.installedVersions.map((v) => ({ label: v, value: v }))
-            ]"
-          />
-        </div>
-
-        <div v-if="!config.activeBackendValid" class="border-t border-border/70 p-4">
-          <div
-            class="aui-alert flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs leading-5 text-muted-foreground"
-          >
-            <AlertTriangle class="mt-0.5 size-3.5 shrink-0 text-foreground" />
-            <span
-              >Place sd-cli and sd-server binaries in the custom folder, or download a release
-              below.</span
-            >
-          </div>
-        </div>
-
-        <div
-          v-if="systemInfo.platform"
-          class="flex flex-col gap-1 border-t border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div>
-            <p class="aui-label text-[11px] font-medium text-muted-foreground">Detected system</p>
-            <p class="mt-0.5 text-xs font-medium">
-              {{
-                systemInfo.platform === 'win32'
-                  ? 'Windows'
-                  : systemInfo.platform === 'darwin'
-                    ? 'macOS'
-                    : 'Linux'
-              }}
-              <span class="font-normal text-muted-foreground">({{ systemInfo.arch }})</span>
-            </p>
-          </div>
-          <p
-            v-if="systemInfo.note"
-            class="max-w-md text-[11px] text-muted-foreground sm:text-right"
-          >
-            {{ systemInfo.note }}
-          </p>
-        </div>
-      </section>
-
-      <section
-        class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
-      >
-        <div class="border-b border-border/70 px-4 py-3">
-          <h2 class="text-sm font-medium">Install a version</h2>
-          <p class="mt-0.5 text-[11px] text-muted-foreground">
-            Download a compatible backend release.
-          </p>
-        </div>
-
-        <div class="space-y-4 p-4">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
               <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-                >Release version</label
+                >Switch version</label
               >
               <Select
-                v-model="selectedRelease"
+                :model-value="config.activeVersion"
+                @update:model-value="(val) => setActiveVersion(val)"
                 size="md"
-                class="aui-field"
-                placeholder="Select version..."
-                :options="releases.map((r) => ({ label: `${r.tag} - ${r.name}`, value: r.tag }))"
+                class="aui-field sm:max-w-sm"
+                :options="[
+                  {
+                    label: `Custom ${config.customBinaryExists ? '(Found)' : '(Not Found)'}`,
+                    value: 'custom'
+                  },
+                  ...config.installedVersions.map((v) => ({ label: v, value: v }))
+                ]"
               />
             </div>
-            <div>
-              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-                >Binary variant</label
+
+            <div v-if="!config.activeBackendValid" class="mt-4">
+              <div
+                class="aui-alert flex items-start gap-2 bg-linear-to-r from-muted/50 to-transparent px-3 py-2.5 text-xs leading-5 text-muted-foreground"
               >
-              <Select
-                v-model="selectedVariant"
-                size="md"
-                class="aui-field"
-                placeholder="Select variant..."
-                :options="selectedReleaseAssets.map((a) => ({ label: a.name, value: a.name }))"
-              />
-            </div>
-          </div>
-
-          <div
-            v-if="downloadStatus"
-            class="aui-alert rounded-lg border px-3 py-2.5 text-xs"
-            :class="
-              downloadStatus.includes('failed')
-                ? 'border-destructive/25 bg-destructive/10 text-destructive'
-                : 'border-border bg-muted/30 text-foreground'
-            "
-          >
-            {{ downloadStatus }}
-          </div>
-
-          <button
-            type="button"
-            @click="downloadAndInstall"
-            :disabled="!selectedRelease || !selectedVariant || isDownloading"
-            class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-          >
-            <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
-            <Download v-else class="size-4" />
-            {{ isDownloading ? 'Downloading...' : 'Download & Install' }}
-          </button>
-
-          <div
-            v-if="releases.length === 0"
-            class="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground"
-          >
-            <Loader2 class="size-3.5 animate-spin" />
-            <span>Loading releases...</span>
-          </div>
-        </div>
-      </section>
-
-      <section
-        class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
-      >
-        <div class="border-b border-border/70 px-4 py-3">
-          <h2 class="text-sm font-medium">Network sharing</h2>
-          <p class="mt-0.5 text-[11px] text-muted-foreground">
-            Control local and public access to the server.
-          </p>
-        </div>
-
-        <div class="px-4 py-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-xs font-medium">Local network</p>
-              <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                Access from other devices by starting with the
-                <code
-                  class="rounded border border-border bg-muted/40 px-1 py-0.5 text-[10px] text-foreground"
-                  >--local</code
+                <AlertTriangle class="mt-0.5 size-3.5 shrink-0 text-foreground" />
+                <span
+                  >Place sd-cli and sd-server binaries in the custom folder, or download a release
+                  below.</span
                 >
-                flag.
-              </p>
+              </div>
             </div>
-            <span
-              class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium"
-              :class="localNetworkEnabled ? 'text-foreground' : 'text-muted-foreground'"
+
+            <div
+              v-if="systemInfo.platform"
+              class="mt-4 flex flex-col gap-1 px-1 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <span
-                class="size-1.5 rounded-full"
-                :class="localNetworkEnabled ? 'bg-foreground' : 'bg-muted-foreground/50'"
-              ></span>
-              {{ localNetworkEnabled ? 'Active' : 'Disabled' }}
-            </span>
-          </div>
-          <button
-            v-if="localNetworkUrl && localNetworkEnabled"
-            type="button"
-            @click="copyUrl(localNetworkUrl)"
-            class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-          >
-            <span class="truncate">{{ localNetworkUrl }}</span>
-            <Copy class="size-3.5 shrink-0" />
-          </button>
-        </div>
+              <div>
+                <p class="aui-label text-[11px] font-medium text-muted-foreground">
+                  Detected system
+                </p>
+                <p class="mt-0.5 text-xs font-medium">
+                  {{
+                    systemInfo.platform === 'win32'
+                      ? 'Windows'
+                      : systemInfo.platform === 'darwin'
+                        ? 'macOS'
+                        : 'Linux'
+                  }}
+                  <span class="font-normal text-muted-foreground">({{ systemInfo.arch }})</span>
+                </p>
+              </div>
+              <p
+                v-if="systemInfo.note"
+                class="max-w-md text-[11px] text-muted-foreground sm:text-right"
+              >
+                {{ systemInfo.note }}
+              </p>
+            </div>
+          </section>
 
-        <div class="border-t border-border/70 px-4 py-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-xs font-medium">Ngrok tunnel</p>
-              <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                Expose the server through an authenticated public tunnel.
-                <a
-                  href="https://dashboard.ngrok.com/get-started/your-authtoken"
-                  target="_blank"
-                  class="text-foreground underline decoration-border underline-offset-2 transition-colors duration-200 hover:decoration-foreground"
-                  >Get auth token</a
+          <section
+            v-if="activeCategory === 'installation'"
+            class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
+          >
+            <div class="space-y-4 p-4">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                    >Release version</label
+                  >
+                  <Select
+                    v-model="selectedRelease"
+                    size="md"
+                    class="aui-field"
+                    placeholder="Select version..."
+                    :options="
+                      releases.map((r) => ({ label: `${r.tag} - ${r.name}`, value: r.tag }))
+                    "
+                  />
+                </div>
+                <div>
+                  <label
+                    class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                    >Binary variant</label
+                  >
+                  <Select
+                    v-model="selectedVariant"
+                    size="md"
+                    class="aui-field"
+                    placeholder="Select variant..."
+                    :options="selectedReleaseAssets.map((a) => ({ label: a.name, value: a.name }))"
+                  />
+                </div>
+              </div>
+
+              <div
+                v-if="downloadStatus"
+                class="aui-alert rounded-lg border px-3 py-2.5 text-xs"
+                :class="
+                  downloadStatus.includes('failed')
+                    ? 'border-destructive/25 bg-destructive/10 text-destructive'
+                    : 'border-border bg-muted/30 text-foreground'
+                "
+              >
+                {{ downloadStatus }}
+              </div>
+
+              <button
+                type="button"
+                @click="downloadAndInstall"
+                :disabled="!selectedRelease || !selectedVariant || isDownloading"
+                class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
+                <Download v-else class="size-4" />
+                {{ isDownloading ? 'Downloading...' : 'Download & Install' }}
+              </button>
+
+              <div
+                v-if="releases.length === 0"
+                class="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground"
+              >
+                <Loader2 class="size-3.5 animate-spin" />
+                <span>Loading releases...</span>
+              </div>
+            </div>
+          </section>
+
+          <section
+            v-if="activeCategory === 'network'"
+            class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
+          >
+            <div class="px-4 py-4">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-medium">Local network</p>
+                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Access from other devices by starting with the
+                    <code
+                      class="rounded border border-border bg-muted/40 px-1 py-0.5 text-[10px] text-foreground"
+                      >--local</code
+                    >
+                    flag.
+                  </p>
+                </div>
+                <span
+                  class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium"
+                  :class="localNetworkEnabled ? 'text-foreground' : 'text-muted-foreground'"
                 >
-              </p>
+                  <span
+                    class="size-1.5 rounded-full"
+                    :class="localNetworkEnabled ? 'bg-foreground' : 'bg-muted-foreground/50'"
+                  ></span>
+                  {{ localNetworkEnabled ? 'Active' : 'Disabled' }}
+                </span>
+              </div>
+              <button
+                v-if="localNetworkUrl && localNetworkEnabled"
+                type="button"
+                @click="copyUrl(localNetworkUrl)"
+                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <span class="truncate">{{ localNetworkUrl }}</span>
+                <Copy class="size-3.5 shrink-0" />
+              </button>
             </div>
-            <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+
+            <div class="border-t border-border/70 px-4 py-4">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-medium">Ngrok tunnel</p>
+                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Expose the server through an authenticated public tunnel.
+                    <a
+                      href="https://dashboard.ngrok.com/get-started/your-authtoken"
+                      target="_blank"
+                      class="text-foreground underline decoration-border underline-offset-2 transition-colors duration-200 hover:decoration-foreground"
+                      >Get auth token</a
+                    >
+                  </p>
+                </div>
+                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    :checked="ngrokEnabled"
+                    @change="toggleNgrok"
+                    class="peer sr-only"
+                    aria-label="Toggle Ngrok tunnel"
+                  />
+                  <span
+                    class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
+                  ></span>
+                </label>
+              </div>
+
               <input
-                type="checkbox"
-                :checked="ngrokEnabled"
-                @change="toggleNgrok"
-                class="peer sr-only"
-                aria-label="Toggle Ngrok tunnel"
+                v-if="!ngrokEnabled"
+                v-model="ngrokToken"
+                type="password"
+                placeholder="Ngrok auth token (optional if set in environment)"
+                class="aui-field mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
-              <span
-                class="h-5 w-9 rounded-full border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
-              ></span>
-            </label>
-          </div>
 
-          <input
-            v-if="!ngrokEnabled"
-            v-model="ngrokToken"
-            type="password"
-            placeholder="Ngrok auth token (optional if set in environment)"
-            class="aui-field mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
+              <div
+                v-if="ngrokError"
+                class="aui-alert mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs text-destructive"
+              >
+                {{ ngrokError }}
+              </div>
 
-          <div
-            v-if="ngrokError"
-            class="aui-alert mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs text-destructive"
+              <button
+                v-if="ngrokUrl"
+                type="button"
+                @click="copyUrl(ngrokUrl)"
+                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <span class="truncate">{{ ngrokUrl }}</span>
+                <Copy class="size-3.5 shrink-0" />
+              </button>
+            </div>
+
+            <div class="border-t border-border/70 px-4 py-4">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-medium">Cloudflare tunnel</p>
+                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Create a temporary public route without a local network flag.
+                  </p>
+                </div>
+                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    :checked="cloudflareEnabled"
+                    @change="toggleCloudflare"
+                    class="peer sr-only"
+                    aria-label="Toggle Cloudflare tunnel"
+                  />
+                  <span
+                    class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
+                  ></span>
+                </label>
+              </div>
+
+              <button
+                v-if="cloudflareUrl"
+                type="button"
+                @click="copyUrl(cloudflareUrl)"
+                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <span class="truncate">{{ cloudflareUrl }}</span>
+                <Copy class="size-3.5 shrink-0" />
+              </button>
+            </div>
+          </section>
+
+          <section
+            v-if="activeCategory === 'storage'"
+            class="fade-in animate-in space-y-7 duration-200"
           >
-            {{ ngrokError }}
-          </div>
+            <div
+              v-if="storageSettings?.restartRequired"
+              class="bg-linear-to-r from-amber-500/12 to-transparent px-3 py-2.5 text-xs leading-5 text-foreground"
+            >
+              Restart Flaxeo to apply the new storage locations. Existing files will not be moved.
+            </div>
 
-          <button
-            v-if="ngrokUrl"
-            type="button"
-            @click="copyUrl(ngrokUrl)"
-            class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            <div
+              v-if="storageError"
+              class="bg-linear-to-r from-destructive/10 to-transparent px-3 py-2.5 text-xs text-destructive"
+            >
+              {{ storageError }}
+            </div>
+
+            <div v-if="!storageSettings && !storageError" class="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <Loader2 class="size-4 animate-spin" />
+              Loading storage locations...
+            </div>
+
+            <template v-if="storageSettings">
+              <div class="rounded-lg border border-border/70 bg-card p-4">
+                <h3 class="text-sm font-medium">Generated files</h3>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                  Choose where images and temporary working files are written.
+                </p>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div
+                    v-for="location in storageLocations"
+                    :key="location.id"
+                    class="min-w-0"
+                  >
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-medium">{{ location.label }}</p>
+                      <span
+                        v-if="storageIsCustom(location.id)"
+                        class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                        >Custom</span
+                      >
+                    </div>
+                    <p
+                      class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                      :title="storagePath(location.id)"
+                    >
+                      {{ storagePath(location.id) }}
+                    </p>
+                    <div class="mt-2 flex items-center gap-3 text-xs">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-1 font-medium text-foreground hover:opacity-65 disabled:opacity-40"
+                        :disabled="storageBusy === location.id"
+                        @click="chooseStorageDirectory(location.id)"
+                      >
+                        <Loader2 v-if="storageBusy === location.id" class="size-3 animate-spin" />
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground"
+                        @click="openStorageDirectory(location.id)"
+                      >
+                        Open
+                      </button>
+                      <button
+                        v-if="storageIsCustom(location.id)"
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        :disabled="storageBusy === location.id"
+                        @click="resetStorageDirectory(location.id)"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-border/70 bg-card p-4">
+                <h3 class="text-sm font-medium">Model directories</h3>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                  Each model type can use an independent folder.
+                </p>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div
+                    v-for="location in modelLocations"
+                    :key="location.id"
+                    class="min-w-0"
+                  >
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-medium">{{ location.label }}</p>
+                      <span
+                        v-if="storageIsCustom(location.id)"
+                        class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                        >Custom</span
+                      >
+                    </div>
+                    <p
+                      class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                      :title="storagePath(location.id)"
+                    >
+                      {{ storagePath(location.id) }}
+                    </p>
+                    <div class="mt-2 flex items-center gap-3 text-xs">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-1 font-medium text-foreground hover:opacity-65 disabled:opacity-40"
+                        :disabled="storageBusy === location.id"
+                        @click="chooseStorageDirectory(location.id)"
+                      >
+                        <Loader2 v-if="storageBusy === location.id" class="size-3 animate-spin" />
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground"
+                        @click="openStorageDirectory(location.id)"
+                      >
+                        Open
+                      </button>
+                      <button
+                        v-if="storageIsCustom(location.id)"
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        :disabled="storageBusy === location.id"
+                        @click="resetStorageDirectory(location.id)"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <section
+            v-if="activeCategory === 'appearance'"
+            class="fade-in animate-in duration-200"
+            aria-label="Theme preference"
           >
-            <span class="truncate">{{ ngrokUrl }}</span>
-            <Copy class="size-3.5 shrink-0" />
-          </button>
-        </div>
-
-        <div class="border-t border-border/70 px-4 py-4">
-          <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="text-xs font-medium">Cloudflare tunnel</p>
-              <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                Create a temporary public route without a local network flag.
+              <h3 class="text-sm font-medium">Theme</h3>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                Choose an interface theme or follow your system.
               </p>
             </div>
-            <label class="relative inline-flex shrink-0 cursor-pointer items-center">
-              <input
-                type="checkbox"
-                :checked="cloudflareEnabled"
-                @change="toggleCloudflare"
-                class="peer sr-only"
-                aria-label="Toggle Cloudflare tunnel"
-              />
+
+            <div class="mt-4 grid max-w-sm grid-cols-3 gap-3">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                type="button"
+                class="group flex min-w-0 flex-col items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                :class="
+                  themePreference === option.value
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="themePreference === option.value"
+                @click="setTheme(option.value)"
+              >
+                <span
+                  class="relative aspect-square w-20 overflow-hidden rounded-sm shadow-sm transition-[opacity,transform,box-shadow] duration-150 group-hover:-translate-y-0.5 sm:w-24"
+                  :class="[
+                    option.value === 'light'
+                      ? 'bg-[#fdfdfd] text-[#0d0d0d]'
+                      : option.value === 'dark'
+                        ? 'bg-[#141414] text-white'
+                        : 'bg-linear-to-br from-[#fdfdfd] from-45% to-[#141414] to-55% text-[#737373]',
+                    themePreference === option.value
+                      ? 'opacity-100 shadow-md'
+                      : 'opacity-60 group-hover:opacity-90'
+                  ]"
+                >
+                  <span class="absolute inset-x-[10%] top-[10%] h-[9%] bg-current opacity-65"></span>
+                  <span
+                    class="absolute bottom-[10%] left-[10%] top-[27%] w-[21%] bg-current opacity-20"
+                  ></span>
+                  <span
+                    class="absolute bottom-[10%] left-[37%] right-[10%] top-[27%] bg-current opacity-10"
+                  ></span>
+                  <span
+                    class="absolute left-[44%] top-[39%] h-[8%] w-[38%] bg-current opacity-30"
+                  ></span>
+                  <span
+                    class="absolute left-[44%] top-[55%] h-[19%] w-[24%] bg-current opacity-15"
+                  ></span>
+                </span>
+                <span class="mt-2 flex items-center justify-center gap-1 text-xs font-medium">
+                  {{ option.label }}
+                  <Check v-if="themePreference === option.value" class="size-3" />
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section
+            v-if="activeCategory === 'backend'"
+            class="fade-in animate-in flex items-center justify-between gap-4 px-1 py-3 duration-200"
+          >
+            <div>
+              <h2 class="text-sm font-medium">Express server</h2>
+              <p class="mt-0.5 text-[11px] text-muted-foreground">Backend API connection status</p>
+            </div>
+            <div class="flex items-center gap-1.5">
               <span
-                class="h-5 w-9 rounded-full border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
-              ></span>
-            </label>
-          </div>
-
-          <button
-            v-if="cloudflareUrl"
-            type="button"
-            @click="copyUrl(cloudflareUrl)"
-            class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-          >
-            <span class="truncate">{{ cloudflareUrl }}</span>
-            <Copy class="size-3.5 shrink-0" />
-          </button>
+                class="aui-status-badge inline-flex items-center gap-1.5 text-[10px] font-medium"
+                :class="serverOnline ? 'text-foreground' : 'text-muted-foreground'"
+              >
+                <span
+                  class="size-1.5 rounded-full"
+                  :class="serverOnline ? 'bg-foreground' : 'bg-destructive'"
+                ></span>
+                {{ serverOnline ? 'Online' : 'Offline' }}
+              </span>
+              <button
+                type="button"
+                @click="checkServerStatus"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                aria-label="Refresh server status"
+              >
+                <RefreshCw class="size-3.5" />
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
-
-      <section
-        class="aui-dialog-surface flex items-center justify-between gap-4 rounded-lg border border-border/70 bg-card px-4 py-3"
-      >
-        <div>
-          <h2 class="text-sm font-medium">Express server</h2>
-          <p class="mt-0.5 text-[11px] text-muted-foreground">Backend API connection status</p>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span
-            class="aui-status-badge inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium"
-            :class="serverOnline ? 'text-foreground' : 'text-muted-foreground'"
-          >
-            <span
-              class="size-1.5 rounded-full"
-              :class="serverOnline ? 'bg-foreground' : 'bg-destructive'"
-            ></span>
-            {{ serverOnline ? 'Online' : 'Offline' }}
-          </span>
-          <button
-            type="button"
-            @click="checkServerStatus"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            aria-label="Refresh server status"
-          >
-            <RefreshCw class="size-3.5" />
-          </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
   </div>
 </template>

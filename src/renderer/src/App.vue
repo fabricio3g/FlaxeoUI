@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Play, SlidersHorizontal, Square } from '@/lib/icons'
+import { Play, SlidersHorizontal, Square, X } from '@/lib/icons'
 import Titlebar from './components/layout/Titlebar.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import ConfigPanel from './components/layout/ConfigPanel.vue'
@@ -18,6 +18,7 @@ import Select from './components/ui/Select.vue'
 import { useRuntimeStatus } from './composables/useRuntimeStatus'
 import { useServerControls } from './composables/useServerControls'
 import { useModels } from './composables/useModels'
+import Settings from './views/Settings.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +33,7 @@ const showMobileConfig = ref(false)
 type WorkspaceConfigPanel = 'model' | 'generation' | 'lora' | 'embedding'
 const activeConfigPanel = ref<WorkspaceConfigPanel | null>(null)
 const showFloatingLogs = ref(false)
+const showSettings = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
 
 function toggleSidebar(): void {
@@ -72,11 +74,16 @@ const routeMap: Record<string, string> = {
   edit: 'Edit',
   video: 'Video',
   gallery: 'Gallery',
-  settings: 'Settings',
   quantization: 'Quantization'
 }
 
 function navigateToTab(tab: string): void {
+  if (tab === 'settings') {
+    closeConfigPanel()
+    showSettings.value = true
+    return
+  }
+
   const routeName = routeMap[tab] || tab
   router.push({ name: routeName })
 }
@@ -90,6 +97,10 @@ function openConfigPanel(panel: WorkspaceConfigPanel): void {
 function closeConfigPanel(): void {
   activeConfigPanel.value = null
   showMobileConfig.value = false
+}
+
+function closeSettings(): void {
+  showSettings.value = false
 }
 
 function selectModel(value: string): void {
@@ -109,7 +120,9 @@ function handleBackendMode(value: string): void {
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && configPanelVisible.value) closeConfigPanel()
+  if (event.key !== 'Escape') return
+  if (showSettings.value) closeSettings()
+  else if (configPanelVisible.value) closeConfigPanel()
 }
 
 onMounted(async () => {
@@ -136,7 +149,13 @@ onUnmounted(() => {
   <div
     class="isolate flex h-screen w-screen flex-row overflow-hidden bg-background text-foreground antialiased"
   >
-    <Sidebar class="hidden md:flex" :current-tab="currentTab" :collapsed="sidebarCollapsed" @navigate="navigateToTab" @toggle-collapse="toggleSidebar" />
+    <Sidebar
+      class="hidden md:flex"
+      :current-tab="showSettings ? 'settings' : currentTab"
+      :collapsed="sidebarCollapsed"
+      @navigate="navigateToTab"
+      @toggle-collapse="toggleSidebar"
+    />
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <Titlebar
@@ -268,6 +287,38 @@ onUnmounted(() => {
           </Transition>
         </Teleport>
 
+        <Teleport to="body">
+          <Transition name="modal">
+            <div
+              v-if="showSettings"
+              class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
+              @click.self="closeSettings"
+            >
+              <Transition name="modal-surface" appear>
+                <div
+                  v-if="showSettings"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="settings-title"
+                  class="aui-dialog-surface relative flex h-[min(82vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
+                  @click.stop
+                >
+                  <button
+                    type="button"
+                    class="aui-icon-button absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    aria-label="Close settings"
+                    autofocus
+                    @click="closeSettings"
+                  >
+                    <X class="size-4" />
+                  </button>
+                  <Settings />
+                </div>
+              </Transition>
+            </div>
+          </Transition>
+        </Teleport>
+
           <main
             class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"
             :class="showWorkspaceControls ? 'pt-11' : ''"
@@ -281,7 +332,11 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <MobileNav class="md:hidden" :current-tab="currentTab" @navigate="navigateToTab" />
+      <MobileNav
+        class="md:hidden"
+        :current-tab="showSettings ? 'settings' : currentTab"
+        @navigate="navigateToTab"
+      />
     </div>
 
     <ToastContainer />

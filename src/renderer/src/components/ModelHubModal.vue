@@ -53,7 +53,7 @@ async function downloadPack(): Promise<void> {
         <Transition name="modal-surface" appear>
           <div
             v-if="open"
-            class="aui-dialog-surface model-hub-surface flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh] md:flex-row"
+            class="aui-dialog-surface model-hub-surface flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40 md:max-h-[86vh] md:flex-row"
           >
             <aside
             class="w-full shrink-0 border-b border-border/80 bg-muted/20 p-3 md:w-52 md:border-b-0 md:border-r"

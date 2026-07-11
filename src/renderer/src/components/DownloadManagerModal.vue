@@ -82,7 +82,7 @@ onUnmounted(stopPolling)
         <Transition name="modal-surface" appear>
           <div
             v-if="open"
-            class="aui-dialog-surface downloads-surface flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh]"
+            class="aui-dialog-surface downloads-surface flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40 md:max-h-[86vh]"
           >
             <header
             class="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-4 sm:px-6"

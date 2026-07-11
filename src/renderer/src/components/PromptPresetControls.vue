@@ -112,13 +112,13 @@ onUnmounted(() => {
     <button
       v-if="compact"
       type="button"
-      class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       :class="showPresets ? 'border-border bg-background text-foreground shadow-sm' : ''"
       @click="showPresets = !showPresets"
       title="Prompt Presets"
       aria-label="Toggle prompt presets"
     >
-      <Save class="size-3.5" />
+      <Save class="size-4" />
     </button>
     <button
       v-else

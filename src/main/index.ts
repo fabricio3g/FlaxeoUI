@@ -1,9 +1,18 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, shell, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import { dirname, isAbsolute, join } from 'path'
 import { fork, ChildProcess } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as fs from 'fs'
+import {
+  MODEL_DIRECTORY_KEYS,
+  isModelDirectoryKey,
+  isStorageDirectoryId,
+  type ResolvedStoragePaths,
+  type StorageDirectoryId,
+  type StorageOverrides,
+  type StorageSettings
+} from '../shared/storage'
 
 // Fix Linux SUID sandbox helper issue (chrome-sandbox permissions)
 // This is a no-op on Windows/macOS, so it stays cross-platform safe
@@ -14,17 +23,48 @@ if (process.platform === 'linux') {
 let mainWindow: BrowserWindow | null = null
 let serverProcess: ChildProcess | null = null
 let serverPort = 3000
+let activeStoragePaths: ResolvedStoragePaths | null = null
 
 interface AppState {
   firstRun: boolean
   setupComplete: boolean
   skipped: boolean
+  storage: StorageOverrides
 }
 
 const defaultAppState: AppState = {
   firstRun: true,
   setupComplete: false,
-  skipped: false
+  skipped: false,
+  storage: {}
+}
+
+function sanitizeStorageOverrides(value: unknown): StorageOverrides {
+  if (!value || typeof value !== 'object') return {}
+
+  const candidate = value as StorageOverrides
+  const outputDir =
+    typeof candidate.outputDir === 'string' && isAbsolute(candidate.outputDir)
+      ? candidate.outputDir
+      : undefined
+  const tempDir =
+    typeof candidate.tempDir === 'string' && isAbsolute(candidate.tempDir)
+      ? candidate.tempDir
+      : undefined
+  const modelDirs: StorageOverrides['modelDirs'] = {}
+
+  if (candidate.modelDirs && typeof candidate.modelDirs === 'object') {
+    for (const key of MODEL_DIRECTORY_KEYS) {
+      const directory = candidate.modelDirs[key]
+      if (typeof directory === 'string' && isAbsolute(directory)) modelDirs[key] = directory
+    }
+  }
+
+  return {
+    ...(outputDir ? { outputDir } : {}),
+    ...(tempDir ? { tempDir } : {}),
+    ...(Object.keys(modelDirs).length ? { modelDirs } : {})
+  }
 }
 
 /**
@@ -49,7 +89,8 @@ function readAppState(): AppState {
         typeof parsed.setupComplete === 'boolean'
           ? parsed.setupComplete
           : defaultAppState.setupComplete,
-      skipped: typeof parsed.skipped === 'boolean' ? parsed.skipped : defaultAppState.skipped
+      skipped: typeof parsed.skipped === 'boolean' ? parsed.skipped : defaultAppState.skipped,
+      storage: sanitizeStorageOverrides(parsed.storage)
     }
   } catch (e) {
     console.error('[Main] Failed to read app state:', e)
@@ -77,6 +118,63 @@ function getResourcePath(relativePath: string): string {
     return join(__dirname, '../..', relativePath)
   }
   return join(process.resourcesPath, relativePath)
+}
+
+function resolveStoragePaths(overrides: StorageOverrides): ResolvedStoragePaths {
+  const modelsRootDir = getResourcePath('models')
+  const modelDirs = Object.fromEntries(
+    MODEL_DIRECTORY_KEYS.map((key) => [key, overrides.modelDirs?.[key] || join(modelsRootDir, key)])
+  ) as ResolvedStoragePaths['modelDirs']
+
+  return {
+    modelsRootDir,
+    outputDir: overrides.outputDir || getResourcePath('output'),
+    tempDir: overrides.tempDir || getResourcePath('temp'),
+    modelDirs
+  }
+}
+
+function storagePathsEqual(a: ResolvedStoragePaths | null, b: ResolvedStoragePaths): boolean {
+  if (!a || a.outputDir !== b.outputDir || a.tempDir !== b.tempDir) return false
+  return MODEL_DIRECTORY_KEYS.every((key) => a.modelDirs[key] === b.modelDirs[key])
+}
+
+function getStorageSettings(): StorageSettings {
+  const storage = readAppState().storage
+  const paths = resolveStoragePaths(storage)
+  return {
+    ...paths,
+    overrides: storage,
+    restartRequired: activeStoragePaths !== null && !storagePathsEqual(activeStoragePaths, paths)
+  }
+}
+
+function storageDirectory(settings: ResolvedStoragePaths, id: StorageDirectoryId): string {
+  if (id === 'output') return settings.outputDir
+  if (id === 'temp') return settings.tempDir
+  return settings.modelDirs[id]
+}
+
+function updateStorageOverride(id: StorageDirectoryId, directory?: string): StorageSettings {
+  const state = readAppState()
+  const storage = sanitizeStorageOverrides(state.storage)
+
+  if (id === 'output') {
+    if (directory) storage.outputDir = directory
+    else delete storage.outputDir
+  } else if (id === 'temp') {
+    if (directory) storage.tempDir = directory
+    else delete storage.tempDir
+  } else if (isModelDirectoryKey(id)) {
+    const modelDirs = { ...storage.modelDirs }
+    if (directory) modelDirs[id] = directory
+    else delete modelDirs[id]
+    if (Object.keys(modelDirs).length) storage.modelDirs = modelDirs
+    else delete storage.modelDirs
+  }
+
+  writeAppState({ ...state, storage })
+  return getStorageSettings()
 }
 
 /**
@@ -114,12 +212,16 @@ function startServer(): Promise<number> {
 
     console.log('[Main] Passing args to server:', args)
 
+    const storagePaths = resolveStoragePaths(readAppState().storage)
+    activeStoragePaths = storagePaths
+
     // Environment variables for the server process
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       FLAXEO_PACKAGED: is.dev ? '0' : '1',
-      FLAXEO_RESOURCES_PATH: is.dev ? join(__dirname, '../..') : process.resourcesPath
+      FLAXEO_RESOURCES_PATH: is.dev ? join(__dirname, '../..') : process.resourcesPath,
+      FLAXEO_STORAGE_PATHS: JSON.stringify(storagePaths)
     }
 
     // Use fork() which is designed for Node.js processes
@@ -247,31 +349,28 @@ ipcMain.on('window-maximize', () => {
 })
 ipcMain.on('window-close', () => mainWindow?.close())
 
+function openDirectory(directory: string): void {
+  fs.mkdirSync(directory, { recursive: true })
+  void shell.openPath(directory)
+}
+
 /**
  * IPC Handlers - Folder Access
  */
 ipcMain.on('open-gallery-folder', () => {
-  const outputDir = getResourcePath('output')
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true })
-  }
-  shell.openPath(outputDir)
+  openDirectory(getStorageSettings().outputDir)
 })
 
 ipcMain.on('open-models-folder', () => {
-  const modelsDir = getResourcePath('models')
-  if (!fs.existsSync(modelsDir)) {
-    fs.mkdirSync(modelsDir, { recursive: true })
-  }
-  shell.openPath(modelsDir)
+  const storage = getStorageSettings()
+  const modelDirectories = Object.values(storage.modelDirs)
+  const parents = new Set(modelDirectories.map((directory) => dirname(directory)))
+  openDirectory(parents.size === 1 ? [...parents][0] : storage.modelDirs.diffusion)
 })
 
 ipcMain.on('open-custom-folder', () => {
   const customDir = getResourcePath('backend/custom')
-  if (!fs.existsSync(customDir)) {
-    fs.mkdirSync(customDir, { recursive: true })
-  }
-  shell.openPath(customDir)
+  openDirectory(customDir)
 })
 
 /**
@@ -289,6 +388,35 @@ ipcMain.handle('get-init-state', () => {
 })
 
 ipcMain.handle('get-server-port', () => serverPort)
+
+ipcMain.handle('get-storage-settings', () => getStorageSettings())
+
+ipcMain.handle('choose-storage-directory', async (_event, id: string) => {
+  if (!isStorageDirectoryId(id)) throw new Error('Invalid storage directory')
+
+  const options: OpenDialogOptions = {
+    title: 'Choose storage directory',
+    properties: ['openDirectory', 'createDirectory']
+  }
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options)
+  const directory = result.filePaths[0]
+  if (result.canceled || !directory) return null
+
+  fs.mkdirSync(directory, { recursive: true })
+  return updateStorageOverride(id, directory)
+})
+
+ipcMain.handle('reset-storage-directory', (_event, id: string) => {
+  if (!isStorageDirectoryId(id)) throw new Error('Invalid storage directory')
+  return updateStorageOverride(id)
+})
+
+ipcMain.handle('open-storage-directory', (_event, id: string) => {
+  if (!isStorageDirectoryId(id)) throw new Error('Invalid storage directory')
+  openDirectory(storageDirectory(getStorageSettings(), id))
+})
 
 ipcMain.handle('set-first-run-complete', () => {
   const state = readAppState()

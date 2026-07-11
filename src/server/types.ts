@@ -1,6 +1,7 @@
 import type { ChildProcess } from 'child_process'
 import type { EventEmitter } from 'events'
 import type { Server } from 'http'
+import type { ModelDirectoryKey } from '../shared/storage'
 
 export type JsonObject = Record<string, any>
 
@@ -26,6 +27,7 @@ export interface Paths {
   customDir: string
   releasesDir: string
   modelsDir: string
+  modelDirs: Record<ModelDirectoryKey, string>
   outputDir: string
   tempDir: string
   configFile: string

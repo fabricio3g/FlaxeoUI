@@ -7,15 +7,15 @@ import '@fontsource-variable/geist-mono'
 
 import App from './App.vue'
 import './assets/main.css'
+import { initializeTheme } from './composables/useTheme'
 
-document.documentElement.classList.toggle('dark', localStorage.getItem('flaxeo-theme') !== 'light')
+initializeTheme()
 
 // Import views (will be created)
 import Text2Image from './views/Text2Image.vue'
 import Edit from './views/Edit.vue'
 import Video from './views/Video.vue'
 import Gallery from './views/Gallery.vue'
-import Settings from './views/Settings.vue'
 import Quantization from './views/Quantization.vue'
 
 /**
@@ -31,7 +31,7 @@ const router = createRouter({
     { path: '/edit', name: 'Edit', component: Edit },
     { path: '/video', name: 'Video', component: Video },
     { path: '/gallery', name: 'Gallery', component: Gallery },
-    { path: '/settings', name: 'Settings', component: Settings },
+    { path: '/settings', redirect: '/text2image' },
     { path: '/quantization', name: 'Quantization', component: Quantization }
   ]
 })

@@ -3,7 +3,7 @@ import path from 'path'
 import { exec } from 'child_process'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { safeOutputPath } from '../utils'
+import { isPathInside, safeOutputPath } from '../utils'
 
 function readPngParams(filePath: string): string | null {
   try {
@@ -182,8 +182,9 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
     const requested = String(req.query.path || '')
     if (!requested) return res.status(400).json({ error: 'Path required' })
     const resolved = path.resolve(requested)
-    const allowedRoots = [ctx.paths.outputDir, ctx.paths.tempDir, ctx.paths.modelsDir].map((root) => path.resolve(root))
-    if (!allowedRoots.some((root) => resolved.startsWith(root))) return res.status(403).json({ error: 'Access denied' })
+    const allowedRoots = [ctx.paths.outputDir, ctx.paths.tempDir, ...Object.values(ctx.paths.modelDirs)]
+    if (!allowedRoots.some((root) => isPathInside(root, resolved)))
+      return res.status(403).json({ error: 'Access denied' })
     if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'File not found' })
     res.sendFile(resolved)
   })

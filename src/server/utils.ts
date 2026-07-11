@@ -6,6 +6,7 @@ import path from 'path'
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import type { AppContext } from './types'
+import { isModelDirectoryKey } from '../shared/storage'
 
 export function asBool(value: unknown): boolean {
   return value === true || value === 'true' || value === '1' || value === 1
@@ -46,9 +47,15 @@ export function listFiles(dir: string): string[] {
   }
 }
 
+export function modelDirectory(ctx: AppContext, subdir: string): string {
+  return isModelDirectoryKey(subdir)
+    ? ctx.paths.modelDirs[subdir]
+    : path.join(ctx.paths.modelsDir, subdir)
+}
+
 export function modelPath(ctx: AppContext, subdir: string, file?: string): string | undefined {
   if (!file) return undefined
-  return path.join(ctx.paths.modelsDir, subdir, file)
+  return path.join(modelDirectory(ctx, subdir), file)
 }
 
 export function roundTo(value: unknown, fallback: number, multiple: number): number {
@@ -58,7 +65,12 @@ export function roundTo(value: unknown, fallback: number, multiple: number): num
 
 export function safeOutputPath(ctx: AppContext, filename: string): string | null {
   const resolved = path.resolve(ctx.paths.outputDir, filename)
-  return resolved.startsWith(path.resolve(ctx.paths.outputDir)) ? resolved : null
+  return isPathInside(ctx.paths.outputDir, resolved) ? resolved : null
+}
+
+export function isPathInside(root: string, candidate: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate))
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
 export function getLocalIP(): string {

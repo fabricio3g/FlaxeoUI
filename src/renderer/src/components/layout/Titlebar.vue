@@ -16,6 +16,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import { useTheme } from '@/composables/useTheme'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -35,7 +36,6 @@ const emit = defineEmits<{
 }>()
 
 const isElectron = ref(false)
-const isDark = ref(false)
 const showModelHub = ref(false)
 const showDownloadManager = ref(false)
 const configStore = useConfigStore()
@@ -49,6 +49,7 @@ const {
   startRuntimeStatusPolling,
   stopRuntimeStatusPolling
 } = useRuntimeStatus()
+const { isDark, toggleTheme } = useTheme()
 
 const statusDotClass = computed(() => {
   if (runtimeState.value === 'online') return 'bg-emerald-500'
@@ -78,25 +79,14 @@ const currentViewLabel = computed(() => {
 
 const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
 
-function applyTheme(dark: boolean): void {
-  isDark.value = dark
-  document.documentElement.classList.toggle('dark', dark)
-  localStorage.setItem('flaxeo-theme', dark ? 'dark' : 'light')
-}
-
 onMounted(() => {
   isElectron.value = !!window.electronAPI
-  applyTheme(localStorage.getItem('flaxeo-theme') !== 'light')
   startRuntimeStatusPolling()
 })
 
 onUnmounted(() => {
   stopRuntimeStatusPolling()
 })
-
-function toggleTheme(): void {
-  applyTheme(!isDark.value)
-}
 
 function handleMinimize(): void {
   window.electronAPI?.minimize()

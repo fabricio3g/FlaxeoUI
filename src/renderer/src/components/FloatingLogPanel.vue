@@ -124,7 +124,7 @@ onUnmounted(() => {
       v-if="modelValue"
       ref="panelRef"
       :style="style"
-      class="aui-dialog-surface fixed z-[10001] flex h-[min(400px,calc(100vh-1.5rem))] w-[600px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10"
+      class="aui-dialog-surface fixed z-[10001] flex h-[min(400px,calc(100vh-1.5rem))] w-[600px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
     >
       <!-- Drag Handle / Title Bar -->
       <div

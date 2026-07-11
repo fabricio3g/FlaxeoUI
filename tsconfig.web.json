@@ -3,7 +3,8 @@
   "include": [
     "src/renderer/**/*.ts",
     "src/renderer/**/*.vue",
-    "src/preload/*.d.ts"
+    "src/preload/*.d.ts",
+    "src/shared/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,

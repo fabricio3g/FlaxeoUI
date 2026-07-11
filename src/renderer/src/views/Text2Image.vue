@@ -13,12 +13,11 @@ import {
   ImagePlus,
   Plus,
   Upload,
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Image,
   Loader2,
+  SlidersHorizontal,
   Square
 } from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
@@ -30,6 +29,7 @@ import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
 
@@ -189,10 +189,7 @@ const resolutionPresets = [
 ]
 
 const resolutionLabel = computed(() => {
-  const preset = resolutionPresets.find(
-    (item) => item.width === config.value.width && item.height === config.value.height
-  )
-  return preset?.label || `${config.value.width}×${config.value.height}`
+  return `${config.value.width}×${config.value.height}`
 })
 
 function selectResolution(preset: (typeof resolutionPresets)[number]): void {
@@ -1082,64 +1079,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Quick controls: Steps, CFG, Seed, Scheduler, Sampler, Resolution -->
-        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Steps</span>
-            <input
-              v-model.number="config.steps"
-              type="number"
-              min="1"
-              max="150"
-              aria-label="Steps"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">CFG</span>
-            <input
-              v-model.number="config.cfgScale"
-              type="number"
-              min="0"
-              max="30"
-              step="0.5"
-              aria-label="CFG scale"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Seed</span>
-            <input
-              v-model.number="config.seed"
-              type="number"
-              min="-1"
-              aria-label="Seed"
-              title="Use -1 for a random seed"
-              class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <Select
-            v-model="config.scheduler"
-            label="Scheduler"
-            size="sm"
-            aria-label="Scheduler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="schedulerOptions"
-          />
-          <Select
-            v-model="config.sampler"
-            label="Sampler"
-            size="sm"
-            aria-label="Sampler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="samplerOptions"
-          />
+        <!-- Quick controls: Resolution + advanced popover -->
+        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <div class="relative shrink-0">
             <button
               type="button"
@@ -1153,47 +1094,59 @@ onMounted(async () => {
               aria-label="Resolution"
               @click.stop="showResolutionMenu = !showResolutionMenu"
             >
+              <span class="flex h-4 w-5 items-center justify-center" aria-hidden="true">
+                <span
+                  class="block rounded-[2px] border border-current opacity-70"
+                  :class="config.width >= config.height ? 'w-4' : 'h-4'"
+                  :style="{ aspectRatio: `${config.width} / ${config.height}` }"
+                ></span>
+              </span>
               <span>{{ resolutionLabel }}</span>
               <ChevronUp v-if="showResolutionMenu" class="h-3 w-3" />
               <ChevronDown v-else class="h-3 w-3" />
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-72 rounded-[20px] border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_44px_rgb(0_0_0/0.16)] backdrop-blur-xl duration-150"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-64 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150"
               @click.stop
             >
-              <div class="grid grid-cols-4 gap-1.5">
+              <div class="grid grid-cols-2 gap-1">
                 <button
                   v-for="preset in resolutionPresets"
                   :key="preset.label"
                   type="button"
-                  class="flex flex-col items-center justify-center rounded-xl border p-2 text-xs transition-colors duration-150 hover:bg-accent"
+                  class="flex h-11 items-center gap-2 rounded-lg px-2 text-left transition-colors duration-150 hover:bg-accent"
                   :class="
-                    resolutionLabel === preset.label
-                      ? 'border-foreground/30 bg-foreground/5 text-foreground'
-                      : 'border-transparent text-muted-foreground'
+                    config.width === preset.width && config.height === preset.height
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground'
                   "
                   @click="selectResolution(preset)"
                 >
-                  <span class="font-semibold">{{ preset.label }}</span>
-                  <small class="text-[10px] text-muted-foreground"
-                    >{{ preset.width }}×{{ preset.height }}</small
+                  <span
+                    class="flex h-7 w-8 shrink-0 items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    <span
+                      class="block rounded-[2px] border border-current"
+                      :class="preset.width >= preset.height ? 'w-7' : 'h-7'"
+                      :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
+                    ></span>
+                  </span>
+                  <span class="font-mono text-[10px] tracking-tight"
+                    >{{ preset.width }}×{{ preset.height }}</span
                   >
                 </button>
               </div>
-              <div class="mt-3 border-t border-border pt-3">
-                <span
-                  class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                  >Custom</span
-                >
-                <div class="mt-1.5 flex items-center gap-1.5">
+              <div class="mt-2 border-t border-border/70 pt-2">
+                <div class="flex items-center gap-1.5">
                   <input
                     v-model.number="config.width"
                     type="number"
                     min="64"
                     step="64"
                     aria-label="Custom width"
-                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -1202,11 +1155,11 @@ onMounted(async () => {
                     min="64"
                     step="64"
                     aria-label="Custom height"
-                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
-                    class="inline-flex h-9 items-center justify-center rounded-full bg-foreground px-3 text-xs font-medium text-background shadow-sm transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="inline-flex h-8 flex-1 items-center justify-center rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     @click="applyCustomResolution"
                   >
                     Apply
@@ -1215,7 +1168,93 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          <div class="relative ml-auto size-8 shrink-0">
+
+          <PromptPresetControls
+            v-model:prompt="prompt"
+            v-model:negative-prompt="negativePrompt"
+            compact
+            class="ml-auto shrink-0"
+          />
+
+          <Popover>
+            <PopoverTrigger as-child>
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Generation settings"
+                title="Generation settings"
+              >
+                <SlidersHorizontal class="size-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+              <div class="mb-3">
+                <p class="text-sm font-medium">Generation settings</p>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Sampling and seed controls
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Steps
+                  <input
+                    v-model.number="config.steps"
+                    type="number"
+                    min="1"
+                    max="150"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  CFG
+                  <input
+                    v-model.number="config.cfgScale"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.5"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Seed
+                  <input
+                    v-model.number="config.seed"
+                    type="number"
+                    min="-1"
+                    title="Use -1 for a random seed"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+              </div>
+
+              <div class="mt-3 space-y-2">
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Scheduler
+                  <Select
+                    v-model="config.scheduler"
+                    size="sm"
+                    aria-label="Scheduler"
+                    class="mt-1"
+                    :options="schedulerOptions"
+                  />
+                </label>
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Sampler
+                  <Select
+                    v-model="config.sampler"
+                    size="sm"
+                    aria-label="Sampler"
+                    class="mt-1"
+                    :options="samplerOptions"
+                  />
+                </label>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div class="relative size-10 shrink-0">
             <Transition name="flaxeo-action">
               <button
                 v-if="!isGenerating"
@@ -1226,7 +1265,7 @@ onMounted(async () => {
                 title="Generate"
                 aria-label="Generate image"
               >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
+                <ArrowUp class="size-4 stroke-[2.5]" />
               </button>
               <button
                 v-else
@@ -1236,7 +1275,7 @@ onMounted(async () => {
                 title="Cancel"
                 aria-label="Cancel generation"
               >
-                <Square class="size-3 fill-current" />
+                <Square class="size-3.5 fill-current" />
               </button>
             </Transition>
           </div>

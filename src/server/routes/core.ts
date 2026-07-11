@@ -2,7 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { appendLog, errorMessage, listFiles, spawnLoggedProcess } from '../utils'
+import { appendLog, errorMessage, listFiles, modelDirectory, spawnLoggedProcess } from '../utils'
+import { MODEL_DIRECTORY_KEYS } from '../../shared/storage'
 import {
   addHardwareArgs,
   addModelArgs,
@@ -13,25 +14,7 @@ import {
 } from '../sd'
 import { downloadFile } from '../utils'
 
-const MODEL_DOWNLOAD_DIRS = new Set([
-  'diffusion',
-  'uncond_diffusion',
-  'vae',
-  'audio_vae',
-  'llm',
-  'llm_vision',
-  't5xxl',
-  'embeddings_connectors',
-  'clip',
-  'clip_vision',
-  'loras',
-  'controlnet',
-  'photomaker',
-  'upscale',
-  'hires_upscalers',
-  'taesd',
-  'embeddings'
-])
+const MODEL_DOWNLOAD_DIRS = new Set<string>(MODEL_DIRECTORY_KEYS)
 
 type GenerationPayload = Record<string, string | number> & { seed: number }
 
@@ -95,7 +78,7 @@ function filenameFromUrl(url: string): string {
 
 export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/models', (_req, res) => {
-    const modelDir = (subdir: string) => path.join(ctx.paths.modelsDir, subdir)
+    const modelDir = (subdir: string) => modelDirectory(ctx, subdir)
     res.json({
       diffusion: listFiles(modelDir('diffusion')),
       uncondDiffusion: listFiles(modelDir('uncond_diffusion')),
@@ -128,7 +111,7 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const safeFilename = path.basename(
       typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url)
     )
-    const targetDir = path.join(ctx.paths.modelsDir, category)
+    const targetDir = modelDirectory(ctx, category)
     const targetPath = path.join(targetDir, safeFilename)
     const id = createDownloadTask(ctx, `Model: ${safeFilename}`, url, targetPath)
 
@@ -180,16 +163,16 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const args = ['--listen-port', String(body.port || 1234), '-v']
     addModelArgs(ctx, args, body)
 
-    if (body.loraDir) args.push('--lora-model-dir', path.join(ctx.paths.modelsDir, 'loras'))
+    if (body.loraDir) args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
     addOptionalArgs(args, body)
     addHardwareArgs(args, body)
     addPromptModelExtras(ctx, args, body)
     if (body.vaeTileSize && Number(body.vaeTileSize) > 0)
       pushArg(args, '--vae-tile-size', body.vaeTileSize)
     if (body.controlNet)
-      pushArg(args, '--control-net', path.join(ctx.paths.modelsDir, 'controlnet', body.controlNet))
+      pushArg(args, '--control-net', path.join(modelDirectory(ctx, 'controlnet'), body.controlNet))
     if (body.photoMaker)
-      pushArg(args, '--photo-maker', path.join(ctx.paths.modelsDir, 'photomaker', body.photoMaker))
+      pushArg(args, '--photo-maker', path.join(modelDirectory(ctx, 'photomaker'), body.photoMaker))
     pushArg(args, '--steps', body.defaultSteps)
     pushArg(args, '--cfg-scale', body.defaultCfg)
 

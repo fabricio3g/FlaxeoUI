@@ -2,26 +2,7 @@ import { EventEmitter } from 'events'
 import fs from 'fs'
 import path from 'path'
 import type { AppContext, BackendConfig, Paths } from './types'
-
-const MODEL_DIRS = [
-  'diffusion',
-  'uncond_diffusion',
-  'vae',
-  'audio_vae',
-  'llm',
-  'llm_vision',
-  't5xxl',
-  'embeddings_connectors',
-  'clip',
-  'clip_vision',
-  'loras',
-  'controlnet',
-  'photomaker',
-  'upscale',
-  'hires_upscalers',
-  'taesd',
-  'embeddings'
-]
+import { MODEL_DIRECTORY_KEYS, type ResolvedStoragePaths } from '../shared/storage'
 
 function getArg(args: string[], name: string, fallback: string): string {
   const index = args.indexOf(name)
@@ -45,9 +26,8 @@ function loadBackendConfig(configFile: string): BackendConfig {
 }
 
 function ensureDirectories(paths: Paths): void {
-  for (const dir of MODEL_DIRS) {
-    fs.mkdirSync(path.join(paths.modelsDir, dir), { recursive: true })
-  }
+  for (const directory of Object.values(paths.modelDirs))
+    fs.mkdirSync(directory, { recursive: true })
 
   fs.mkdirSync(paths.outputDir, { recursive: true })
   fs.mkdirSync(paths.backendDir, { recursive: true })
@@ -56,19 +36,68 @@ function ensureDirectories(paths: Paths): void {
   fs.mkdirSync(paths.tempDir, { recursive: true })
 }
 
+function loadStoragePaths(resourcesPath: string): ResolvedStoragePaths {
+  const modelsRootDir = path.join(resourcesPath, 'models')
+  const defaults: ResolvedStoragePaths = {
+    modelsRootDir,
+    outputDir: path.join(resourcesPath, 'output'),
+    tempDir: path.join(resourcesPath, 'temp'),
+    modelDirs: Object.fromEntries(
+      MODEL_DIRECTORY_KEYS.map((key) => [key, path.join(modelsRootDir, key)])
+    ) as ResolvedStoragePaths['modelDirs']
+  }
+
+  try {
+    const parsed = JSON.parse(process.env.FLAXEO_STORAGE_PATHS || '{}') as Partial<ResolvedStoragePaths>
+    const configuredRoot =
+      typeof parsed.modelsRootDir === 'string' && path.isAbsolute(parsed.modelsRootDir)
+        ? parsed.modelsRootDir
+        : defaults.modelsRootDir
+    const modelDirs = Object.fromEntries(
+      MODEL_DIRECTORY_KEYS.map((key) => {
+        const configured = parsed.modelDirs?.[key]
+        return [
+          key,
+          typeof configured === 'string' && path.isAbsolute(configured)
+            ? configured
+            : path.join(configuredRoot, key)
+        ]
+      })
+    ) as ResolvedStoragePaths['modelDirs']
+
+    return {
+      modelsRootDir: configuredRoot,
+      outputDir:
+        typeof parsed.outputDir === 'string' && path.isAbsolute(parsed.outputDir)
+          ? parsed.outputDir
+          : defaults.outputDir,
+      tempDir:
+        typeof parsed.tempDir === 'string' && path.isAbsolute(parsed.tempDir)
+          ? parsed.tempDir
+          : defaults.tempDir,
+      modelDirs
+    }
+  } catch (error) {
+    console.error('[Server] Invalid storage configuration:', error)
+    return defaults
+  }
+}
+
 export function createContext(): AppContext {
   const args = process.argv.slice(2)
   const port = parseInt(getArg(args, '--port', '3000'), 10)
   const host = getArg(args, '--host', '0.0.0.0')
   const resourcesPath = process.env.FLAXEO_RESOURCES_PATH || process.cwd()
+  const storage = loadStoragePaths(resourcesPath)
   const paths: Paths = {
     root: resourcesPath,
     backendDir: path.join(resourcesPath, 'backend'),
     customDir: path.join(resourcesPath, 'backend', 'custom'),
     releasesDir: path.join(resourcesPath, 'backend', 'releases'),
-    modelsDir: path.join(resourcesPath, 'models'),
-    outputDir: path.join(resourcesPath, 'output'),
-    tempDir: path.join(resourcesPath, 'temp'),
+    modelsDir: storage.modelsRootDir,
+    modelDirs: storage.modelDirs,
+    outputDir: storage.outputDir,
+    tempDir: storage.tempDir,
     configFile: path.join(resourcesPath, 'backend-config.json')
   }
 

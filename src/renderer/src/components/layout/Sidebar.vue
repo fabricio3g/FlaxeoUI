@@ -90,7 +90,7 @@ function openGalleryFolder(): void {
         >
           <button
             type="button"
-            class="aui-icon-button relative inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            class="aui-icon-button relative inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             :class="isActive(item.id) ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
             :aria-label="item.label"
             :aria-current="isActive(item.id) ? 'page' : undefined"

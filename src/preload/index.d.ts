@@ -1,4 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
 
 /**
  * Custom Electron API type definitions
@@ -14,6 +15,10 @@ interface CustomElectronAPI {
   openGalleryFolder: () => void
   openModelsFolder: () => void
   openCustomFolder: () => void
+  getStorageSettings: () => Promise<StorageSettings>
+  chooseStorageDirectory: (id: StorageDirectoryId) => Promise<StorageSettings | null>
+  resetStorageDirectory: (id: StorageDirectoryId) => Promise<StorageSettings>
+  openStorageDirectory: (id: StorageDirectoryId) => Promise<void>
 
   // Settings
   getInitState: () => Promise<{ firstRun: boolean; setupComplete: boolean; skipped: boolean; port: number; isDev: boolean }>

@@ -3,11 +3,12 @@ import { ref, onMounted, onUnmounted, onActivated, computed, nextTick } from 'vu
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, Brush, Eraser, Images, Loader2, Square, Trash2, Upload, X } from '@/lib/icons'
+import { ArrowUp, Brush, Eraser, Images, Loader2, SlidersHorizontal, Square, Trash2, Upload, X } from '@/lib/icons'
 import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
@@ -851,71 +852,93 @@ onUnmounted(() => {
         </div>
 
         <!-- Quick Controls (Steps, CFG, Seed, Scheduler, Sampler, PromptPresets) below -->
-        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Steps</span>
-            <input
-              v-model.number="config.steps"
-              type="number"
-              min="1"
-              max="150"
-              aria-label="Steps"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">CFG</span>
-            <input
-              v-model.number="config.cfgScale"
-              type="number"
-              min="0"
-              max="30"
-              step="0.5"
-              aria-label="CFG scale"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Seed</span>
-            <input
-              v-model.number="config.seed"
-              type="number"
-              min="-1"
-              aria-label="Seed"
-              title="Use -1 for a random seed"
-              class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <Select
-            v-model="config.scheduler"
-            label="Scheduler"
-            size="sm"
-            aria-label="Scheduler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="schedulerOptions"
-          />
-          <Select
-            v-model="config.sampler"
-            label="Sampler"
-            size="sm"
-            aria-label="Sampler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="samplerOptions"
-          />
-
+        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
             compact
-            class="shrink-0"
+            class="ml-auto shrink-0"
           />
-          <div class="relative ml-auto size-8 shrink-0">
+
+          <Popover>
+            <PopoverTrigger as-child>
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Inpaint settings"
+                title="Inpaint settings"
+              >
+                <SlidersHorizontal class="size-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+              <div class="mb-3">
+                <p class="text-sm font-medium">Inpaint settings</p>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Sampling and seed controls
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Steps
+                  <input
+                    v-model.number="config.steps"
+                    type="number"
+                    min="1"
+                    max="150"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  CFG
+                  <input
+                    v-model.number="config.cfgScale"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.5"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Seed
+                  <input
+                    v-model.number="config.seed"
+                    type="number"
+                    min="-1"
+                    title="Use -1 for a random seed"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+              </div>
+
+              <div class="mt-3 space-y-2">
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Scheduler
+                  <Select
+                    v-model="config.scheduler"
+                    size="sm"
+                    aria-label="Scheduler"
+                    class="mt-1"
+                    :options="schedulerOptions"
+                  />
+                </label>
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Sampler
+                  <Select
+                    v-model="config.sampler"
+                    size="sm"
+                    aria-label="Sampler"
+                    class="mt-1"
+                    :options="samplerOptions"
+                  />
+                </label>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div class="relative size-10 shrink-0">
             <Transition name="flaxeo-action">
               <button
                 v-if="!isGenerating"
@@ -926,7 +949,7 @@ onUnmounted(() => {
                 title="Inpaint"
                 aria-label="Inpaint"
               >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
+                <ArrowUp class="size-4 stroke-[2.5]" />
               </button>
               <button
                 v-else
@@ -936,7 +959,7 @@ onUnmounted(() => {
                 title="Cancel"
                 aria-label="Cancel generation"
               >
-                <Square class="size-3 fill-current" />
+                <Square class="size-3.5 fill-current" />
               </button>
             </Transition>
           </div>

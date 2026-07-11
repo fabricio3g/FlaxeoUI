@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
 
 /**
  * Custom Electron API exposed to the renderer process
@@ -19,6 +20,13 @@ const api = {
   openGalleryFolder: (): void => ipcRenderer.send('open-gallery-folder'),
   openModelsFolder: (): void => ipcRenderer.send('open-models-folder'),
   openCustomFolder: (): void => ipcRenderer.send('open-custom-folder'),
+  getStorageSettings: (): Promise<StorageSettings> => ipcRenderer.invoke('get-storage-settings'),
+  chooseStorageDirectory: (id: StorageDirectoryId): Promise<StorageSettings | null> =>
+    ipcRenderer.invoke('choose-storage-directory', id),
+  resetStorageDirectory: (id: StorageDirectoryId): Promise<StorageSettings> =>
+    ipcRenderer.invoke('reset-storage-directory', id),
+  openStorageDirectory: (id: StorageDirectoryId): Promise<void> =>
+    ipcRenderer.invoke('open-storage-directory', id),
 
   /**
    * Settings & State

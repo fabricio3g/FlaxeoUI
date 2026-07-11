@@ -3,7 +3,16 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, ChevronDown, ChevronUp, Loader2, Square, Upload, X } from '@/lib/icons'
+import {
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  SlidersHorizontal,
+  Square,
+  Upload,
+  X
+} from '@/lib/icons'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
@@ -12,6 +21,7 @@ import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -66,10 +76,7 @@ const resolutionPresets = [
 ]
 
 const resolutionLabel = computed(() => {
-  const preset = resolutionPresets.find(
-    (item) => item.width === videoWidth.value && item.height === videoHeight.value
-  )
-  return preset?.label || `${videoWidth.value} × ${videoHeight.value}`
+  return `${videoWidth.value}×${videoHeight.value}`
 })
 
 function selectResolution(preset: (typeof resolutionPresets)[number]): void {
@@ -489,8 +496,8 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Quick Controls (Size, Frames, Flow, Steps, CFG, Scheduler, Sampler, Reference upload, PromptPresets) -->
-        <div class="flex flex-wrap items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
+        <!-- Quick controls -->
+        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
           <div class="relative shrink-0">
             <button
               type="button"
@@ -504,47 +511,59 @@ onUnmounted(() => {
               aria-label="Resolution"
               @click.stop="showResolutionMenu = !showResolutionMenu"
             >
+              <span class="flex h-4 w-5 items-center justify-center" aria-hidden="true">
+                <span
+                  class="block rounded-[2px] border border-current opacity-70"
+                  :class="videoWidth >= videoHeight ? 'w-4' : 'h-4'"
+                  :style="{ aspectRatio: `${videoWidth} / ${videoHeight}` }"
+                ></span>
+              </span>
               <span>{{ resolutionLabel }}</span>
               <ChevronUp v-if="showResolutionMenu" class="h-3 w-3" />
               <ChevronDown v-else class="h-3 w-3" />
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-72 rounded-[20px] border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_44px_rgb(0_0_0/0.16)] backdrop-blur-xl duration-150"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-64 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150"
               @click.stop
             >
-              <div class="grid grid-cols-4 gap-1.5">
+              <div class="grid grid-cols-2 gap-1">
                 <button
                   v-for="preset in resolutionPresets"
                   :key="preset.label"
                   type="button"
-                  class="flex flex-col items-center justify-center rounded-xl border p-2 text-xs transition-colors duration-150 hover:bg-accent"
+                  class="flex h-11 items-center gap-2 rounded-lg px-2 text-left transition-colors duration-150 hover:bg-accent"
                   :class="
-                    resolutionLabel === preset.label
-                      ? 'border-foreground/30 bg-foreground/5 text-foreground'
-                      : 'border-transparent text-muted-foreground'
+                    videoWidth === preset.width && videoHeight === preset.height
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground'
                   "
                   @click="selectResolution(preset)"
                 >
-                  <span class="font-semibold">{{ preset.label }}</span>
-                  <small class="text-[10px] text-muted-foreground"
-                    >{{ preset.width }} × {{ preset.height }}</small
+                  <span
+                    class="flex h-7 w-8 shrink-0 items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    <span
+                      class="block rounded-[2px] border border-current"
+                      :class="preset.width >= preset.height ? 'w-7' : 'h-7'"
+                      :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
+                    ></span>
+                  </span>
+                  <span class="font-mono text-[10px] tracking-tight"
+                    >{{ preset.width }}×{{ preset.height }}</span
                   >
                 </button>
               </div>
-              <div class="mt-3 border-t border-border pt-3">
-                <span
-                  class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                  >Custom</span
-                >
-                <div class="mt-1.5 flex items-center gap-1.5">
+              <div class="mt-2 border-t border-border/70 pt-2">
+                <div class="flex items-center gap-1.5">
                   <input
                     v-model.number="videoWidth"
                     type="number"
                     min="64"
                     step="16"
                     aria-label="Custom width"
-                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -553,11 +572,11 @@ onUnmounted(() => {
                     min="64"
                     step="16"
                     aria-label="Custom height"
-                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
-                    class="inline-flex h-9 items-center justify-center rounded-full bg-foreground px-3 text-xs font-medium text-background shadow-sm transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="inline-flex h-8 flex-1 items-center justify-center rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     @click="applyCustomResolution"
                   >
                     Apply
@@ -582,72 +601,13 @@ onUnmounted(() => {
             />
           </div>
 
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Flow</span>
-            <input
-              v-model.number="flowShift"
-              type="number"
-              min="0"
-              max="10"
-              step="0.5"
-              aria-label="Flow shift"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">Steps</span>
-            <input
-              v-model.number="config.steps"
-              type="number"
-              min="1"
-              max="150"
-              aria-label="Steps"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <div
-            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
-          >
-            <span class="text-muted-foreground">CFG</span>
-            <input
-              v-model.number="config.cfgScale"
-              type="number"
-              min="0"
-              max="30"
-              step="0.5"
-              aria-label="CFG scale"
-              class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
-            />
-          </div>
-          <Select
-            v-model="config.scheduler"
-            label="Scheduler"
-            size="sm"
-            aria-label="Scheduler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="schedulerOptions"
-          />
-          <Select
-            v-model="config.sampler"
-            label="Sampler"
-            size="sm"
-            aria-label="Sampler"
-            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
-            :options="samplerOptions"
-          />
-
           <label
             v-if="videoMode === 'i2v'"
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            class="ml-auto inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
             title="Upload reference image"
           >
             <Upload class="h-3.5 w-3.5" />
-            <span>Reference</span>
+            <span class="hidden sm:inline">Reference</span>
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
 
@@ -655,9 +615,89 @@ onUnmounted(() => {
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
             compact
-            class="shrink-0"
+            :class="videoMode === 'i2v' ? 'shrink-0' : 'ml-auto shrink-0'"
           />
-          <div class="relative ml-auto size-8 shrink-0">
+
+          <Popover>
+            <PopoverTrigger as-child>
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Video generation settings"
+                title="Video generation settings"
+              >
+                <SlidersHorizontal class="size-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+              <div class="mb-3">
+                <p class="text-sm font-medium">Video settings</p>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Sampling and motion parameters
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Flow
+                  <input
+                    v-model.number="flowShift"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  Steps
+                  <input
+                    v-model.number="config.steps"
+                    type="number"
+                    min="1"
+                    max="150"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+                <label class="text-[10px] font-medium text-muted-foreground">
+                  CFG
+                  <input
+                    v-model.number="config.cfgScale"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.5"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+              </div>
+
+              <div class="mt-3 space-y-2">
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Scheduler
+                  <Select
+                    v-model="config.scheduler"
+                    size="sm"
+                    aria-label="Scheduler"
+                    class="mt-1"
+                    :options="schedulerOptions"
+                  />
+                </label>
+                <label class="block text-[10px] font-medium text-muted-foreground">
+                  Sampler
+                  <Select
+                    v-model="config.sampler"
+                    size="sm"
+                    aria-label="Sampler"
+                    class="mt-1"
+                    :options="samplerOptions"
+                  />
+                </label>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div class="relative size-10 shrink-0">
             <Transition name="flaxeo-action">
               <button
                 v-if="!isGenerating"
@@ -668,7 +708,7 @@ onUnmounted(() => {
                 title="Generate Video"
                 aria-label="Generate video"
               >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
+                <ArrowUp class="size-4 stroke-[2.5]" />
               </button>
               <button
                 v-else
@@ -678,7 +718,7 @@ onUnmounted(() => {
                 title="Cancel"
                 aria-label="Cancel generation"
               >
-                <Square class="size-3 fill-current" />
+                <Square class="size-3.5 fill-current" />
               </button>
             </Transition>
           </div>
