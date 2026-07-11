@@ -21,8 +21,20 @@ const percent = computed(() =>
   total.value > 0 ? Math.min(100, (current.value / total.value) * 100) : 0
 )
 
+const statusText = computed(() => {
+  if (props.livePreview) return 'Live preview'
+  if (hasSteps.value) return label.value || props.fallbackLabel
+  return props.loadingText
+})
+
+const phaseHint = computed(() => {
+  if (props.livePreview) return 'Updating as steps complete'
+  if (!hasSteps.value) return 'Weights and text encoder may take a minute'
+  return null
+})
+
 function formatETA(secs: number): string {
-  if (!Number.isFinite(secs) || secs <= 0) return '...'
+  if (!Number.isFinite(secs) || secs <= 0) return '…'
   const m = Math.floor(secs / 60)
   const s = Math.floor(secs % 60)
   return `${m}:${String(s).padStart(2, '0')}`
@@ -33,34 +45,32 @@ function formatETA(secs: number): string {
   <div
     role="status"
     aria-live="polite"
-    class="aui-status-badge fade-in slide-in-from-bottom-1 animate-in fill-mode-both inline-flex items-center gap-3 rounded-full border border-border/70 bg-background/90 px-3.5 py-2 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.06)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
+    class="aui-progress-chip fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex w-full max-w-md flex-col gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3.5 py-2.5 duration-200 motion-reduce:animate-none"
   >
-    <div class="flex min-w-0 items-center gap-2">
-      <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin text-foreground/70" />
-      <span class="truncate text-[11px] font-medium tracking-wide text-foreground">
-        {{
-          props.livePreview
-            ? 'Live preview'
-            : hasSteps
-              ? label || props.fallbackLabel
-              : props.loadingText
-        }}
-      </span>
-    </div>
-
-    <div class="h-1 min-w-16 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+    <div class="flex min-w-0 items-center gap-2.5">
+      <Loader2 class="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[12px] font-medium tracking-wide text-foreground">
+          {{ statusText }}
+        </p>
+        <p v-if="phaseHint" class="mt-0.5 truncate text-[10px] text-muted-foreground">
+          {{ phaseHint }}
+        </p>
+      </div>
       <div
-        class="h-full rounded-full bg-foreground/75 transition-[width] duration-300 ease-out"
-        :style="{ width: percent + '%' }"
-      ></div>
+        class="flex shrink-0 items-center gap-2 text-[11px] font-medium tabular-nums text-muted-foreground"
+      >
+        <span>Step {{ hasSteps ? current : 0 }}/{{ hasSteps ? total : 0 }}</span>
+        <span v-if="etaSeconds > 0" class="hidden sm:inline">ETA {{ formatETA(etaSeconds) }}</span>
+        <span v-if="itPerSec > 0" class="hidden md:inline">{{ itPerSec.toFixed(2) }} it/s</span>
+      </div>
     </div>
 
-    <div
-      class="flex shrink-0 items-center gap-2 text-[11px] font-medium tabular-nums text-muted-foreground"
-    >
-      <span>Step {{ hasSteps ? current : 0 }}/{{ hasSteps ? total : 0 }}</span>
-      <span v-if="etaSeconds > 0" class="hidden sm:inline">ETA {{ formatETA(etaSeconds) }}</span>
-      <span v-if="itPerSec > 0" class="hidden md:inline">{{ itPerSec.toFixed(2) }} it/s</span>
+    <div class="h-1 w-full overflow-hidden rounded-full bg-border/60" aria-hidden="true">
+      <div
+        class="h-full rounded-full bg-foreground/70 transition-[width] duration-300 ease-out"
+        :style="{ width: (hasSteps ? percent : 8) + '%' }"
+      ></div>
     </div>
   </div>
 </template>

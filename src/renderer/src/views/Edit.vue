@@ -860,9 +860,9 @@ onUnmounted(() => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-3 w-[min(100%,36rem)] self-center"
+          class="mt-3 w-[min(100%,22rem)] self-center"
           loading-text="Loading model"
-          :fallback-label="editMode === 'ref' ? 'REF EDIT' : editMode === 'img2img' ? 'IMG2IMG' : 'INPAINT'"
+          :fallback-label="editMode === 'ref' ? 'Ref edit' : editMode === 'img2img' ? 'Img2Img' : 'Inpaint'"
         />
 
         <div v-if="editImages.length > 0" class="mt-3 w-full shrink-0">

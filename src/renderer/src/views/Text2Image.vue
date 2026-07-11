@@ -899,26 +899,38 @@ onMounted(async () => {
             </div>
             <div
               v-else
-              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 text-center duration-200"
+              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 px-6 text-center duration-200"
             >
-              <Loader2 class="size-7 animate-spin text-muted-foreground" />
+              <Loader2 class="size-6 animate-spin text-muted-foreground" />
               <div>
-                <p class="text-sm font-medium text-foreground">Creating image</p>
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {{ progress.label || 'Preparing generation' }}
+                <p class="text-sm font-medium text-foreground">
+                  {{
+                    isLivePreview
+                      ? 'Live preview'
+                      : progress.hasSteps
+                        ? 'Creating image'
+                        : 'Loading model'
+                  }}
+                </p>
+                <p class="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
+                  {{
+                    progress.hasSteps
+                      ? progress.label || 'Sampling…'
+                      : 'Loading weights and text encoder — this can take a minute'
+                  }}
                 </p>
               </div>
             </div>
           </div>
           <div
             v-if="isGenerating && previewImage && !isLivePreview"
-            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/45 backdrop-blur-[2px]"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/40"
           >
             <div
-              class="aui-status-badge fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
+              class="aui-progress-chip fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3.5 py-2 text-sm duration-200"
             >
-              <Loader2 class="size-4 animate-spin text-muted-foreground" />
-              <span class="font-medium text-foreground">Creating image</span>
+              <Loader2 class="size-3.5 animate-spin text-muted-foreground" />
+              <span class="text-xs font-medium text-foreground">Creating image</span>
             </div>
           </div>
           <div
@@ -965,9 +977,9 @@ onMounted(async () => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="my-4 w-[min(100%,36rem)] self-center"
+          class="my-3 w-[min(100%,22rem)] self-center"
           loading-text="Loading model"
-          fallback-label="CLI-GEN"
+          fallback-label="Sampling"
           :live-preview="isLivePreview"
         />
 

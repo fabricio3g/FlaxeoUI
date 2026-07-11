@@ -356,6 +356,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Flat progress chip — no drop shadow; matches muted panel chrome */
+.aui-progress-chip {
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+
 .flaxeo-composer {
   overflow: visible;
   border: 0;

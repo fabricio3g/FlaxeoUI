@@ -431,19 +431,24 @@ onUnmounted(() => {
               v-else
               class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 text-center duration-200"
             >
-              <Loader2 class="size-7 animate-spin text-muted-foreground" />
+              <Loader2 class="size-6 animate-spin text-muted-foreground" />
               <div>
-                <p class="text-sm font-medium text-foreground">Creating video</p>
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {{ progress.label || 'Preparing generation' }}
+                <p class="text-sm font-medium text-foreground">
+                  {{ progress.hasSteps ? 'Creating video' : 'Loading model' }}
+                </p>
+                <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
                   <template v-if="progress.hasSteps">
+                    {{ progress.label || 'Sampling…' }}
                     · {{ progress.current }}/{{ progress.total }}
+                    <template v-if="progress.etaSeconds > 0">
+                      · ETA {{ formatVideoEta(progress.etaSeconds) }}
+                    </template>
+                    <template v-if="progress.itPerSec > 0">
+                      · {{ progress.itPerSec.toFixed(2) }} it/s
+                    </template>
                   </template>
-                  <template v-if="progress.etaSeconds > 0">
-                    · ETA {{ formatVideoEta(progress.etaSeconds) }}
-                  </template>
-                  <template v-if="progress.itPerSec > 0">
-                    · {{ progress.itPerSec.toFixed(2) }} it/s
+                  <template v-else>
+                    Loading weights and text encoder — this can take a minute
                   </template>
                 </p>
               </div>
@@ -453,9 +458,9 @@ onUnmounted(() => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-3 w-[min(100%,36rem)] self-center"
+          class="mt-3 w-[min(100%,22rem)] self-center"
           loading-text="Loading model"
-          fallback-label="VIDEO"
+          fallback-label="Video"
         />
 
         <div v-if="generatedVideos.length > 0" class="mt-3 w-full shrink-0">
