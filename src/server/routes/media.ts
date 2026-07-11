@@ -104,10 +104,13 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/delete', (req, res) => {
     try {
-      const filePath = safeOutputPath(ctx, req.body?.filename)
-      if (!filePath) return res.status(400).json({ message: 'Filename required' })
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
-      res.json({ message: 'Deleted' })
+      const filename = req.body?.filename
+      if (!filename || typeof filename !== 'string') return res.status(400).json({ message: 'Filename required' })
+      const filePath = safeOutputPath(ctx, filename)
+      if (!filePath) return res.status(400).json({ message: 'Invalid filename' })
+      if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found', filename })
+      fs.unlinkSync(filePath)
+      res.json({ message: 'Deleted', filename })
     } catch (error: any) {
       res.status(500).json({ message: 'Delete failed', error: error.message })
     }

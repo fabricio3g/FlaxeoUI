@@ -72,9 +72,7 @@ const currentViewLabel = computed(() => {
   return labels[props.currentTab] || 'Create'
 })
 
-const showMobileConfig = computed(() =>
-  ['text2image', 'edit', 'video'].includes(props.currentTab)
-)
+const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
 
 function applyTheme(dark: boolean): void {
   isDark.value = dark
@@ -120,23 +118,24 @@ function iconBtnClasses(active = false): string {
 
 <template>
   <header
-    class="relative z-50 flex h-10 select-none items-center justify-between bg-background titlebar-drag"
+    class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
   >
-    <div class="hidden h-full items-center gap-0 px-2 titlebar-no-drag md:flex">
-      <div class="inline-flex h-7 items-center gap-2 px-2 text-sm font-semibold tracking-tight" aria-label="Flaxeo">
+    <div class="hidden h-full items-center px-2 titlebar-no-drag md:flex">
+      <div
+        class="inline-flex h-8 items-center gap-2 px-2 text-sm font-semibold tracking-tight"
+        aria-label="Flaxeo"
+      >
         <ImageIcon class="h-4 w-4" />
         <span>Flaxeo</span>
       </div>
 
-      <span class="ml-2 inline-flex h-5 items-center border-l border-border pl-2 text-xs font-medium text-muted-foreground">
+      <span class="inline-flex h-5 items-center text-xs font-medium text-muted-foreground">
         {{ currentViewLabel }}
       </span>
 
-      <div
-        class="group relative ml-1 flex h-7 items-center justify-center titlebar-no-drag"
-      >
+      <div class="group relative ml-1 flex h-8 items-center justify-center titlebar-no-drag">
         <button
-          class="inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
           :aria-label="runtimeLabel"
         >
@@ -144,18 +143,22 @@ function iconBtnClasses(active = false): string {
         </button>
 
         <div
-          class="pointer-events-none absolute left-0 top-full z-[60] mt-2 w-64 -translate-y-1 rounded-md border bg-popover p-3 text-xs text-popover-foreground opacity-0 shadow-md transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100"
+          class="pointer-events-none absolute left-0 top-full z-[60] mt-2 w-64 -translate-y-1 rounded-xl border border-border/80 bg-popover p-3.5 text-xs text-popover-foreground opacity-0 shadow-xl shadow-black/10 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:shadow-black/30"
         >
-          <div class="mb-2 flex items-center gap-2 border-b border-border pb-2">
+          <div class="mb-2.5 flex items-center gap-2 border-b border-border/70 pb-2.5">
             <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
-            <span class="font-semibold">Runtime status</span>
+            <span class="font-medium">Runtime status</span>
           </div>
           <div class="space-y-1.5 text-muted-foreground">
             <div class="flex items-center justify-between gap-3">
               <span>Server</span>
               <span
                 class="font-medium"
-                :class="sdServerRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"
+                :class="
+                  sdServerRunning
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-600 dark:text-amber-400'
+                "
                 >{{ sdServerRunning ? 'Online' : 'Offline' }}</span
               >
             </div>
@@ -175,7 +178,9 @@ function iconBtnClasses(active = false): string {
               }}</span>
             </div>
           </div>
-          <p class="mt-2 border-t border-border pt-2 text-[11px] leading-4 text-muted-foreground">
+          <p
+            class="mt-2.5 border-t border-border/70 pt-2.5 text-[11px] leading-4 text-muted-foreground"
+          >
             {{ statusHint }}
           </p>
         </div>
@@ -186,7 +191,7 @@ function iconBtnClasses(active = false): string {
       class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 titlebar-no-drag md:flex"
     >
       <button
-        class="inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="inline-flex h-7 items-center justify-center rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         type="button"
         @click="showModelHub = true"
       >
@@ -194,7 +199,8 @@ function iconBtnClasses(active = false): string {
       </button>
     </div>
 
-    <div class="flex min-w-0 flex-1 items-center px-3 md:hidden">
+    <div class="flex min-w-0 flex-1 items-center gap-2 px-3 md:hidden">
+      <ImageIcon class="h-4 w-4 shrink-0" />
       <span class="truncate text-sm font-semibold tracking-tight">Flaxeo</span>
     </div>
 
@@ -202,7 +208,7 @@ function iconBtnClasses(active = false): string {
       <button
         v-if="showMobileConfig"
         @click="emit('toggleMobileConfig')"
-        class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
         type="button"
         title="Settings"
         aria-label="Open mobile settings"
@@ -212,7 +218,7 @@ function iconBtnClasses(active = false): string {
 
       <button
         v-if="props.setupNeeded"
-        class="mr-1 inline-flex h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400 titlebar-no-drag md:hidden"
+        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-full bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:hidden"
         type="button"
         @click="emit('openSetup')"
       >
@@ -222,7 +228,7 @@ function iconBtnClasses(active = false): string {
 
       <button
         @click="showDownloadManager = true"
-        class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
         type="button"
         title="Downloads"
         aria-label="Open download manager"
@@ -232,7 +238,7 @@ function iconBtnClasses(active = false): string {
 
       <button
         @click="emit('toggleLogs')"
-        class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
         type="button"
         title="Server Logs"
         aria-label="Open server logs"
@@ -242,7 +248,7 @@ function iconBtnClasses(active = false): string {
 
       <button
         v-if="props.setupNeeded"
-        class="mr-1 hidden h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400 titlebar-no-drag md:inline-flex"
+        class="aui-status-badge mr-1 hidden h-7 items-center gap-1.5 rounded-full bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:inline-flex"
         type="button"
         @click="emit('openSetup')"
       >
@@ -253,7 +259,7 @@ function iconBtnClasses(active = false): string {
       <Tooltip text="Downloads" position="bottom">
         <button
           @click="showDownloadManager = true"
-          class="mr-1 hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
           type="button"
           aria-label="Open download manager"
         >
@@ -264,7 +270,7 @@ function iconBtnClasses(active = false): string {
       <Tooltip text="Server Logs" position="bottom">
         <button
           @click="emit('toggleLogs')"
-          class="mr-1 hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
           type="button"
           aria-label="Open server logs"
         >
@@ -275,7 +281,7 @@ function iconBtnClasses(active = false): string {
       <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'" position="bottom">
         <button
           @click="toggleTheme"
-          class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
           :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         >
@@ -287,7 +293,7 @@ function iconBtnClasses(active = false): string {
       <template v-if="isElectron">
         <button
           @click="handleMinimize"
-          class="flex h-full w-[46px] items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+          class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
           title="Minimize"
         >
           <Minus class="h-3.5 w-3.5" />
@@ -295,7 +301,7 @@ function iconBtnClasses(active = false): string {
 
         <button
           @click="handleMaximize"
-          class="flex h-full w-[46px] items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+          class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
           title="Maximize"
         >
           <Square class="h-3 w-3" />
@@ -303,7 +309,7 @@ function iconBtnClasses(active = false): string {
 
         <button
           @click="handleClose"
-          class="flex h-full w-[46px] items-center justify-center text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+          class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-destructive hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
           title="Close"
         >
           <X class="h-4 w-4" />

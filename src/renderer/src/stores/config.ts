@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 /**
  * GenerationConfig - All parameters for image generation
@@ -142,6 +142,7 @@ export interface ConfigPreset {
 }
 
 const PRESETS_STORAGE_KEY = 'flaxeo-config-presets'
+const CONFIG_STORAGE_KEY = 'flaxeo-current-config'
 
 const defaultConfig: GenerationConfig = {
   backendMode: 'cli',
@@ -246,7 +247,16 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'standard', cfgScale: 7, guidance: 3.5, steps: 20, width: 512, height: 512, sampler: 'euler_a', scheduler: 'discrete' })
+    config: presetConfig({
+      loadMode: 'standard',
+      cfgScale: 7,
+      guidance: 3.5,
+      steps: 20,
+      width: 512,
+      height: 512,
+      sampler: 'euler_a',
+      scheduler: 'discrete'
+    })
   },
   {
     id: 'builtin-sdxl',
@@ -254,7 +264,15 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'standard', cfgScale: 7, steps: 25, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete' })
+    config: presetConfig({
+      loadMode: 'standard',
+      cfgScale: 7,
+      steps: 25,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete'
+    })
   },
   {
     id: 'builtin-sd35',
@@ -262,7 +280,20 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 4.5, guidance: 3.5, steps: 28, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', clipOnCpu: true, t5xxlModel: '', clipModel: '', clipGModel: '' })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 4.5,
+      guidance: 3.5,
+      steps: 28,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      clipOnCpu: true,
+      t5xxlModel: '',
+      clipModel: '',
+      clipGModel: ''
+    })
   },
   {
     id: 'builtin-flux-dev',
@@ -270,7 +301,21 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 1, guidance: 3.5, steps: 28, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', clipOnCpu: true, t5xxlModel: '', clipModel: '', vaeModel: '', flashAttention: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 28,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      clipOnCpu: true,
+      t5xxlModel: '',
+      clipModel: '',
+      vaeModel: '',
+      flashAttention: true
+    })
   },
   {
     id: 'builtin-flux-schnell',
@@ -278,7 +323,21 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 1, guidance: 3.5, steps: 4, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', clipOnCpu: true, t5xxlModel: '', clipModel: '', vaeModel: '', flashAttention: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 4,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      clipOnCpu: true,
+      t5xxlModel: '',
+      clipModel: '',
+      vaeModel: '',
+      flashAttention: true
+    })
   },
   {
     id: 'builtin-flux2-dev',
@@ -286,7 +345,20 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 1, guidance: 3.5, steps: 28, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', llmModel: '', vaeFormat: 'flux2', flashAttention: true, cpuOffload: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 28,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeFormat: 'flux2',
+      flashAttention: true,
+      cpuOffload: true
+    })
   },
   {
     id: 'builtin-flux2-klein',
@@ -294,7 +366,20 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 1, guidance: 3.5, steps: 4, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', llmModel: '', vaeFormat: 'flux2', flashAttention: true, cpuOffload: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 4,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeFormat: 'flux2',
+      flashAttention: true,
+      cpuOffload: true
+    })
   },
   {
     id: 'builtin-qwen-image',
@@ -302,7 +387,20 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 2.5, guidance: 3.5, steps: 20, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', llmModel: '', flowShift: 3, flashAttention: true, cpuOffload: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 2.5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true
+    })
   },
   {
     id: 'builtin-ideogram4',
@@ -310,7 +408,21 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', cfgScale: 3.5, guidance: 3.5, steps: 20, width: 1024, height: 1024, sampler: 'euler', scheduler: 'discrete', uncondDiffusionModel: '', llmModel: '', vaeFormat: 'flux2', flashAttention: true, cpuOffload: true })
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 3.5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      uncondDiffusionModel: '',
+      llmModel: '',
+      vaeFormat: 'flux2',
+      flashAttention: true,
+      cpuOffload: true
+    })
   },
   {
     id: 'builtin-wan21',
@@ -318,7 +430,22 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', videoMode: true, cfgScale: 6, guidance: 3.5, steps: 20, width: 832, height: 480, sampler: 'euler', scheduler: 'discrete', flowShift: 3, flashAttention: true, cpuOffload: true, t5xxlModel: '', vaeModel: '' })
+    config: presetConfig({
+      loadMode: 'split',
+      videoMode: true,
+      cfgScale: 6,
+      guidance: 3.5,
+      steps: 20,
+      width: 832,
+      height: 480,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true,
+      t5xxlModel: '',
+      vaeModel: ''
+    })
   },
   {
     id: 'builtin-wan22-a14b',
@@ -326,7 +453,23 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', videoMode: true, cfgScale: 3.5, guidance: 3.5, steps: 10, width: 832, height: 480, sampler: 'euler', scheduler: 'discrete', flowShift: 3, flashAttention: true, cpuOffload: true, highNoiseDiffusionModel: '', t5xxlModel: '', vaeModel: '' })
+    config: presetConfig({
+      loadMode: 'split',
+      videoMode: true,
+      cfgScale: 3.5,
+      guidance: 3.5,
+      steps: 10,
+      width: 832,
+      height: 480,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true,
+      highNoiseDiffusionModel: '',
+      t5xxlModel: '',
+      vaeModel: ''
+    })
   },
   {
     id: 'builtin-ltx23',
@@ -334,7 +477,23 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     builtin: true,
     createdAt: 0,
     updatedAt: 0,
-    config: presetConfig({ loadMode: 'split', videoMode: true, cfgScale: 6, guidance: 3.5, steps: 20, width: 1280, height: 720, sampler: 'euler', scheduler: 'ltx2', flashAttention: true, cpuOffload: true, llmModel: '', embeddingsConnectorsModel: '', audioVaeModel: '', extraTilingArgs: 'temporal_tile_frames=4,temporal_tile_overlap=1' })
+    config: presetConfig({
+      loadMode: 'split',
+      videoMode: true,
+      cfgScale: 6,
+      guidance: 3.5,
+      steps: 20,
+      width: 1280,
+      height: 720,
+      sampler: 'euler',
+      scheduler: 'ltx2',
+      flashAttention: true,
+      cpuOffload: true,
+      llmModel: '',
+      embeddingsConnectorsModel: '',
+      audioVaeModel: '',
+      extraTilingArgs: 'temporal_tile_frames=4,temporal_tile_overlap=1'
+    })
   }
 ]
 
@@ -350,19 +509,42 @@ function createPresetId(): string {
   return `preset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function loadConfig(): GenerationConfig {
+  if (typeof localStorage === 'undefined') return cloneConfig(defaultConfig)
+
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY)
+    return raw ? normalizeConfig(JSON.parse(raw)) : cloneConfig(defaultConfig)
+  } catch (e) {
+    console.error('Failed to load current configuration:', e)
+    return cloneConfig(defaultConfig)
+  }
+}
+
+function persistConfig(value: GenerationConfig): void {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(value))
+}
+
 /**
  * useConfigStore - Pinia store for generation configuration
  * Centralizes all settings from the sidebar
  */
 export const useConfigStore = defineStore('config', () => {
   // Default configuration matching original app
-  const config = ref<GenerationConfig>(cloneConfig(defaultConfig))
+  const config = ref<GenerationConfig>(loadConfig())
   const presets = ref<ConfigPreset[]>([...BUILTIN_PRESETS])
   const selectedPresetId = ref('')
 
+  // Keep direct v-model changes from the setup panel available after restarting the app.
+  watch(config, persistConfig, { deep: true })
+
   function persistPresets(): void {
     if (typeof localStorage === 'undefined') return
-    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets.value.filter((preset) => !preset.builtin)))
+    localStorage.setItem(
+      PRESETS_STORAGE_KEY,
+      JSON.stringify(presets.value.filter((preset) => !preset.builtin))
+    )
   }
 
   function loadPresets(): void {
@@ -381,14 +563,14 @@ export const useConfigStore = defineStore('config', () => {
       presets.value = [
         ...BUILTIN_PRESETS,
         ...parsed
-        .filter((preset) => preset?.id && preset?.name && preset?.config)
-        .map((preset) => ({
-          id: String(preset.id),
-          name: String(preset.name),
-          config: normalizeConfig(preset.config),
-          createdAt: Number(preset.createdAt) || Date.now(),
-          updatedAt: Number(preset.updatedAt) || Date.now()
-        }))
+          .filter((preset) => preset?.id && preset?.name && preset?.config)
+          .map((preset) => ({
+            id: String(preset.id),
+            name: String(preset.name),
+            config: normalizeConfig(preset.config),
+            createdAt: Number(preset.createdAt) || Date.now(),
+            updatedAt: Number(preset.updatedAt) || Date.now()
+          }))
       ]
     } catch (e) {
       console.error('Failed to load config presets:', e)
@@ -420,7 +602,9 @@ export const useConfigStore = defineStore('config', () => {
   function updatePreset(id: string): void {
     const now = Date.now()
     presets.value = presets.value.map((preset) =>
-      preset.id === id && !preset.builtin ? { ...preset, config: cloneConfig(config.value), updatedAt: now } : preset
+      preset.id === id && !preset.builtin
+        ? { ...preset, config: cloneConfig(config.value), updatedAt: now }
+        : preset
     )
     persistPresets()
   }

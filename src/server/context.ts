@@ -93,7 +93,9 @@ export function createContext(): AppContext {
     ngrokListener: null,
     cloudflareTunnel: null,
     progress: null,
-    progressBus: new EventEmitter()
+    progressBus: new EventEmitter(),
+    previewImageBuffer: null,
+    previewTempFile: null
   }
 
   return {

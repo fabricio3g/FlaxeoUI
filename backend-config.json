@@ -1,11 +1,12 @@
 {
-  "activeVersion": "master-682-b3d56d0",
+  "activeVersion": "master-769-cc73429",
   "installedVersions": [
     "master-437-30a9113",
     "master-445-860a78e",
     "master-457-b90b1ee",
     "master-679-f3fd359",
-    "master-682-b3d56d0"
+    "master-682-b3d56d0",
+    "master-769-cc73429"
   ],
   "customBinaryExists": false
 }

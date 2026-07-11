@@ -348,18 +348,14 @@ onUnmounted(() => {
 
 <template>
   <aside
-    class="flex h-full w-full min-h-0 flex-col border-r border-border bg-background"
-    :class="
-      props.collapsed
-        ? 'z-50 overflow-visible'
-        : 'overflow-hidden'
-    "
+    class="config-panel flex h-full min-h-0 w-full flex-col bg-background"
+    :class="props.collapsed ? 'z-50 overflow-visible border-r border-border/70' : 'overflow-hidden'"
   >
     <div
       v-if="props.collapsed"
-      class="relative md:flex h-full flex-col items-center gap-0.5 py-2 titlebar-no-drag"
+      class="relative h-full flex-col items-center gap-1 bg-sidebar px-1.5 py-2 titlebar-no-drag md:flex"
     >
-      <div class="flex flex-col items-center gap-0.5">
+      <div class="flex flex-col items-center gap-1">
         <Tooltip
           v-for="section in collapsedSections"
           :key="section.id"
@@ -367,13 +363,13 @@ onUnmounted(() => {
           position="right"
         >
           <button
-            class="collapsed-sidebar-btn group relative flex h-8 w-8 items-center justify-center titlebar-no-drag"
+            class="aui-icon-button collapsed-sidebar-btn group relative flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-150 titlebar-no-drag"
             :class="[
               section.id === 'warnings' && configWarnings.length > 0
                 ? 'text-yellow-500 hover:text-yellow-500'
                 : 'text-muted-foreground hover:text-foreground',
               activeCollapsedSection === section.id || pinnedCollapsedSection === section.id
-                ? 'bg-card border-border'
+                ? 'bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground shadow-sm'
                 : 'border-transparent'
             ]"
             type="button"
@@ -384,14 +380,14 @@ onUnmounted(() => {
             <component :is="section.icon" class="w-4 h-4" />
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
-              class="absolute right-0 top-0 min-w-3.5 rounded-full bg-yellow-500 px-1 text-[9px] font-bold text-black shadow-sm"
+              class="aui-status-badge absolute -right-0.5 -top-0.5 min-w-3.5 rounded-full bg-amber-500 px-1 text-[9px] font-bold text-black shadow-sm"
               >{{ configWarnings.length }}</span
             >
           </button>
         </Tooltip>
       </div>
 
-      <div class="mt-auto h-px w-5 bg-border/80"></div>
+      <div class="mt-auto h-px w-5 bg-sidebar-border/80"></div>
 
       <div class="flex flex-col items-center gap-1 text-[9px] text-muted-foreground">
         <span class="font-semibold">{{ config.steps }}</span>
@@ -400,11 +396,11 @@ onUnmounted(() => {
 
       <div
         v-if="activeCollapsedSection"
-        class="absolute left-full top-0 z-50 ml-2 w-[260px] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl border border-border bg-popover p-3 shadow-lg"
-         @mouseenter="showCollapsedFlyout(activeCollapsedSection)"
+        class="config-panel__flyout absolute left-full top-0 z-50 ml-2 max-h-[calc(100vh-1rem)] w-[280px] overflow-y-auto rounded-xl border border-border/80 bg-popover p-3.5 shadow-xl shadow-black/10 dark:shadow-black/30"
+        @mouseenter="showCollapsedFlyout(activeCollapsedSection)"
         @mouseleave="hideCollapsedFlyout(activeCollapsedSection)"
       >
-        <div class="mb-3 flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+        <div class="mb-3 flex items-center justify-between gap-3 border-b border-border/70 pb-3">
           <div class="flex min-w-0 items-center gap-2">
             <component
               v-if="activeCollapsedMeta"
@@ -412,14 +408,14 @@ onUnmounted(() => {
               class="h-4 w-4 text-muted-foreground"
             />
             <div class="min-w-0">
-              <h3 class="truncate text-sm font-semibold">{{ activeCollapsedMeta?.label }}</h3>
+              <h3 class="truncate text-sm font-medium">{{ activeCollapsedMeta?.label }}</h3>
               <p class="truncate text-[11px] text-muted-foreground">
                 {{ collapsedSectionSummary(activeCollapsedSection) }}
               </p>
             </div>
           </div>
           <button
-            class="collapsed-sidebar-btn p-1 text-muted-foreground hover:text-foreground"
+            class="aui-icon-button collapsed-sidebar-btn inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
             @click="closeCollapsedFlyout"
           >
             <X class="w-4 h-4" />
@@ -427,10 +423,12 @@ onUnmounted(() => {
         </div>
 
         <div v-if="activeCollapsedSection === 'backend'" class="space-y-3">
-          <div class="rounded-lg bg-muted/30 p-3 text-sm space-y-2">
+          <div class="rounded-lg bg-muted/40 p-3 text-xs space-y-2">
             <div class="flex items-center justify-between">
               <span>Backend</span>
-              <span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{ backendVersion }}</span>
+              <span :class="backendValid ? 'text-green-500' : 'text-red-500'">{{
+                backendVersion
+              }}</span>
             </div>
             <div class="flex items-center justify-between">
               <span>Server</span>
@@ -450,7 +448,7 @@ onUnmounted(() => {
             <button
               @click="startServer"
               :disabled="sdServerRunning || isBooting || !backendValid"
-              class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
+              class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background px-2 text-xs font-medium transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
               :class="
                 sdServerRunning || isBooting || !backendValid
                   ? 'text-muted-foreground'
@@ -463,7 +461,7 @@ onUnmounted(() => {
             <button
               @click="stopServer"
               :disabled="!sdServerRunning"
-              class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
+              class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background px-2 text-xs font-medium transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
               :class="!sdServerRunning ? 'text-muted-foreground' : 'text-red-600'"
             >
               <Square class="w-3.5 h-3.5" />
@@ -485,12 +483,12 @@ onUnmounted(() => {
               v-model="presetName"
               type="text"
               placeholder="Preset name..."
-              class="h-9 min-w-0 flex-1 rounded-md bg-muted/50 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              class="aui-field h-9 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
             <button
               @click="saveCurrentPreset"
               :disabled="!presetName.trim()"
-              class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              class="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:opacity-40"
             >
               Save
             </button>
@@ -499,14 +497,14 @@ onUnmounted(() => {
             <button
               @click="overwriteSelectedPreset"
               :disabled="!selectedPreset || selectedPreset.builtin"
-              class="rounded-md bg-muted px-3 py-2.5 text-sm disabled:opacity-40"
+              class="rounded-lg bg-muted px-3 py-2 text-xs font-medium transition-colors duration-150 hover:bg-accent disabled:opacity-40"
             >
               Overwrite
             </button>
             <button
               @click="deleteSelectedPreset"
               :disabled="!selectedPreset || selectedPreset.builtin"
-              class="rounded-md bg-muted px-3 py-2.5 text-sm text-destructive disabled:opacity-40"
+              class="rounded-lg bg-muted px-3 py-2 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10 disabled:opacity-40"
             >
               Delete
             </button>
@@ -824,16 +822,21 @@ onUnmounted(() => {
     <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
 
     <template v-if="!props.collapsed">
-      <div class="hidden h-12 items-center justify-between px-4 md:flex">
-        <div class="flex min-w-0 items-center gap-2 text-sm font-semibold">
+      <div
+        class="config-panel__header hidden h-12 shrink-0 items-center justify-between border-b border-border/70 px-4 md:flex"
+      >
+        <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
           <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
           <span class="truncate">{{ panelTitle }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span>
+          <span
+            class="aui-status-badge rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+            >{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span
+          >
           <button
             type="button"
-            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             title="Close setup"
             aria-label="Close setup"
             @click="emit('close')"
@@ -844,14 +847,16 @@ onUnmounted(() => {
       </div>
 
       <!-- Mobile Header -->
-      <div class="mobile-sheet-header md:hidden flex items-center justify-between px-5 py-3 shrink-0 bg-card">
-        <h2 class="text-sm font-bold flex items-center gap-2">
+      <div
+        class="config-panel__header mobile-sheet-header flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-background px-4 md:hidden"
+      >
+        <h2 class="flex items-center gap-2 text-sm font-medium">
           <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
           {{ panelTitle }}
         </h2>
         <button
           @click="emit('close')"
-          class="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          class="aui-icon-button flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
         >
           <X class="w-4.5 h-4.5" />
@@ -859,7 +864,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Scrollable Content -->
-      <div class="flex-1 space-y-4 overflow-y-auto p-4 pb-8 md:p-3 md:pb-3">
+      <div class="config-panel__content flex-1 space-y-4 overflow-y-auto p-4 pb-8 md:px-5 md:py-4">
         <!-- Server / CLI Toggle (always visible) -->
         <section v-if="props.focus === 'all'">
           <div class="space-y-2">
@@ -875,7 +880,7 @@ onUnmounted(() => {
               <button
                 @click="startServer"
                 :disabled="sdServerRunning || isBooting || !backendValid"
-                class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
+                class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background px-3 text-xs font-medium transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
                 :class="
                   sdServerRunning || isBooting || !backendValid
                     ? 'text-muted-foreground'
@@ -888,12 +893,8 @@ onUnmounted(() => {
               <button
                 @click="stopServer"
                 :disabled="!sdServerRunning"
-                class="flex items-center justify-center gap-1.5 rounded-md border bg-card py-1.5 text-xs font-semibold transition-colors hover:bg-accent"
-                :class="
-                  !sdServerRunning
-                    ? 'text-muted-foreground'
-                    : 'text-red-600'
-                "
+                class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background px-3 text-xs font-medium transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                :class="!sdServerRunning ? 'text-muted-foreground' : 'text-red-600'"
               >
                 <Square class="w-3.5 h-3.5" />
                 Stop
@@ -913,8 +914,8 @@ onUnmounted(() => {
         <!-- PRESETS -->
         <section v-if="props.focus === 'all'" class="pt-3">
           <div class="flex w-full items-center justify-between py-1">
-            <span class="text-sm font-semibold text-foreground">Presets</span>
-            <span class="text-xs text-muted-foreground">{{ presets.length }}</span>
+            <span class="text-sm font-medium text-foreground">Presets</span>
+            <span class="aui-status-badge text-xs text-muted-foreground">{{ presets.length }}</span>
           </div>
 
           <div v-show="expandedSections.presets" class="space-y-3 pt-2">
@@ -930,7 +931,7 @@ onUnmounted(() => {
               <button
                 @click="deleteSelectedPreset"
                 :disabled="!selectedPreset || selectedPreset.builtin"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-30"
+                class="aui-icon-button inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-30"
                 title="Delete preset"
               >
                 <Trash2 class="w-3.5 h-3.5" />
@@ -942,13 +943,13 @@ onUnmounted(() => {
                 v-model="presetName"
                 type="text"
                 placeholder="Save as..."
-                class="h-9 flex-1 min-w-0 px-2.5 text-sm rounded-lg bg-muted/40 border border-border/30 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                class="aui-field h-9 min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 @keyup.enter="saveCurrentPreset"
               />
               <button
                 @click="saveCurrentPreset"
                 :disabled="!presetName.trim()"
-                class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                class="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Save
               </button>
@@ -965,11 +966,12 @@ onUnmounted(() => {
           />
 
           <div class="space-y-4">
-
             <!-- Standard Mode: Single Checkpoint -->
             <div v-if="config.loadMode === 'standard'" class="space-y-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Model Checkpoint</label>
+                <label class="aui-label text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Model Checkpoint</label
+                >
                 <Select
                   v-model="config.standardModel"
                   size="md"
@@ -985,7 +987,9 @@ onUnmounted(() => {
             <!-- Split Mode: Multiple Models -->
             <div v-else class="space-y-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Diffusion Model</label>
+                <label class="aui-label text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Diffusion Model</label
+                >
                 <Select
                   v-model="config.diffusionModel"
                   size="md"
@@ -999,7 +1003,9 @@ onUnmounted(() => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">High Noise</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >High Noise</label
+                  >
                   <Select
                     v-model="config.highNoiseDiffusionModel"
                     size="md"
@@ -1011,7 +1017,9 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Uncond Diffusion</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >Uncond Diffusion</label
+                  >
                   <Select
                     v-model="config.uncondDiffusionModel"
                     size="md"
@@ -1026,7 +1034,9 @@ onUnmounted(() => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">T5XXL</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >T5XXL</label
+                  >
                   <Select
                     v-model="config.t5xxlModel"
                     size="md"
@@ -1065,7 +1075,9 @@ onUnmounted(() => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">CLIP-L</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >CLIP-L</label
+                  >
                   <Select
                     v-model="config.clipModel"
                     size="md"
@@ -1077,7 +1089,9 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">CLIP-G</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >CLIP-G</label
+                  >
                   <Select
                     v-model="config.clipGModel"
                     size="md"
@@ -1091,7 +1105,9 @@ onUnmounted(() => {
               </div>
 
               <div v-if="!config.videoMode">
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">CLIP Vision</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >CLIP Vision</label
+                >
                 <Select
                   v-model="config.clipVisionModel"
                   size="md"
@@ -1105,7 +1121,9 @@ onUnmounted(() => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">LLM Vision</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >LLM Vision</label
+                  >
                   <Select
                     v-model="config.llmVisionModel"
                     size="md"
@@ -1117,7 +1135,9 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Emb. Connectors</label>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >Emb. Connectors</label
+                  >
                   <Select
                     v-model="config.embeddingsConnectorsModel"
                     size="md"
@@ -1134,7 +1154,9 @@ onUnmounted(() => {
             <!-- Common Model Options (both modes) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">VAE</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >VAE</label
+                >
                 <Select
                   v-model="config.vaeModel"
                   size="md"
@@ -1157,7 +1179,9 @@ onUnmounted(() => {
                 </p>
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">VAE Tile</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >VAE Tile</label
+                >
                 <input
                   v-model.number="config.vaeTileSize"
                   type="number"
@@ -1169,7 +1193,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Audio VAE</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Audio VAE</label
+                >
                 <Select
                   v-model="config.audioVaeModel"
                   size="md"
@@ -1181,7 +1207,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">VAE Format</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >VAE Format</label
+                >
                 <Select
                   v-model="config.vaeFormat"
                   size="md"
@@ -1198,7 +1226,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">ControlNet</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >ControlNet</label
+                >
                 <Select
                   v-model="config.controlNetModel"
                   size="md"
@@ -1210,7 +1240,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">PhotoMaker</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >PhotoMaker</label
+                >
                 <Select
                   v-model="config.photoMakerModel"
                   size="md"
@@ -1225,7 +1257,9 @@ onUnmounted(() => {
 
             <div v-if="!config.videoMode" class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Upscale</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Upscale</label
+                >
                 <Select
                   v-model="config.upscaleModel"
                   size="md"
@@ -1237,7 +1271,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">TAESD</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >TAESD</label
+                >
                 <Select
                   v-model="config.taesdModel"
                   size="md"
@@ -1255,16 +1291,18 @@ onUnmounted(() => {
         <!-- GENERATION SETTINGS -->
         <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
           <div class="py-1">
-            <span class="text-sm font-semibold text-foreground">Generation Settings</span>
+            <span class="text-sm font-medium text-foreground">Generation settings</span>
           </div>
 
           <div
             v-show="expandedSections.generation || props.focus === 'generation'"
-            class="space-y-5 "
+            class="space-y-5"
           >
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Batch</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Batch</label
+                >
                 <input
                   v-model.number="config.batchCount"
                   type="number"
@@ -1274,7 +1312,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Width</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Width</label
+                >
                 <input
                   v-model.number="config.width"
                   type="number"
@@ -1284,7 +1324,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Height</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Height</label
+                >
                 <input
                   v-model.number="config.height"
                   type="number"
@@ -1310,7 +1352,9 @@ onUnmounted(() => {
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Steps</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Steps</label
+                >
                 <input
                   v-model.number="config.steps"
                   type="number"
@@ -1320,7 +1364,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">CFG Scale</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >CFG Scale</label
+                >
                 <input
                   v-model.number="config.cfgScale"
                   type="number"
@@ -1333,7 +1379,9 @@ onUnmounted(() => {
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Guidance</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Guidance</label
+                >
                 <input
                   v-model.number="config.guidance"
                   type="number"
@@ -1342,7 +1390,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Clip Skip</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Clip Skip</label
+                >
                 <input
                   v-model.number="config.clipSkip"
                   type="number"
@@ -1351,7 +1401,9 @@ onUnmounted(() => {
               </div>
             </div>
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Seed (-1 random)</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >Seed (-1 random)</label
+              >
               <input
                 v-model.number="config.seed"
                 type="number"
@@ -1361,7 +1413,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Flow Shift</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Flow Shift</label
+                >
                 <input
                   v-model.number="config.flowShift"
                   type="number"
@@ -1371,7 +1425,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">ETA</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >ETA</label
+                >
                 <input
                   v-model.number="config.eta"
                   type="number"
@@ -1384,7 +1440,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SLG Scale</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >SLG Scale</label
+                >
                 <input
                   v-model.number="config.slgScale"
                   type="number"
@@ -1394,7 +1452,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Img CFG</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Img CFG</label
+                >
                 <input
                   v-model.number="config.imgCfgScale"
                   type="number"
@@ -1407,7 +1467,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SLG Start</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >SLG Start</label
+                >
                 <input
                   v-model.number="config.skipLayerStart"
                   type="number"
@@ -1416,7 +1478,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SLG End</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >SLG End</label
+                >
                 <input
                   v-model.number="config.skipLayerEnd"
                   type="number"
@@ -1427,7 +1491,9 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Skip Layers</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >Skip Layers</label
+              >
               <input
                 v-model="config.skipLayers"
                 type="text"
@@ -1437,7 +1503,9 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sigmas</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >Sigmas</label
+              >
               <input
                 v-model="config.sigmas"
                 type="text"
@@ -1457,7 +1525,9 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Extra Tiling Args</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >Extra Tiling Args</label
+              >
               <input
                 v-model="config.extraTilingArgs"
                 type="text"
@@ -1474,9 +1544,12 @@ onUnmounted(() => {
           class="pt-3"
         >
           <div class="flex w-full items-center justify-between py-1">
-            <span class="text-sm font-semibold text-foreground">LoRA Modules</span>
+            <span class="text-sm font-medium text-foreground">LoRA modules</span>
             <div class="flex items-center gap-2">
-              <span class="rounded-md bg-muted px-2 py-1 text-xs font-medium">{{ config.loras.length }}</span>
+              <span
+                class="aui-status-badge rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
+                >{{ config.loras.length }}</span
+              >
             </div>
           </div>
 
@@ -1487,10 +1560,13 @@ onUnmounted(() => {
             <div
               v-for="(lora, index) in config.loras"
               :key="index"
-              class="flex items-center gap-3 p-2 rounded-lg bg-card"
+              class="config-panel__item flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3"
             >
               <div class="flex-1 min-w-0">
-                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">LoRA {{ index + 1 }}</label>
+                <label
+                  class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5"
+                  >LoRA {{ index + 1 }}</label
+                >
                 <Select
                   v-model="lora.path"
                   size="md"
@@ -1498,7 +1574,10 @@ onUnmounted(() => {
                 />
               </div>
               <div class="shrink-0">
-                <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 text-center">Strength</label>
+                <label
+                  class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 text-center"
+                  >Strength</label
+                >
                 <input
                   v-model.number="lora.strength"
                   type="number"
@@ -1511,7 +1590,7 @@ onUnmounted(() => {
               </div>
               <button
                 @click="configStore.removeLora(index)"
-                class="inline-flex items-center justify-center self-end rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="aui-icon-button inline-flex h-9 w-9 items-center justify-center self-end rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Remove LoRA"
               >
                 <Trash2 class="w-4 h-4" />
@@ -1533,7 +1612,7 @@ onUnmounted(() => {
 
             <button
               @click="addNewLora"
-              class="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border bg-card text-xs font-semibold transition-colors hover:bg-accent hover:text-foreground"
+              class="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium transition-colors duration-150 hover:bg-accent hover:text-foreground"
             >
               <Plus class="w-3.5 h-3.5" />
               Add LoRA
@@ -1547,26 +1626,26 @@ onUnmounted(() => {
           class="pt-3"
         >
           <div class="flex w-full items-center justify-between py-1">
-            <span class="text-sm font-semibold text-foreground">Embeddings</span>
-            <span class="rounded-md bg-muted px-2 py-1 text-xs font-medium">{{ config.embeddings.length }}</span>
+            <span class="text-sm font-medium text-foreground">Embeddings</span>
+            <span class="aui-status-badge rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{{
+              config.embeddings.length
+            }}</span>
           </div>
 
           <div
             v-show="
-              expandedSections.embeddings ||
-              props.focus === 'assets' ||
-              props.focus === 'embedding'
+              expandedSections.embeddings || props.focus === 'assets' || props.focus === 'embedding'
             "
             class="space-y-2"
           >
             <div
               v-for="(emb, index) in config.embeddings"
               :key="index"
-              class="flex items-center gap-3 p-2 rounded-lg bg-card"
+              class="config-panel__item flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3"
             >
               <div class="flex-1 flex items-center gap-3 overflow-hidden">
                 <span
-                  class="text-xs uppercase font-bold text-muted-foreground px-2 py-1 bg-muted rounded-md shrink-0"
+                  class="aui-status-badge shrink-0 rounded-md bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                   >TI</span
                 >
                 <Select
@@ -1582,7 +1661,7 @@ onUnmounted(() => {
               </div>
               <button
                 @click="configStore.removeEmbedding(emb)"
-                class="inline-flex items-center justify-center rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="aui-icon-button inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 title="Remove Embedding"
               >
                 <Trash2 class="w-4 h-4" />
@@ -1591,7 +1670,7 @@ onUnmounted(() => {
 
             <button
               @click="addNewEmbedding"
-              class="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border bg-card text-xs font-semibold transition-colors hover:bg-accent hover:text-foreground"
+              class="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium transition-colors duration-150 hover:bg-accent hover:text-foreground"
             >
               <Plus class="w-3.5 h-3.5" />
               Add Embedding
@@ -1602,16 +1681,15 @@ onUnmounted(() => {
         <!-- SAMPLING -->
         <section v-if="props.focus === 'all' || props.focus === 'generation'" class="pt-3">
           <div class="py-1">
-            <span class="text-sm font-semibold text-foreground">Sampling</span>
+            <span class="text-sm font-medium text-foreground">Sampling</span>
           </div>
 
-          <div
-            v-show="expandedSections.sampling || props.focus === 'generation'"
-            class="space-y-5 "
-          >
+          <div v-show="expandedSections.sampling || props.focus === 'generation'" class="space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Scheduler</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Scheduler</label
+                >
                 <Select
                   v-model="config.scheduler"
                   size="md"
@@ -1633,7 +1711,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Sampler</label
+                >
                 <Select
                   v-model="config.sampler"
                   size="md"
@@ -1663,7 +1743,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">RNG</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >RNG</label
+                >
                 <Select
                   v-model="config.rngType"
                   size="md"
@@ -1677,7 +1759,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Sampler RNG</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Sampler RNG</label
+                >
                 <Select
                   v-model="config.samplerRngType"
                   size="md"
@@ -1694,7 +1778,9 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Mode</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Cache Mode</label
+                >
                 <Select
                   v-model="config.cacheMode"
                   size="md"
@@ -1711,7 +1797,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Policy</label>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >SCM Policy</label
+                >
                 <Select
                   v-model="config.scmPolicy"
                   size="md"
@@ -1726,7 +1814,9 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">Cache Options</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >Cache Options</label
+              >
               <input
                 v-model="config.cacheOption"
                 type="text"
@@ -1736,7 +1826,9 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold">SCM Mask</label>
+              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                >SCM Mask</label
+              >
               <input
                 v-model="config.scmMask"
                 type="text"
@@ -1750,13 +1842,10 @@ onUnmounted(() => {
         <!-- HARDWARE -->
         <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
           <div class="py-1">
-            <span class="text-sm font-semibold text-foreground">Hardware</span>
+            <span class="text-sm font-medium text-foreground">Hardware</span>
           </div>
 
-          <div
-            v-show="expandedSections.hardware || props.focus === 'model'"
-            class="space-y-5 "
-          >
+          <div v-show="expandedSections.hardware || props.focus === 'model'" class="space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <label class="flex items-center gap-2 text-sm cursor-pointer">
                 <input v-model="config.flashAttention" type="checkbox" class="rounded" />
@@ -1964,9 +2053,9 @@ onUnmounted(() => {
 
         <!-- LOGS (for server mode) -->
         <section v-if="props.focus === 'all' && config.backendMode === 'server'" class="pt-3">
-          <h3 class="text-sm font-semibold text-foreground mb-2">:: Logs ::</h3>
+          <h3 class="mb-2 text-sm font-medium text-foreground">Logs</h3>
           <div
-            class="h-32 bg-muted/20 rounded-md p-2 overflow-y-auto text-[10px] font-mono text-foreground leading-tight"
+            class="h-32 overflow-y-auto rounded-xl border border-border/70 bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-foreground"
           >
             <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
             <div v-if="logs.length === 0" class="text-muted-foreground">No logs yet...</div>
@@ -1976,3 +2065,125 @@ onUnmounted(() => {
     </template>
   </aside>
 </template>
+
+<style scoped>
+.config-panel {
+  --config-field-height: 2.25rem;
+  font-size: 0.875rem;
+}
+
+.config-panel__content {
+  scrollbar-gutter: stable;
+}
+
+.config-panel__content > section {
+  border-top: 1px solid color-mix(in oklch, var(--border) 75%, transparent);
+  padding-top: 1rem;
+}
+
+.config-panel__content > section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.config-panel__content .grid {
+  gap: 0.75rem;
+}
+
+.config-panel label {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+}
+
+.config-panel input:not([type='checkbox']):not([type='radio']) {
+  min-height: var(--config-field-height);
+  border: 1px solid var(--input);
+  border-radius: 0.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.config-panel input:not([type='checkbox']):not([type='radio'])::placeholder {
+  color: color-mix(in oklch, var(--muted-foreground) 68%, transparent);
+}
+
+.config-panel input:not([type='checkbox']):not([type='radio']):focus-visible {
+  border-color: color-mix(in oklch, var(--ring) 70%, var(--input));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 18%, transparent);
+}
+
+.config-panel input:not([type='checkbox']):not([type='radio']):disabled {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+  color: var(--muted-foreground);
+  opacity: 0.65;
+}
+
+.config-panel input[type='checkbox'],
+.config-panel input[type='radio'] {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  accent-color: var(--foreground);
+}
+
+.config-panel__content label:has(> input[type='checkbox']) {
+  min-height: 2.25rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  color: var(--foreground);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.config-panel__content label:has(> input[type='checkbox']):hover {
+  background: color-mix(in oklch, var(--accent) 70%, transparent);
+}
+
+.config-panel button {
+  transition-duration: 150ms;
+}
+
+.config-panel button:not(:disabled):active {
+  transform: translateY(0.5px);
+}
+
+.config-panel__item {
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.config-panel__item:hover {
+  border-color: var(--input);
+}
+
+.config-panel__flyout {
+  animation: config-panel-flyout-in 150ms ease-out both;
+}
+
+@keyframes config-panel-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (max-width: 767px) {
+  .config-panel__content {
+    scrollbar-gutter: auto;
+  }
+}
+</style>

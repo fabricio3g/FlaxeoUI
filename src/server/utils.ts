@@ -30,7 +30,17 @@ export function appendLog(ctx: AppContext, msg: string): void {
 export function listFiles(dir: string): string[] {
   try {
     if (!fs.existsSync(dir)) return []
-    return fs.readdirSync(dir).filter((file) => !file.startsWith('.'))
+
+    const walk = (currentDir: string, relativeDir = ''): string[] =>
+      fs.readdirSync(currentDir, { withFileTypes: true }).flatMap((entry) => {
+        if (entry.name.startsWith('.')) return []
+
+        const relativePath = path.join(relativeDir, entry.name)
+        if (entry.isDirectory()) return walk(path.join(currentDir, entry.name), relativePath)
+        return entry.isFile() ? [relativePath] : []
+      })
+
+    return walk(dir).sort((a, b) => a.localeCompare(b))
   } catch {
     return []
   }

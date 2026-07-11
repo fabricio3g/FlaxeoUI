@@ -13,7 +13,9 @@ const activeModelId = ref('flux1-dev')
 const downloading = ref<string | null>(null)
 const downloadStatus = ref<Record<string, string>>({})
 
-const activeModel = computed(() => hubModels.find((model) => model.id === activeModelId.value) || hubModels[0])
+const activeModel = computed(
+  () => hubModels.find((model) => model.id === activeModelId.value) || hubModels[0]
+)
 
 function applyPreset(model = activeModel.value): void {
   configStore.applyPreset(model.presetId)
@@ -43,102 +45,182 @@ async function downloadPack(): Promise<void> {
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm titlebar-no-drag">
-      <div class="flex max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-      <aside class="w-56 shrink-0 border-r border-border/70 bg-muted/30 p-3">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-semibold">Model Hub</h2>
-          <button
-            type="button"
-            class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            @click="emit('close')"
-            aria-label="Close"
-          >
-            <X class="h-4 w-4" />
-          </button>
-        </div>
-        <button
-          v-for="model in hubModels"
-          :key="model.id"
-          class="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs transition-colors"
-          :class="activeModelId === model.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
-          @click="activeModelId = model.id"
+    <Transition name="aui-model-hub">
+      <div
+        v-if="open"
+        class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
+      >
+        <div
+          class="aui-dialog-surface model-hub-surface flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh] md:flex-row"
         >
-          {{ model.name }}
-        </button>
-      </aside>
-
-      <section class="flex min-w-0 flex-1 flex-col">
-        <div class="border-b border-border/70 p-5">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-xl font-semibold">{{ activeModel.name }}</h3>
-              <p class="mt-1 max-w-2xl text-sm text-muted-foreground">{{ activeModel.description }}</p>
-            </div>
-            <a
-              :href="activeModel.docsUrl"
-              target="_blank"
-              class="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              Docs
-              <ExternalLink class="h-3.5 w-3.5" />
-            </a>
-          </div>
-        </div>
-
-        <div class="flex-1 overflow-y-auto p-5">
-          <div class="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              @click="applyPreset()"
-            >
-              Apply Configuration
-            </button>
-            <button
-              class="rounded-lg bg-muted px-4 py-2 text-xs font-medium text-foreground hover:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="activeModel.files.length === 0 || !!downloading"
-              @click="downloadPack"
-            >
-              Download Listed Files + Apply
-            </button>
-          </div>
-
-          <div v-if="activeModel.files.length === 0" class="rounded-xl border border-border/70 bg-muted/25 p-4 text-sm text-muted-foreground">
-            This model family has gated or variable filenames in the docs. Apply the configuration, then download the listed weights from the docs into the shown folders manually.
-          </div>
-
-          <div v-else class="space-y-2">
-            <div v-for="file in activeModel.files" :key="`${file.category}/${file.filename}`" class="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <aside
+            class="w-full shrink-0 border-b border-border/80 bg-muted/20 p-3 md:w-52 md:border-b-0 md:border-r"
+          >
+            <div class="mb-2 flex items-center justify-between gap-3 px-1 py-1">
               <div class="min-w-0">
-                <div class="flex items-center gap-2 truncate text-sm font-medium">
-                  <span class="truncate">{{ file.label }}</span>
-                  <span
-                    class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                    :class="file.required ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'"
-                  >
-                    {{ file.required ? 'Required' : 'Optional' }}
-                  </span>
-                </div>
-                <div class="truncate text-xs text-muted-foreground">models/{{ file.category }}/{{ file.filename }}</div>
-                <div v-if="downloadStatus[`${file.category}/${file.filename}`]" class="mt-1 truncate text-[11px] text-muted-foreground">
-                  {{ downloadStatus[`${file.category}/${file.filename}`] }}
-                </div>
+                <h2 class="truncate text-sm font-semibold tracking-tight">Model Hub</h2>
+                <p class="text-[11px] text-muted-foreground">Presets and model files</p>
               </div>
               <button
-                class="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :disabled="!!downloading"
-                @click="downloadFile(file)"
+                type="button"
+                class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                @click="emit('close')"
+                aria-label="Close"
               >
-                <Loader2 v-if="downloading === `${file.category}/${file.filename}`" class="h-3.5 w-3.5 animate-spin" />
-                <Download v-else class="h-3.5 w-3.5" />
-                Download
+                <X class="h-4 w-4" />
               </button>
             </div>
-          </div>
+
+            <nav
+              class="no-scrollbar flex gap-1 overflow-x-auto md:flex-col"
+              aria-label="Model families"
+            >
+              <button
+                v-for="model in hubModels"
+                :key="model.id"
+                type="button"
+                class="shrink-0 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all duration-150 md:w-full"
+                :class="
+                  activeModelId === model.id
+                    ? 'border-border bg-background text-foreground shadow-sm'
+                    : 'border-transparent text-muted-foreground hover:bg-accent/70 hover:text-foreground'
+                "
+                @click="activeModelId = model.id"
+              >
+                {{ model.name }}
+              </button>
+            </nav>
+          </aside>
+
+          <section class="flex min-h-0 min-w-0 flex-1 flex-col">
+            <header class="border-b border-border/80 px-5 py-4 sm:px-6 sm:py-5">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p
+                    class="aui-label text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Active preset
+                  </p>
+                  <h3 class="mt-1 text-xl font-semibold tracking-tight">{{ activeModel.name }}</h3>
+                  <p class="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    {{ activeModel.description }}
+                  </p>
+                </div>
+                <a
+                  :href="activeModel.docsUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  Docs
+                  <ExternalLink class="h-3.5 w-3.5" />
+                </a>
+              </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div class="mb-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  @click="applyPreset()"
+                >
+                  Apply configuration
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-4 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  :disabled="activeModel.files.length === 0 || !!downloading"
+                  @click="downloadPack"
+                >
+                  <Loader2 v-if="downloading" class="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Download files + apply
+                </button>
+              </div>
+
+              <div
+                v-if="activeModel.files.length === 0"
+                class="aui-alert rounded-xl border border-border border-l-2 border-l-amber-500 bg-muted/20 p-4 text-sm leading-relaxed text-muted-foreground"
+              >
+                This model family has gated or variable filenames in the docs. Apply the
+                configuration, then download the listed weights from the docs into the shown folders
+                manually.
+              </div>
+
+              <div
+                v-else
+                class="overflow-hidden rounded-xl border border-border/80 bg-background shadow-sm"
+              >
+                <div
+                  v-for="file in activeModel.files"
+                  :key="`${file.category}/${file.filename}`"
+                  class="flex items-center justify-between gap-3 border-b border-border/70 px-3.5 py-3 last:border-b-0 sm:px-4"
+                >
+                  <div class="min-w-0">
+                    <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
+                      <span class="truncate">{{ file.label }}</span>
+                      <span
+                        class="aui-status-badge shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                        :class="
+                          file.required
+                            ? 'border-foreground/15 bg-muted text-foreground'
+                            : 'border-border bg-background text-muted-foreground'
+                        "
+                      >
+                        {{ file.required ? 'Required' : 'Optional' }}
+                      </span>
+                    </div>
+                    <div class="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+                      models/{{ file.category }}/{{ file.filename }}
+                    </div>
+                    <div
+                      v-if="downloadStatus[`${file.category}/${file.filename}`]"
+                      class="mt-1 truncate text-[11px] font-medium text-muted-foreground"
+                    >
+                      {{ downloadStatus[`${file.category}/${file.filename}`] }}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    :disabled="!!downloading"
+                    @click="downloadFile(file)"
+                  >
+                    <Loader2
+                      v-if="downloading === `${file.category}/${file.filename}`"
+                      class="h-3.5 w-3.5 animate-spin"
+                    />
+                    <Download v-else class="h-3.5 w-3.5" />
+                    <span class="hidden sm:inline">Download</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.aui-model-hub-enter-active,
+.aui-model-hub-leave-active,
+.aui-model-hub-enter-active .model-hub-surface,
+.aui-model-hub-leave-active .model-hub-surface {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.aui-model-hub-enter-from,
+.aui-model-hub-leave-to {
+  opacity: 0;
+}
+
+.aui-model-hub-enter-from .model-hub-surface,
+.aui-model-hub-leave-to .model-hub-surface {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+}
+</style>

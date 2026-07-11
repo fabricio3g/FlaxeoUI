@@ -121,6 +121,29 @@ function updateProgress(
   ctx.state.progressBus.emit('progress', p)
 }
 
+function watchPreviewFile(ctx: AppContext, previewPath: string): () => void {
+  let lastSize = 0
+  const interval = setInterval(() => {
+    try {
+      if (!fs.existsSync(previewPath)) return
+      const stat = fs.statSync(previewPath)
+      if (stat.size === 0 || stat.size === lastSize) return
+      lastSize = stat.size
+      const buffer = fs.readFileSync(previewPath)
+      if (buffer.length > 0) {
+        ctx.state.previewImageBuffer = buffer
+      }
+    } catch {
+      // File locked by writer, skip this tick
+    }
+  }, 300)
+  return () => {
+    clearInterval(interval)
+    ctx.state.previewImageBuffer = null
+    ctx.state.previewTempFile = null
+  }
+}
+
 function fileFromUpload(req: UploadRequest, field: string): string | null {
   if (!req.files || Array.isArray(req.files)) return null
   const files = req.files?.[field]
@@ -230,14 +253,16 @@ function buildImageArgs(
   const taesdModel = modelPath(ctx, 'taesd', firstString(body.taesdModel))
   if (taesdModel) args.push('--taesd', taesdModel)
   if (body.livePreviewMethod) {
+    const previewPath = path.join(ctx.paths.tempDir, `preview_${Date.now()}.png`)
     args.push(
       '--preview',
       String(body.livePreviewMethod),
       '--preview-path',
-      path.join(ctx.paths.tempDir, 'preview.png'),
+      previewPath,
       '--preview-interval',
       '1'
     )
+    ctx.state.previewTempFile = previewPath
   }
 
   const pmImagesDir = copyPhotoMakerGallery(ctx, body, req)
@@ -290,12 +315,25 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     const outputPath = path.join(ctx.paths.outputDir, filename)
     const { args, cleanupDirs, cleanupFiles } = buildImageArgs(ctx, body, req, outputPath)
 
+    ctx.state.previewImageBuffer = null
+
+    let stopWatching: (() => void) | null = null
+    if (ctx.state.previewTempFile) {
+      stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
+    }
+
     try {
       const result = await runCli(ctx, args, 'CLI-GEN')
       sendCliResult(res, result, outputPath, filename, 'Generation failed - no output file')
     } catch (error: unknown) {
       res.status(500).json({ message: 'CLI generation failed', error: errorMessage(error) })
     } finally {
+      if (stopWatching) stopWatching()
+      if (ctx.state.previewTempFile) {
+        removeFile(ctx.state.previewTempFile)
+        ctx.state.previewTempFile = null
+      }
+      ctx.state.previewImageBuffer = null
       removeTemporaryFiles(cleanupDirs, cleanupFiles)
     }
   })
@@ -303,6 +341,11 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/cancel-cli', (_req, res) => {
     if (ctx.state.cliProcess) {
       ctx.state.cliProcess.kill('SIGTERM')
+      ctx.state.previewImageBuffer = null
+      if (ctx.state.previewTempFile) {
+        removeFile(ctx.state.previewTempFile)
+        ctx.state.previewTempFile = null
+      }
       res.json({ message: 'Cancelled' })
     } else {
       res.json({ message: 'No CLI process running' })
@@ -310,15 +353,26 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   })
 
   app.get('/api/preview-image', (_req, res) => {
-    const previewPath = path.join(ctx.paths.tempDir, 'preview.png')
-    if (!fs.existsSync(previewPath))
+    if (!ctx.state.previewImageBuffer) {
+      const fallback = ctx.state.previewTempFile
+      if (fallback && fs.existsSync(fallback)) {
+        res.set({
+          'Content-Type': 'image/png',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0'
+        })
+        return res.sendFile(fallback)
+      }
       return res.status(404).json({ message: 'No preview available' })
+    }
     res.set({
+      'Content-Type': 'image/png',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       Pragma: 'no-cache',
       Expires: '0'
     })
-    res.sendFile(previewPath)
+    res.send(ctx.state.previewImageBuffer)
   })
 
   const inpaintUpload = multer({

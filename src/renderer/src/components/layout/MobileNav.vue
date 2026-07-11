@@ -32,23 +32,23 @@ function handleNavClick(id: string): void {
 
 <template>
   <nav
-    class="mobile-nav z-40 flex h-16 shrink-0 items-center justify-around border-t border-border bg-background px-2"
+    class="mobile-nav z-40 flex h-14 shrink-0 items-center justify-around border-t border-border/70 bg-background/95 px-1.5 backdrop-blur-md"
+    aria-label="Primary navigation"
   >
     <button
       v-for="item in navItems"
       :key="item.id"
       type="button"
       @click="handleNavClick(item.id)"
-      class="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      :class="
-        currentTab === item.id
-          ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-          : ''
-      "
+      class="group flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-muted-foreground transition-colors duration-150 hover:bg-accent/70 hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      :class="currentTab === item.id ? 'bg-accent text-accent-foreground' : ''"
       :aria-current="currentTab === item.id ? 'page' : undefined"
     >
-      <component :is="item.icon" class="h-4 w-4" />
-      <span class="max-w-full truncate text-[10px] font-medium">{{ item.label }}</span>
+      <component
+        :is="item.icon"
+        class="h-4 w-4 transition-transform duration-150 group-active:scale-95"
+      />
+      <span class="max-w-full truncate text-[10px] font-medium leading-3">{{ item.label }}</span>
     </button>
   </nav>
 </template>

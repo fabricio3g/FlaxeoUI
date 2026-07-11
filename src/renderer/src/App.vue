@@ -92,9 +92,7 @@ function selectModel(value: string): void {
   }
 
   configStore.updateConfig(
-    config.value.loadMode === 'standard'
-      ? { standardModel: value }
-      : { diffusionModel: value }
+    config.value.loadMode === 'standard' ? { standardModel: value } : { diffusionModel: value }
   )
   openConfigPanel('model')
 }
@@ -128,14 +126,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-screen flex-row overflow-hidden bg-background text-foreground">
-    <Sidebar
-      class="hidden md:flex"
-      :current-tab="currentTab"
-      @navigate="navigateToTab"
-    />
+  <div
+    class="isolate flex h-screen w-screen flex-row overflow-hidden bg-background text-foreground antialiased"
+  >
+    <Sidebar class="hidden md:flex" :current-tab="currentTab" @navigate="navigateToTab" />
 
-    <div class="flex min-w-0 min-h-0 flex-1 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <Titlebar
         :current-tab="currentTab"
         :setup-needed="isSetupNeeded"
@@ -144,14 +140,14 @@ onUnmounted(() => {
         @open-setup="reopenSetup"
       />
 
-      <div class="relative flex flex-1 min-h-0 overflow-hidden">
+      <div class="relative flex min-h-0 flex-1 overflow-hidden">
         <div
-          class="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden"
+          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
           :class="{ 'bg-background': !showWorkspaceControls }"
         >
           <div
             v-if="showWorkspaceControls"
-            class="absolute left-3 top-3 z-30 flex items-center gap-1.5 whitespace-nowrap titlebar-no-drag"
+            class="aui-command-strip no-scrollbar absolute left-3 top-1.5 z-30 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 overflow-x-auto whitespace-nowrap titlebar-no-drag md:left-4 md:max-w-[calc(100%-2rem)]"
             @click.stop
           >
             <SegmentedControl
@@ -167,12 +163,12 @@ onUnmounted(() => {
               size="sm"
               placeholder="No model"
               aria-label="Select diffusion model"
-              class="min-w-[12rem]"
+              class="min-w-[11rem] border-0 bg-transparent shadow-none hover:bg-accent md:min-w-[12rem]"
               @update:model-value="selectModel"
             />
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               :aria-expanded="activeConfigPanel === 'generation'"
               @click="openConfigPanel('generation')"
             >
@@ -181,16 +177,16 @@ onUnmounted(() => {
             </button>
             <div
               v-if="config.backendMode === 'server'"
-              class="inline-flex items-center gap-1 rounded-md border border-border bg-muted p-0.5"
+              class="aui-status-badge inline-flex items-center gap-0.5 rounded-lg bg-muted/70 p-0.5"
             >
               <button
                 type="button"
                 :disabled="sdServerRunning || isBooting || !backendValid"
-                class="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 hover:text-foreground"
+                class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 :class="
                   sdServerRunning || isBooting || !backendValid
                     ? 'text-muted-foreground'
-                    : 'bg-background text-foreground shadow-sm'
+                    : 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
                 "
                 @click="startServer"
               >
@@ -200,10 +196,10 @@ onUnmounted(() => {
               <button
                 type="button"
                 :disabled="!sdServerRunning || isBooting"
-                class="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 hover:text-foreground"
+                class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 :class="
                   sdServerRunning
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
                     : 'text-muted-foreground'
                 "
                 @click="stopServer"
@@ -216,11 +212,11 @@ onUnmounted(() => {
 
           <div
             v-if="configPanelVisible"
-            class="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
-            @click="closeConfigPanel"
+            class="aui-dialog-backdrop absolute inset-0 z-50 flex animate-in items-center justify-center bg-black/35 p-2 backdrop-blur-[2px] duration-150 fade-in-0 dark:bg-black/55 md:p-4"
+            @click.self="closeConfigPanel"
           >
             <div
-              class="flex h-[min(80vh,720px)] w-[min(72rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+              class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full animate-in flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 duration-200 fade-in-0 zoom-in-95 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
               @click.stop
             >
               <ConfigPanel
@@ -232,7 +228,10 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <main class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden">
+          <main
+            class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"
+            :class="showWorkspaceControls ? 'pt-11' : ''"
+          >
             <router-view v-slot="{ Component, route }">
               <keep-alive>
                 <component :is="Component" :key="route.fullPath" />
@@ -249,10 +248,6 @@ onUnmounted(() => {
 
     <FloatingLogPanel v-model="showFloatingLogs" />
 
-    <SetupWizard
-      v-if="isSetupNeeded"
-      @done="completeSetup"
-      @skip="skipForNow"
-    />
+    <SetupWizard v-if="isSetupNeeded" @done="completeSetup" @skip="skipForNow" />
   </div>
 </template>

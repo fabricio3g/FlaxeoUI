@@ -23,7 +23,6 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 app.use('/output', express.static(ctx.paths.outputDir))
-app.use('/temp', express.static(ctx.paths.tempDir))
 
 app.use('/fontawesome', express.static(path.join(ctx.paths.root, 'node_modules', '@fortawesome', 'fontawesome-free')))
 app.use('/tailwindcss', express.static(path.join(ctx.paths.root, 'node_modules', 'tailwindcss', 'dist')))

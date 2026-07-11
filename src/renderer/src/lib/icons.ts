@@ -3,7 +3,6 @@ import {
   Activity as MotionActivity,
   ArrowRight as MotionArrowRight,
   ArrowUp as MotionArrowUp,
-  Brush as MotionBrush,
   Check as MotionCheck,
   ChevronDown as MotionChevronDown,
   ChevronLeft as MotionChevronLeft,
@@ -11,9 +10,10 @@ import {
   ChevronUp as MotionChevronUp,
   Copy as MotionCopy,
   Cpu as MotionCpu,
+  DatabaseBackup as MotionDatabaseBackup,
   Download as MotionDownload,
-  ExternalLink as MotionExternalLink,
   FolderOpen as MotionFolderOpen,
+  GalleryVerticalEnd as MotionGalleryVerticalEnd,
   GripHorizontal as MotionGripHorizontal,
   LayoutGrid as MotionLayoutGrid,
   Maximize2 as MotionMaximize2,
@@ -24,45 +24,51 @@ import {
   Search as MotionSearch,
   Settings as MotionSettings,
   SlidersHorizontal as MotionSlidersHorizontal,
-  Sparkles as MotionSparkles,
   Sun as MotionSun,
   Terminal as MotionTerminal,
-  Trash2 as MotionTrash2,
   Upload as MotionUpload,
   User as MotionUser,
+  WandSparkles as MotionWandSparkles,
   X as MotionX,
   Zap as MotionZap
 } from '@respeak/lucide-motion-vue'
 import {
   AlertTriangle as StaticAlertTriangle,
+  Brush as StaticBrush,
   CheckCircle as StaticCheckCircle,
   CheckCircle2 as StaticCheckCircle2,
-  Database as StaticDatabase,
   Eraser as StaticEraser,
+  ExternalLink as StaticExternalLink,
   FileCode as StaticFileCode,
   Film as StaticFilm,
   Grid as StaticGrid,
   Image as StaticImage,
-  ImageIcon as StaticImageIcon,
   ImagePlus as StaticImagePlus,
-  Images as StaticImages,
   Info as StaticInfo,
   Loader2 as StaticLoader2,
   Minus as StaticMinus,
   Save as StaticSave,
   Scale as StaticScale,
   Server as StaticServer,
+  Sparkles as StaticSparkles,
   Square as StaticSquare,
   Video as StaticVideo,
-  Wand2 as StaticWand2,
+  Trash2 as StaticTrash2,
   XCircle as StaticXCircle
 } from 'lucide-vue-next'
 
-function animatedIcon(icon: Component): Component {
+function animatedIcon(icon: Component, animation?: string): Component {
   return defineComponent({
     inheritAttrs: false,
     setup(_props, { attrs }) {
-      return () => h(icon, { ...attrs, animateOnHover: true, animateOnTap: true })
+      return () =>
+        h(icon, {
+          ...attrs,
+          animateOnHover: true,
+          animateOnTap: true,
+          triggerTarget: 'parent',
+          ...(animation ? { animation } : {})
+        })
     }
   })
 }
@@ -76,57 +82,57 @@ function fallbackIcon(icon: Component): Component {
   })
 }
 
-export const Activity = animatedIcon(MotionActivity)
+export const Activity = animatedIcon(MotionActivity, 'lucide-animated')
 export const AlertTriangle = fallbackIcon(StaticAlertTriangle)
-export const ArrowRight = animatedIcon(MotionArrowRight)
-export const ArrowUp = animatedIcon(MotionArrowUp)
-export const Brush = animatedIcon(MotionBrush)
-export const Check = animatedIcon(MotionCheck)
+export const ArrowRight = animatedIcon(MotionArrowRight, 'lucide-animated')
+export const ArrowUp = animatedIcon(MotionArrowUp, 'lucide-animated')
+export const Brush = fallbackIcon(StaticBrush)
+export const Check = animatedIcon(MotionCheck, 'lucide-animated')
 export const CheckCircle = fallbackIcon(StaticCheckCircle)
 export const CheckCircle2 = fallbackIcon(StaticCheckCircle2)
-export const ChevronDown = animatedIcon(MotionChevronDown)
-export const ChevronLeft = animatedIcon(MotionChevronLeft)
-export const ChevronRight = animatedIcon(MotionChevronRight)
-export const ChevronUp = animatedIcon(MotionChevronUp)
-export const Copy = animatedIcon(MotionCopy)
+export const ChevronDown = animatedIcon(MotionChevronDown, 'lucide-animated')
+export const ChevronLeft = animatedIcon(MotionChevronLeft, 'lucide-animated')
+export const ChevronRight = animatedIcon(MotionChevronRight, 'lucide-animated')
+export const ChevronUp = animatedIcon(MotionChevronUp, 'lucide-animated')
+export const Copy = animatedIcon(MotionCopy, 'lucide-animated')
 export const Cpu = animatedIcon(MotionCpu)
-export const Database = fallbackIcon(StaticDatabase)
-export const Download = animatedIcon(MotionDownload)
+export const Database = animatedIcon(MotionDatabaseBackup)
+export const Download = animatedIcon(MotionDownload, 'lucide-animated')
 export const Eraser = fallbackIcon(StaticEraser)
-export const ExternalLink = animatedIcon(MotionExternalLink)
+export const ExternalLink = fallbackIcon(StaticExternalLink)
 export const FileCode = fallbackIcon(StaticFileCode)
 export const Film = fallbackIcon(StaticFilm)
 export const FolderOpen = animatedIcon(MotionFolderOpen)
 export const Grid = fallbackIcon(StaticGrid)
 export const GripHorizontal = animatedIcon(MotionGripHorizontal)
 export const Image = fallbackIcon(StaticImage)
-export const ImageIcon = fallbackIcon(StaticImageIcon)
+export const ImageIcon = animatedIcon(MotionGalleryVerticalEnd, 'lucide-animated')
 export const ImagePlus = fallbackIcon(StaticImagePlus)
-export const Images = fallbackIcon(StaticImages)
+export const Images = animatedIcon(MotionGalleryVerticalEnd, 'lucide-animated')
 export const Info = fallbackIcon(StaticInfo)
 export const LayoutGrid = animatedIcon(MotionLayoutGrid)
 export const Loader2 = fallbackIcon(StaticLoader2)
 export const Maximize2 = animatedIcon(MotionMaximize2)
 export const Minus = fallbackIcon(StaticMinus)
-export const Moon = animatedIcon(MotionMoon)
-export const Play = animatedIcon(MotionPlay)
-export const Plus = animatedIcon(MotionPlus)
-export const RefreshCw = animatedIcon(MotionRefreshCw)
+export const Moon = animatedIcon(MotionMoon, 'alt')
+export const Play = animatedIcon(MotionPlay, 'lucide-animated')
+export const Plus = animatedIcon(MotionPlus, 'alt')
+export const RefreshCw = animatedIcon(MotionRefreshCw, 'lucide-animated')
 export const Save = fallbackIcon(StaticSave)
 export const Scale = fallbackIcon(StaticScale)
-export const Search = animatedIcon(MotionSearch)
+export const Search = animatedIcon(MotionSearch, 'lucide-animated')
 export const Server = fallbackIcon(StaticServer)
-export const Settings = animatedIcon(MotionSettings)
-export const SlidersHorizontal = animatedIcon(MotionSlidersHorizontal)
-export const Sparkles = animatedIcon(MotionSparkles)
+export const Settings = animatedIcon(MotionSettings, 'lucide-animated')
+export const SlidersHorizontal = animatedIcon(MotionSlidersHorizontal, 'lucide-animated')
+export const Sparkles = fallbackIcon(StaticSparkles)
 export const Square = fallbackIcon(StaticSquare)
-export const Sun = animatedIcon(MotionSun)
-export const Terminal = animatedIcon(MotionTerminal)
-export const Trash2 = animatedIcon(MotionTrash2)
-export const Upload = animatedIcon(MotionUpload)
-export const User = animatedIcon(MotionUser)
+export const Sun = animatedIcon(MotionSun, 'alt')
+export const Terminal = animatedIcon(MotionTerminal, 'alt')
+export const Trash2 = fallbackIcon(StaticTrash2)
+export const Upload = animatedIcon(MotionUpload, 'lucide-animated')
+export const User = animatedIcon(MotionUser, 'lucide-animated')
 export const Video = fallbackIcon(StaticVideo)
-export const Wand2 = fallbackIcon(StaticWand2)
-export const X = animatedIcon(MotionX)
+export const Wand2 = animatedIcon(MotionWandSparkles)
+export const X = animatedIcon(MotionX, 'alt')
 export const XCircle = fallbackIcon(StaticXCircle)
 export const Zap = animatedIcon(MotionZap)

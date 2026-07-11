@@ -25,6 +25,8 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@lucide/vue": "^1.24.0",
     "@ngrok/ngrok": "^1.7.0",
     "@respeak/lucide-motion-vue": "^0.6.2",

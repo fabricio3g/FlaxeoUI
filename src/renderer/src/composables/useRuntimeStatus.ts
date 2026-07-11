@@ -9,14 +9,24 @@ const isRuntimeStatusLoading = ref(false)
 let pollInterval: number | null = null
 let consumers = 0
 
+interface BackendConfigResponse {
+  activeVersion?: string
+  activeBackendValid?: boolean
+}
+
+interface RuntimeStatusResponse {
+  running?: boolean
+  logs?: string[]
+}
+
 async function fetchRuntimeStatus(): Promise<void> {
   isRuntimeStatusLoading.value = true
   try {
-    const configData = await apiGet<any>('/api/backend/config')
+    const configData = await apiGet<BackendConfigResponse>('/api/backend/config')
     backendVersion.value = configData.activeVersion || 'Not set'
     backendValid.value = configData.activeBackendValid || false
 
-    const statusData = await apiGet<any>('/api/status')
+    const statusData = await apiGet<RuntimeStatusResponse>('/api/status')
     sdServerRunning.value = statusData.running || false
     if (statusData.logs) {
       logs.value = statusData.logs

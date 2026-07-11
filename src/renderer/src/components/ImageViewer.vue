@@ -76,144 +76,209 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 backdrop-blur-md"
-    @click.self="emit('close')"
-  >
-    <!-- Top Bar -->
+  <Teleport to="body">
     <div
-      class="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-foreground/60 to-transparent p-4"
+      class="fade-in animate-in fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-zinc-950/95 text-zinc-100 backdrop-blur-sm duration-200"
+      @click.self="emit('close')"
     >
-      <div class="ml-4 max-w-md truncate text-sm font-medium text-background drop-shadow-md">
-        {{ filename }}
-      </div>
-
-      <div class="mr-2 flex items-center gap-2">
-        <button
-          type="button"
-          @click="showInfo = !showInfo"
-          class="inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :class="{ 'bg-primary/80 hover:bg-primary/80': showInfo }"
-          title="Toggle Info"
-          aria-label="Toggle image info"
-        >
-          <Info class="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          @click="emit('close')"
-          class="inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          title="Close"
-          aria-label="Close"
-        >
-          <X class="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-
-    <!-- Navigation Buttons -->
-    <button
-      type="button"
-      @click="emit('prev')"
-      class="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex size-11 items-center justify-center rounded-full bg-foreground/30 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      aria-label="Previous image"
-    >
-      <ChevronLeft class="h-7 w-7" />
-    </button>
-
-    <button
-      type="button"
-      @click="emit('next')"
-      class="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex size-11 items-center justify-center rounded-full bg-foreground/30 text-background backdrop-blur-sm transition-colors hover:bg-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      aria-label="Next image"
-    >
-      <ChevronRight class="h-7 w-7" />
-    </button>
-
-    <!-- Main Image -->
-    <div
-      class="flex h-full w-full items-center justify-center bg-foreground p-4 transition-all duration-300"
-      :class="{ 'pr-[26rem]': showInfo }"
-      @click.stop
-    >
-      <img
-        :src="src"
-        :alt="alt"
-        class="max-h-full max-w-full object-contain drop-shadow-lg"
-      />
-    </div>
-
-    <!-- Info Panel -->
-    <div
-      class="absolute inset-y-0 right-0 z-20 flex w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden border-l border-border bg-popover text-popover-foreground shadow-lg transition-transform duration-300 ease-in-out"
-      :class="showInfo ? 'translate-x-0' : 'translate-x-full'"
-      @click.stop
-    >
-      <div class="flex items-center justify-between border-b border-border p-4">
-        <h3 class="text-base font-semibold tracking-tight">Image Info</h3>
-        <button
-          type="button"
-          @click="handleCopy"
-          class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          title="Copy Parameters"
-          aria-label="Copy parameters"
-        >
-          <Check v-if="isCopied" class="h-4 w-4 text-emerald-500" />
-          <Copy v-else class="h-4 w-4" />
-        </button>
-      </div>
-
-      <div v-if="isLoading" class="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Loading info...
-      </div>
-
-      <div
-        v-else-if="!metadata"
-        class="flex flex-1 flex-col items-center justify-center p-4 text-center text-sm text-muted-foreground"
+      <header
+        class="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 p-3 md:p-4"
       >
-        <Info class="mb-4 h-12 w-12 opacity-20" />
-        <p>No metadata found for this image.</p>
-      </div>
-
-      <div v-else class="flex-1 space-y-4 overflow-y-auto p-4">
-        <!-- Prompt -->
-        <div>
-          <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prompt</label>
-          <p class="rounded-md border border-border bg-muted/50 p-3 text-sm leading-relaxed">{{ metadata.prompt }}</p>
+        <div
+          class="min-w-0 max-w-[calc(100%-6rem)] truncate rounded-lg border border-white/10 bg-zinc-950/55 px-3 py-2 text-xs font-medium text-zinc-300 shadow-sm backdrop-blur-xl md:max-w-lg"
+          :title="filename"
+        >
+          {{ filename }}
         </div>
 
-        <!-- Negative Prompt -->
-        <div v-if="metadata.negative_prompt">
-          <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Negative Prompt</label>
-          <p class="rounded-md border border-border bg-muted/50 p-3 text-sm leading-relaxed">
-            {{ metadata.negative_prompt }}
+        <div
+          class="pointer-events-auto flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-zinc-950/55 p-1 shadow-sm backdrop-blur-xl"
+        >
+          <button
+            type="button"
+            @click="showInfo = !showInfo"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            :class="showInfo && 'bg-white/10 text-white'"
+            title="Toggle info"
+            aria-label="Toggle image info"
+            :aria-pressed="showInfo"
+          >
+            <Info class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="emit('close')"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Close"
+            aria-label="Close"
+          >
+            <X class="size-4" />
+          </button>
+        </div>
+      </header>
+
+      <button
+        type="button"
+        @click="emit('prev')"
+        class="aui-icon-button absolute left-3 top-1/2 z-10 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/45 text-zinc-400 shadow-sm backdrop-blur-xl transition-[background-color,color,border-color] duration-200 hover:border-white/20 hover:bg-zinc-900/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 md:left-5 md:size-10"
+        aria-label="Previous image"
+      >
+        <ChevronLeft class="size-5" />
+      </button>
+
+      <button
+        type="button"
+        @click="emit('next')"
+        class="aui-icon-button absolute right-3 top-1/2 z-10 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/45 text-zinc-400 shadow-sm backdrop-blur-xl transition-[background-color,color,border-color] duration-200 hover:border-white/20 hover:bg-zinc-900/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 md:right-5 md:size-10"
+        aria-label="Next image"
+      >
+        <ChevronRight class="size-5" />
+      </button>
+
+      <div
+        class="flex h-full w-full items-center justify-center p-12 transition-[padding] duration-200 md:p-16"
+        :class="showInfo && 'md:pr-[25rem]'"
+        @click.stop
+      >
+        <img
+          :src="src"
+          :alt="alt || filename"
+          class="fade-in zoom-in-95 animate-in fill-mode-both max-h-full max-w-full object-contain shadow-2xl duration-200"
+        />
+      </div>
+
+      <aside
+        class="aui-dialog-surface absolute inset-x-2 bottom-16 top-16 z-20 flex flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950/80 text-zinc-100 shadow-2xl backdrop-blur-2xl transition-transform duration-200 ease-out md:bottom-3 md:left-auto md:right-3 md:top-16 md:w-[22rem]"
+        :class="
+          showInfo
+            ? 'translate-y-0 md:translate-x-0'
+            : 'translate-y-[calc(100%+5rem)] md:translate-x-[calc(100%+2rem)] md:translate-y-0'
+        "
+        :aria-hidden="!showInfo"
+        @click.stop
+      >
+        <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div class="min-w-0">
+            <p class="text-sm font-medium tracking-tight text-zinc-100">Image details</p>
+            <p class="mt-0.5 text-[10px] text-zinc-500">Generation metadata</p>
+          </div>
+          <button
+            type="button"
+            @click="handleCopy"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:pointer-events-none disabled:opacity-40"
+            title="Copy parameters"
+            aria-label="Copy parameters"
+            :disabled="!metadata"
+          >
+            <Check v-if="isCopied" class="size-4 text-zinc-100" />
+            <Copy v-else class="size-4" />
+          </button>
+        </div>
+
+        <div
+          v-if="isLoading"
+          class="flex flex-1 flex-col gap-3 p-4"
+          aria-label="Loading image information"
+        >
+          <div class="h-3 w-16 animate-pulse rounded bg-white/10"></div>
+          <div class="h-24 animate-pulse rounded-lg border border-white/10 bg-white/5"></div>
+          <div class="grid grid-cols-2 gap-2">
+            <div
+              v-for="n in 4"
+              :key="n"
+              class="h-14 animate-pulse rounded-lg border border-white/10 bg-white/5"
+            ></div>
+          </div>
+        </div>
+
+        <div
+          v-else-if="!metadata"
+          class="flex flex-1 flex-col items-center justify-center px-8 text-center"
+        >
+          <div
+            class="mb-3 flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500"
+          >
+            <Info class="size-4" />
+          </div>
+          <p class="text-xs font-medium text-zinc-300">No metadata found</p>
+          <p class="mt-1 text-[11px] leading-4 text-zinc-500">
+            This image does not include generation parameters.
           </p>
         </div>
 
-        <!-- Details Grid -->
-        <div class="grid grid-cols-2 gap-2">
-          <div class="rounded-md border border-border bg-muted/30 p-2">
-            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Steps</span>
-            <span class="font-mono text-sm">{{ metadata.steps }}</span>
-          </div>
-          <div class="rounded-md border border-border bg-muted/30 p-2">
-            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">CFG Scale</span>
-            <span class="font-mono text-sm">{{ metadata.cfg_scale }}</span>
-          </div>
-          <div class="rounded-md border border-border bg-muted/30 p-2">
-            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Seed</span>
-            <span class="font-mono text-sm">{{ metadata.seed }}</span>
-          </div>
-          <div class="rounded-md border border-border bg-muted/30 p-2">
-            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Size</span>
-            <span class="font-mono text-sm">{{ metadata.width }}×{{ metadata.height }}</span>
-          </div>
-          <div class="col-span-2 rounded-md border border-border bg-muted/30 p-2">
-            <span class="block text-[11px] uppercase tracking-wider text-muted-foreground">Model</span>
-            <span class="truncate font-mono text-sm">{{ metadata.model }}</span>
-          </div>
+        <div v-else class="flex-1 space-y-5 overflow-y-auto p-4">
+          <section>
+            <label
+              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+              >Prompt</label
+            >
+            <p
+              class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
+            >
+              {{ metadata.prompt }}
+            </p>
+          </section>
+
+          <section v-if="metadata.negative_prompt">
+            <label
+              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+              >Negative prompt</label
+            >
+            <p
+              class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
+            >
+              {{ metadata.negative_prompt }}
+            </p>
+          </section>
+
+          <section>
+            <label
+              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+              >Parameters</label
+            >
+            <dl class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+              <div class="grid grid-cols-2 border-b border-white/10">
+                <div class="border-r border-white/10 px-3 py-2.5">
+                  <dt class="text-[10px] text-zinc-500">Steps</dt>
+                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">{{ metadata.steps }}</dd>
+                </div>
+                <div class="px-3 py-2.5">
+                  <dt class="text-[10px] text-zinc-500">CFG scale</dt>
+                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">{{ metadata.cfg_scale }}</dd>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 border-b border-white/10">
+                <div class="border-r border-white/10 px-3 py-2.5">
+                  <dt class="text-[10px] text-zinc-500">Seed</dt>
+                  <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200">
+                    {{ metadata.seed }}
+                  </dd>
+                </div>
+                <div class="px-3 py-2.5">
+                  <dt class="text-[10px] text-zinc-500">Size</dt>
+                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">
+                    {{ metadata.width }} x {{ metadata.height }}
+                  </dd>
+                </div>
+              </div>
+              <div class="px-3 py-2.5">
+                <dt class="text-[10px] text-zinc-500">Model</dt>
+                <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200" :title="metadata.model">
+                  {{ metadata.model }}
+                </dd>
+              </div>
+            </dl>
+          </section>
         </div>
+      </aside>
+
+      <div
+        v-if="$slots.actions"
+        class="aui-dialog-surface absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center rounded-lg border border-white/10 bg-zinc-950/60 p-1 shadow-xl backdrop-blur-2xl md:bottom-5"
+        @click.stop
+      >
+        <slot name="actions" />
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

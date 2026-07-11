@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Image,
+  Loader2,
+  Square
 } from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
 import { useGeneration } from '@/composables/useGeneration'
@@ -41,10 +43,12 @@ const progress = useGenerationProgress()
 const prompt = ref('')
 const negativePrompt = ref('') // Matches template usage
 const previewImage = ref<string | null>(null)
+const previewObjectUrl = ref<string | null>(null)
 const galleryImages = ref<string[]>([])
 const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
+const isLivePreview = ref(false)
 // const serverStats = ref<any>(null) // Unused
 
 // Preview polling
@@ -61,21 +65,25 @@ function getPreviewImageUrl(): string {
  * startPreviewPolling() - Start polling for live preview images
  */
 function startPreviewPolling(): void {
-  stopPreviewPolling() // Ensure no duplicate intervals
+  stopPreviewPolling()
+  isLivePreview.value = true
   previewPollInterval = setInterval(async () => {
     try {
       const response = await fetch(getPreviewImageUrl())
       if (response.ok) {
         const blob = await response.blob()
         if (blob.size > 0) {
-          // Only update if we got an actual image
-          previewImage.value = `${getApiBase()}/temp/preview.png?t=${Date.now()}`
+          const oldUrl = previewObjectUrl.value
+          const newUrl = URL.createObjectURL(blob)
+          previewObjectUrl.value = newUrl
+          previewImage.value = newUrl
+          if (oldUrl) URL.revokeObjectURL(oldUrl)
         }
       }
     } catch (e) {
       // Preview not available yet, silently ignore
     }
-  }, 1000) // Poll every 1 second
+  }, 1000)
 }
 
 /**
@@ -86,6 +94,11 @@ function stopPreviewPolling(): void {
     clearInterval(previewPollInterval)
     previewPollInterval = null
   }
+  if (previewObjectUrl.value) {
+    URL.revokeObjectURL(previewObjectUrl.value)
+    previewObjectUrl.value = null
+  }
+  isLivePreview.value = false
 }
 
 // File uploads (store actual File objects for proper upload)
@@ -120,7 +133,8 @@ const activePrompt = computed({
 const promptSuggestions = [
   {
     label: 'Editorial portrait',
-    prompt: 'Editorial portrait of a person in soft window light, 85mm photography, natural skin texture'
+    prompt:
+      'Editorial portrait of a person in soft window light, 85mm photography, natural skin texture'
   },
   {
     label: 'Product concept',
@@ -128,11 +142,13 @@ const promptSuggestions = [
   },
   {
     label: 'Cinematic landscape',
-    prompt: 'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
+    prompt:
+      'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
   },
   {
     label: 'Abstract poster',
-    prompt: 'Bold abstract poster with geometric forms, tactile paper texture, precise editorial layout'
+    prompt:
+      'Bold abstract poster with geometric forms, tactile paper texture, precise editorial layout'
   }
 ]
 
@@ -219,10 +235,8 @@ function advancedConfigured(tab: string): boolean {
 }
 
 function advancedButtonClass(tab: string): string {
-  if (activeTab.value === tab) return 'bg-foreground text-background'
-    if (advancedConfigured(tab))
-    return 'text-foreground border-foreground/30 bg-foreground/5'
-    return 'text-muted-foreground hover:text-foreground'
+  if (activeTab.value === tab || advancedConfigured(tab)) return 'text-foreground'
+  return 'text-muted-foreground hover:text-foreground'
 }
 
 const advancedTabLabel = computed(() => {
@@ -596,11 +610,13 @@ async function handleGenerate(): Promise<void> {
       galleryImages.value = [...newImages, ...galleryImages.value]
       previewImage.value = getOutputUrl(newImages[0])
       currentImageFilename.value = newImages[0]
+      isLivePreview.value = false
       toast.success('Generation complete!')
     } else if (result.filename) {
       galleryImages.value = [result.filename, ...galleryImages.value]
       previewImage.value = getOutputUrl(result.filename)
       currentImageFilename.value = result.filename
+      isLivePreview.value = false
       toast.success('Generation complete!')
     }
   } catch (e) {
@@ -636,28 +652,45 @@ async function handleCancel(): Promise<void> {
 function selectGalleryImage(filename: string): void {
   previewImage.value = getOutputUrl(filename)
   currentImageFilename.value = filename
+  isLivePreview.value = false
 }
 
 /**
  * deletePreview() - Delete the current preview image
  */
 async function deletePreview(): Promise<void> {
-  if (!currentImageFilename.value) return
+  if (!currentImageFilename.value || isLivePreview.value) return
 
   const filenameToDelete = currentImageFilename.value
 
   try {
-    await apiPost('/api/delete', { filename: filenameToDelete })
-    galleryImages.value = galleryImages.value.filter((f) => f !== filenameToDelete)
+    const response = await fetch(`${getApiBase()}/api/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: filenameToDelete })
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Delete failed' }))
+      throw new Error(err.message || 'Delete failed')
+    }
+    const data = await response.json()
+
+    const deletedFilename = data.filename || filenameToDelete
+    const idx = galleryImages.value.indexOf(deletedFilename)
+
+    galleryImages.value = galleryImages.value.filter((f) => f !== deletedFilename)
 
     if (galleryImages.value.length > 0) {
-      selectGalleryImage(galleryImages.value[0])
+      const nextIdx = Math.min(idx, galleryImages.value.length - 1)
+      selectGalleryImage(galleryImages.value[nextIdx >= 0 ? nextIdx : 0])
     } else {
       previewImage.value = null
       currentImageFilename.value = null
     }
     toast.success('Image deleted')
   } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Delete failed'
+    toast.error(msg)
     console.error('Delete failed:', e)
   }
 }
@@ -699,7 +732,7 @@ function handleKeydown(e: KeyboardEvent) {
   if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return
   if (e.key === 'ArrowLeft') navigateImage(-1)
   if (e.key === 'ArrowRight') navigateImage(1)
-  if (e.key === 'Delete' && previewImage.value && !isGenerating.value) {
+  if (e.key === 'Delete' && previewImage.value && !isGenerating.value && !isLivePreview.value) {
     if (confirm('Delete current image?')) deletePreview()
   }
 }
@@ -753,56 +786,87 @@ onMounted(async () => {
     window.removeEventListener('keydown', handleKeydown)
     document.removeEventListener('click', handleResolutionMenuClick)
     stopPreviewPolling()
+    if (previewObjectUrl.value) {
+      URL.revokeObjectURL(previewObjectUrl.value)
+      previewObjectUrl.value = null
+    }
   })
 })
 </script>
 
 <template>
-  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
+  >
     <!-- Preview Area -->
-    <div class="relative flex-1 min-h-0 overflow-hidden px-3 pt-3 md:px-8 md:pt-8">
+    <div class="relative min-h-0 flex-1 overflow-hidden px-3 pt-3 md:px-6 md:pt-6">
       <div
         v-if="error"
-        class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground shadow-sm"
+        class="aui-alert fade-in slide-in-from-top-1 animate-in absolute left-1/2 top-4 z-50 flex max-w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 items-center gap-3 rounded-2xl border border-destructive/20 bg-background/95 px-4 py-3 text-sm text-destructive shadow-[0_2px_4px_rgb(0_0_0/0.05),0_12px_32px_rgb(0_0_0/0.1)] backdrop-blur-xl duration-200"
       >
         {{ error }}
-        <button @click="error = null" class="hover:opacity-70"><X class="h-4 w-4" /></button>
+        <button
+          class="aui-icon-button -mr-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-150 hover:bg-destructive/10"
+          aria-label="Dismiss error"
+          @click="error = null"
+        >
+          <X class="h-4 w-4" />
+        </button>
       </div>
 
-      <div class="mx-auto flex h-full w-full max-w-4xl min-h-0 flex-col">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
         <div
-          class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg group"
+          class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+          :class="{ 'flaxeo-hero rounded-3xl': !previewImage && !isGenerating }"
         >
           <img
             v-if="previewImage"
             :src="previewImage"
-            class="animate-in fade-in duration-200 h-full max-h-full max-w-full object-contain"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both h-full max-h-full max-w-full rounded-[18px] object-contain shadow-[0_8px_32px_rgb(0_0_0/0.12)] duration-200"
             alt="Generated image"
           />
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
-            <div
-              v-if="!isGenerating"
-              class="flex max-w-2xl flex-col items-center px-6 text-center"
-            >
-              <h1 class="text-2xl font-semibold tracking-tight text-foreground">What will you create?</h1>
-              <div class="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Prompt ideas">
+            <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
+              <h1
+                class="flaxeo-hero-copy grok-hero-item text-3xl font-semibold tracking-[-0.035em]"
+              >
+                What will you create?
+              </h1>
+              <div class="mt-5 flex flex-wrap justify-center gap-2" aria-label="Prompt ideas">
                 <button
-                  v-for="suggestion in promptSuggestions"
+                  v-for="(suggestion, index) in promptSuggestions"
                   :key="suggestion.label"
                   type="button"
-                  class="inline-flex h-7 items-center rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="flaxeo-hero-control grok-hero-item inline-flex h-8 items-center rounded-lg border px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  :style="{ animationDelay: `${40 + index * 40}ms` }"
                   @click="usePromptSuggestion(suggestion.prompt)"
                 >
                   {{ suggestion.label }}
                 </button>
               </div>
             </div>
-            <div v-else class="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <span class="relative flex h-2 w-2">
-                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-50"></span>
-                <span class="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
-              </span>
-              Creating image
+            <div
+              v-else
+              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 text-center duration-200"
+            >
+              <Loader2 class="size-7 animate-spin text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium text-foreground">Creating image</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  {{ progress.label || 'Preparing generation' }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="isGenerating && previewImage && !isLivePreview"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/45 backdrop-blur-[2px]"
+          >
+            <div
+              class="aui-status-badge fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
+            >
+              <Loader2 class="size-4 animate-spin text-muted-foreground" />
+              <span class="font-medium text-foreground">Creating image</span>
             </div>
           </div>
           <div
@@ -811,7 +875,7 @@ onMounted(async () => {
           >
             <button
               @click="navigateImage(-1)"
-              class="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background transition-colors hover:bg-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button pointer-events-auto inline-flex size-10 items-center justify-center rounded-full border border-border/50 bg-background/75 text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-all duration-150 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="{ 'opacity-0 cursor-default': isFirstImage }"
               :disabled="isFirstImage"
             >
@@ -819,7 +883,7 @@ onMounted(async () => {
             </button>
             <button
               @click="navigateImage(1)"
-              class="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full bg-foreground/40 text-background transition-colors hover:bg-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button pointer-events-auto inline-flex size-10 items-center justify-center rounded-full border border-border/50 bg-background/75 text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-all duration-150 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="{ 'opacity-0 cursor-default': isLastImage }"
               :disabled="isLastImage"
             >
@@ -827,20 +891,20 @@ onMounted(async () => {
             </button>
           </div>
           <div
-            v-if="previewImage && !isGenerating"
-            class="absolute right-2 top-2 z-10 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100"
+            v-if="previewImage && !isLivePreview"
+            class="absolute right-3 top-3 z-10 flex gap-1 rounded-full border border-border/60 bg-background/80 p-1 opacity-0 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
           >
             <button
               @click="deletePreview"
-              class="inline-flex size-9 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Delete image"
             >
               <Trash2 class="size-4" />
             </button>
             <a
               :href="previewImage"
-              :download="previewImage.split('/').pop()"
-              class="inline-flex size-9 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :download="currentImageFilename || 'image.png'"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Download image"
               ><Download class="size-4"
             /></a>
@@ -849,30 +913,32 @@ onMounted(async () => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-2"
+          class="mt-3 w-[min(100%,36rem)] self-center"
           loading-text="Loading model"
           fallback-label="CLI-GEN"
-          :live-preview="previewImage?.includes('temp/preview.png')"
+          :live-preview="isLivePreview"
         />
 
-        <div v-if="galleryImages.length > 0" class="mt-4 w-full shrink-0">
-          <div class="mb-2 flex items-center justify-between px-1">
+        <div v-if="galleryImages.length > 0" class="mt-3 w-full shrink-0">
+          <div class="mb-1.5 flex items-center justify-between px-2">
             <h3
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              class="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground"
             >
               <Image class="h-3.5 w-3.5" /> Recent generations ({{ galleryImages.length }})
             </h3>
           </div>
-          <div class="relative rounded-lg border border-border bg-card p-2 group/carousel">
+          <div
+            class="aui-media-strip group/carousel relative rounded-[18px] border border-border/60 bg-background/60 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)]"
+          >
             <div
               ref="carouselRef"
-              class="flex gap-2 overflow-x-auto p-1 snap-x scroll-smooth no-scrollbar md:gap-3"
+              class="no-scrollbar flex snap-x gap-2 overflow-x-auto scroll-smooth p-0.5"
             >
               <button
                 v-for="img in galleryImages"
                 :key="img"
                 @click="selectGalleryImage(img)"
-                class="relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-md border border-transparent transition-all md:h-20 md:w-20 focus:outline-none focus:ring-2 focus:ring-ring/40 hover:opacity-100"
+                class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl border border-transparent transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
                 :class="
                   previewImage === getOutputUrl(img)
                     ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
@@ -888,10 +954,10 @@ onMounted(async () => {
               </button>
             </div>
             <div
-              class="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent"
+              class="pointer-events-none absolute inset-y-0 left-0 w-8 rounded-l-[18px] bg-gradient-to-r from-background/80 to-transparent"
             ></div>
             <div
-              class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent"
+              class="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-[18px] bg-gradient-to-l from-background/80 to-transparent"
             ></div>
           </div>
         </div>
@@ -899,10 +965,12 @@ onMounted(async () => {
     </div>
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
-      <div class="relative mx-auto flex w-full max-w-4xl flex-col rounded-lg border border-border bg-card shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
-        <!-- Top inline row: Positive / Negative + LoRA + Embedding -->
+      <div
+        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+      >
+        <!-- Prompt mode -->
         <div
-          class="flex flex-nowrap items-center gap-1 whitespace-nowrap px-2 pt-2 text-xs md:px-3 md:pt-3"
+          class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4"
           role="tablist"
           aria-label="Prompt mode"
         >
@@ -913,46 +981,10 @@ onMounted(async () => {
             aria-label="Prompt mode"
             @update:model-value="setPromptMode"
           />
-          <button
-            type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none"
-            :class="config.loras.length ? 'bg-foreground/5 text-foreground' : ''"
-            title="Configure LoRA modules"
-            @click="openPromptAssetModal('lora')"
-          >
-            <span>LoRA</span>
-            <span v-if="config.loras.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.loras.length }}</span>
-          </button>
-          <button
-            type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none"
-            :class="config.embeddings.length ? 'bg-foreground/5 text-foreground' : ''"
-            title="Configure embeddings"
-            @click="openPromptAssetModal('embedding')"
-          >
-            <span>Embedding</span>
-            <span v-if="config.embeddings.length" class="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-background px-1 text-[10px] font-bold text-foreground">{{ config.embeddings.length }}</span>
-          </button>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Preview</span>
-            <Select
-              v-model="config.livePreviewMethod"
-              size="sm"
-              placeholder="None"
-              aria-label="Live preview"
-              class="w-24 border-0 bg-transparent"
-              :options="[
-                { label: 'None', value: '' },
-                { label: 'Proj', value: 'proj' },
-                { label: 'TAE', value: 'tae' },
-                { label: 'VAE', value: 'vae' }
-              ]"
-            />
-          </label>
         </div>
 
         <!-- Textarea + send button -->
-        <div class="flex items-end gap-2 px-2 pt-1.5 pb-2 md:px-3">
+        <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
           <div class="relative flex-1">
             <textarea
               v-model="activePrompt"
@@ -963,49 +995,78 @@ onMounted(async () => {
                   ? 'Describe the image you want to generate...'
                   : 'Describe what should stay out of the image...'
               "
-              class="flex w-full resize-none rounded-md border-0 bg-transparent px-3 py-2.5 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:px-4 md:py-3 overflow-y-auto"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
               }"
-              :disabled="isGenerating"
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
             <span
               v-if="promptMode === 'positive' && config.embeddings.length > 0"
-              class="absolute right-2 top-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+              class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
               >{{ config.embeddings.length }} embeds</span
             >
-            <div class="absolute bottom-3 right-3 flex items-end">
-              <button
+            <div class="absolute bottom-3 right-1 size-9">
+              <Transition name="grok-action">
+                <button
                   v-if="!isGenerating"
+                  key="generate"
                   @click="handleGenerate"
                   :disabled="promptMode !== 'positive' || !prompt.trim()"
-                  class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Generate"
-                aria-label="Generate image"
-              >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
-              </button>
-              <button
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Generate"
+                  aria-label="Generate image"
+                >
+                  <ArrowUp class="size-3.5 stroke-[2.5]" />
+                </button>
+                <button
                   v-else
+                  key="cancel"
                   @click="handleCancel"
-                  class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Cancel"
-                aria-label="Cancel generation"
-              >
-                <X class="size-3.5" />
-              </button>
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Cancel"
+                  aria-label="Cancel generation"
+                >
+                  <Square class="size-3 fill-current" />
+                </button>
+              </Transition>
             </div>
           </div>
         </div>
 
-        <!-- Section 4: Quick controls (Steps, CFG, Seed, Scheduler, Sampler, Resolution, advanced tools) -->
+        <!-- Quick controls: Steps, CFG, Seed, Scheduler, Sampler, Resolution -->
         <div
-          class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-2 pb-2 text-xs md:px-3"
+          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
         >
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <button
+            type="button"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="config.loras.length ? 'text-foreground' : ''"
+            title="Configure LoRA modules"
+            @click="openPromptAssetModal('lora')"
+          >
+            LoRA
+            <span v-if="config.loras.length" class="font-mono text-[10px]">
+              {{ config.loras.length }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            :class="config.embeddings.length ? 'text-foreground' : ''"
+            title="Configure embeddings"
+            @click="openPromptAssetModal('embedding')"
+          >
+            Embedding
+            <span v-if="config.embeddings.length" class="font-mono text-[10px]">
+              {{ config.embeddings.length }}
+            </span>
+          </button>
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Steps</span>
             <input
               v-model.number="config.steps"
@@ -1016,7 +1077,9 @@ onMounted(async () => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">CFG</span>
             <input
               v-model.number="config.cfgScale"
@@ -1028,7 +1091,9 @@ onMounted(async () => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Seed</span>
             <input
               v-model.number="config.seed"
@@ -1039,31 +1104,45 @@ onMounted(async () => {
               class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Scheduler</span>
-            <Select
-              v-model="config.scheduler"
-              size="sm"
-              aria-label="Scheduler"
-              class="border-0 bg-transparent"
-              :options="schedulerOptions"
-            />
-          </label>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Sampler</span>
-            <Select
-              v-model="config.sampler"
-              size="sm"
-              aria-label="Sampler"
-              class="border-0 bg-transparent"
-              :options="samplerOptions"
-            />
-          </label>
+          <Select
+            v-model="config.scheduler"
+            label="Scheduler"
+            size="sm"
+            aria-label="Scheduler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="schedulerOptions"
+          />
+          <Select
+            v-model="config.sampler"
+            label="Sampler"
+            size="sm"
+            aria-label="Sampler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="samplerOptions"
+          />
+          <Select
+            v-model="config.livePreviewMethod"
+            label="Preview"
+            size="sm"
+            placeholder="None"
+            aria-label="Live preview"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent shadow-none hover:bg-accent"
+            :options="[
+              { label: 'None', value: '' },
+              { label: 'Proj', value: 'proj' },
+              { label: 'TAE', value: 'tae' },
+              { label: 'VAE', value: 'vae' }
+            ]"
+          />
           <div class="relative shrink-0">
             <button
               type="button"
-              class="inline-flex h-7 items-center gap-1 rounded-md px-2 font-medium transition-colors focus-visible:outline-none"
-              :class="showResolutionMenu ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+              class="inline-flex h-8 items-center gap-1 rounded-full border border-transparent px-2 font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="
+                showResolutionMenu
+                  ? 'border-border bg-background text-foreground shadow-sm'
+                  : 'hover:border-border hover:bg-background/70'
+              "
               :aria-expanded="showResolutionMenu"
               aria-label="Resolution"
               @click.stop="showResolutionMenu = !showResolutionMenu"
@@ -1074,7 +1153,7 @@ onMounted(async () => {
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu absolute right-0 bottom-full z-[100] mb-1 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-72 rounded-[20px] border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_44px_rgb(0_0_0/0.16)] backdrop-blur-xl duration-150"
               @click.stop
             >
               <div class="grid grid-cols-4 gap-1.5">
@@ -1082,7 +1161,7 @@ onMounted(async () => {
                   v-for="preset in resolutionPresets"
                   :key="preset.label"
                   type="button"
-                  class="flex flex-col items-center justify-center rounded-md border p-2 text-xs transition-colors hover:bg-accent"
+                  class="flex flex-col items-center justify-center rounded-xl border p-2 text-xs transition-colors duration-150 hover:bg-accent"
                   :class="
                     resolutionLabel === preset.label
                       ? 'border-foreground/30 bg-foreground/5 text-foreground'
@@ -1091,11 +1170,16 @@ onMounted(async () => {
                   @click="selectResolution(preset)"
                 >
                   <span class="font-semibold">{{ preset.label }}</span>
-                  <small class="text-[10px] text-muted-foreground">{{ preset.width }}×{{ preset.height }}</small>
+                  <small class="text-[10px] text-muted-foreground"
+                    >{{ preset.width }}×{{ preset.height }}</small
+                  >
                 </button>
               </div>
               <div class="mt-3 border-t border-border pt-3">
-                <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</span>
+                <span
+                  class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >Custom</span
+                >
                 <div class="mt-1.5 flex items-center gap-1.5">
                   <input
                     v-model.number="config.width"
@@ -1103,7 +1187,7 @@ onMounted(async () => {
                     min="64"
                     step="64"
                     aria-label="Custom width"
-                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -1112,11 +1196,11 @@ onMounted(async () => {
                     min="64"
                     step="64"
                     aria-label="Custom height"
-                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
-                    class="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="inline-flex h-9 items-center justify-center rounded-full bg-foreground px-3 text-xs font-medium text-background shadow-sm transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     @click="applyCustomResolution"
                   >
                     Apply
@@ -1125,92 +1209,98 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          <div class="relative flex shrink-0 items-center gap-1">
+          <div class="ml-auto flex shrink-0 items-center gap-0.5">
             <button
-              @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('photomaker')"
               title="PhotoMaker"
               aria-label="Open PhotoMaker settings"
+              @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
             >
               <User class="size-4" />
             </button>
             <button
-              @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('controlnet')"
               title="ControlNet"
               aria-label="Open ControlNet settings"
+              @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
             >
               <Activity class="size-4" />
             </button>
             <button
-              @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('img2img')"
               title="Image to Image"
               aria-label="Open Image to Image settings"
+              @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
             >
               <Image class="size-4" />
             </button>
             <button
-              @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="advancedButtonClass('kontext')"
               title="Reference (Flux)"
               aria-label="Open Reference (Flux) settings"
+              @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
             >
               <ImagePlus class="size-4" />
             </button>
+            <PromptPresetControls
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              compact
+              class="shrink-0"
+            />
           </div>
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            compact
-            class="shrink-0"
-          />
         </div>
       </div>
     </div>
 
-    <div
-      v-if="showPromptAssets"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
-      @click="showPromptAssets = false"
-    >
+    <Teleport to="body">
       <div
-        class="flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
-        @click.stop
+        v-if="showPromptAssets"
+        class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-[200] flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm duration-200 motion-reduce:animate-none"
+        @click.self="showPromptAssets = false"
       >
-        <ConfigPanel
-          :collapsed="false"
-          :focus="promptAssetFocus"
-          @close="showPromptAssets = false"
-        />
+        <div
+          class="aui-dialog-surface fade-in slide-in-from-bottom-2 zoom-in-95 animate-in fill-mode-both flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
+          @click.stop
+        >
+          <ConfigPanel
+            :collapsed="false"
+            :focus="promptAssetFocus"
+            @close="showPromptAssets = false"
+          />
+        </div>
       </div>
-    </div>
+    </Teleport>
 
     <!-- Advanced tool modal (PhotoMaker / ControlNet / Img2Img / Kontext) -->
     <Teleport to="body">
       <div
         v-if="activeTab"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
-        @click="activeTab = ''"
+        class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm duration-200 motion-reduce:animate-none"
+        @click.self="activeTab = ''"
       >
         <div
-          class="relative w-[28rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+          class="aui-dialog-surface fade-in slide-in-from-bottom-2 zoom-in-95 animate-in fill-mode-both relative max-h-[calc(100vh-2rem)] w-[28rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
           role="dialog"
           aria-modal="true"
           @click.stop
         >
-          <header class="flex items-start justify-between border-b border-border p-4">
+          <header class="flex items-start justify-between px-5 pb-3 pt-5">
             <div>
-              <h2 class="text-base font-semibold tracking-tight">{{ advancedTabLabel }}</h2>
-              <p class="mt-0.5 text-xs text-muted-foreground">Configure this generation tool.</p>
+              <h2 class="text-base font-semibold tracking-[-0.015em]">{{ advancedTabLabel }}</h2>
+              <p class="mt-1 text-xs text-muted-foreground">Configure this generation tool.</p>
             </div>
             <button
               type="button"
-              class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :aria-label="`Close ${advancedTabLabel}`"
               :title="`Close ${advancedTabLabel}`"
               @click="activeTab = ''"
@@ -1218,19 +1308,23 @@ onMounted(async () => {
               <X class="h-4 w-4" />
             </button>
           </header>
-          <div class="space-y-4 p-4">
+          <div class="space-y-4 px-5 pb-5 pt-2">
             <div v-if="activeTab === 'photomaker'" class="space-y-3">
-              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">ID Images (Max 4)</span>
-              <div class="flex flex-wrap gap-2">
+              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
+                >ID images, up to 4</span
+              >
+              <div
+                class="aui-media-strip flex flex-wrap gap-2 rounded-[18px] border border-border/60 bg-muted/25 p-2"
+              >
                 <div
                   v-for="(img, idx) in config.photoMakerImages"
                   :key="idx"
-                  class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30"
+                  class="group relative size-20 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-colors duration-150 hover:border-foreground/30"
                 >
                   <img :src="getFileUrl(img)" class="h-full w-full object-cover" />
                   <button
                     @click="removePMImage(idx)"
-                    class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     title="Remove image"
                   >
                     <X class="h-3 w-3" />
@@ -1238,7 +1332,7 @@ onMounted(async () => {
                 </div>
                 <label
                   v-if="config.photoMakerImages.length < 4"
-                  class="flex size-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-accent hover:text-foreground"
+                  class="flex size-20 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 text-muted-foreground transition-all duration-150 hover:border-foreground/30 hover:bg-background hover:text-foreground"
                   title="Add ID image"
                 >
                   <Plus class="h-5 w-5" />
@@ -1252,7 +1346,7 @@ onMounted(async () => {
                 </label>
               </div>
               <div>
-                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
                   >Style Strength ({{ config.photoMakerStyleStrength }})</label
                 >
                 <input
@@ -1265,8 +1359,12 @@ onMounted(async () => {
               </div>
             </div>
             <div v-if="activeTab === 'controlnet'" class="space-y-3">
-              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Control Image</span>
-              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
+                >Control image</span
+              >
+              <div
+                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
+              >
                 <img
                   v-if="config.controlImagePath"
                   :src="getFileUrl(config.controlImagePath)"
@@ -1276,25 +1374,22 @@ onMounted(async () => {
                   class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
                 >
                   <Upload v-if="!config.controlImagePath" class="h-5 w-5" />
-                  <span v-if="!config.controlImagePath" class="mt-1 text-[10px] font-semibold">Upload</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    @change="handleCNUpload"
-                  />
+                  <span v-if="!config.controlImagePath" class="mt-1 text-[10px] font-semibold"
+                    >Upload</span
+                  >
+                  <input type="file" accept="image/*" class="hidden" @change="handleCNUpload" />
                 </label>
                 <button
                   v-if="config.controlImagePath"
                   @click.stop="clearControlNetImage"
-                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   title="Remove control image"
                 >
                   <X class="h-3 w-3" />
                 </button>
               </div>
               <div>
-                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
                   >Strength ({{ config.controlNetStrength }})</label
                 >
                 <input
@@ -1306,18 +1401,18 @@ onMounted(async () => {
                   class="w-full accent-primary"
                 />
               </div>
-              <label class="flex items-center gap-2 text-xs">
-                <input
-                  v-model="config.applyCanny"
-                  type="checkbox"
-                  class="rounded border-border"
-                />
+              <label class="flex items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5 text-xs">
+                <input v-model="config.applyCanny" type="checkbox" class="rounded border-border" />
                 Apply Canny Preprocessor
               </label>
             </div>
             <div v-if="activeTab === 'img2img'" class="space-y-3">
-              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Init Image</span>
-              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
+                >Initial image</span
+              >
+              <div
+                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
+              >
                 <img
                   v-if="config.initImagePath"
                   :src="getFileUrl(config.initImagePath)"
@@ -1327,7 +1422,9 @@ onMounted(async () => {
                   class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
                 >
                   <Upload v-if="!config.initImagePath" class="h-5 w-5" />
-                  <span v-if="!config.initImagePath" class="mt-1 text-[10px] font-semibold">Upload</span>
+                  <span v-if="!config.initImagePath" class="mt-1 text-[10px] font-semibold"
+                    >Upload</span
+                  >
                   <input
                     type="file"
                     accept="image/*"
@@ -1338,14 +1435,14 @@ onMounted(async () => {
                 <button
                   v-if="config.initImagePath"
                   @click.stop="clearInitImage"
-                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   title="Remove init image"
                 >
                   <X class="h-3 w-3" />
                 </button>
               </div>
               <div>
-                <label class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
                   >Denoising Strength ({{ config.img2imgStrength }})</label
                 >
                 <input
@@ -1362,8 +1459,12 @@ onMounted(async () => {
               </div>
             </div>
             <div v-if="activeTab === 'kontext'" class="space-y-3">
-              <span class="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Ref Image</span>
-              <div class="relative size-20 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors group hover:border-foreground/30">
+              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
+                >Reference image</span
+              >
+              <div
+                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
+              >
                 <img
                   v-if="config.kontextRefImage"
                   :src="getFileUrl(config.kontextRefImage)"
@@ -1373,7 +1474,9 @@ onMounted(async () => {
                   class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
                 >
                   <Upload v-if="!config.kontextRefImage" class="h-5 w-5" />
-                  <span v-if="!config.kontextRefImage" class="mt-1 text-[10px] font-semibold">Upload</span>
+                  <span v-if="!config.kontextRefImage" class="mt-1 text-[10px] font-semibold"
+                    >Upload</span
+                  >
                   <input
                     type="file"
                     accept="image/*"
@@ -1384,7 +1487,7 @@ onMounted(async () => {
                 <button
                   v-if="config.kontextRefImage"
                   @click.stop="clearKontextImage"
-                  class="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   title="Remove reference image"
                 >
                   <X class="h-3 w-3" />
@@ -1399,6 +1502,5 @@ onMounted(async () => {
         </div>
       </div>
     </Teleport>
-
   </div>
 </template>

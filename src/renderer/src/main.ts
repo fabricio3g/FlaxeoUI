@@ -2,12 +2,13 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+import '@fontsource-variable/geist'
+import '@fontsource-variable/geist-mono'
+
 import App from './App.vue'
 import './assets/main.css'
 
-if (localStorage.getItem('flaxeo-theme') !== 'light') {
-  document.documentElement.classList.add('dark')
-}
+document.documentElement.classList.toggle('dark', localStorage.getItem('flaxeo-theme') !== 'light')
 
 // Import views (will be created)
 import Text2Image from './views/Text2Image.vue'

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { apiGet, apiPost, getOutputUrl } from '@/services/api'
+import { apiGet, getApiBase, getOutputUrl } from '@/services/api'
 import {
   Brush,
-  Images,
   Trash2,
   Download,
   FolderOpen,
@@ -14,7 +13,6 @@ import {
   ChevronRight,
   Copy,
   Sparkles,
-  Maximize2,
   Video
 } from '@/lib/icons'
 import { useRouter } from 'vue-router'
@@ -30,6 +28,7 @@ const images = ref<string[]>([])
 const isLoading = ref(false)
 const selectedImage = ref<string | null>(null)
 const viewMode = ref<'grid' | 'large'>('grid')
+const loadedImages = ref(new Set<string>())
 const viewModeOptions = [
   { value: 'grid', label: 'Compact grid', icon: Grid },
   { value: 'large', label: 'Large grid', icon: LayoutGrid }
@@ -45,11 +44,6 @@ const paginatedImages = computed(() => {
   const start = (currentPage.value - 1) * imagesPerPage
   return images.value.slice(start, start + imagesPerPage)
 })
-const selectedIndex = computed(() =>
-  selectedImage.value ? images.value.indexOf(selectedImage.value) : -1
-)
-const selectedDisplayName = computed(() => selectedImage.value?.split(/[\\/]/).pop() || '')
-
 // ... (fetchGallery, selectImage, deleteImage, downloadImage, sendToEdit, sendToText2Image, copyImagePath, openGalleryFolder, navigatePage unchanged) ...
 /**
  * fetchGallery() - Fetches all images from the output directory
@@ -59,6 +53,9 @@ async function fetchGallery(): Promise<void> {
   try {
     const data = await apiGet<string[]>('/api/gallery')
     images.value = data || []
+    loadedImages.value = new Set(
+      [...loadedImages.value].filter((image) => images.value.includes(image))
+    )
     if (currentPage.value > totalPages.value) currentPage.value = Math.max(totalPages.value, 1)
   } catch (e) {
     console.error('Failed to fetch gallery:', e)
@@ -75,6 +72,16 @@ function selectImage(filename: string): void {
   selectedImage.value = filename
 }
 
+function openImageViewer(filename: string): void {
+  selectImage(filename)
+  showImageViewer.value = true
+}
+
+function markImageLoaded(filename: string): void {
+  if (loadedImages.value.has(filename)) return
+  loadedImages.value = new Set(loadedImages.value).add(filename)
+}
+
 function handleViewMode(value: string): void {
   if (value === 'grid' || value === 'large') viewMode.value = value
 }
@@ -88,13 +95,23 @@ async function deleteImage(): Promise<void> {
   if (!confirm(`Delete ${selectedImage.value}?`)) return
 
   try {
-    await apiPost('/api/delete', { filename: selectedImage.value })
-    images.value = images.value.filter((img) => img !== selectedImage.value)
+    const response = await fetch(`${getApiBase()}/api/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: selectedImage.value })
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Delete failed' }))
+      throw new Error(err.message || 'Delete failed')
+    }
+    const data = await response.json()
+    images.value = images.value.filter((img) => img !== data.filename)
     toast.success('Image deleted')
     selectedImage.value = null
   } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Failed to delete image'
+    toast.error(msg)
     console.error('Failed to delete image:', e)
-    toast.error('Failed to delete image')
   }
 }
 
@@ -144,6 +161,26 @@ function sendToVideo(): void {
   sessionStorage.setItem('videoReferenceImage', getOutputUrl(selectedImage.value))
   toast.success('Sent to Video')
   router.push({ name: 'Video' })
+}
+
+function sendSelectedToText2Image(): void {
+  sendToText2Image()
+  showImageViewer.value = false
+}
+
+function sendSelectedToEdit(): void {
+  sendToEdit()
+  showImageViewer.value = false
+}
+
+function sendSelectedToVideo(): void {
+  sendToVideo()
+  showImageViewer.value = false
+}
+
+async function deleteSelectedImage(): Promise<void> {
+  await deleteImage()
+  if (!selectedImage.value) showImageViewer.value = false
 }
 
 /**
@@ -216,10 +253,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <!-- ... header/grid stuff ... -->
-
-    <!-- (Adding ImageViewer at root) -->
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
+  >
     <ImageViewer
       v-if="showImageViewer && selectedImage"
       :src="getOutputUrl(selectedImage)"
@@ -227,25 +263,86 @@ onUnmounted(() => {
       @close="showImageViewer = false"
       @prev="navigateImage('prev')"
       @next="navigateImage('next')"
-    />
+    >
+      <template #actions>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            @click="sendSelectedToText2Image"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Use in Text2Image"
+            aria-label="Use in Text2Image"
+          >
+            <Sparkles class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="sendSelectedToEdit"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Send to Edit"
+            aria-label="Send to Edit"
+          >
+            <Brush class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="sendSelectedToVideo"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Send to Video"
+            aria-label="Send to Video"
+          >
+            <Video class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="copyImagePath"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Copy filename"
+            aria-label="Copy filename"
+          >
+            <Copy class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="downloadImage"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Download"
+            aria-label="Download"
+          >
+            <Download class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="deleteSelectedImage"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-destructive/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Delete"
+            aria-label="Delete"
+          >
+            <Trash2 class="size-4" />
+          </button>
+        </div>
+      </template>
+    </ImageViewer>
 
-    <!-- Header -->
-    <div class="shrink-0 border-b border-border bg-card px-4 py-3 md:px-5">
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-foreground">
-            <Images class="h-5 w-5" />
+    <header
+      class="shrink-0 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur md:px-6"
+    >
+      <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2.5">
+          <div
+            class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30"
+          >
+            <Images class="size-3.5 text-muted-foreground" />
           </div>
-          <div>
-            <h1 class="text-xl font-semibold tracking-tight">Gallery</h1>
-            <p class="text-xs text-muted-foreground">
-              {{ images.length }} saved image{{ images.length === 1 ? '' : 's' }}
-            </p>
-          </div>
+          <h1 class="truncate text-sm font-medium tracking-tight">Gallery</h1>
+          <span
+            class="aui-status-badge shrink-0 rounded-full border border-border/70 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+          >
+            {{ images.length }} image{{ images.length === 1 ? '' : 's' }}
+          </span>
         </div>
 
-        <div class="flex items-center gap-2">
-          <!-- View Mode Toggle -->
+        <div class="flex shrink-0 items-center gap-1">
           <SegmentedControl
             :model-value="viewMode"
             :options="viewModeOptions"
@@ -255,254 +352,118 @@ onUnmounted(() => {
             @update:model-value="handleViewMode"
           />
 
-          <!-- Refresh -->
           <button
             type="button"
             @click="fetchGallery"
             :disabled="isLoading"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-all hover:scale-110 active:scale-95 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             title="Refresh gallery"
           >
-            <RefreshCw class="w-4 h-4" :class="isLoading && 'animate-spin'" />
+            <RefreshCw class="size-4" :class="isLoading && 'animate-spin'" />
           </button>
 
-          <!-- Open Folder -->
           <button
             @click="openGalleryFolder"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             title="Open gallery folder"
           >
-            <FolderOpen class="w-4 h-4" />
+            <FolderOpen class="size-4" />
           </button>
         </div>
       </div>
-    </div>
+    </header>
 
-    <!-- Content Area -->
-    <div class="flex min-h-0 flex-1 overflow-hidden">
-      <!-- Image Grid -->
-      <div class="flex-1 overflow-y-auto bg-background p-4 md:p-5">
-        <!-- Loading State -->
+    <main class="mx-auto w-full max-w-7xl flex-1 overflow-y-auto p-4 md:p-6">
+      <div
+        v-if="isLoading"
+        class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      >
         <div
-          v-if="isLoading"
-          class="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground"
-        >
-          <RefreshCw class="h-8 w-8 animate-spin" />
-          <span class="text-sm font-medium">Loading gallery</span>
-        </div>
+          v-for="n in 15"
+          :key="n"
+          class="aspect-square animate-pulse rounded-lg border border-border/60 bg-muted/50"
+        ></div>
+      </div>
 
-        <!-- Empty State -->
-        <div
-          v-else-if="images.length === 0"
-          class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
-        >
-          <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-muted text-foreground">
-            <Images class="h-7 w-7" />
-          </div>
-          <p class="text-sm font-medium text-foreground">No images yet</p>
-          <p class="mt-1 max-w-xs text-xs">
-            Generate images in Text2Image, Edit, or Video and they will appear here.
+      <div
+        v-else-if="images.length === 0"
+        class="flaxeo-hero flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
+      >
+        <div class="grok-hero-item flex max-w-sm flex-col items-center">
+          <p class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+            Your gallery is empty
+          </p>
+          <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+            Generated images from Text2Image and Edit will appear here.
           </p>
         </div>
+      </div>
 
-        <!-- Grid -->
-        <div
-          v-else
-          class="grid gap-3 md:gap-4"
+      <div
+        v-else
+        class="grid gap-2.5 sm:gap-3"
+        :class="
+          viewMode === 'grid'
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+        "
+      >
+        <button
+          v-for="(img, index) in paginatedImages"
+          :key="img"
+          :style="`animation-delay: ${Math.min(index, 8) * 40}ms`"
+          @click="openImageViewer(img)"
+          class="fade-in animate-in fill-mode-both group relative aspect-square overflow-hidden rounded-lg border bg-muted/20 duration-200 transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           :class="
-            viewMode === 'grid'
-              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
-              : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+            selectedImage === img
+              ? 'border-foreground/50 ring-1 ring-foreground/15'
+              : 'border-border/70'
           "
         >
-          <button
-            v-for="(img, index) in paginatedImages"
-            :key="img"
-            :style="`animation-delay: ${index * 40}ms`"
-            @click="selectImage(img)"
-            class="animate-in fade-in fill-mode-both group relative aspect-square overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
-            :class="
-              selectedImage === img
-                ? 'border-foreground/30 ring-2 ring-ring/40'
-                : 'border-border/60 hover:border-foreground/20'
-            "
-          >
-            <img
-              :src="getOutputUrl(img)"
-              :alt="img"
-              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/70 to-transparent p-2 text-left opacity-0 transition-opacity group-hover:opacity-100">
-              <p class="truncate text-[11px] font-medium text-background">{{ img }}</p>
-            </div>
-          </button>
-        </div>
-
-        <!-- Pagination -->
-        <div v-if="totalPages > 1" class="mt-6 flex items-center justify-center gap-4 pb-4">
-          <button
-            @click="navigatePage('prev')"
-            :disabled="currentPage === 1"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <ChevronLeft class="w-5 h-5" />
-          </button>
-          <span class="text-sm text-muted-foreground"
-            >Page {{ currentPage }} of {{ totalPages }}</span
-          >
-          <button
-            @click="navigatePage('next')"
-            :disabled="currentPage === totalPages"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <ChevronRight class="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Preview Panel -->
-      <div
-        v-if="selectedImage"
-        class="animate-in fade-in slide-in-from-right duration-200 absolute inset-0 z-20 flex h-full w-full shrink-0 flex-col border-l border-border bg-card md:static md:inset-auto md:z-auto md:w-96"
-      >
-        <!-- Preview Image -->
-        <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
-          <!-- Mobile Close -->
-          <button
-            type="button"
-            @click="selectedImage = null"
-            class="absolute left-2 top-2 z-10 inline-flex size-9 items-center justify-center rounded-full bg-foreground/60 text-background transition-colors hover:bg-foreground/80 md:hidden"
-          >
-            <ChevronLeft class="h-5 w-5" />
-          </button>
-
           <div
-            class="group relative flex h-full w-full items-center justify-center rounded-lg border border-border bg-card p-2"
+            v-if="!loadedImages.has(img)"
+            class="absolute inset-0 animate-pulse bg-muted"
+            aria-hidden="true"
+          ></div>
+          <img
+            :src="getOutputUrl(img)"
+            :alt="img"
+            class="h-full w-full object-cover transition-[opacity,transform] duration-200 group-hover:scale-[1.015]"
+            :class="loadedImages.has(img) ? 'opacity-100' : 'opacity-0'"
+            loading="lazy"
+            @load="markImageLoaded(img)"
+            @error="markImageLoaded(img)"
+          />
+          <div
+            class="pointer-events-none absolute inset-x-1.5 bottom-1.5 rounded-md border border-white/10 bg-zinc-950/65 px-2 py-1.5 text-left opacity-0 shadow-sm backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
           >
-            <img
-              :src="getOutputUrl(selectedImage)"
-              :alt="selectedImage"
-              class="h-full w-full cursor-zoom-in object-contain"
-              @click="showImageViewer = true"
-            />
-            <!-- Overlay button -->
-            <button
-              @click="showImageViewer = true"
-              class="absolute right-2 top-2 rounded bg-black/50 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
-              title="Full Screen"
-            >
-              <Maximize2 class="w-4 h-4" />
-            </button>
+            <p class="truncate text-[10px] font-medium text-zinc-100">{{ img }}</p>
           </div>
-        </div>
-
-        <!-- Navigation -->
-        <div class="flex items-center justify-center gap-4 border-t border-border/70 py-2">
-          <button
-            type="button"
-            @click="navigateImage('prev')"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            title="Previous image"
-          >
-            <ChevronLeft class="w-5 h-5" />
-          </button>
-          <span class="text-xs text-muted-foreground">
-            {{ selectedIndex + 1 }} / {{ images.length }}
-          </span>
-          <button
-            type="button"
-            @click="navigateImage('next')"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            title="Next image"
-          >
-            <ChevronRight class="w-5 h-5" />
-          </button>
-        </div>
-
-        <!-- File Info -->
-        <div class="border-t border-border px-4 py-3">
-          <p class="text-xs font-medium text-foreground truncate" :title="selectedImage">
-            {{ selectedDisplayName }}
-          </p>
-          <p class="mt-1 text-[11px] text-muted-foreground">Choose where to use this image.</p>
-        </div>
-
-        <!-- Actions -->
-        <div class="grid grid-cols-2 gap-2 border-t border-border p-4">
-          <button
-            type="button"
-            @click="showImageViewer = true"
-            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Maximize2 class="h-4 w-4" />
-            Full Screen
-          </button>
-          <button
-            type="button"
-            @click="sendToText2Image"
-            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Sparkles class="h-4 w-4" />
-            <span>
-              <span class="block text-left">Use in Text2Image</span>
-              <span class="block text-left text-[10px] text-muted-foreground"
-                >Restore prompt and parameters</span
-              >
-            </span>
-          </button>
-          <button
-            type="button"
-            @click="sendToEdit"
-            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Brush class="h-4 w-4" />
-            <span>
-              <span class="block text-left">Send to Edit</span>
-              <span class="block text-left text-[10px] text-muted-foreground"
-                >Use as the base image</span
-              >
-            </span>
-          </button>
-          <button
-            type="button"
-            @click="sendToVideo"
-            class="inline-flex h-9 items-center justify-start gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Video class="h-4 w-4" />
-            <span>
-              <span class="block text-left">Send to Video</span>
-              <span class="block text-left text-[10px] text-muted-foreground"
-                >Use as I2V reference</span
-              >
-            </span>
-          </button>
-          <button
-            type="button"
-            @click="copyImagePath"
-            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Copy class="h-4 w-4" />
-            Copy
-          </button>
-          <button
-            type="button"
-            @click="downloadImage"
-            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Download class="h-4 w-4" />
-            Download
-          </button>
-          <button
-            type="button"
-            @click="deleteImage"
-            class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Trash2 class="h-4 w-4" />
-            Delete
-          </button>
-        </div>
+        </button>
       </div>
-    </div>
+
+      <div v-if="totalPages > 1" class="mt-6 flex items-center justify-center gap-3 pb-2">
+        <button
+          @click="navigatePage('prev')"
+          :disabled="currentPage === 1"
+          class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          aria-label="Previous page"
+        >
+          <ChevronLeft class="size-4" />
+        </button>
+        <span
+          class="aui-status-badge rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
+          >Page {{ currentPage }} of {{ totalPages }}</span
+        >
+        <button
+          @click="navigatePage('next')"
+          :disabled="currentPage === totalPages"
+          class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          aria-label="Next page"
+        >
+          <ChevronRight class="size-4" />
+        </button>
+      </div>
+    </main>
   </div>
 </template>

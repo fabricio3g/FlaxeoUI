@@ -29,7 +29,7 @@ function selectOption(option: SegmentedOption): void {
 
 const containerClasses = (size: 'sm' | 'md') =>
   cn(
-    'inline-flex items-center justify-center rounded-md bg-muted p-0.5 text-muted-foreground',
+    'inline-flex items-center justify-center rounded-md border border-border/60 bg-muted/50 p-0.5 text-muted-foreground',
     size === 'sm' ? 'h-8' : 'h-9'
   )
 
@@ -40,10 +40,10 @@ const optionClasses = (
   active: boolean
 ) =>
   cn(
-    'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm font-medium ring-offset-background transition-colors',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+    'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm font-medium transition-[color,background-color] duration-150',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
     'disabled:pointer-events-none disabled:opacity-50',
-    active ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground',
+    active ? 'bg-background/90 text-foreground' : 'hover:bg-background/40 hover:text-foreground',
     size === 'sm'
       ? iconOnly
         ? 'size-7 [&_svg]:size-3.5'
@@ -55,10 +55,7 @@ const optionClasses = (
 </script>
 
 <template>
-  <div
-    :class="containerClasses(props.size)"
-    role="tablist"
-  >
+  <div :class="containerClasses(props.size)" role="tablist">
     <button
       v-for="option in options"
       :key="option.value"
@@ -68,14 +65,7 @@ const optionClasses = (
       :aria-disabled="option.disabled || undefined"
       :data-state="modelValue === option.value ? 'active' : 'inactive'"
       :disabled="option.disabled"
-      :class="
-        optionClasses(
-          option,
-          props.size,
-          iconOnly,
-          modelValue === option.value
-        )
-      "
+      :class="optionClasses(option, props.size, iconOnly, modelValue === option.value)"
       @click="selectOption(option)"
     >
       <component v-if="option.icon" :is="option.icon" class="shrink-0" />

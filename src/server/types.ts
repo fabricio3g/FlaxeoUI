@@ -64,6 +64,8 @@ export interface RuntimeState {
   cloudflareTunnel: ChildProcess | null
   progress: ProgressInfo | null
   progressBus: EventEmitter
+  previewImageBuffer: Buffer | null
+  previewTempFile: string | null
 }
 
 export interface AppContext {

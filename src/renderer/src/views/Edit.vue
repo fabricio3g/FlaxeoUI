@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, Brush, Eraser, Images, Trash2, Upload, X } from '@/lib/icons'
+import { ArrowUp, Brush, Eraser, Images, Loader2, Square, Trash2, Upload, X } from '@/lib/icons'
 import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
@@ -552,22 +552,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <div class="relative flex-1 min-h-0 overflow-hidden p-1.5 md:p-6">
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
+  >
+    <div class="relative min-h-0 flex-1 overflow-hidden px-3 pt-3 md:px-6 md:pt-6">
       <div
         v-if="error"
-        class="absolute top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground shadow-sm"
+        class="aui-alert fade-in slide-in-from-top-1 animate-in absolute left-1/2 top-4 z-50 flex max-w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 items-center gap-3 rounded-2xl border border-destructive/20 bg-background/95 px-4 py-3 text-sm text-destructive shadow-[0_2px_4px_rgb(0_0_0/0.05),0_12px_32px_rgb(0_0_0/0.1)] backdrop-blur-xl duration-200"
       >
         {{ error }}
-        <button @click="error = null" class="hover:opacity-70">
+        <button
+          class="aui-icon-button -mr-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-150 hover:bg-destructive/10"
+          aria-label="Dismiss error"
+          @click="error = null"
+        >
           <X class="h-4 w-4" />
         </button>
       </div>
 
-      <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
         <div
           ref="containerRef"
-          class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden"
+          class="group/canvas relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
+          :class="
+            !baseImage && !isGenerating
+              ? 'flaxeo-hero border-transparent bg-transparent shadow-none'
+              : ''
+          "
           @wheel="handleViewportWheel"
           @mousedown="startPanning"
           @mousemove="panViewport"
@@ -582,14 +593,18 @@ onUnmounted(() => {
         >
           <div
             v-if="!baseImage"
-            class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+            class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
-            <div class="flex max-w-sm flex-col items-center">
-              <h2 class="text-xl font-semibold tracking-tight">Start with an image</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Choose a source image to edit or paint a mask over.</p>
+            <div class="grok-hero-item flex max-w-sm flex-col items-center">
+              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+                Start with an image
+              </h2>
+              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+                Choose a source image, then paint the area you want to transform.
+              </p>
               <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <label
-                  class="inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-[#0d0d0d] shadow-sm transition-all duration-150 hover:bg-white/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-white/40"
                 >
                   Upload Image
                   <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
@@ -597,7 +612,7 @@ onUnmounted(() => {
                 <button
                   type="button"
                   @click="goToGallery"
-                  class="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="flaxeo-hero-control inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 >
                   <Images class="h-3.5 w-3.5" />
                   Select from Gallery
@@ -608,7 +623,7 @@ onUnmounted(() => {
 
           <div
             v-else
-            class="animate-in fade-in duration-200 relative inline-block max-h-full max-w-full transition-transform duration-75"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both relative inline-block max-h-full max-w-full transition-transform duration-200"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
           >
@@ -633,12 +648,24 @@ onUnmounted(() => {
           </div>
 
           <div
+            v-if="isGenerating"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/45 backdrop-blur-[2px]"
+          >
+            <div
+              class="aui-status-badge fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
+            >
+              <Loader2 class="size-4 animate-spin text-muted-foreground" />
+              <span class="font-medium text-foreground">Inpainting image</span>
+            </div>
+          </div>
+
+          <div
             v-if="baseImage"
-            class="absolute right-3 top-3 flex items-center gap-1 rounded-md border border-border bg-background/80 p-0.5 shadow-sm backdrop-blur"
+            class="fade-in slide-in-from-top-1 animate-in absolute right-3 top-3 flex items-center gap-0.5 rounded-full border border-border/70 bg-background/85 p-1 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
           >
             <button
               type="button"
-              class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Remove source image"
               @click="removeBaseImage"
             >
@@ -646,14 +673,14 @@ onUnmounted(() => {
             </button>
             <button
               type="button"
-              class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Clear mask"
               @click="clearMask"
             >
               <Trash2 class="h-3.5 w-3.5" />
             </button>
             <label
-              class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
               title="Replace image"
             >
               <Upload class="h-3.5 w-3.5" />
@@ -661,17 +688,19 @@ onUnmounted(() => {
             </label>
             <button
               type="button"
-              class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Select from gallery"
               @click="goToGallery"
             >
               <Images class="h-3.5 w-3.5" />
             </button>
-            <span class="mx-1 h-5 w-px bg-border" aria-hidden="true"></span>
-            <span class="px-1 text-xs text-muted-foreground">{{ Math.round(zoom * 100) }}%</span>
+            <span class="mx-0.5 h-4 w-px bg-border" aria-hidden="true"></span>
+            <span class="px-1 text-[11px] tabular-nums text-muted-foreground"
+              >{{ Math.round(zoom * 100) }}%</span
+            >
             <button
               type="button"
-              class="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="inline-flex h-8 items-center rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               @click="resetViewport"
             >
               Reset
@@ -681,27 +710,31 @@ onUnmounted(() => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-2"
+          class="mt-3 w-[min(100%,36rem)] self-center"
           loading-text="Loading model"
           fallback-label="INPAINT"
         />
 
-        <div v-if="editImages.length > 0" class="mt-4 w-full shrink-0">
-          <div class="mb-2 flex items-center justify-between px-1">
+        <div v-if="editImages.length > 0" class="mt-3 w-full shrink-0">
+          <div class="mb-1.5 flex items-center justify-between px-2">
             <h3
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              class="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground"
             >
               <Images class="h-3.5 w-3.5" /> Recent edits ({{ editImages.length }})
             </h3>
           </div>
-          <div class="relative rounded-lg border border-border bg-card p-2">
-            <div class="flex gap-2 overflow-x-auto p-1 snap-x scroll-smooth no-scrollbar md:gap-3">
+          <div
+            class="aui-media-strip relative rounded-[18px] border border-border/60 bg-background/60 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)]"
+          >
+            <div class="no-scrollbar flex snap-x gap-2 overflow-x-auto scroll-smooth p-0.5">
               <button
                 v-for="img in editImages"
                 :key="img"
-                class="relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-md border border-transparent transition-all md:h-20 md:w-20 focus:outline-none focus:ring-2 focus:ring-ring/40 hover:opacity-100"
+                class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl border border-transparent transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
                 :class="
-                  currentEditFilename === img ? 'border-foreground/80 ring-2 ring-ring/40 z-10' : 'opacity-70'
+                  currentEditFilename === img
+                    ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
+                    : 'opacity-70'
                 "
                 @click="useOutputImage(img)"
               >
@@ -719,9 +752,11 @@ onUnmounted(() => {
     </div>
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
-      <div class="relative mx-auto flex w-full max-w-4xl flex-col rounded-lg border border-border bg-card shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
+      <div
+        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+      >
         <!-- Top inline row: Positive/Negative + Brush/Strength controls -->
-        <div class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-2 pt-2 text-xs md:px-3 md:pt-3">
+        <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -729,11 +764,15 @@ onUnmounted(() => {
             aria-label="Prompt mode"
             @update:model-value="setPromptMode"
           />
-          <div class="flex shrink-0 items-center gap-1 pl-1">
+          <div class="flex shrink-0 items-center gap-1 pl-0.5">
             <button
               type="button"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none"
-              :class="maskMode === 'erase' ? 'bg-foreground text-background' : ''"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="
+                maskMode === 'erase'
+                  ? 'border-foreground bg-foreground text-background shadow-sm'
+                  : ''
+              "
               :aria-pressed="maskMode === 'erase'"
               :title="maskMode === 'erase' ? 'Switch to mask paint' : 'Switch to mask erase'"
               @click="maskMode = maskMode === 'paint' ? 'erase' : 'paint'"
@@ -741,7 +780,9 @@ onUnmounted(() => {
               <Eraser v-if="maskMode === 'erase'" class="h-3.5 w-3.5" />
               <Brush v-else class="h-3.5 w-3.5" />
             </button>
-            <label class="flex items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <label
+              class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+            >
               <span class="text-muted-foreground">Brush</span>
               <input
                 v-model.number="brushSize"
@@ -751,7 +792,9 @@ onUnmounted(() => {
                 class="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-muted accent-foreground"
               />
             </label>
-            <label class="flex items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted">
+            <label
+              class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+            >
               <span class="text-muted-foreground">Strength</span>
               <input
                 v-model.number="inpaintStrength"
@@ -766,7 +809,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Textarea + send/cancel -->
-        <div class="flex items-end gap-2 px-2 pt-1.5 pb-2 md:px-3">
+        <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
           <div class="relative flex-1">
             <textarea
               v-model="activePrompt"
@@ -777,45 +820,49 @@ onUnmounted(() => {
                   ? 'Describe what to generate in the masked area...'
                   : 'Describe what to avoid in the masked area...'
               "
-              class="flex w-full resize-none rounded-md border-0 bg-transparent px-3 py-2.5 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:px-4 md:py-3 overflow-y-auto"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
               }"
-              :disabled="isGenerating"
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
-            <div class="absolute bottom-3 right-3 flex items-end">
-              <button
-                v-if="!isGenerating"
-                @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Inpaint"
-                aria-label="Inpaint"
-              >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
-              </button>
-              <button
-                v-else
-                @click="handleCancel"
-                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Cancel"
-                aria-label="Cancel generation"
-              >
-                <X class="size-3.5" />
-              </button>
+            <div class="absolute bottom-3 right-1 size-9">
+              <Transition name="grok-action">
+                <button
+                  v-if="!isGenerating"
+                  key="generate"
+                  @click="handleGenerate"
+                  :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Inpaint"
+                  aria-label="Inpaint"
+                >
+                  <ArrowUp class="size-3.5 stroke-[2.5]" />
+                </button>
+                <button
+                  v-else
+                  key="cancel"
+                  @click="handleCancel"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Cancel"
+                  aria-label="Cancel generation"
+                >
+                  <Square class="size-3 fill-current" />
+                </button>
+              </Transition>
             </div>
           </div>
         </div>
 
         <!-- Quick Controls (Steps, CFG, Seed, Scheduler, Sampler, PromptPresets) below -->
         <div
-          class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-3 pb-2 text-xs"
+          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
         >
-          <div class="h-5 w-px shrink-0 bg-border"></div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md border border-transparent px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Steps</span>
             <input
               v-model.number="config.steps"
@@ -826,7 +873,9 @@ onUnmounted(() => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md border border-transparent px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">CFG</span>
             <input
               v-model.number="config.cfgScale"
@@ -838,7 +887,9 @@ onUnmounted(() => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md border border-transparent px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Seed</span>
             <input
               v-model.number="config.seed"
@@ -849,28 +900,24 @@ onUnmounted(() => {
               class="h-6 w-16 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Scheduler</span>
-            <Select
-              v-model="config.scheduler"
-              size="sm"
-              aria-label="Scheduler"
-              class="border-0 bg-transparent"
-              :options="schedulerOptions"
-            />
-          </label>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Sampler</span>
-            <Select
-              v-model="config.sampler"
-              size="sm"
-              aria-label="Sampler"
-              class="border-0 bg-transparent"
-              :options="samplerOptions"
-            />
-          </label>
+          <Select
+            v-model="config.scheduler"
+            label="Scheduler"
+            size="sm"
+            aria-label="Scheduler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="schedulerOptions"
+          />
+          <Select
+            v-model="config.sampler"
+            label="Sampler"
+            size="sm"
+            aria-label="Sampler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="samplerOptions"
+          />
 
-          <div class="h-5 w-px shrink-0 bg-border"></div>
+          <div class="hidden flex-1 sm:block"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"

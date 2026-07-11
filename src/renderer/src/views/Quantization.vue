@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useModels } from '@/composables/useModels'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { Scale, ArrowUp, X, FileCode, CheckCircle2 } from '@/lib/icons'
+import { Scale, ArrowUp, X, FileCode, CheckCircle2, RefreshCw } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 
@@ -41,7 +41,11 @@ const memoryTable = [
 
 const sourceModelGroups = [
   { key: 'diffusion', label: 'Diffusion', getModels: () => models.value.diffusion },
-  { key: 'uncond_diffusion', label: 'Unconditional diffusion', getModels: () => models.value.uncondDiffusion },
+  {
+    key: 'uncond_diffusion',
+    label: 'Unconditional diffusion',
+    getModels: () => models.value.uncondDiffusion
+  },
   { key: 'vae', label: 'VAE', getModels: () => models.value.vae },
   { key: 'llm', label: 'LLM', getModels: () => models.value.llm },
   { key: 't5xxl', label: 'T5XXL', getModels: () => models.value.t5xxl },
@@ -129,67 +133,104 @@ function resetForm() {
   conversionResult.value = null
 }
 
+function resetConversionError(): void {
+  isConverting.value = false
+  conversionResult.value = null
+}
+
 onMounted(() => {
   fetchModels()
 })
 </script>
 
 <template>
-  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <!-- Preview / Status Area -->
-    <div class="relative flex-1 min-h-0 overflow-hidden border-b border-border p-1.5 md:p-6">
-      <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
-        <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-          <!-- Empty State -->
-          <div v-if="!conversionResult && !isConverting" class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-            <div class="flex max-w-sm flex-col items-center">
-              <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted text-foreground">
-                <Scale class="h-5 w-5" />
-              </div>
-              <h2 class="text-xl font-semibold tracking-tight">Convert a model</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Choose a source model and target format below.</p>
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
+  >
+    <div
+      class="relative min-h-0 flex-1 overflow-hidden border-b border-border/70 bg-muted/10 p-3 md:p-5"
+    >
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+        <div
+          class="aui-dialog-surface relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border"
+          :class="
+            !conversionResult && !isConverting
+              ? 'flaxeo-hero border-transparent'
+              : 'border-border/70 bg-card'
+          "
+        >
+          <div
+            v-if="!conversionResult && !isConverting"
+            class="absolute inset-0 flex items-center justify-center px-6 text-center"
+          >
+            <div class="grok-hero-item flex max-w-sm flex-col items-center px-8 py-8">
+              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+                Convert a model
+              </h2>
+              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+                Select a source model and output precision to create a quantized GGUF file.
+              </p>
             </div>
           </div>
 
-          <!-- Converting State -->
-          <div v-if="isConverting" class="absolute inset-0 flex items-center justify-center">
-            <div class="flex max-w-sm flex-col items-center rounded-lg border border-border bg-card px-8 py-6 text-center shadow-sm">
-              <div class="mb-4 inline-flex h-10 w-10 items-center justify-center">
-                <RefreshCw class="h-5 w-5 animate-spin text-muted-foreground" />
+          <div v-if="isConverting" class="absolute inset-0 flex items-center justify-center px-6">
+            <div
+              class="aui-dialog-surface flex max-w-sm flex-col items-center rounded-lg border border-border bg-background/80 px-8 py-7 text-center shadow-sm backdrop-blur"
+            >
+              <div
+                class="mb-3 flex size-9 items-center justify-center rounded-lg border border-border bg-muted/30"
+              >
+                <RefreshCw class="size-4 animate-spin text-muted-foreground" />
               </div>
-              <span class="text-base font-semibold">Converting model</span>
-              <p class="mt-1 text-xs text-muted-foreground">This may take a few minutes depending on model size.</p>
+              <span class="text-sm font-medium">Converting model</span>
+              <p class="mt-1.5 text-xs leading-5 text-muted-foreground">
+                This may take a few minutes depending on model size.
+              </p>
+              <span
+                class="aui-status-badge mt-3 rounded-full border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium text-muted-foreground"
+                >In progress</span
+              >
             </div>
           </div>
 
-          <!-- Result State -->
-          <div v-if="conversionResult && !isConverting" class="relative z-10 flex flex-col items-center px-8 text-center">
-            <div v-if="conversionResult.success" class="flex flex-col items-center gap-3">
-              <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-                <CheckCircle2 class="h-8 w-8 text-emerald-600" />
+          <div
+            v-if="conversionResult && !isConverting"
+            class="relative z-10 flex flex-col items-center px-8 text-center"
+          >
+            <div v-if="conversionResult.success" class="flex max-w-md flex-col items-center">
+              <div
+                class="mb-4 flex size-10 items-center justify-center rounded-lg border border-border bg-muted/30"
+              >
+                <CheckCircle2 class="size-4 text-foreground" />
               </div>
-              <h3 class="text-xl font-semibold tracking-tight">Conversion Complete</h3>
-              <p class="max-w-md text-sm text-muted-foreground">Output: {{ conversionResult.outputPath }}</p>
+              <h3 class="text-sm font-medium tracking-tight">Conversion complete</h3>
+              <p class="mt-1.5 break-all text-xs leading-5 text-muted-foreground">
+                {{ conversionResult.outputPath }}
+              </p>
               <button
                 type="button"
                 @click="resetForm"
-                class="mt-2 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="mt-4 inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
-                Convert Another
+                Convert another
               </button>
             </div>
-            <div v-else class="flex flex-col items-center gap-3">
-              <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-destructive/15">
-                <X class="h-8 w-8 text-destructive" />
+            <div v-else class="flex max-w-md flex-col items-center">
+              <div
+                class="mb-4 flex size-10 items-center justify-center rounded-lg border border-destructive/25 bg-destructive/10"
+              >
+                <X class="size-4 text-destructive" />
               </div>
-              <h3 class="text-xl font-semibold tracking-tight">Conversion Failed</h3>
-              <p class="max-w-md text-sm text-muted-foreground">{{ conversionResult.error }}</p>
+              <h3 class="text-sm font-medium tracking-tight">Conversion failed</h3>
+              <p class="mt-1.5 text-xs leading-5 text-muted-foreground">
+                {{ conversionResult.error }}
+              </p>
               <button
                 type="button"
-                @click="isConverting = false; conversionResult = null"
-                class="mt-2 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                @click="resetConversionError"
+                class="mt-4 inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
-                Try Again
+                Try again
               </button>
             </div>
           </div>
@@ -197,80 +238,103 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Controls Panel -->
-    <div class="shrink-0 px-3 pb-3 pt-2 md:px-5 md:pb-4 md:pt-3">
-      <div class="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-        <!-- Quick Controls Row -->
-        <div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs md:px-5 md:py-3">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground">
-            <Scale class="h-3.5 w-3.5" />
-            <span class="font-medium">Quantization</span>
+    <div class="shrink-0 px-3 pb-3 pt-2.5 md:px-5 md:pb-5 md:pt-4">
+      <div
+        class="aui-dialog-surface mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border/70 bg-card"
+      >
+        <div class="flex items-center justify-between border-b border-border/70 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <Scale class="size-3.5 text-muted-foreground" />
+            <div>
+              <h1 class="text-xs font-medium">Quantization</h1>
+              <p class="mt-0.5 hidden text-[10px] text-muted-foreground sm:block">
+                Configure model precision and output.
+              </p>
+            </div>
           </div>
-          <div class="hidden flex-1 md:block"></div>
-          <!-- Memory Table Toggle -->
-          <Tooltip text="Memory Requirements" position="left">
+          <Tooltip text="Memory requirements" position="left">
             <button
               type="button"
-              class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              aria-label="Memory requirements"
             >
-              <FileCode class="h-3 h-3" />
+              <FileCode class="size-3.5" />
             </button>
           </Tooltip>
         </div>
 
-        <!-- Conversion Form -->
-        <div class="space-y-3 px-3 pb-3 md:px-5 md:pb-4">
+        <div class="space-y-4 p-4">
           <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
-              <label class="mb-1.5 block text-[11px] font-medium text-muted-foreground">Source Model</label>
+              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                >Source model</label
+              >
               <Select
                 v-model="sourceModel"
                 size="sm"
+                class="aui-field"
                 placeholder="Select model..."
                 :options="sourceModelOptions"
                 @update:model-value="handleSourceChange"
               />
             </div>
             <div>
-              <label class="mb-1.5 block text-[11px] font-medium text-muted-foreground">Target Format</label>
+              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                >Target format</label
+              >
               <Select
                 v-model="targetFormat"
                 size="sm"
+                class="aui-field"
                 placeholder="Select format..."
                 :options="formatOptions"
                 @update:model-value="handleFormatChange"
               />
             </div>
             <div>
-              <label class="mb-1.5 block text-[11px] font-medium text-muted-foreground">Output Filename</label>
-              <div class="flex items-center gap-2 rounded-md border border-input bg-transparent px-2 py-1 focus-within:ring-1 focus-within:ring-ring/40">
-                <input
-                  v-model="outputName"
-                  type="text"
-                  placeholder="model.q8_0.gguf"
-                  class="h-6 w-full bg-transparent text-xs font-medium text-foreground focus:outline-none"
-                />
-              </div>
+              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                >Output filename</label
+              >
+              <input
+                v-model="outputName"
+                type="text"
+                placeholder="model.q8_0.gguf"
+                class="aui-field h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] duration-200 placeholder:font-normal placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              />
             </div>
           </div>
 
-          <!-- Memory Requirements Table -->
-          <div class="mt-3 overflow-hidden rounded-lg border border-border bg-card">
-            <div class="border-b border-border bg-muted/40 px-3 py-2">
-              <h4 class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Memory Requirements (SD 1.x, 512×512)</h4>
+          <div class="overflow-hidden rounded-lg border border-border/70">
+            <div
+              class="flex items-center justify-between border-b border-border/70 bg-muted/20 px-3 py-2"
+            >
+              <h4 class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Memory requirements
+              </h4>
+              <span
+                class="aui-status-badge rounded-full border border-border bg-background px-2 py-0.5 text-[9px] font-medium text-muted-foreground"
+                >SD 1.x / 512 x 512</span
+              >
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-[11px]">
                 <thead>
-                  <tr class="border-b border-border text-muted-foreground">
-                    <th class="px-3 py-1.5 text-left font-medium">Precision</th>
-                    <th class="px-3 py-1.5 text-left font-medium">Standard</th>
-                    <th class="px-3 py-1.5 text-left font-medium">+ Flash Attention</th>
+                  <tr class="border-b border-border/70 text-muted-foreground">
+                    <th class="px-3 py-2 text-left font-medium">Precision</th>
+                    <th class="px-3 py-2 text-left font-medium">Standard</th>
+                    <th class="px-3 py-2 text-left font-medium">Flash attention</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in memoryTable" :key="row.format" class="border-b border-border text-foreground last:border-b-0">
-                    <td class="px-3 py-1.5 font-medium">{{ row.format }}</td>
+                  <tr
+                    v-for="row in memoryTable"
+                    :key="row.format"
+                    class="border-b border-border/60 transition-colors duration-200 last:border-b-0"
+                    :class="row.format === targetFormat ? 'bg-muted/40' : 'hover:bg-muted/20'"
+                  >
+                    <td class="px-3 py-1.5 font-mono font-medium text-foreground">
+                      {{ row.format }}
+                    </td>
                     <td class="px-3 py-1.5 text-muted-foreground">{{ row.memory }}</td>
                     <td class="px-3 py-1.5 text-muted-foreground">{{ row.memoryFA }}</td>
                   </tr>
@@ -279,25 +343,24 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Convert Button -->
-          <div class="flex items-center justify-end gap-2 pt-1">
+          <div class="flex items-center justify-end gap-2">
             <button
               v-if="!isConverting"
               type="button"
               @click="handleConvert"
               :disabled="!sourceModel || !targetFormat || !outputName"
-              class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             >
-              <ArrowUp class="h-4 w-4" />
-              Convert Model
+              <ArrowUp class="size-4" />
+              Convert model
             </button>
             <button
               v-else
               type="button"
               @click="handleCancel"
-              class="inline-flex h-9 items-center gap-2 rounded-md bg-destructive px-5 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/25 bg-destructive/10 px-4 text-xs font-medium text-destructive transition-colors duration-200 hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             >
-              <X class="h-4 w-4" />
+              <X class="size-4" />
               Cancel
             </button>
           </div>

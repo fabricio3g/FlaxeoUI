@@ -6,7 +6,15 @@ import { useServerLogs } from '@/composables/useServerLogs'
 const autoScroll = ref(true)
 const isPolling = ref(true)
 const logsContainer = ref<HTMLElement | null>(null)
-const { logs, total, isStreaming, refreshLogs, startServerLogStream, stopServerLogStream, clearServerLogs } = useServerLogs()
+const {
+  logs,
+  total,
+  isStreaming,
+  refreshLogs,
+  startServerLogStream,
+  stopServerLogStream,
+  clearServerLogs
+} = useServerLogs()
 
 /**
  * fetchLogs() - Fetch latest logs from server
@@ -87,43 +95,58 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full border border-border rounded-lg bg-card overflow-hidden">
+  <div
+    class="flex h-full flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
+  >
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50">
-      <div class="flex items-center gap-2">
-        <Terminal class="w-4 h-4 text-muted-foreground" />
-        <span class="text-sm font-medium">Server Logs</span>
-        <span class="text-xs text-muted-foreground">({{ total }} entries)</span>
+    <div
+      class="flex min-h-11 items-center justify-between gap-3 border-b border-border/80 bg-muted/20 px-3"
+    >
+      <div class="flex min-w-0 items-center gap-2">
+        <Terminal class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span class="truncate text-xs font-semibold">Server Logs</span>
+        <span class="hidden text-[10px] text-muted-foreground sm:inline">{{ total }} entries</span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex shrink-0 items-center gap-1">
         <!-- Auto-scroll toggle -->
-        <label class="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
-          <input type="checkbox" v-model="autoScroll" class="w-3 h-3 rounded border-border" />
-          Auto-scroll
+        <label
+          class="mr-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground"
+        >
+          <input
+            v-model="autoScroll"
+            type="checkbox"
+            class="size-3 rounded border-border bg-background text-foreground focus:ring-1 focus:ring-ring/40"
+          />
+          <span class="hidden sm:inline">Auto-scroll</span>
         </label>
 
         <!-- Polling toggle -->
         <button
-          @click="togglePolling"
-          :class="[
-            'p-1.5 rounded-md transition-colors',
+          type="button"
+          class="aui-status-badge inline-flex h-7 items-center gap-1.5 rounded-full border px-2 text-[10px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="
             isPolling
-              ? 'text-green-500 bg-green-500/10'
-              : 'text-muted-foreground hover:text-foreground'
-          ]"
+              ? 'border-border bg-background text-foreground'
+              : 'border-transparent text-muted-foreground hover:bg-accent hover:text-foreground'
+          "
           :title="isPolling ? 'Pause realtime stream' : 'Resume realtime stream'"
+          aria-label="Toggle log streaming"
+          @click="togglePolling"
         >
-          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isStreaming }" />
+          <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': isStreaming }" />
+          <span class="hidden sm:inline">{{ isPolling ? 'Live' : 'Paused' }}</span>
         </button>
 
         <!-- Clear logs -->
         <button
-          @click="clearLogs"
-          class="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          type="button"
+          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/5 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           title="Clear logs"
+          aria-label="Clear logs"
+          @click="clearLogs"
         >
-          <Trash2 class="w-3.5 h-3.5" />
+          <Trash2 class="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -131,21 +154,28 @@ onUnmounted(() => {
     <!-- Logs content -->
     <div
       ref="logsContainer"
-      class="flex-1 overflow-auto font-mono text-xs p-2 bg-black/90 text-green-400 select-text"
+      role="log"
+      aria-live="polite"
+      class="flex-1 select-text overflow-auto bg-muted/20 p-2 font-mono text-[11px] text-foreground/75"
     >
-      <div v-if="logs.length === 0" class="text-muted-foreground italic">
+      <div
+        v-if="logs.length === 0"
+        class="flex h-full items-center justify-center px-4 text-center font-sans text-xs text-muted-foreground"
+      >
         No logs yet. Start a generation to see output.
       </div>
 
       <div
         v-for="(log, index) in logs"
         :key="index"
-        class="whitespace-pre-wrap break-all leading-relaxed hover:bg-white/5"
+        class="border-l-2 border-transparent px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed transition-colors duration-150 hover:bg-muted/60"
         :class="{
-          'text-red-400': log.includes('error') || log.includes('ERROR') || log.includes('[ERR]'),
-          'text-yellow-400': log.includes('warning') || log.includes('WARN'),
-          'text-blue-400': log.includes('EXIT:'),
-          'text-cyan-400': log.includes('[SD]') || log.includes('[CLI]')
+          'border-l-destructive/50 text-destructive':
+            log.includes('error') || log.includes('ERROR') || log.includes('[ERR]'),
+          'border-l-amber-500/50 text-amber-700 dark:text-amber-300':
+            log.includes('warning') || log.includes('WARN'),
+          'text-blue-700 dark:text-blue-300': log.includes('EXIT:'),
+          'text-cyan-700 dark:text-cyan-300': log.includes('[SD]') || log.includes('[CLI]')
         }"
       >
         {{ log }}

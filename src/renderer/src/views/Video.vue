@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, ChevronDown, ChevronUp, Upload, X } from '@/lib/icons'
+import { ArrowUp, ChevronDown, ChevronUp, Loader2, Square, Upload, X } from '@/lib/icons'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
@@ -311,68 +311,87 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <div class="relative flex-1 min-h-0 overflow-hidden p-1.5 md:p-6">
+  <div
+    class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
+  >
+    <div class="relative min-h-0 flex-1 overflow-hidden px-3 pt-3 md:px-6 md:pt-6">
       <div
         v-if="error"
-        class="absolute top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground shadow-sm"
+        class="aui-alert fade-in slide-in-from-top-1 animate-in absolute left-1/2 top-4 z-50 flex max-w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 items-center gap-3 rounded-2xl border border-destructive/20 bg-background/95 px-4 py-3 text-sm text-destructive shadow-[0_2px_4px_rgb(0_0_0/0.05),0_12px_32px_rgb(0_0_0/0.1)] backdrop-blur-xl duration-200"
       >
         {{ error }}
-        <button @click="error = null" class="hover:opacity-70">
+        <button
+          class="aui-icon-button -mr-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-150 hover:bg-destructive/10"
+          aria-label="Dismiss error"
+          @click="error = null"
+        >
           <X class="h-4 w-4" />
         </button>
       </div>
 
-      <div class="mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col">
-          <div
-            class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden"
-          >
-            <video
-              v-if="generatedVideo"
-              :src="generatedVideo"
-              controls
-              autoplay
-              loop
-              class="animate-in fade-in duration-200 h-full max-h-full max-w-full object-contain"
-            ></video>
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
+        <div
+          class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
+          :class="
+            !generatedVideo && !isGenerating
+              ? 'flaxeo-hero border-transparent bg-transparent shadow-none'
+              : ''
+          "
+        >
+          <video
+            v-if="generatedVideo"
+            :src="generatedVideo"
+            controls
+            autoplay
+            loop
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both h-full max-h-full max-w-full rounded-[18px] object-contain shadow-[0_8px_32px_rgb(0_0_0/0.12)] duration-200"
+          ></video>
 
+          <div v-else class="flex flex-col items-center justify-center px-6 text-center">
+            <div v-if="!isGenerating" class="grok-hero-item flex max-w-md flex-col items-center">
+              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+                What will you move?
+              </h2>
+              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+                Describe a scene or add a reference frame to direct the motion.
+              </p>
+            </div>
             <div
               v-else
-              class="flex flex-col items-center justify-center px-6 text-center"
+              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 text-center duration-200"
             >
-              <div v-if="!isGenerating" class="flex max-w-md flex-col items-center">
-                <h2 class="text-xl font-semibold tracking-tight">What will you move?</h2>
-                <p class="mt-1 text-sm text-muted-foreground">Describe a scene or add a reference image to begin.</p>
+              <Loader2 class="size-7 animate-spin text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium text-foreground">Creating video</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  {{ progress.label || 'Preparing generation' }}
+                </p>
               </div>
-            <div v-else class="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <span class="relative flex h-2 w-2">
-                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-50"></span>
-                <span class="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
-              </span>
-              Creating video
             </div>
           </div>
         </div>
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-2"
+          class="mt-3 w-[min(100%,36rem)] self-center"
           loading-text="Loading model"
           fallback-label="VIDEO"
         />
 
-        <div v-if="generatedVideos.length > 0" class="mt-4 w-full shrink-0">
-          <div class="mb-2 flex items-center justify-between px-1">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div v-if="generatedVideos.length > 0" class="mt-3 w-full shrink-0">
+          <div class="mb-1.5 flex items-center justify-between px-2">
+            <h3 class="text-[11px] font-medium tracking-wide text-muted-foreground">
               Recent videos ({{ generatedVideos.length }})
             </h3>
           </div>
-          <div class="relative rounded-lg border border-border bg-card p-2">
-            <div class="flex gap-2 overflow-x-auto p-1 snap-x scroll-smooth no-scrollbar md:gap-3">
+          <div
+            class="aui-media-strip relative rounded-[18px] border border-border/60 bg-background/60 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)]"
+          >
+            <div class="no-scrollbar flex snap-x gap-2 overflow-x-auto scroll-smooth p-0.5">
               <button
                 v-for="video in generatedVideos"
                 :key="video"
-                class="relative h-16 w-24 shrink-0 snap-start overflow-hidden rounded-md border border-transparent transition-all md:h-20 md:w-32 focus:outline-none focus:ring-2 focus:ring-ring/40 hover:opacity-100"
+                class="relative h-14 w-24 shrink-0 snap-start overflow-hidden rounded-xl border border-transparent transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:h-16 md:w-28"
                 :class="
                   generatedVideo === getOutputUrl(video)
                     ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
@@ -387,7 +406,7 @@ onUnmounted(() => {
                   preload="metadata"
                 ></video>
                 <span
-                  class="absolute bottom-1 left-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-semibold text-background"
+                  class="aui-status-badge absolute bottom-1 left-1 rounded-full bg-foreground/75 px-1.5 py-0.5 text-[9px] font-medium text-background backdrop-blur"
                   >Video</span
                 >
               </button>
@@ -398,11 +417,11 @@ onUnmounted(() => {
     </div>
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
-      <div class="relative mx-auto flex w-full max-w-4xl flex-col rounded-lg border border-border bg-card shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
+      <div
+        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+      >
         <!-- Top inline row: Positive/Negative + video mode selector -->
-        <div
-          class="flex flex-nowrap items-center gap-1 overflow-x-auto whitespace-nowrap px-2 pt-2 text-xs md:px-3 md:pt-3"
-        >
+        <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -420,7 +439,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Textarea + send/cancel -->
-        <div class="flex items-end gap-2 px-2 pt-1.5 pb-2 md:px-3">
+        <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
           <div class="relative flex-1">
             <textarea
               v-model="activePrompt"
@@ -431,55 +450,58 @@ onUnmounted(() => {
                   ? 'Describe the motion, subject, and visual direction...'
                   : 'Describe motion or visual details to avoid...'
               "
-              class="flex w-full resize-none rounded-md border-0 bg-transparent px-3 py-2.5 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:px-4 md:py-3 overflow-y-auto"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
               }"
-              :disabled="isGenerating"
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
-            <div class="absolute bottom-3 right-3 flex items-end">
-              <button
-                v-if="!isGenerating"
-                @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim()"
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Generate Video"
-                aria-label="Generate video"
-              >
-                <ArrowUp class="size-3.5 stroke-[2.5]" />
-              </button>
-              <button
-                v-else
-                @click="handleCancel"
-                class="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Cancel"
-                aria-label="Cancel generation"
-              >
-                <X class="size-3.5" />
-              </button>
+            <div class="absolute bottom-3 right-1 size-9">
+              <Transition name="grok-action">
+                <button
+                  v-if="!isGenerating"
+                  key="generate"
+                  @click="handleGenerate"
+                  :disabled="promptMode !== 'positive' || !prompt.trim()"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Generate Video"
+                  aria-label="Generate video"
+                >
+                  <ArrowUp class="size-3.5 stroke-[2.5]" />
+                </button>
+                <button
+                  v-else
+                  key="cancel"
+                  @click="handleCancel"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Cancel"
+                  aria-label="Cancel generation"
+                >
+                  <Square class="size-3 fill-current" />
+                </button>
+              </Transition>
             </div>
           </div>
         </div>
 
         <!-- Reference image chip -->
-        <div
-          v-if="videoMode === 'i2v' && referenceImage"
-          class="border-t border-border px-3 py-2"
-        >
+        <div v-if="videoMode === 'i2v' && referenceImage" class="px-4 pb-3">
           <div
-            class="inline-flex items-center gap-3 rounded-md border border-border bg-background p-2 shadow-xs"
+            class="aui-media-strip fade-in slide-in-from-bottom-1 animate-in inline-flex max-w-full items-center gap-3 rounded-2xl border border-border/70 bg-muted/40 p-2 shadow-sm duration-200"
           >
-            <div class="relative size-12 overflow-hidden rounded-md border border-border">
+            <div
+              class="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border bg-background"
+            >
               <img :src="referenceImage" class="h-full w-full object-cover" />
             </div>
-            <div class="text-xs text-muted-foreground">Reference loaded</div>
+            <div class="min-w-0 text-xs font-medium text-muted-foreground">Reference image</div>
             <button
               type="button"
               @click="clearReferenceImage"
-              class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              aria-label="Remove reference image"
             >
               <X class="h-4 w-4" />
             </button>
@@ -488,13 +510,17 @@ onUnmounted(() => {
 
         <!-- Quick Controls (Size, Frames, Flow, Steps, CFG, Scheduler, Sampler, Reference upload, PromptPresets) -->
         <div
-          class="flex flex-nowrap items-center gap-1 overflow-visible whitespace-nowrap px-3 pb-2 text-xs"
+          class="flex flex-wrap items-center gap-1 rounded-b-[2rem] border-t border-border/50 bg-muted/20 px-3 py-2 text-xs md:px-4"
         >
           <div class="relative shrink-0">
             <button
               type="button"
-              class="inline-flex h-7 items-center gap-1 rounded-md px-2 font-medium transition-colors focus-visible:outline-none"
-              :class="showResolutionMenu ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+              class="inline-flex h-8 items-center gap-1 rounded-full border border-transparent px-2 font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="
+                showResolutionMenu
+                  ? 'border-border bg-background text-foreground shadow-sm'
+                  : 'hover:border-border hover:bg-background/70'
+              "
               :aria-expanded="showResolutionMenu"
               aria-label="Resolution"
               @click.stop="showResolutionMenu = !showResolutionMenu"
@@ -505,7 +531,7 @@ onUnmounted(() => {
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu absolute right-0 bottom-full z-[100] mb-1 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-72 rounded-[20px] border border-border/70 bg-popover/95 p-3 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_44px_rgb(0_0_0/0.16)] backdrop-blur-xl duration-150"
               @click.stop
             >
               <div class="grid grid-cols-4 gap-1.5">
@@ -513,7 +539,7 @@ onUnmounted(() => {
                   v-for="preset in resolutionPresets"
                   :key="preset.label"
                   type="button"
-                  class="flex flex-col items-center justify-center rounded-md border p-2 text-xs transition-colors hover:bg-accent"
+                  class="flex flex-col items-center justify-center rounded-xl border p-2 text-xs transition-colors duration-150 hover:bg-accent"
                   :class="
                     resolutionLabel === preset.label
                       ? 'border-foreground/30 bg-foreground/5 text-foreground'
@@ -522,11 +548,16 @@ onUnmounted(() => {
                   @click="selectResolution(preset)"
                 >
                   <span class="font-semibold">{{ preset.label }}</span>
-                  <small class="text-[10px] text-muted-foreground">{{ preset.width }} × {{ preset.height }}</small>
+                  <small class="text-[10px] text-muted-foreground"
+                    >{{ preset.width }} × {{ preset.height }}</small
+                  >
                 </button>
               </div>
               <div class="mt-3 border-t border-border pt-3">
-                <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</span>
+                <span
+                  class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >Custom</span
+                >
                 <div class="mt-1.5 flex items-center gap-1.5">
                   <input
                     v-model.number="videoWidth"
@@ -534,7 +565,7 @@ onUnmounted(() => {
                     min="64"
                     step="16"
                     aria-label="Custom width"
-                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -543,11 +574,11 @@ onUnmounted(() => {
                     min="64"
                     step="16"
                     aria-label="Custom height"
-                    class="h-8 w-16 rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-9 w-16 rounded-xl border border-input bg-background px-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
-                    class="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="inline-flex h-9 items-center justify-center rounded-full bg-foreground px-3 text-xs font-medium text-background shadow-sm transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     @click="applyCustomResolution"
                   >
                     Apply
@@ -557,7 +588,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Frames</span>
             <input
               v-model.number="videoFrames"
@@ -570,7 +603,9 @@ onUnmounted(() => {
             />
           </div>
 
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Flow</span>
             <input
               v-model.number="flowShift"
@@ -583,7 +618,9 @@ onUnmounted(() => {
             />
           </div>
 
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">Steps</span>
             <input
               v-model.number="config.steps"
@@ -594,7 +631,9 @@ onUnmounted(() => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
+          <div
+            class="flex h-8 shrink-0 items-center gap-1 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
             <span class="text-muted-foreground">CFG</span>
             <input
               v-model.number="config.cfgScale"
@@ -606,32 +645,28 @@ onUnmounted(() => {
               class="h-6 w-12 bg-transparent text-foreground focus:outline-none"
             />
           </div>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Scheduler</span>
-            <Select
-              v-model="config.scheduler"
-              size="sm"
-              aria-label="Scheduler"
-              class="border-0 bg-transparent"
-              :options="schedulerOptions"
-            />
-          </label>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-muted">
-            <span class="text-muted-foreground">Sampler</span>
-            <Select
-              v-model="config.sampler"
-              size="sm"
-              aria-label="Sampler"
-              class="border-0 bg-transparent"
-              :options="samplerOptions"
-            />
-          </label>
+          <Select
+            v-model="config.scheduler"
+            label="Scheduler"
+            size="sm"
+            aria-label="Scheduler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="schedulerOptions"
+          />
+          <Select
+            v-model="config.sampler"
+            label="Sampler"
+            size="sm"
+            aria-label="Sampler"
+            class="w-auto shrink-0 rounded-full border-0 bg-transparent hover:bg-background/70"
+            :options="samplerOptions"
+          />
 
           <div class="hidden flex-1 md:block"></div>
 
           <label
             v-if="videoMode === 'i2v'"
-            class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
             title="Upload reference image"
           >
             <Upload class="h-3.5 w-3.5" />
@@ -639,7 +674,6 @@ onUnmounted(() => {
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
 
-          <div class="hidden h-5 w-px shrink-0 bg-border md:block"></div>
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
