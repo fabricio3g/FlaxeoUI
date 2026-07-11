@@ -3,7 +3,7 @@ import type { EventEmitter } from 'events'
 import type { Server } from 'http'
 import type { ModelDirectoryKey } from '../shared/storage'
 
-export type JsonObject = Record<string, any>
+export type JsonObject = Record<string, unknown>
 
 export interface ProgressInfo {
   current: number
@@ -18,7 +18,7 @@ export interface BackendConfig {
   activeVersion: string
   installedVersions: string[]
   customBinaryExists: boolean
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface Paths {
@@ -62,7 +62,8 @@ export interface RuntimeState {
   server: Server | null
   networkStatus: NetworkStatus
   downloads: Record<string, DownloadTask>
-  ngrokListener: any
+  /** Opaque ngrok listener handle from @ngrok/ngrok */
+  ngrokListener: { url: () => string; close: () => Promise<void> } | null
   cloudflareTunnel: ChildProcess | null
   progress: ProgressInfo | null
   progressBus: EventEmitter

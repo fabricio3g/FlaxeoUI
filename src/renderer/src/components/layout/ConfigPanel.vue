@@ -72,6 +72,10 @@ const { isBooting, startServer, stopServer } = useServerControls(config, fetchRu
 const {
   supportsStreamLayers,
   supportsMaxVram,
+  supportsCacheMode,
+  supportsLivePreview,
+  supportsOffloadToCpu,
+  supportsDiffusionFa,
   fetchCapabilities
 } = useBackendCapabilities()
 const toast = useToast()
@@ -847,8 +851,16 @@ onUnmounted(() => {
             Apply Low VRAM profile
           </button>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-            <label class="flex items-center gap-2"
-              ><input v-model="config.flashAttention" type="checkbox" /> Flash</label
+            <label
+              class="flex items-center gap-2"
+              :class="!supportsDiffusionFa && 'opacity-50'"
+              :title="supportsDiffusionFa ? undefined : 'Not advertised by active sd-cli'"
+              ><input
+                v-model="config.flashAttention"
+                type="checkbox"
+                :disabled="!supportsDiffusionFa"
+              />
+              Flash</label
             >
             <label class="flex items-center gap-2"
               ><input v-model="config.vaeTiling" type="checkbox" /> VAE Tile</label
@@ -856,8 +868,16 @@ onUnmounted(() => {
             <label class="flex items-center gap-2"
               ><input v-model="config.clipOnCpu" type="checkbox" /> CLIP CPU</label
             >
-            <label class="flex items-center gap-2"
-              ><input v-model="config.cpuOffload" type="checkbox" /> Offload</label
+            <label
+              class="flex items-center gap-2"
+              :class="!supportsOffloadToCpu && 'opacity-50'"
+              :title="supportsOffloadToCpu ? undefined : 'Not advertised by active sd-cli'"
+              ><input
+                v-model="config.cpuOffload"
+                type="checkbox"
+                :disabled="!supportsOffloadToCpu"
+              />
+              Offload</label
             >
           </div>
           <input
@@ -1438,11 +1458,17 @@ onUnmounted(() => {
               </div>
             </div>
             <div>
-              <label class="text-sm text-muted-foreground block mb-1">Live preview</label>
+              <label class="text-sm text-muted-foreground block mb-1">
+                Live preview
+                <span v-if="!supportsLivePreview" class="text-[10px] text-muted-foreground">
+                  (unsupported)
+                </span>
+              </label>
               <Select
                 v-model="config.livePreviewMethod"
                 size="md"
                 placeholder="None"
+                :disabled="!supportsLivePreview"
                 :options="[
                   { label: 'None', value: '' },
                   { label: 'Projection', value: 'proj' },
@@ -1922,12 +1948,16 @@ onUnmounted(() => {
             </div>
 
             <div>
-              <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
-                >Cache preset</label
-              >
+              <label class="mb-1.5 block text-base font-semibold text-muted-foreground">
+                Cache preset
+                <span v-if="!supportsCacheMode" class="text-[10px] font-normal text-muted-foreground">
+                  (unsupported by backend)
+                </span>
+              </label>
               <Select
                 v-model="selectedCachePresetId"
                 size="md"
+                :disabled="!supportsCacheMode"
                 :options="cachePresetOptions"
               />
               <p
@@ -1951,6 +1981,7 @@ onUnmounted(() => {
                     v-model="config.cacheMode"
                     size="md"
                     placeholder="Off"
+                    :disabled="!supportsCacheMode"
                     :options="[
                       { label: 'Off', value: '' },
                       { label: 'UCache', value: 'ucache' },
@@ -2026,9 +2057,22 @@ onUnmounted(() => {
               attention. Matches the stable-diffusion.cpp performance guide.
             </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.flashAttention" type="checkbox" class="rounded" />
-                <Zap class="w-3.5 h-3.5" />
+              <label
+                class="flex cursor-pointer items-center gap-2 text-sm"
+                :class="!supportsDiffusionFa && 'opacity-50'"
+                :title="
+                  supportsDiffusionFa
+                    ? 'Flash attention for diffusion'
+                    : 'Not advertised by active sd-cli'
+                "
+              >
+                <input
+                  v-model="config.flashAttention"
+                  type="checkbox"
+                  class="rounded"
+                  :disabled="!supportsDiffusionFa"
+                />
+                <Zap class="h-3.5 w-3.5" />
                 Flash Attn
               </label>
               <label class="flex items-center gap-2 text-sm cursor-pointer">
@@ -2039,9 +2083,22 @@ onUnmounted(() => {
                 <input v-model="config.clipOnCpu" type="checkbox" class="rounded" />
                 CLIP CPU
               </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.cpuOffload" type="checkbox" class="rounded" />
-                <Cpu class="w-3.5 h-3.5" />
+              <label
+                class="flex cursor-pointer items-center gap-2 text-sm"
+                :class="!supportsOffloadToCpu && 'opacity-50'"
+                :title="
+                  supportsOffloadToCpu
+                    ? 'Offload layers to CPU when VRAM is tight'
+                    : 'Not advertised by active sd-cli'
+                "
+              >
+                <input
+                  v-model="config.cpuOffload"
+                  type="checkbox"
+                  class="rounded"
+                  :disabled="!supportsOffloadToCpu"
+                />
+                <Cpu class="h-3.5 w-3.5" />
                 Offload
               </label>
               <label class="flex items-center gap-2 text-sm cursor-pointer">

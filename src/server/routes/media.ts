@@ -92,8 +92,8 @@ function decodeItxtChunk(
   return { keyword, value }
 }
 
-function parseParams(paramsText: string | null): Record<string, any> {
-  const result: Record<string, any> = {}
+function parseParams(paramsText: string | null): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
   if (!paramsText) return result
 
   const lines = paramsText.replace(/\r\n/g, '\n').split('\n')
@@ -178,9 +178,9 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/gallery', (_req, res) => {
     try {
       res.json(listGallery(ctx))
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Gallery error:', error)
-      res.status(500).json({ error: error.message })
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) })
     }
   })
 
@@ -193,8 +193,11 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
       if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found', filename })
       fs.unlinkSync(filePath)
       res.json({ message: 'Deleted', filename })
-    } catch (error: any) {
-      res.status(500).json({ message: 'Delete failed', error: error.message })
+    } catch (error: unknown) {
+      res.status(500).json({
+        message: 'Delete failed',
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   })
 

@@ -19,6 +19,7 @@ const isProbing = ref(false)
 
 /**
  * useBackendCapabilities() - Runtime sd-cli --help probe cache
+ * Soft-gates UI controls when the active binary lacks a flag/mode.
  */
 export function useBackendCapabilities() {
   const hasFlag = (flag: string): boolean => {
@@ -37,6 +38,22 @@ export function useBackendCapabilities() {
   const supportsUpscale = computed(() => hasMode('upscale') || hasFlag('--upscale-model'))
   const supportsStreamLayers = computed(() => hasFlag('--stream-layers'))
   const supportsMaxVram = computed(() => hasFlag('--max-vram'))
+  const supportsCacheMode = computed(() => hasFlag('--cache-mode'))
+  const supportsVideoGen = computed(() => hasMode('vid_gen') || hasFlag('-M'))
+  const supportsControlVideo = computed(() => hasFlag('--control-video'))
+  const supportsHighNoise = computed(
+    () =>
+      hasFlag('--high-noise-diffusion-model') ||
+      hasFlag('--high-noise-steps') ||
+      hasFlag('--moe-boundary')
+  )
+  const supportsLivePreview = computed(
+    () => hasFlag('--preview') || hasFlag('--preview-method') || hasFlag('--preview-path')
+  )
+  const supportsOffloadToCpu = computed(() => hasFlag('--offload-to-cpu'))
+  const supportsDiffusionFa = computed(() => hasFlag('--diffusion-fa'))
+  const supportsFlowShift = computed(() => hasFlag('--flow-shift'))
+  const supportsFps = computed(() => hasFlag('--fps'))
 
   async function fetchCapabilities(force = false): Promise<BackendCapabilities> {
     if (isProbing.value) return capabilities.value
@@ -73,6 +90,15 @@ export function useBackendCapabilities() {
     supportsUpscale,
     supportsStreamLayers,
     supportsMaxVram,
+    supportsCacheMode,
+    supportsVideoGen,
+    supportsControlVideo,
+    supportsHighNoise,
+    supportsLivePreview,
+    supportsOffloadToCpu,
+    supportsDiffusionFa,
+    supportsFlowShift,
+    supportsFps,
     fetchCapabilities
   }
 }

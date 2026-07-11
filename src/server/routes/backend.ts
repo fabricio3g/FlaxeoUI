@@ -51,7 +51,27 @@ function parseCliHelp(helpText: string): { flags: string[]; modes: string[]; ver
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/leejet/stable-diffusion.cpp/releases'
 const CACHE_TTL = 5 * 60 * 1000
 
-let releasesCache: any[] | null = null
+interface GithubReleaseAsset {
+  name: string
+  size: number
+  browser_download_url: string
+}
+
+interface GithubRelease {
+  tag_name: string
+  name: string
+  published_at: string
+  assets: GithubReleaseAsset[]
+}
+
+interface ProcessedRelease {
+  tag: string
+  name: string
+  published: string
+  assets: { name: string; size: number; url: string }[]
+}
+
+let releasesCache: ProcessedRelease[] | null = null
 let releasesCacheTime = 0
 
 function installedVersions(ctx: AppContext): string[] {
@@ -98,9 +118,10 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
           maxBuffer: 2 * 1024 * 1024
         })
         helpText = `${stdout || ''}\n${stderr || ''}`
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Many CLI tools print help to stderr and exit non-zero
-        helpText = `${error?.stdout || ''}\n${error?.stderr || ''}\n${error?.message || ''}`
+        const err = error as { stdout?: string; stderr?: string; message?: string }
+        helpText = `${err?.stdout || ''}\n${err?.stderr || ''}\n${err?.message || ''}`
       }
 
       if (!helpText.trim()) {
@@ -119,12 +140,12 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
         flags: parsed.flags,
         modes: parsed.modes
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.json({
         probed: true,
         flags: [],
         modes: [],
-        error: error?.message || 'Failed to probe sd-cli'
+        error: error instanceof Error ? error.message : 'Failed to probe sd-cli'
       })
     }
   })
@@ -132,14 +153,18 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/backend/releases', async (_req, res) => {
     try {
       if (releasesCache && Date.now() - releasesCacheTime < CACHE_TTL) return res.json(releasesCache)
-      const releases = await fetchJson<any[]>(GITHUB_RELEASES_URL)
-      const processed = releases.slice(0, 10).map((release) => ({
+      const releases = await fetchJson<GithubRelease[]>(GITHUB_RELEASES_URL)
+      const processed: ProcessedRelease[] = releases.slice(0, 10).map((release) => ({
         tag: release.tag_name,
         name: release.name,
         published: release.published_at,
         assets: release.assets
-          .map((asset: any) => ({ name: asset.name, size: asset.size, url: asset.browser_download_url }))
-          .filter((asset: any) => asset.name.endsWith('.zip'))
+          .map((asset) => ({
+            name: asset.name,
+            size: asset.size,
+            url: asset.browser_download_url
+          }))
+          .filter((asset) => asset.name.endsWith('.zip'))
       }))
       releasesCache = processed
       releasesCacheTime = Date.now()
@@ -151,7 +176,12 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   })
 
   app.get('/api/backend/detect', (_req, res) => {
-    const recommendation: Record<string, any> = { platform: process.platform, arch: process.arch, variant: null, note: null }
+    const recommendation: {
+      platform: NodeJS.Platform
+      arch: string
+      variant: string | null
+      note: string | null
+    } = { platform: process.platform, arch: process.arch, variant: null, note: null }
     if (process.platform === 'linux') {
       recommendation.variant = 'Linux-Ubuntu'
       recommendation.note = 'The official Ubuntu build is CPU-only. For Vulkan/ROCm support on Linux, you need to compile from source and place the binaries in the backend/ folder.'
@@ -202,8 +232,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       ctx.state.backendConfig = { ...ctx.state.backendConfig, ...req.body }
       ctx.saveBackendConfig()
       res.json({ success: true, config: ctx.state.backendConfig })
-    } catch (error: any) {
-      res.status(500).json({ error: error.message })
+    } catch (error: unknown) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) })
     }
   })
 
@@ -261,16 +291,17 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       ctx.state.downloads[id].status = 'completed'
       ctx.state.downloads[id].updatedAt = Date.now()
       res.json({ success: true, id, version, path: versionDir })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Backend] Download/install error:', error)
       if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
+      const message = error instanceof Error ? error.message : String(error)
       const task = ctx.state.downloads[id]
       if (task) {
-        task.status = error.message === 'Download cancelled' ? 'cancelled' : 'failed'
-        task.error = error.message
+        task.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
+        task.error = message
         task.updatedAt = Date.now()
       }
-      res.status(500).json({ error: error.message })
+      res.status(500).json({ error: message })
     }
   })
 

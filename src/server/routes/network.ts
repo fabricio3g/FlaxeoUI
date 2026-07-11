@@ -3,18 +3,42 @@ import type { Express } from 'express'
 import type { AppContext } from '../types'
 import { getLocalIP } from '../utils'
 
-let ngrok: any
-try {
-  ngrok = require('@ngrok/ngrok')
-} catch (error: any) {
-  console.warn('[Server] Failed to load @ngrok/ngrok:', error.message)
+interface NgrokModule {
+  authtoken: (token: string) => Promise<void>
+  forward: (opts: { addr: number; authtoken?: string }) => Promise<{
+    url: () => string
+    close: () => Promise<void>
+  }>
 }
 
-let cloudflared: any
+interface CloudflaredModule {
+  bin: string
+  tunnel?: (opts: { '--url': string }) => {
+    url: Promise<string>
+    child?: import('child_process').ChildProcess
+  }
+}
+
+let ngrok: NgrokModule | null = null
 try {
-  cloudflared = require('cloudflared')
-} catch (error: any) {
-  console.warn('[Server] Failed to load cloudflared:', error.message)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ngrok = require('@ngrok/ngrok') as NgrokModule
+} catch (error: unknown) {
+  console.warn(
+    '[Server] Failed to load @ngrok/ngrok:',
+    error instanceof Error ? error.message : String(error)
+  )
+}
+
+let cloudflared: CloudflaredModule | null = null
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  cloudflared = require('cloudflared') as CloudflaredModule
+} catch (error: unknown) {
+  console.warn(
+    '[Server] Failed to load cloudflared:',
+    error instanceof Error ? error.message : String(error)
+  )
 }
 
 function currentPort(ctx: AppContext): number {
@@ -37,10 +61,10 @@ export async function startNgrok(ctx: AppContext, port: number, authToken?: stri
     ctx.state.networkStatus.ngrok.error = null
     console.log(`[Ngrok] Tunnel active: ${ctx.state.networkStatus.ngrok.url}`)
     return ctx.state.networkStatus.ngrok.url || ''
-  } catch (error: any) {
+  } catch (error: unknown) {
     ctx.state.networkStatus.ngrok.enabled = false
     ctx.state.networkStatus.ngrok.url = null
-    ctx.state.networkStatus.ngrok.error = error.message
+    ctx.state.networkStatus.ngrok.error = error instanceof Error ? error.message : String(error)
     throw error
   }
 }
@@ -166,8 +190,8 @@ export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
         await stopNgrok(ctx)
         res.json({ success: true })
       }
-    } catch (error: any) {
-      res.status(500).json({ error: error.message })
+    } catch (error: unknown) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) })
     }
   })
 
@@ -180,8 +204,8 @@ export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
         await stopCloudflare(ctx)
         res.json({ success: true })
       }
-    } catch (error: any) {
-      res.status(500).json({ error: error.message })
+    } catch (error: unknown) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) })
     }
   })
 }

@@ -46,6 +46,12 @@ All notable changes to FlaxeoUI are documented in this file.
 - `/api/status` returns log tail only (150 lines); server log buffer hard-capped
 - Live preview: size+mtime gate, ETag/304, poll only while generating
 
+### Standards
+- CI runs `lint:ci` (ESLint errors fail the build)
+- Broader capability soft-gates: cache mode, live preview, flash attn, CPU offload
+- `useGeneration` owns claim/busy/cancel only; views own payload HTTP path
+- Prettier `endOfLine: auto` (Windows CRLF noise)
+
 ## 0.3.x
 
 Earlier Electron + Vue studio with Text2Image, Edit, Video, Gallery, Quantization, Model Hub, and dual CLI/server backend mode.

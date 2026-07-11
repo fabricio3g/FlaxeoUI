@@ -5,25 +5,10 @@ import type { useToast } from '@/composables/useToast'
 
 export type GenerationSurface = 'text2image' | 'edit' | 'video' | 'upscale'
 
-export interface GenerationParams {
-  prompt: string
-  negative_prompt?: string
-  steps?: number
-  cfg_scale?: number
-  width?: number
-  height?: number
-  seed?: number
-  diffusionModel?: string
-  vae?: string
-  loadMode?: 'standard' | 'split'
-  guidance?: number
-  scheduler?: string
-  samplingMethod?: string
-  [key: string]: unknown
-}
-
 /**
  * Module-level busy flags shared across workspaces (single-flight client side).
+ * Views own the HTTP call (buildGenerationPayload + apiPost/apiPostForm);
+ * this module owns claim/release + shared isGenerating refs.
  */
 const generationStatus: Record<GenerationSurface, Ref<boolean>> = {
   text2image: ref(false),
@@ -31,11 +16,6 @@ const generationStatus: Record<GenerationSurface, Ref<boolean>> = {
   video: ref(false),
   upscale: ref(false)
 }
-
-const progress = ref(0)
-const previewImage = ref<string | null>(null)
-const generatedFiles = ref<string[]>([])
-const error = ref<string | null>(null)
 
 export function useGenerationStatus(surface: GenerationSurface) {
   return {
@@ -71,7 +51,11 @@ type ToastApi = ReturnType<typeof useToast>
 /**
  * Show a generation failure toast with an Open logs action.
  */
-export function toastGenerationError(toast: ToastApi, err: unknown, fallback = 'Generation failed'): void {
+export function toastGenerationError(
+  toast: ToastApi,
+  err: unknown,
+  fallback = 'Generation failed'
+): void {
   const message = err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
   toast.error(message, {
     duration: 8000,
@@ -82,37 +66,12 @@ export function toastGenerationError(toast: ToastApi, err: unknown, fallback = '
   })
 }
 
+/**
+ * Text2Image surface helpers (status + cancel). Generation HTTP lives in the view
+ * so payload / FormData stay colocated with PhotoMaker and ControlNet uploads.
+ */
 export function useGeneration() {
   const { isGenerating } = useGenerationStatus('text2image')
-
-  /**
-   * generateImage() - Initiates image generation via /api/generate-cli
-   * Prefer view-level handlers that use buildGenerationPayload; kept for simple JSON posts.
-   */
-  async function generateImage(params: GenerationParams): Promise<void> {
-    if (!claimGeneration('text2image')) {
-      error.value = 'Another generation is already running'
-      return
-    }
-    error.value = null
-    progress.value = 0
-
-    try {
-      const result = await apiPost<{ message: string; filenames?: string[] }>(
-        '/api/generate-cli',
-        params
-      )
-
-      if (result.filenames) {
-        generatedFiles.value = result.filenames
-      }
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Generation failed'
-    } finally {
-      releaseGeneration('text2image')
-      progress.value = 100
-    }
-  }
 
   async function cancel(): Promise<void> {
     try {
@@ -125,11 +84,6 @@ export function useGeneration() {
 
   return {
     isGenerating,
-    progress,
-    previewImage,
-    generatedFiles,
-    error,
-    generateImage,
     cancel
   }
 }
