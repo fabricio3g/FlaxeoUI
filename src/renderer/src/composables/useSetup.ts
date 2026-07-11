@@ -1,15 +1,19 @@
 import { computed, ref } from 'vue'
 import { useRuntimeStatus } from './useRuntimeStatus'
 import { useModels } from './useModels'
+import { useGenerationHistory } from './useGenerationHistory'
 
 const setupComplete = ref(false)
 const skipped = ref(false)
 const stateLoaded = ref(false)
 const isDev = ref(false)
 
+const FIRST_IMAGE_KEY = 'flaxeo-first-image-done'
+
 export function useSetup() {
   const { backendValid } = useRuntimeStatus()
   const { models } = useModels()
+  const { entries } = useGenerationHistory()
 
   const hasAnyModel = computed(() => {
     const all = [
@@ -22,6 +26,22 @@ export function useSetup() {
     ]
     return all.length > 0
   })
+
+  const hasFirstImage = computed(() => {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(FIRST_IMAGE_KEY) === '1') {
+      return true
+    }
+    return entries.value.some((e) => e.status === 'success' && e.filename)
+  })
+
+  /** Compact first-run checklist (backend → models → first image) */
+  const checklist = computed(() => [
+    { id: 'backend', label: 'Backend ready', done: backendValid.value },
+    { id: 'models', label: 'Models installed', done: hasAnyModel.value },
+    { id: 'firstImage', label: 'First image generated', done: hasFirstImage.value }
+  ])
+
+  const checklistComplete = computed(() => checklist.value.every((item) => item.done))
 
   const isSetupNeeded = computed(() => {
     if (!stateLoaded.value) return false
@@ -77,10 +97,20 @@ export function useSetup() {
     }
   }
 
+  function markFirstImageDone(): void {
+    if (typeof localStorage === 'undefined') return
+    localStorage.setItem(FIRST_IMAGE_KEY, '1')
+  }
+
   return {
     setupComplete,
     skipped,
     isSetupNeeded,
+    hasAnyModel,
+    hasFirstImage,
+    checklist,
+    checklistComplete,
+    markFirstImageDone,
     loadState,
     completeSetup,
     reopenSetup,

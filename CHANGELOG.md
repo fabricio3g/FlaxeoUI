@@ -2,6 +2,19 @@
 
 All notable changes to FlaxeoUI are documented in this file.
 
+## 0.5.0 — 2026-07-11
+
+### Trust sprint (path to best-in-class)
+- **Phase-aware progress** from CLI logs: Loading text encoder → diffusion → VAE → encoding prompt → generating
+- **Server mode honesty**: badge for warm T2I; advanced jobs (batch, uploads, edit paths) fall back to CLI with a toast
+- **First-run checklist** in Setup finish: Backend · Models · First image
+- Smoke checklist: `docs/SMOKE.md`
+- Version `0.5.0`
+
+### UI (from 0.4.x train)
+- Simpler load/live-preview chip; larger preview canvas
+- Icon click border fix; T2I batch grid + seed lock/dice/copy
+
 ## 0.4.0 — 2026-07-11
 
 ### Pro studio fundamentals

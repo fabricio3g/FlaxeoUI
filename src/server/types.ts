@@ -5,6 +5,16 @@ import type { ModelDirectoryKey } from '../shared/storage'
 
 export type JsonObject = Record<string, unknown>
 
+export type ProgressPhase =
+  | 'starting'
+  | 'loading_encoder'
+  | 'loading_diffusion'
+  | 'loading_vae'
+  | 'conditioning'
+  | 'sampling'
+  | 'decoding'
+  | 'saving'
+
 export interface ProgressInfo {
   current: number
   total: number
@@ -12,6 +22,9 @@ export interface ProgressInfo {
   label: string
   startedAt: number
   updatedAt: number
+  /** Coarse pipeline phase for UI status chip */
+  phase?: ProgressPhase
+  phaseLabel?: string
 }
 
 export interface BackendConfig {

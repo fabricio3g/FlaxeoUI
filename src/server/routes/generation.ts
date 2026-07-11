@@ -16,8 +16,15 @@ import {
   waitForProcess
 } from '../utils'
 import { formatHumanizedError, humanizeCliError } from '../../shared/cliErrors'
+import {
+  advancePhase,
+  detectPhaseFromLine,
+  phaseLabel,
+  type GenerationPhase
+} from '../../shared/generationPhases'
 import type { ParsedStep } from '../utils'
 import { invalidateModelsCache } from '../modelsCache'
+import type { ProgressPhase } from '../types'
 import {
   addGenerationArgs,
   addHardwareArgs,
@@ -110,8 +117,23 @@ async function runCli(
   const activeBackend = ctx.getActiveBackendPath()
   const startedAt = Date.now()
   const logStart = ctx.state.serverLogs.length
-  ctx.state.progressBus.emit('start', { label, startedAt })
-  ctx.state.progress = { current: 0, total: 0, itPerSec: 0, label, startedAt, updatedAt: startedAt }
+  let phase: GenerationPhase = 'starting'
+  ctx.state.progressBus.emit('start', {
+    label,
+    startedAt,
+    phase,
+    phaseLabel: phaseLabel(phase)
+  })
+  ctx.state.progress = {
+    current: 0,
+    total: 0,
+    itPerSec: 0,
+    label,
+    startedAt,
+    updatedAt: startedAt,
+    phase: phase as ProgressPhase,
+    phaseLabel: phaseLabel(phase)
+  }
 
   ctx.state.cliProcess = spawnLoggedProcess(ctx, getSdCliPath(ctx), args, label, {
     cwd: activeBackend
@@ -121,9 +143,18 @@ async function runCli(
     const text = data.toString()
     const lines = text.split('\n')
     for (const line of lines) {
+      const nextPhase = advancePhase(phase, detectPhaseFromLine(line))
+      if (nextPhase !== phase) {
+        phase = nextPhase
+        emitPhase(ctx, phase, label, startedAt)
+      }
       const parsed = parseStepLine(line)
       if (parsed) {
-        updateProgress(ctx, parsed, label, startedAt)
+        // Steps imply sampling
+        if (phase !== 'sampling' && phase !== 'decoding' && phase !== 'saving') {
+          phase = 'sampling'
+        }
+        updateProgress(ctx, parsed, label, startedAt, phase)
       }
     }
   }
@@ -152,11 +183,33 @@ async function runCli(
   }
 }
 
+function emitPhase(
+  ctx: AppContext,
+  phase: GenerationPhase,
+  label: string,
+  startedAt: number
+): void {
+  const prev = ctx.state.progress
+  const p = {
+    current: prev?.current ?? 0,
+    total: prev?.total ?? 0,
+    itPerSec: prev?.itPerSec ?? 0,
+    label,
+    startedAt,
+    updatedAt: Date.now(),
+    phase: phase as ProgressPhase,
+    phaseLabel: phaseLabel(phase)
+  }
+  ctx.state.progress = p
+  ctx.state.progressBus.emit('progress', p)
+}
+
 function updateProgress(
   ctx: AppContext,
   parsed: ParsedStep,
   label: string,
-  startedAt: number
+  startedAt: number,
+  phase: GenerationPhase = 'sampling'
 ): void {
   const p = {
     current: parsed.current,
@@ -164,7 +217,9 @@ function updateProgress(
     itPerSec: parsed.itPerSec,
     label,
     startedAt,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
+    phase: phase as ProgressPhase,
+    phaseLabel: phaseLabel(phase)
   }
   ctx.state.progress = p
   ctx.state.progressBus.emit('progress', p)

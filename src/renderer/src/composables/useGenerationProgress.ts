@@ -7,6 +7,8 @@ export interface ProgressSnapshot {
   itPerSec: number
   etaSeconds: number
   label: string
+  phase: string
+  phaseLabel: string
   isActive: boolean
   hasSteps: boolean
 }
@@ -16,6 +18,8 @@ const total = ref(0)
 const itPerSec = ref(0)
 const etaSeconds = ref(0)
 const label = ref('')
+const phase = ref('starting')
+const phaseLabel = ref('Starting')
 const isActive = ref(false)
 const hasSteps = ref(false)
 
@@ -25,6 +29,22 @@ let emaStepMs = 0
 
 const EMA_ALPHA = 0.3
 
+function applyPayload(data: Record<string, unknown>): void {
+  if (typeof data.current === 'number') current.value = data.current
+  if (typeof data.total === 'number' && data.total > 0) {
+    total.value = data.total
+    hasSteps.value = true
+  }
+  if (typeof data.itPerSec === 'number') itPerSec.value = data.itPerSec
+  if (typeof data.label === 'string' && data.label) label.value = data.label
+  if (typeof data.phase === 'string' && data.phase) phase.value = data.phase
+  if (typeof data.phaseLabel === 'string' && data.phaseLabel) {
+    phaseLabel.value = data.phaseLabel
+  }
+  if (typeof data.startedAt === 'number') startedAt = data.startedAt
+  computeETA()
+}
+
 function computeETA(): void {
   if (total.value <= 0 || current.value < 0) return
   const remaining = Math.max(0, total.value - current.value)
@@ -32,7 +52,6 @@ function computeETA(): void {
     etaSeconds.value = 0
     return
   }
-  // Prefer CLI-reported it/s when available (more accurate for video long runs)
   if (itPerSec.value > 0) {
     etaSeconds.value = remaining / itPerSec.value
     return
@@ -50,6 +69,8 @@ function reset(): void {
   itPerSec.value = 0
   etaSeconds.value = 0
   label.value = ''
+  phase.value = 'starting'
+  phaseLabel.value = 'Starting'
   emaStepMs = 0
   hasSteps.value = false
 }
@@ -74,41 +95,30 @@ function start(): void {
     eventSource.addEventListener('hello', (e) => {
       try {
         const data = JSON.parse(e.data)
-        if (data.progress && data.progress.total > 0) {
-          current.value = data.progress.current
-          total.value = data.progress.total
-          itPerSec.value = data.progress.itPerSec || 0
-          label.value = data.progress.label || ''
-          startedAt = data.progress.startedAt || Date.now()
-          emaStepMs = 0
-          hasSteps.value = true
-          computeETA()
-        }
-      } catch { /* ignore */ }
+        if (data.progress) applyPayload(data.progress)
+      } catch {
+        /* ignore */
+      }
     })
 
     eventSource.addEventListener('start', (e) => {
       try {
         const data = JSON.parse(e.data)
-        label.value = data.label || ''
-        startedAt = data.startedAt || Date.now()
         reset()
         isActive.value = true
-      } catch { /* ignore */ }
+        applyPayload(data)
+      } catch {
+        /* ignore */
+      }
     })
 
     eventSource.addEventListener('progress', (e) => {
       try {
         const data = JSON.parse(e.data)
-        if (data.total && data.total > 0) {
-          current.value = data.current
-          total.value = data.total
-          itPerSec.value = data.itPerSec || 0
-          label.value = data.label || ''
-          hasSteps.value = true
-          computeETA()
-        }
-      } catch { /* ignore */ }
+        applyPayload(data)
+      } catch {
+        /* ignore */
+      }
     })
 
     eventSource.addEventListener('end', () => {
@@ -140,6 +150,8 @@ export function useGenerationProgress() {
     itPerSec,
     etaSeconds,
     label,
+    phase,
+    phaseLabel,
     isActive,
     hasSteps,
     start,

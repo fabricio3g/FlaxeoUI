@@ -17,6 +17,7 @@ import {
 import { useConfigStore } from '@/stores/config'
 import { useBackend } from '@/composables/useBackend'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import { useSetup } from '@/composables/useSetup'
 import { apiPost } from '@/services/api'
 import {
   hubModels,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 const configStore = useConfigStore()
 const backend = useBackend()
 const { backendValid } = useRuntimeStatus()
+const { checklist } = useSetup()
 
 const step = ref<Step>('welcome')
 const selectedPackId = ref<string>('flux1-dev')
@@ -590,6 +592,29 @@ watch(selectedRelease, (release) => {
                 generating now or change models anytime from the Model Hub.
               </p>
             </div>
+
+            <ul class="mx-auto max-w-xs space-y-2 text-left">
+              <li
+                v-for="item in checklist"
+                :key="item.id"
+                class="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/25 px-3 py-2 text-xs"
+              >
+                <Check
+                  class="size-3.5 shrink-0"
+                  :class="
+                    item.done
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-muted-foreground/40'
+                  "
+                />
+                <span :class="item.done ? 'text-foreground' : 'text-muted-foreground'">
+                  {{ item.label }}
+                </span>
+              </li>
+            </ul>
+            <p class="text-[11px] text-muted-foreground">
+              Generate once to complete the checklist — then you are fully ready.
+            </p>
 
             <div class="mx-auto flex max-w-xs flex-col gap-2">
               <button

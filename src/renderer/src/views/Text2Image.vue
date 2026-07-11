@@ -48,8 +48,10 @@ import {
   buildGenerationPayload
 } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
+import { useSetup } from '@/composables/useSetup'
 
 const toast = useToast()
+const { markFirstImageDone } = useSetup()
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -473,13 +475,33 @@ async function handleGenerate(): Promise<void> {
     let endpoint = '/api/generate-cli'
     let payload: Record<string, unknown> = params
 
-    // If server mode is active and server is online, use the server endpoint
-    // (server path supports a smaller subset — prefer CLI for full features)
-    if (config.value.backendMode === 'server' && serverOnline.value) {
+    // Server mode: warm path for core T2I only (prompt/size/steps/cfg/seed).
+    // Advanced features (batch>1, files, LoRA form paths) stay on CLI.
+    const wantsServer =
+      config.value.backendMode === 'server' &&
+      serverOnline.value &&
+      batchCount === 1 &&
+      !config.value.photoMakerImages?.length &&
+      !config.value.controlImagePath &&
+      !config.value.initImagePath &&
+      !config.value.kontextRefImage
+
+    if (config.value.backendMode === 'server' && serverOnline.value && !wantsServer) {
+      toast.info('Using CLI for this job — Server mode is core T2I only')
+    }
+
+    if (wantsServer) {
       endpoint = '/api/generate'
       payload = {
-        ...params,
-        batch_size: params.batchCount,
+        prompt: params.prompt,
+        negative_prompt: params.negative_prompt,
+        width: params.width,
+        height: params.height,
+        steps: params.steps,
+        cfg_scale: params.cfg_scale,
+        seed: params.seed,
+        guidance: params.guidance,
+        batch_size: 1,
         clip_skip: params.clipSkip
       }
     }
@@ -538,6 +560,7 @@ async function handleGenerate(): Promise<void> {
           ? `Batch complete — ${newImages.length} images`
           : 'Generation complete!'
       )
+      markFirstImageDone()
       const durationMs = Date.now() - jobStartedAt
       for (const filename of newImages) {
         addHistoryEntry({
@@ -561,6 +584,7 @@ async function handleGenerate(): Promise<void> {
       lastBatchSize.value = 1
       showBatchGrid.value = false
       toast.success('Generation complete!')
+      markFirstImageDone()
       addHistoryEntry({
         surface: 'text2image',
         status: 'success',
@@ -906,7 +930,7 @@ onMounted(async () => {
                     ? 'Live preview'
                     : progress.hasSteps
                       ? 'Generating'
-                      : 'Loading model'
+                      : progress.phaseLabel || 'Loading model'
                 }}
               </p>
             </div>

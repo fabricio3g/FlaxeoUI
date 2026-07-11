@@ -59,6 +59,12 @@ const backendModeOptions = [
   { value: 'server', label: 'Server' }
 ]
 
+const serverModeHint = computed(() => {
+  if (config.value.backendMode !== 'server') return ''
+  if (!sdServerRunning.value) return 'Server offline — start it to use warm multi-gen'
+  return 'Server: core T2I only (warm). Edit, video, batch, and uploads use CLI.'
+})
+
 const currentTab = computed(() => {
   const name = route.name as string
   return name?.toLowerCase() || 'text2image'
@@ -119,7 +125,13 @@ function selectModel(value: string): void {
 }
 
 function handleBackendMode(value: string): void {
-  if (value === 'cli' || value === 'server') configStore.updateConfig({ backendMode: value })
+  if (value === 'cli' || value === 'server') {
+    configStore.updateConfig({ backendMode: value })
+    if (value === 'server' && !sdServerRunning.value) {
+      // Nudge user — server must be running for warm path
+      console.info('[Flaxeo] Server mode selected. Start the sd-server process for warm multi-gen.')
+    }
+  }
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
@@ -196,6 +208,13 @@ onUnmounted(() => {
               aria-label="Backend mode"
               @update:model-value="handleBackendMode"
             />
+            <span
+              v-if="serverModeHint"
+              class="hidden max-w-[14rem] truncate text-[10px] text-muted-foreground lg:inline"
+              :title="serverModeHint"
+            >
+              {{ sdServerRunning ? 'Warm T2I' : 'Server offline' }}
+            </span>
             <Select
               :model-value="activeModelValue"
               :options="modelOptions"

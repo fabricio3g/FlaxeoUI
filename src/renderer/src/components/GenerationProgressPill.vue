@@ -15,7 +15,7 @@ const props = withDefaults(
   }
 )
 
-const { current, total, hasSteps } = useGenerationProgress()
+const { current, total, hasSteps, phaseLabel, phase } = useGenerationProgress()
 
 const percent = computed(() =>
   total.value > 0 ? Math.min(100, (current.value / total.value) * 100) : 0
@@ -24,6 +24,10 @@ const percent = computed(() =>
 const statusText = computed(() => {
   if (props.livePreview) return 'Live preview'
   if (hasSteps.value) return props.fallbackLabel
+  // Prefer structured phase from CLI logs during cold load
+  if (phase.value && phase.value !== 'starting' && phaseLabel.value) {
+    return phaseLabel.value
+  }
   return props.loadingText
 })
 </script>
@@ -36,16 +40,10 @@ const statusText = computed(() => {
   >
     <Loader2 class="size-3.5 shrink-0 animate-spin text-muted-foreground" />
     <span class="text-[11px] font-medium text-foreground">{{ statusText }}</span>
-    <span
-      v-if="hasSteps"
-      class="text-[11px] tabular-nums text-muted-foreground"
-    >
+    <span v-if="hasSteps" class="text-[11px] tabular-nums text-muted-foreground">
       {{ current }}/{{ total }}
     </span>
-    <div
-      class="h-1 w-16 overflow-hidden rounded-full bg-border/50 sm:w-20"
-      aria-hidden="true"
-    >
+    <div class="h-1 w-16 overflow-hidden rounded-full bg-border/50 sm:w-20" aria-hidden="true">
       <div
         class="h-full rounded-full bg-foreground/65 transition-[width] duration-300 ease-out"
         :style="{ width: (hasSteps ? percent : 12) + '%' }"
