@@ -29,6 +29,7 @@ import { isAnyGenerationBusy, toastGenerationError, useGeneration } from '@/comp
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import RecipeLibrary from '@/components/RecipeLibrary.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -1070,6 +1071,13 @@ onMounted(async () => {
           >
             <ImagePlus class="size-4" />
           </button>
+          <RecipeLibrary
+            v-model:prompt="prompt"
+            v-model:negative-prompt="negativePrompt"
+            surface="text2image"
+            compact
+            class="shrink-0"
+          />
           <PromptPresetControls
             v-model:prompt="prompt"
             v-model:negative-prompt="negativePrompt"
@@ -1232,6 +1240,13 @@ onMounted(async () => {
           </div>
 
           <div class="ml-auto flex shrink-0 items-center gap-1">
+            <RecipeLibrary
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              surface="text2image"
+              compact
+              class="shrink-0"
+            />
             <PromptPresetControls
               v-model:prompt="prompt"
               v-model:negative-prompt="negativePrompt"

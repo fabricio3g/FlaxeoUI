@@ -3,6 +3,8 @@ import {
   Activity as MotionActivity,
   ArrowRight as MotionArrowRight,
   ArrowUp as MotionArrowUp,
+  Bookmark as MotionBookmark,
+  BookText as MotionBookText,
   Brush as MotionBrush,
   Check as MotionCheck,
   ChevronDown as MotionChevronDown,
@@ -27,8 +29,10 @@ import {
   RefreshCw as MotionRefreshCw,
   Search as MotionSearch,
   Settings as MotionSettings,
+  CircleHelp as MotionCircleHelp,
   SlidersHorizontal as MotionSlidersHorizontal,
   Shrink as MotionShrink,
+  Sparkles as MotionSparkles,
   Sun as MotionSun,
   Terminal as MotionTerminal,
   Upload as MotionUpload,
@@ -39,7 +43,6 @@ import {
 } from '@respeak/lucide-motion-vue'
 import {
   AlertTriangle as StaticAlertTriangle,
-  Bookmark as StaticBookmark,
   CheckCircle as StaticCheckCircle,
   CheckCircle2 as StaticCheckCircle2,
   Eraser as StaticEraser,
@@ -57,7 +60,6 @@ import {
   Dices as StaticDices,
   Save as StaticSave,
   Server as StaticServer,
-  Sparkles as StaticSparkles,
   Square as StaticSquare,
   Trash2 as StaticTrash2,
   XCircle as StaticXCircle
@@ -94,7 +96,11 @@ export const Activity = animatedIcon(MotionActivity, 'lucide-animated')
 export const AlertTriangle = fallbackIcon(StaticAlertTriangle)
 export const ArrowRight = animatedIcon(MotionArrowRight, 'lucide-animated')
 export const ArrowUp = animatedIcon(MotionArrowUp, 'lucide-animated')
-export const Bookmark = fallbackIcon(StaticBookmark)
+/** Recipes / saved looks */
+export const Bookmark = animatedIcon(MotionBookmark, 'lucide-animated')
+/** Help center (BookText animated; BookOpen static alias for lucide naming) */
+export const BookOpen = animatedIcon(MotionBookText, 'lucide-animated')
+export const BookText = BookOpen
 export const Brush = animatedIcon(MotionBrush, 'lucide-animated')
 export const Check = animatedIcon(MotionCheck, 'lucide-animated')
 export const CheckCircle = fallbackIcon(StaticCheckCircle)
@@ -103,6 +109,7 @@ export const ChevronDown = animatedIcon(MotionChevronDown, 'lucide-animated')
 export const ChevronLeft = animatedIcon(MotionChevronLeft, 'lucide-animated')
 export const ChevronRight = animatedIcon(MotionChevronRight, 'lucide-animated')
 export const ChevronUp = animatedIcon(MotionChevronUp, 'lucide-animated')
+export const CircleHelp = animatedIcon(MotionCircleHelp, 'lucide-animated')
 export const Copy = animatedIcon(MotionCopy, 'lucide-animated')
 export const Cpu = animatedIcon(MotionCpu)
 export const Dices = fallbackIcon(StaticDices)
@@ -115,6 +122,8 @@ export const Film = fallbackIcon(StaticFilm)
 export const FolderOpen = animatedIcon(MotionFolderOpen)
 export const Grid = fallbackIcon(StaticGrid)
 export const GripHorizontal = animatedIcon(MotionGripHorizontal)
+/** Alias: Help nav uses BookOpen; CircleHelp for inline context */
+export const HelpCircle = CircleHelp
 export const History = animatedIcon(MotionHistory, 'lucide-animated')
 export const Image = fallbackIcon(StaticImage)
 export const ImageIcon = animatedIcon(MotionFrame, 'lucide-animated')
@@ -137,7 +146,7 @@ export const Search = animatedIcon(MotionSearch, 'lucide-animated')
 export const Server = fallbackIcon(StaticServer)
 export const Settings = animatedIcon(MotionSettings, 'lucide-animated')
 export const SlidersHorizontal = animatedIcon(MotionSlidersHorizontal, 'lucide-animated')
-export const Sparkles = fallbackIcon(StaticSparkles)
+export const Sparkles = animatedIcon(MotionSparkles, 'lucide-animated')
 export const Square = fallbackIcon(StaticSquare)
 export const Sun = animatedIcon(MotionSun, 'alt')
 export const Terminal = animatedIcon(MotionTerminal, 'alt')

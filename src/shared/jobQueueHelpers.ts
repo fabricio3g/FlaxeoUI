@@ -59,6 +59,11 @@ export function clearPendingJobs<T extends QueueJobBase>(jobs: T[]): T[] {
   return jobs.filter((j) => j.status !== 'pending')
 }
 
+/** Drop finished jobs (success / failed / cancelled). Keeps pending and running. */
+export function clearFinishedJobs<T extends QueueJobBase>(jobs: T[]): T[] {
+  return jobs.filter((j) => j.status === 'pending' || j.status === 'running')
+}
+
 export function countPending<T extends QueueJobBase>(jobs: T[]): number {
   return listPending(jobs).length
 }

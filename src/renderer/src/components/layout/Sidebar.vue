@@ -9,7 +9,8 @@ import {
   Scale,
   FolderOpen,
   Database,
-  ChevronLeft
+  ChevronLeft,
+  BookOpen
 } from '@/lib/icons'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -35,7 +36,8 @@ const navItems: NavItem[] = [
   { id: 'edit', label: 'Edit', icon: Brush },
   { id: 'video', label: 'Video', icon: Video },
   { id: 'gallery', label: 'Gallery', icon: Images },
-  { id: 'quantization', label: 'Quantize', icon: Scale }
+  { id: 'quantization', label: 'Quantize', icon: Scale },
+  { id: 'help', label: 'Help', icon: BookOpen }
 ]
 
 function isActive(id: string): boolean {

@@ -2,11 +2,29 @@
 
 All notable changes to FlaxeoUI are documented in this file.
 
+## 0.7.0 — 2026-07-11
+
+### Help & guide
+- In-app **Help** view (sidebar + mobile): searchable offline topics
+- User guide under `docs/user-guide/` (Getting started, Studio, Recipes, Queue, Models, Troubleshoot, Community)
+- Deep links: `#/help?topic=recipes` (and other topic ids)
+- Context **?** on Queue panel → Help · Queue
+
+### Recipes (templates)
+- Full-settings **recipes**: prompts + config snapshot (not just prompt text)
+- Built-in starters (portrait, landscape, product, draft, anime, square)
+- Save / apply / import / export `.flaxeo-recipe.json`
+- Schema: `docs/schemas/recipe.schema.json`
+- **Recipes** control on Text2Image next to prompt presets
+
+### Icons
+- Animated **Help** (BookText), **Bookmark** (recipes), **CircleHelp**, **Sparkles**
+
 ## 0.6.0 — 2026-07-11
 
 ### Local job queue (flagship)
 - Generate while busy **enqueues** instead of blocking
-- Queue panel: running job, pending list (reorder / remove), recent results, pause/resume, cancel current
+- Queue panel: running job, pending list (reorder / remove), recent results, pause/resume, cancel current, **Clear** recent (done / failed / cancelled)
 - Works for Text2Image, Edit, Video, and Gallery upscale (FormData jobs snapshot files in memory)
 - Progress chip shows current job label + pending count badge
 - Command strip **Queue** button with live count

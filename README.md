@@ -11,6 +11,9 @@
 ## Features
 
 - **Text2Image**, **Edit** (inpaint / multi-ref Kontext & Qwen Edit / img2img), **Video** (T2V, I2V, FLF2V)
+- **Job queue** — generate while busy; reorder, pause, cancel
+- **Recipes** — full-settings templates; import/export `.flaxeo-recipe.json`
+- **Help** — offline user guide in the app (`docs/user-guide/` on GitHub)
 - **Gallery** with PNG parameter reuse, upscale, and generation history
 - **Model Hub** starter packs (SDXL, FLUX, Z-Image, Wan, LTX, Qwen, …)
 - Dual backend: **sd-cli** (default) or **sd-server**

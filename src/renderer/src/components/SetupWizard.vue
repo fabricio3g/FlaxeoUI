@@ -7,6 +7,7 @@ import {
   Download,
   ExternalLink,
   Film,
+  FolderOpen,
   ImageIcon,
   Loader2,
   Sparkles,
@@ -105,6 +106,11 @@ const stepIndex = computed(() => {
 
 function fileKey(file: HubFile): string {
   return `${file.category}/${file.filename}`
+}
+
+/** Open backend/custom so users can drop sd-cli / sd-server themselves */
+function openCustomFolder(): void {
+  window.electronAPI?.openCustomFolder()
 }
 
 async function loadReleases(): Promise<void> {
@@ -387,7 +393,8 @@ watch(selectedRelease, (release) => {
                 <code class="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs"
                   >sd-cli</code
                 >
-                backend to run inference. Pick a release below, then install it.
+                backend to run inference. Install a release below, or drop binaries into the custom
+                folder.
               </p>
             </div>
 
@@ -488,6 +495,29 @@ watch(selectedRelease, (release) => {
               </div>
             </div>
 
+            <!-- Manual install path (same as Settings → Custom folder) -->
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm font-medium text-foreground">Or use your own binaries</p>
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:underline"
+                  title="Open backend/custom folder"
+                  @click="openCustomFolder"
+                >
+                  <FolderOpen class="h-3.5 w-3.5" />
+                  Custom folder
+                </button>
+              </div>
+              <p class="text-xs leading-5 text-muted-foreground">
+                Place
+                <code class="rounded bg-muted/60 px-1 py-0.5 text-[11px]">sd-cli</code>
+                and
+                <code class="rounded bg-muted/60 px-1 py-0.5 text-[11px]">sd-server</code>
+                in the custom folder, then continue. The wizard will detect them automatically.
+              </p>
+            </div>
+
             <div
               v-if="runtimeError"
               class="aui-alert rounded-xl border border-destructive/25 border-l-2 border-l-destructive bg-destructive/5 px-3.5 py-3 text-xs text-destructive"
@@ -499,7 +529,8 @@ watch(selectedRelease, (release) => {
               v-else-if="!backendValid && !runtimeDownloading"
               class="aui-alert rounded-xl border border-amber-500/25 border-l-2 border-l-amber-500 bg-amber-500/5 px-3.5 py-3 text-xs text-amber-700 dark:text-amber-300"
             >
-              If the download is taking a while, you can skip and finish setup later from Settings.
+              If the download is taking a while, open Custom folder and drop in binaries, or skip
+              and finish later from Settings.
             </div>
           </div>
 

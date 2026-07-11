@@ -6,6 +6,7 @@ import {
   type GenerationSurface
 } from '@/composables/useGeneration'
 import {
+  clearFinishedJobs,
   clearPendingJobs,
   countPending,
   createJobId,
@@ -207,6 +208,11 @@ function clearPending(): void {
   jobs.value = clearPendingJobs(jobs.value)
 }
 
+/** Clear Recent: remove success / failed / cancelled. Keeps pending + running. */
+function clearFinished(): void {
+  jobs.value = clearFinishedJobs(jobs.value)
+}
+
 function pause(): void {
   paused.value = true
 }
@@ -240,6 +246,7 @@ export function useJobQueue() {
     remove,
     move,
     clearPending,
+    clearFinished,
     pause,
     resume,
     cancelCurrent

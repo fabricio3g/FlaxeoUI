@@ -37,6 +37,13 @@ Run before tagging a release. Goal: cold install feels trustworthy.
 - [ ] Gallery: open image, reuse params, upscale if model present
 - [ ] Live preview (if TAESD / method set): frames update without crash
 
+## Help & recipes (0.7)
+
+- [ ] Sidebar **Help** opens offline guide; search filters topics
+- [ ] Deep link / topic switch: Recipes, Queue, Getting started
+- [ ] Text2Image **Recipes**: apply built-in; save current; export/import JSON
+- [ ] Queue panel **?** opens Help · Queue
+
 ## Polish
 
 - [ ] Icon buttons: no sticky border on click

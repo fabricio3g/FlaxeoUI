@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { ChevronDown, ChevronUp, Square, X } from '@/lib/icons'
+import { useRouter } from 'vue-router'
+import { ChevronDown, ChevronUp, CircleHelp, Square, X } from '@/lib/icons'
 import { useJobQueue } from '@/composables/useJobQueue'
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const PANEL_WIDTH = 320
 const GAP = 6
+const router = useRouter()
 
 const {
   current,
@@ -25,8 +27,14 @@ const {
   remove,
   move,
   clearPending,
+  clearFinished,
   cancelCurrent
 } = useJobQueue()
+
+function openQueueHelp(): void {
+  emit('close')
+  router.push({ name: 'Help', query: { topic: 'queue' } })
+}
 
 const panelStyle = computed(() => {
   const a = props.anchor
@@ -113,6 +121,15 @@ watch(
             </p>
           </div>
           <div class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Help: Queue"
+              aria-label="Help about the queue"
+              @click="openQueueHelp"
+            >
+              <CircleHelp class="size-4" />
+            </button>
             <button
               v-if="!paused"
               type="button"
@@ -231,7 +248,16 @@ watch(
           </section>
 
           <section v-if="recentDone.length">
-            <p class="mb-1.5 text-[11px] font-medium text-muted-foreground">Recent</p>
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+              <p class="text-[11px] font-medium text-muted-foreground">Recent</p>
+              <button
+                type="button"
+                class="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                @click="clearFinished"
+              >
+                Clear
+              </button>
+            </div>
             <ul class="divide-y divide-border/50 rounded-lg border border-border/50">
               <li
                 v-for="job in recentDone"

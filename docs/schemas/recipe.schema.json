@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flaxeo.local/schemas/recipe.schema.json",
+  "title": "FlaxeoUI Recipe",
+  "description": "Shareable full-settings template (prompts + config snapshot). Data only — no executable code.",
+  "type": "object",
+  "required": ["version", "name", "surface", "configSnapshot"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional stable id; generated on import if missing"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 40 },
+      "maxItems": 24
+    },
+    "surface": {
+      "type": "string",
+      "enum": ["text2image", "edit", "video", "upscale"]
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "negativePrompt": {
+      "type": "string"
+    },
+    "configSnapshot": {
+      "type": "object",
+      "description": "Compact GenerationConfig fields (steps, size, models, hardware flags, …)"
+    },
+    "modelHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packId": { "type": "string" },
+        "diffusion": { "type": "string" },
+        "vae": { "type": "string" }
+      }
+    },
+    "createdAt": { "type": "number" },
+    "updatedAt": { "type": "number" },
+    "builtin": {
+      "type": "boolean",
+      "description": "True for shipped built-ins (read-only in UI)"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  clearFinishedJobs,
   clearPendingJobs,
   countPending,
   listPending,
@@ -53,6 +54,21 @@ describe('jobQueueHelpers', () => {
     const next = clearPendingJobs(jobs)
     assert.equal(next.length, 1)
     assert.equal(next[0].id, 'b')
+  })
+
+  it('clears finished only (success, failed, cancelled)', () => {
+    const jobs = [
+      job('a', 'pending'),
+      job('b', 'running'),
+      job('c', 'success'),
+      job('d', 'failed'),
+      job('e', 'cancelled')
+    ]
+    const next = clearFinishedJobs(jobs)
+    assert.deepEqual(
+      next.map((j) => j.id),
+      ['a', 'b']
+    )
   })
 
   it('truncates labels', () => {

@@ -134,13 +134,18 @@ const expandedSections = ref({
   hardware: false
 })
 
-// Model setup modal never uses focus "all"; always show presets there expanded.
+/** Extra model slots (CLIP, high-noise, TAESD, …) — off by default in Model setup */
+const showAdvancedModels = ref(false)
+
+// Model setup: presets + core models open; hardware stays collapsed until needed.
 watch(
   () => props.focus,
   (focus) => {
     if (focus === 'model') {
       expandedSections.value.presets = true
       expandedSections.value.models = true
+      expandedSections.value.hardware = false
+      showAdvancedModels.value = false
     }
   },
   { immediate: true }
@@ -253,6 +258,13 @@ const panelTitle = computed(() => {
   if (props.focus === 'assets') return 'Prompt assets'
   return 'Generation setup'
 })
+
+/** Modal shell always passes a focus other than "all" */
+const isSetupModal = computed(() => props.focus !== 'all')
+
+function finishSetup(): void {
+  emit('close')
+}
 
 const activeCollapsedMeta = computed(() =>
   collapsedSections.find((section) => section.id === activeCollapsedSection.value)
@@ -930,48 +942,45 @@ onUnmounted(() => {
 
     <template v-if="!props.collapsed">
       <div
-        class="config-panel__header hidden h-12 shrink-0 items-center justify-between border-b border-border/70 px-4 md:flex"
+        class="config-panel__header hidden h-12 shrink-0 items-center justify-between gap-3 px-4 md:flex md:px-5"
+        :class="isSetupModal ? '' : 'border-b border-border/60'"
       >
-        <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+        <div class="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight">
+          <SlidersHorizontal class="h-4 w-4 shrink-0 text-muted-foreground" />
           <span class="truncate">{{ panelTitle }}</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="aui-status-badge rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-            >{{ config.backendMode === 'server' ? 'Server' : 'CLI' }}</span
-          >
-          <button
-            type="button"
-            class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            title="Close setup"
-            aria-label="Close setup"
-            @click="emit('close')"
-          >
-            <X class="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <!-- Exit is via Finish in the footer for setup modals -->
+        <button
+          v-if="!isSetupModal"
+          type="button"
+          class="aui-icon-button inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          title="Close"
+          aria-label="Close"
+          @click="emit('close')"
+        >
+          <X class="h-3.5 w-3.5" />
+        </button>
       </div>
 
       <!-- Mobile Header -->
       <div
-        class="config-panel__header mobile-sheet-header flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-background px-4 md:hidden"
+        class="config-panel__header mobile-sheet-header flex h-12 shrink-0 items-center bg-background px-4 md:hidden"
+        :class="isSetupModal ? '' : 'border-b border-border/60'"
       >
-        <h2 class="flex items-center gap-2 text-sm font-medium">
-          <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
+        <h2 class="flex items-center gap-2 text-sm font-semibold">
+          <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
           {{ panelTitle }}
         </h2>
-        <button
-          @click="emit('close')"
-          class="aui-icon-button flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          type="button"
-        >
-          <X class="w-4.5 h-4.5" />
-        </button>
       </div>
 
       <!-- Scrollable Content -->
-      <div class="config-panel__content flex-1 space-y-4 overflow-y-auto p-4 pb-8 md:px-5 md:py-4">
+      <div
+        class="config-panel__content flex-1 overflow-y-auto p-4 md:px-5 md:py-4"
+        :class="[
+          isSetupModal ? 'space-y-5 pb-4' : 'space-y-4 pb-8',
+          isSetupModal ? 'config-panel__content--flat' : ''
+        ]"
+      >
         <!-- Server / CLI Toggle (always visible) -->
         <section v-if="props.focus === 'all'">
           <div class="space-y-2">
@@ -1029,143 +1038,100 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <!-- PRESETS (Model setup modal uses focus=model; "all" is unused by the app shell) -->
-        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
-          <div class="flex w-full items-center justify-between py-1">
+        <!-- PRESETS (flat — no nested card) -->
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="space-y-2.5">
+          <div class="flex items-baseline justify-between gap-2">
+            <h3 class="text-sm font-medium text-foreground">Presets</h3>
+            <span class="text-[11px] tabular-nums text-muted-foreground">{{ presets.length }}</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <Select
+              :model-value="selectedPresetId"
+              size="md"
+              placeholder="Load preset…"
+              :options="presetOptions"
+              class="h-9 flex-1"
+              @update:model-value="selectPreset"
+            />
             <button
               type="button"
-              class="flex min-w-0 flex-1 items-center gap-2 text-left"
-              @click="expandedSections.presets = !expandedSections.presets"
+              :disabled="!selectedPreset || selectedPreset.builtin"
+              class="aui-icon-button inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive disabled:opacity-30"
+              title="Delete preset"
+              @click="deleteSelectedPreset"
             >
-              <span class="text-sm font-medium text-foreground">Presets</span>
-              <span class="aui-status-badge text-xs text-muted-foreground">{{
-                presets.length
-              }}</span>
+              <Trash2 class="h-3.5 w-3.5" />
             </button>
           </div>
-          <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-            Load a model family preset or save the current stack (models + sampling + hardware).
-          </p>
-
-          <div v-show="expandedSections.presets" class="space-y-3 pt-2">
-            <div class="flex items-center gap-1">
-              <Select
-                :model-value="selectedPresetId"
-                size="md"
-                placeholder="Load preset..."
-                :options="presetOptions"
-                class="flex-1 h-9"
-                @update:model-value="selectPreset"
-              />
-              <button
-                @click="deleteSelectedPreset"
-                :disabled="!selectedPreset || selectedPreset.builtin"
-                class="aui-icon-button inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-30"
-                title="Delete preset"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div class="flex items-center gap-1">
-              <input
-                v-model="presetName"
-                type="text"
-                placeholder="Save as..."
-                class="aui-field h-9 min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
-                @keyup.enter="saveCurrentPreset"
-              />
-              <button
-                @click="saveCurrentPreset"
-                :disabled="!presetName.trim()"
-                class="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Save
-              </button>
-            </div>
+          <div class="flex items-center gap-1.5">
+            <input
+              v-model="presetName"
+              type="text"
+              placeholder="Save current as…"
+              class="aui-field h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
+              @keyup.enter="saveCurrentPreset"
+            />
+            <button
+              type="button"
+              :disabled="!presetName.trim()"
+              class="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+              @click="saveCurrentPreset"
+            >
+              Save
+            </button>
           </div>
         </section>
-        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
-          <!-- Standard / Split Toggle (always visible) -->
+
+        <!-- MODELS (flat field stack) -->
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="space-y-3">
+          <div class="flex items-baseline justify-between gap-2">
+            <h3 class="text-sm font-medium text-foreground">Models</h3>
+            <button
+              type="button"
+              class="text-xs font-medium text-primary transition-colors hover:underline"
+              @click="showModelHub = true"
+            >
+              Model Hub
+            </button>
+          </div>
+
           <SegmentedControl
             :model-value="config.loadMode"
             :options="loadModeOptions"
-            class="mb-3 w-full"
+            class="w-full"
             @update:model-value="handleLoadMode"
           />
 
-          <div class="space-y-4">
-            <!-- Standard Mode: Single Checkpoint -->
-            <div v-if="config.loadMode === 'standard'" class="space-y-2">
-              <div>
-                <label class="aui-label text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Model Checkpoint</label
-                >
-                <Select
-                  v-model="config.standardModel"
-                  size="md"
-                  placeholder="Select model..."
-                  :options="[
-                    { label: 'Select model...', value: '' },
-                    ...models.diffusion.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
+          <div class="space-y-3">
+            <!-- Core: main model -->
+            <div v-if="config.loadMode === 'standard'">
+              <label class="mb-1.5 block text-xs text-muted-foreground">Checkpoint</label>
+              <Select
+                v-model="config.standardModel"
+                size="md"
+                placeholder="Select model…"
+                :options="[
+                  { label: 'Select model…', value: '' },
+                  ...models.diffusion.map((m) => ({ label: m, value: m }))
+                ]"
+              />
             </div>
-
-            <!-- Split Mode: Multiple Models -->
-            <div v-else class="space-y-2">
+            <div v-else class="space-y-3">
               <div>
-                <label class="aui-label text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Diffusion Model</label
-                >
+                <label class="mb-1.5 block text-xs text-muted-foreground">Diffusion</label>
                 <Select
                   v-model="config.diffusionModel"
                   size="md"
-                  placeholder="Select..."
+                  placeholder="Select…"
                   :options="[
-                    { label: 'Select...', value: '' },
+                    { label: 'Select…', value: '' },
                     ...models.diffusion.map((m) => ({ label: m, value: m }))
                   ]"
                 />
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >High Noise</label
-                  >
-                  <Select
-                    v-model="config.highNoiseDiffusionModel"
-                    size="md"
-                    placeholder="None"
-                    :options="[
-                      { label: 'None', value: '' },
-                      ...models.diffusion.map((m) => ({ label: m, value: m }))
-                    ]"
-                  />
-                </div>
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >Uncond Diffusion</label
-                  >
-                  <Select
-                    v-model="config.uncondDiffusionModel"
-                    size="md"
-                    placeholder="None"
-                    :options="[
-                      { label: 'None', value: '' },
-                      ...models.uncondDiffusion.map((m) => ({ label: m, value: m }))
-                    ]"
-                  />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >T5XXL</label
-                  >
+                  <label class="mb-1.5 block text-xs text-muted-foreground">T5 / UMT5</label>
                   <Select
                     v-model="config.t5xxlModel"
                     size="md"
@@ -1176,233 +1142,255 @@ onUnmounted(() => {
                     ]"
                   />
                 </div>
+                <div>
+                  <label class="mb-1.5 block text-xs text-muted-foreground">LLM</label>
+                  <Select
+                    v-model="config.llmModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.llm.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Core: VAE -->
+            <div>
+              <label class="mb-1.5 block text-xs text-muted-foreground">VAE</label>
+              <Select
+                v-model="config.vaeModel"
+                size="md"
+                placeholder="None"
+                :options="[
+                  { label: 'None', value: '' },
+                  ...models.vae.map((m) => ({ label: m, value: m }))
+                ]"
+              />
+              <p
+                v-if="
+                  config.vaeModel === 'ae.sft' &&
+                  !(config.diffusionModel || config.standardModel || '')
+                    .toLowerCase()
+                    .includes('flux')
+                "
+                class="mt-1.5 text-xs leading-relaxed text-yellow-600"
+              >
+                ae.sft is for Flux — may fail with SDXL / Pony.
+              </p>
+            </div>
+
+            <!-- Advanced slots — text toggle, no bordered card -->
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              @click="showAdvancedModels = !showAdvancedModels"
+            >
+              <component :is="showAdvancedModels ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
+              {{ showAdvancedModels ? 'Fewer components' : 'More components' }}
+            </button>
+
+            <div v-show="showAdvancedModels" class="space-y-3">
+              <template v-if="config.loadMode === 'split'">
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >High noise</label
+                    >
+                    <Select
+                      v-model="config.highNoiseDiffusionModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.diffusion.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >Uncond diffusion</label
+                    >
+                    <Select
+                      v-model="config.uncondDiffusionModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.uncondDiffusion.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                </div>
+                <div v-if="!config.videoMode" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >CLIP-L</label
+                    >
+                    <Select
+                      v-model="config.clipModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.clip.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >CLIP-G</label
+                    >
+                    <Select
+                      v-model="config.clipGModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.clipG.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                </div>
                 <div v-if="!config.videoMode">
-                  <label class="text-sm text-muted-foreground block mb-1">LLM</label>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >CLIP Vision</label
+                  >
                   <Select
-                    v-model="config.llmModel"
+                    v-model="config.clipVisionModel"
                     size="md"
                     placeholder="None"
                     :options="[
                       { label: 'None', value: '' },
-                      ...models.llm.map((m) => ({ label: m, value: m }))
+                      ...models.clipVision.map((m) => ({ label: m, value: m }))
                     ]"
                   />
                 </div>
-                <div v-else>
-                  <label class="text-sm text-muted-foreground block mb-1">LLM</label>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >LLM Vision</label
+                    >
+                    <Select
+                      v-model="config.llmVisionModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.llmVision.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                      >Emb. connectors</label
+                    >
+                    <Select
+                      v-model="config.embeddingsConnectorsModel"
+                      size="md"
+                      placeholder="None"
+                      :options="[
+                        { label: 'None', value: '' },
+                        ...models.embeddingsConnectors.map((m) => ({ label: m, value: m }))
+                      ]"
+                    />
+                  </div>
+                </div>
+              </template>
+
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >VAE tile</label
+                  >
+                  <input
+                    v-model.number="config.vaeTileSize"
+                    type="number"
+                    placeholder="0"
+                    class="aui-field w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >VAE format</label
+                  >
                   <Select
-                    v-model="config.llmModel"
+                    v-model="config.vaeFormat"
                     size="md"
-                    placeholder="None"
+                    placeholder="Auto"
                     :options="[
-                      { label: 'None', value: '' },
-                      ...models.llm.map((m) => ({ label: m, value: m }))
+                      { label: 'Auto', value: '' },
+                      { label: 'Flux', value: 'flux' },
+                      { label: 'SD3', value: 'sd3' },
+                      { label: 'Flux2', value: 'flux2' }
                     ]"
                   />
                 </div>
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >CLIP-L</label
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >Audio VAE</label
                   >
                   <Select
-                    v-model="config.clipModel"
+                    v-model="config.audioVaeModel"
                     size="md"
                     placeholder="None"
                     :options="[
                       { label: 'None', value: '' },
-                      ...models.clip.map((m) => ({ label: m, value: m }))
+                      ...models.audioVae.map((m) => ({ label: m, value: m }))
                     ]"
                   />
                 </div>
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >CLIP-G</label
+                <div v-if="!config.videoMode">
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >ControlNet</label
                   >
                   <Select
-                    v-model="config.clipGModel"
+                    v-model="config.controlNetModel"
                     size="md"
                     placeholder="None"
                     :options="[
                       { label: 'None', value: '' },
-                      ...models.clipG.map((m) => ({ label: m, value: m }))
+                      ...models.controlnet.map((m) => ({ label: m, value: m }))
                     ]"
                   />
                 </div>
               </div>
-
+              <div v-if="!config.videoMode" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >PhotoMaker</label
+                  >
+                  <Select
+                    v-model="config.photoMakerModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.photomaker.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >Upscale</label
+                  >
+                  <Select
+                    v-model="config.upscaleModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...models.upscale.map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
+              </div>
               <div v-if="!config.videoMode">
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >CLIP Vision</label
-                >
-                <Select
-                  v-model="config.clipVisionModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.clipVision.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >LLM Vision</label
-                  >
-                  <Select
-                    v-model="config.llmVisionModel"
-                    size="md"
-                    placeholder="None"
-                    :options="[
-                      { label: 'None', value: '' },
-                      ...models.llmVision.map((m) => ({ label: m, value: m }))
-                    ]"
-                  />
-                </div>
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >Emb. Connectors</label
-                  >
-                  <Select
-                    v-model="config.embeddingsConnectorsModel"
-                    size="md"
-                    placeholder="None"
-                    :options="[
-                      { label: 'None', value: '' },
-                      ...models.embeddingsConnectors.map((m) => ({ label: m, value: m }))
-                    ]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Common Model Options (both modes) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >VAE</label
-                >
-                <Select
-                  v-model="config.vaeModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.vae.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-                <p
-                  v-if="
-                    config.vaeModel === 'ae.sft' &&
-                    !(config.diffusionModel || config.standardModel || '')
-                      .toLowerCase()
-                      .includes('flux')
-                  "
-                  class="text-xs text-yellow-600 mt-1.5 leading-relaxed font-medium"
-                >
-                  ⚠️ ae.sft is for Flux. Might fail with SDXL/Pony.
-                </p>
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >VAE Tile</label
-                >
-                <input
-                  v-model.number="config.vaeTileSize"
-                  type="number"
-                  placeholder="0"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Audio VAE</label
-                >
-                <Select
-                  v-model="config.audioVaeModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.audioVae.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >VAE Format</label
-                >
-                <Select
-                  v-model="config.vaeFormat"
-                  size="md"
-                  placeholder="Auto"
-                  :options="[
-                    { label: 'Auto', value: '' },
-                    { label: 'Flux', value: 'flux' },
-                    { label: 'SD3', value: 'sd3' },
-                    { label: 'Flux2', value: 'flux2' }
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2" v-if="!config.videoMode">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >ControlNet</label
-                >
-                <Select
-                  v-model="config.controlNetModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.controlnet.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >PhotoMaker</label
-                >
-                <Select
-                  v-model="config.photoMakerModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.photomaker.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-            </div>
-
-            <div v-if="!config.videoMode" class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Upscale</label
-                >
-                <Select
-                  v-model="config.upscaleModel"
-                  size="md"
-                  placeholder="None"
-                  :options="[
-                    { label: 'None', value: '' },
-                    ...models.upscale.map((m) => ({ label: m, value: m }))
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >TAESD</label
-                >
+                <label class="mb-1.5 block text-xs font-medium text-muted-foreground">TAESD</label>
                 <Select
                   v-model="config.taesdModel"
                   size="md"
@@ -2045,25 +2033,32 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <!-- HARDWARE -->
-        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
-          <div class="py-1">
-            <span class="text-sm font-medium text-foreground">Hardware</span>
-          </div>
+        <!-- HARDWARE (flat, collapsed by default in Model setup) -->
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="space-y-2.5">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-2 text-left"
+            @click="expandedSections.hardware = !expandedSections.hardware"
+          >
+            <h3 class="text-sm font-medium text-foreground">Hardware</h3>
+            <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              {{ expandedSections.hardware ? 'Hide' : 'Show' }}
+              <component
+                :is="expandedSections.hardware ? ChevronUp : ChevronDown"
+                class="h-3.5 w-3.5"
+              />
+            </span>
+          </button>
 
-          <div v-show="expandedSections.hardware || props.focus === 'model'" class="space-y-5">
+          <div v-show="expandedSections.hardware" class="space-y-4">
             <button
               type="button"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:underline"
               @click="applyLowVram"
             >
               <Cpu class="h-3.5 w-3.5" />
               Apply Low VRAM profile
             </button>
-            <p class="text-[10px] leading-tight text-muted-foreground">
-              Enables CPU offload, layer streaming, max VRAM auto (−1 GiB headroom), and flash
-              attention. Matches the stable-diffusion.cpp performance guide.
-            </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <label
                 class="flex cursor-pointer items-center gap-2 text-sm"
@@ -2334,6 +2329,26 @@ onUnmounted(() => {
           </div>
         </section>
       </div>
+
+      <!-- Primary close action for setup modals (Finish, not X) -->
+      <footer
+        v-if="isSetupModal"
+        class="flex shrink-0 items-center justify-end gap-3 px-4 py-3 md:px-5"
+      >
+        <p
+          v-if="props.focus === 'model' && activeModelSummary.length"
+          class="mr-auto truncate text-xs text-muted-foreground"
+        >
+          {{ activeModelSummary[0]?.split(/[\\/]/).pop() }}
+        </p>
+        <button
+          type="button"
+          class="inline-flex h-9 min-w-[7rem] items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          @click="finishSetup"
+        >
+          Finish
+        </button>
+      </footer>
     </template>
   </aside>
 </template>
@@ -2354,6 +2369,17 @@ onUnmounted(() => {
 }
 
 .config-panel__content > section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Flat setup modal: light section rhythm, no nested panels */
+.config-panel__content--flat > section {
+  border-top-color: color-mix(in oklch, var(--border) 45%, transparent);
+  padding-top: 1.125rem;
+}
+
+.config-panel__content--flat > section:first-child {
   border-top: 0;
   padding-top: 0;
 }

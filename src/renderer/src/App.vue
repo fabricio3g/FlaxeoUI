@@ -141,7 +141,8 @@ const routeMap: Record<string, string> = {
   edit: 'Edit',
   video: 'Video',
   gallery: 'Gallery',
-  quantization: 'Quantization'
+  quantization: 'Quantization',
+  help: 'Help'
 }
 
 function navigateToTab(tab: string): void {
