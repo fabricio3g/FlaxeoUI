@@ -36,12 +36,12 @@ function ensureDirectories(paths: Paths): void {
   fs.mkdirSync(paths.tempDir, { recursive: true })
 }
 
-function loadStoragePaths(resourcesPath: string): ResolvedStoragePaths {
-  const modelsRootDir = path.join(resourcesPath, 'models')
+function loadStoragePaths(dataPath: string): ResolvedStoragePaths {
+  const modelsRootDir = path.join(dataPath, 'models')
   const defaults: ResolvedStoragePaths = {
     modelsRootDir,
-    outputDir: path.join(resourcesPath, 'output'),
-    tempDir: path.join(resourcesPath, 'temp'),
+    outputDir: path.join(dataPath, 'output'),
+    tempDir: path.join(dataPath, 'temp'),
     modelDirs: Object.fromEntries(
       MODEL_DIRECTORY_KEYS.map((key) => [key, path.join(modelsRootDir, key)])
     ) as ResolvedStoragePaths['modelDirs']
@@ -90,21 +90,24 @@ export function createContext(): AppContext {
   const port = parseInt(getArg(args, '--port', '3000'), 10)
   const host = getArg(args, '--host', '0.0.0.0')
   const resourcesPath = process.env.FLAXEO_RESOURCES_PATH || process.cwd()
-  const storage = loadStoragePaths(resourcesPath)
+  // Writable root (Linux AppImage: userData/data). Falls back to resources/cwd.
+  const dataPath = process.env.FLAXEO_DATA_PATH || resourcesPath
+  const storage = loadStoragePaths(dataPath)
   const paths: Paths = {
-    root: resourcesPath,
-    backendDir: path.join(resourcesPath, 'backend'),
-    customDir: path.join(resourcesPath, 'backend', 'custom'),
-    releasesDir: path.join(resourcesPath, 'backend', 'releases'),
+    root: dataPath,
+    backendDir: path.join(dataPath, 'backend'),
+    customDir: path.join(dataPath, 'backend', 'custom'),
+    releasesDir: path.join(dataPath, 'backend', 'releases'),
     modelsDir: storage.modelsRootDir,
     modelDirs: storage.modelDirs,
     outputDir: storage.outputDir,
     tempDir: storage.tempDir,
-    configFile: path.join(resourcesPath, 'backend-config.json')
+    configFile: path.join(dataPath, 'backend-config.json')
   }
 
   console.log('[Server] Mode:', process.env.FLAXEO_PACKAGED === '1' ? 'PACKAGED' : 'DEVELOPMENT')
   console.log('[Server] Resources path:', resourcesPath)
+  console.log('[Server] Data path:', dataPath)
 
   ensureDirectories(paths)
 

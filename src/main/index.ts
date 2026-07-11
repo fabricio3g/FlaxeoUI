@@ -111,25 +111,33 @@ function writeAppState(state: AppState): void {
 }
 
 /**
- * getResourcePath() - Gets the correct path for resources in dev/production
+ * Writable data root for models / output / temp / backend downloads.
+ * Linux AppImage mounts resources read-only — use userData there.
+ * Windows/macOS packaged: keep process.resourcesPath (existing installs).
+ * Dev: repo root (same as before).
  */
-function getResourcePath(relativePath: string): string {
+function getWritableDataRoot(): string {
   if (is.dev) {
-    return join(__dirname, '../..', relativePath)
+    return join(__dirname, '../..')
   }
-  return join(process.resourcesPath, relativePath)
+  // AppImage / many Linux packages: resourcesPath is not writable
+  if (process.platform === 'linux') {
+    return join(app.getPath('userData'), 'data')
+  }
+  return process.resourcesPath
 }
 
 function resolveStoragePaths(overrides: StorageOverrides): ResolvedStoragePaths {
-  const modelsRootDir = getResourcePath('models')
+  const dataRoot = getWritableDataRoot()
+  const modelsRootDir = join(dataRoot, 'models')
   const modelDirs = Object.fromEntries(
     MODEL_DIRECTORY_KEYS.map((key) => [key, overrides.modelDirs?.[key] || join(modelsRootDir, key)])
   ) as ResolvedStoragePaths['modelDirs']
 
   return {
     modelsRootDir,
-    outputDir: overrides.outputDir || getResourcePath('output'),
-    tempDir: overrides.tempDir || getResourcePath('temp'),
+    outputDir: overrides.outputDir || join(dataRoot, 'output'),
+    tempDir: overrides.tempDir || join(dataRoot, 'temp'),
     modelDirs
   }
 }
@@ -216,11 +224,14 @@ function startServer(): Promise<number> {
     activeStoragePaths = storagePaths
 
     // Environment variables for the server process
+    const dataRoot = getWritableDataRoot()
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       FLAXEO_PACKAGED: is.dev ? '0' : '1',
+      // Read-only bundle (icons, empty scaffold); writable data may differ on Linux
       FLAXEO_RESOURCES_PATH: is.dev ? join(__dirname, '../..') : process.resourcesPath,
+      FLAXEO_DATA_PATH: dataRoot,
       FLAXEO_STORAGE_PATHS: JSON.stringify(storagePaths)
     }
 
@@ -350,8 +361,27 @@ ipcMain.on('window-maximize', () => {
 ipcMain.on('window-close', () => mainWindow?.close())
 
 function openDirectory(directory: string): void {
-  fs.mkdirSync(directory, { recursive: true })
-  void shell.openPath(directory)
+  try {
+    fs.mkdirSync(directory, { recursive: true })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    console.error('[Main] Failed to ensure directory:', directory, e)
+    dialog.showErrorBox(
+      'Could not open folder',
+      `Unable to create or access:\n${directory}\n\n${detail}\n\nSet a writable path under Settings → Storage, then try again.`
+    )
+    return
+  }
+
+  void shell.openPath(directory).then((errorMessage) => {
+    if (errorMessage) {
+      console.error('[Main] shell.openPath failed:', errorMessage)
+      dialog.showErrorBox(
+        'Could not open folder',
+        `Path:\n${directory}\n\n${errorMessage}`
+      )
+    }
+  })
 }
 
 /**
@@ -369,8 +399,8 @@ ipcMain.on('open-models-folder', () => {
 })
 
 ipcMain.on('open-custom-folder', () => {
-  const customDir = getResourcePath('backend/custom')
-  openDirectory(customDir)
+  // Writable backend/custom (Linux AppImage cannot write into bundled resources)
+  openDirectory(join(getWritableDataRoot(), 'backend', 'custom'))
 })
 
 /**
@@ -404,7 +434,17 @@ ipcMain.handle('choose-storage-directory', async (_event, id: string) => {
   const directory = result.filePaths[0]
   if (result.canceled || !directory) return null
 
-  fs.mkdirSync(directory, { recursive: true })
+  try {
+    fs.mkdirSync(directory, { recursive: true })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    console.error('[Main] Failed to create storage directory:', directory, e)
+    dialog.showErrorBox(
+      'Could not use folder',
+      `Unable to create or access:\n${directory}\n\n${detail}`
+    )
+    return null
+  }
   return updateStorageOverride(id, directory)
 })
 
