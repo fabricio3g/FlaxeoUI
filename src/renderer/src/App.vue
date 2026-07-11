@@ -56,6 +56,14 @@ const stripDismissed = ref(
   typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STRIP_DISMISS_KEY) === '1'
 )
 const showQueuePanel = ref(false)
+const queueBtnRef = ref<HTMLElement | null>(null)
+const queueAnchor = ref<{
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+} | null>(null)
 const { pendingCount, current: currentJob } = useJobQueue()
 
 const showOnboardingStrip = computed(
@@ -66,6 +74,28 @@ const queueBadge = computed(() => {
   const n = pendingCount.value + (currentJob.value ? 1 : 0)
   return n
 })
+
+function updateQueueAnchor(): void {
+  const el = queueBtnRef.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  queueAnchor.value = {
+    top: r.top,
+    left: r.left,
+    right: r.right,
+    bottom: r.bottom,
+    width: r.width
+  }
+}
+
+function toggleQueuePanel(): void {
+  if (!showQueuePanel.value) {
+    updateQueueAnchor()
+    showQueuePanel.value = true
+  } else {
+    showQueuePanel.value = false
+  }
+}
 
 function toggleSidebar(): void {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -233,6 +263,7 @@ onMounted(async () => {
   await fetchModels()
   fetchCapabilities().catch(() => undefined)
   window.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('resize', updateQueueAnchor)
   unsubscribeOpenLogs = onOpenLogs(() => {
     showFloatingLogs.value = true
   })
@@ -240,6 +271,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('resize', updateQueueAnchor)
   unsubscribeOpenLogs?.()
   unsubscribeOpenLogs = null
 })
@@ -310,12 +342,13 @@ onUnmounted(() => {
               @update:model-value="selectModel"
             />
             <button
+              ref="queueBtnRef"
               type="button"
               class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
               :class="showQueuePanel || queueBadge ? 'bg-accent/80 text-foreground' : ''"
               :aria-expanded="showQueuePanel"
               title="Job queue"
-              @click="showQueuePanel = !showQueuePanel"
+              @click="toggleQueuePanel"
             >
               <span>Queue</span>
               <span
@@ -475,6 +508,10 @@ onUnmounted(() => {
     <FloatingLogPanel v-model="showFloatingLogs" />
 
     <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="skipForNow" />
-    <QueuePanel :open="showQueuePanel" @close="showQueuePanel = false" />
+    <QueuePanel
+      :open="showQueuePanel"
+      :anchor="queueAnchor || undefined"
+      @close="showQueuePanel = false"
+    />
   </div>
 </template>
