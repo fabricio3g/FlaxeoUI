@@ -59,6 +59,12 @@ All notable changes to FlaxeoUI are documented in this file.
 - Gallery media filters: All / Images / Videos / Upscales
 - Progress ETA prefers CLI it/s (better for long video runs); video status shows step/ETA
 
+### UI polish + batch/seed (T2I)
+- Fixed sticky **icon click border** (`.aui-icon-button` focus/ring; motion icons no longer `animateOnTap`)
+- Refreshed `sd-cli-help.txt` from live **master-769** binary
+- Batch jobs use modern CLI `-o name_%03d.png` and collect multi-file outputs
+- Text2Image: **batch count** (1–16), multi-result **grid view**, seed **lock / dice / copy**
+
 ## 0.3.x
 
 Earlier Electron + Vue studio with Text2Image, Edit, Video, Gallery, Quantization, Model Hub, and dual CLI/server backend mode.
