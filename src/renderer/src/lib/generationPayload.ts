@@ -176,8 +176,6 @@ export function appendPayloadToFormData(formData: FormData, payload: GenerationP
 /**
  * True if any generation surface is busy (client-side).
  */
-export function anySurfaceBusy(
-  surfaces: Record<string, { value: boolean }>
-): boolean {
+export function anySurfaceBusy(surfaces: Record<string, { value: boolean }>): boolean {
   return Object.values(surfaces).some((s) => s.value)
 }

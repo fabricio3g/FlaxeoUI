@@ -39,7 +39,13 @@ export function isHubFileInstalled(file: HubFile, models: ModelCategories): bool
   const target = file.filename.toLowerCase()
   return list.some((entry) => {
     const name = basename(entry).toLowerCase()
-    return name === target || entry.replace(/\\/g, '/').toLowerCase().endsWith('/' + target)
+    return (
+      name === target ||
+      entry
+        .replace(/\\/g, '/')
+        .toLowerCase()
+        .endsWith('/' + target)
+    )
   })
 }
 

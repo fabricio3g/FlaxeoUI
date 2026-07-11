@@ -2,10 +2,10 @@
 
 ## Image (Text2Image)
 
-1. Choose a model in the command strip or Model panel.  
-2. Write a **prompt** (and optional negative).  
-3. Set size, steps, CFG, sampler as needed (Simple vs Advanced density in config).  
-4. Press **Generate**.  
+1. Choose a model in the command strip or Model panel.
+2. Write a **prompt** (and optional negative).
+3. Set size, steps, CFG, sampler as needed (Simple vs Advanced density in config).
+4. Press **Generate**.
 
 **Seeds:** lock to reproduce; dice for a new random; copy to clipboard.  
 **Batch:** increase batch count for multiple images in one job (uses CLI multi-output naming).

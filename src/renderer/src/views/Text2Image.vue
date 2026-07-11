@@ -22,7 +22,11 @@ import {
   Square
 } from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
-import { isAnyGenerationBusy, toastGenerationError, useGeneration } from '@/composables/useGeneration'
+import {
+  isAnyGenerationBusy,
+  toastGenerationError,
+  useGeneration
+} from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { useModels } from '@/composables/useModels'
@@ -30,9 +34,7 @@ import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import RecipeLibrary from '@/components/RecipeLibrary.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import AdvancedToolPanel, {
-  type AdvancedToolTab
-} from '@/components/AdvancedToolPanel.vue'
+import AdvancedToolPanel, { type AdvancedToolTab } from '@/components/AdvancedToolPanel.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
@@ -551,25 +553,17 @@ async function handleGenerate(opts?: {
   if (!prompt.value.trim()) return
 
   const model =
-    config.value.loadMode === 'standard'
-      ? config.value.standardModel
-      : config.value.diffusionModel
+    config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
   if (!model) {
     toast.error('No model selected — open Model setup or the Model Hub')
     return
   }
 
-  const batchCount = clampBatchCount(
-    opts?.batchCountOverride ?? config.value.batchCount
-  )
-  if (
-    opts?.batchCountOverride == null &&
-    batchCount !== config.value.batchCount
-  ) {
+  const batchCount = clampBatchCount(opts?.batchCountOverride ?? config.value.batchCount)
+  if (opts?.batchCountOverride == null && batchCount !== config.value.batchCount) {
     configStore.updateConfig({ batchCount })
   }
-  const seedForJob =
-    opts?.seedOverride != null ? opts.seedOverride : resolveSeedForGenerate()
+  const seedForJob = opts?.seedOverride != null ? opts.seedOverride : resolveSeedForGenerate()
   const snapshot = pickConfigSnapshot({
     ...config.value,
     batchCount,
@@ -648,9 +642,7 @@ async function handleGenerate(opts?: {
   error.value = null
 
   const jobLabel =
-    opts?.seedOverride != null
-      ? `${promptSnap.slice(0, 32)} · s${seedForJob}`
-      : promptSnap
+    opts?.seedOverride != null ? `${promptSnap.slice(0, 32)} · s${seedForJob}` : promptSnap
 
   enqueue({
     surface: 'text2image',
@@ -670,12 +662,11 @@ async function handleGenerate(opts?: {
       if (config.value.livePreviewMethod) startPreviewPolling()
     },
     onSuccess: (result) => {
-      const names =
-        result.filenames?.length
-          ? result.filenames
-          : result.filename
-            ? [result.filename]
-            : []
+      const names = result.filenames?.length
+        ? result.filenames
+        : result.filename
+          ? [result.filename]
+          : []
       if (names.length > 0) {
         // Swap to final output first, then stop polling without wiping the canvas
         const blobUrl = previewObjectUrl.value
@@ -1056,17 +1047,10 @@ onActivated(() => {
         >
           <!-- Multi-result batch grid (2+ images) -->
           <div
-            v-if="
-              !isGenerating &&
-              galleryImages.length > 1 &&
-              lastBatchSize > 1 &&
-              showBatchGrid
-            "
+            v-if="!isGenerating && galleryImages.length > 1 && lastBatchSize > 1 && showBatchGrid"
             class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both grid h-full w-full gap-2 overflow-y-auto p-2 duration-200 md:p-4"
             :class="
-              lastBatchSize >= 4
-                ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2'
-                : 'grid-cols-2'
+              lastBatchSize >= 4 ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2' : 'grid-cols-2'
             "
           >
             <button
@@ -1205,7 +1189,9 @@ onActivated(() => {
                 :key="img"
                 @click="selectGalleryImage(img)"
                 class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl opacity-70 transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
-                :class="previewImage === getOutputUrl(img) ? 'opacity-100 ring-1 ring-foreground/30' : ''"
+                :class="
+                  previewImage === getOutputUrl(img) ? 'opacity-100 ring-1 ring-foreground/30' : ''
+                "
                 :title="img"
                 :aria-label="`Select generation ${img}`"
               >
@@ -1334,7 +1320,12 @@ onActivated(() => {
               v-if="!activePrompt || activePrompt.trim().length === 0"
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
-            >{{ promptMode === 'positive' ? 'Describe the image you want to generate...' : 'Describe what should stay out of the image...' }}</span>
+              >{{
+                promptMode === 'positive'
+                  ? 'Describe the image you want to generate...'
+                  : 'Describe what should stay out of the image...'
+              }}</span
+            >
             <span
               v-if="promptMode === 'positive' && config.embeddings.length > 0"
               class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
@@ -1638,7 +1629,6 @@ onActivated(() => {
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>

@@ -26,14 +26,8 @@ describe('recipes', () => {
   })
 
   it('rejects missing name or surface', () => {
-    assert.equal(
-      normalizeRecipe({ surface: 'text2image', configSnapshot: {} }),
-      null
-    )
-    assert.equal(
-      normalizeRecipe({ name: 'x', surface: 'nope', configSnapshot: {} }),
-      null
-    )
+    assert.equal(normalizeRecipe({ surface: 'text2image', configSnapshot: {} }), null)
+    assert.equal(normalizeRecipe({ name: 'x', surface: 'nope', configSnapshot: {} }), null)
     assert.equal(normalizeRecipe({ name: 'x', surface: 'text2image' }), null)
   })
 

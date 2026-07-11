@@ -19,11 +19,7 @@ import {
   History
 } from '@/lib/icons'
 import { requestOpenHistory } from '@/lib/appEvents'
-import {
-  buildExportFilename,
-  copyImageUrlToClipboard,
-  downloadUrlAs
-} from '@/lib/mediaExport'
+import { buildExportFilename, copyImageUrlToClipboard, downloadUrlAs } from '@/lib/mediaExport'
 import { requestConfirm } from '@/composables/useConfirm'
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
@@ -96,7 +92,10 @@ const paginatedImages = computed(() => {
 })
 
 const upscaleModelOptions = computed(() => [
-  { label: models.value.upscale.length ? 'Select upscale model…' : 'No models in models/upscale', value: '' },
+  {
+    label: models.value.upscale.length ? 'Select upscale model…' : 'No models in models/upscale',
+    value: ''
+  },
   ...models.value.upscale.map((model) => ({
     label: model.split(/[\\/]/).pop() || model,
     value: model

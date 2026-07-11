@@ -171,7 +171,9 @@ onMounted(() => {
   <div
     class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
   >
-    <div class="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col overflow-y-auto px-4 py-6 md:px-6 md:py-8">
+    <div
+      class="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col overflow-y-auto px-4 py-6 md:px-6 md:py-8"
+    >
       <!-- Header -->
       <header class="mb-8">
         <div class="flex items-center gap-2.5">
@@ -194,10 +196,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <section
-        v-else-if="conversionResult"
-        class="mb-8 flex items-start gap-3"
-      >
+      <section v-else-if="conversionResult" class="mb-8 flex items-start gap-3">
         <CheckCircle2
           v-if="conversionResult.success"
           class="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
@@ -213,7 +212,10 @@ onMounted(() => {
           >
             {{ conversionResult.outputPath }}
           </p>
-          <p v-else-if="conversionResult.error" class="mt-1 text-sm leading-5 text-muted-foreground">
+          <p
+            v-else-if="conversionResult.error"
+            class="mt-1 text-sm leading-5 text-muted-foreground"
+          >
             {{ conversionResult.error }}
           </p>
           <button
@@ -293,9 +295,7 @@ onMounted(() => {
                   :key="row.format"
                   class="border-t border-border/40"
                   :class="
-                    row.format.includes(targetFormat)
-                      ? 'text-foreground'
-                      : 'text-muted-foreground'
+                    row.format.includes(targetFormat) ? 'text-foreground' : 'text-muted-foreground'
                   "
                 >
                   <td class="py-2 pr-3 font-mono text-[13px]">{{ row.format }}</td>

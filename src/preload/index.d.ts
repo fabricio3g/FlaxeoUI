@@ -21,7 +21,13 @@ interface CustomElectronAPI {
   openStorageDirectory: (id: StorageDirectoryId) => Promise<void>
 
   // Settings
-  getInitState: () => Promise<{ firstRun: boolean; setupComplete: boolean; skipped: boolean; port: number; isDev: boolean }>
+  getInitState: () => Promise<{
+    firstRun: boolean
+    setupComplete: boolean
+    skipped: boolean
+    port: number
+    isDev: boolean
+  }>
   setFirstRunComplete: () => Promise<boolean>
   reopenSetup: () => Promise<boolean>
   setSetupSkipped: () => Promise<boolean>

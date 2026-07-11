@@ -1,4 +1,4 @@
-# FlaxeoUI smoke checklist (release)
+# Flaxeo Image smoke checklist (release)
 
 Run before tagging a release. Goal: cold install feels trustworthy.
 

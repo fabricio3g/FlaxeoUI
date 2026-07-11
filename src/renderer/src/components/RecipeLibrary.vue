@@ -2,14 +2,7 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import {
-  Bookmark,
-  Download,
-  Search,
-  Trash2,
-  Upload,
-  Info
-} from '@/lib/icons'
+import { Bookmark, Download, Search, Trash2, Upload, Info } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useRecipeStore } from '@/stores/recipes'
 import { useConfigStore } from '@/stores/config'
@@ -43,7 +36,9 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const list = allRecipes.value.filter((r) => r.surface === props.surface || r.surface === 'text2image')
+  const list = allRecipes.value.filter(
+    (r) => r.surface === props.surface || r.surface === 'text2image'
+  )
   if (!q) return list
   return list.filter(
     (r) =>
@@ -166,11 +161,7 @@ function preview(text?: string, max = 64): string {
         <span v-if="!compact">Recipes</span>
       </button>
     </PopoverTrigger>
-    <PopoverContent
-      class="w-[min(32rem,calc(100vw-1.5rem))] p-0"
-      align="start"
-      :side-offset="6"
-    >
+    <PopoverContent class="w-[min(32rem,calc(100vw-1.5rem))] p-0" align="start" :side-offset="6">
       <div class="border-b border-border/70 px-4 py-3">
         <div class="flex items-center justify-between gap-2">
           <p class="text-base font-semibold text-foreground">Recipes</p>
@@ -299,10 +290,7 @@ function preview(text?: string, max = 64): string {
           </li>
         </ul>
 
-        <p
-          v-if="!filtered.length"
-          class="px-2 py-8 text-center text-sm text-muted-foreground"
-        >
+        <p v-if="!filtered.length" class="px-2 py-8 text-center text-sm text-muted-foreground">
           No recipes match.
         </p>
       </div>

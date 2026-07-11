@@ -1,5 +1,5 @@
 appId: com.flaxeo.ui
-productName: FlaxeoUI
+productName: Flaxeo Image
 directories:
   buildResources: build
 files:
@@ -35,7 +35,7 @@ extraResources:
 asarUnpack:
   - resources/**
 win:
-  executableName: FlaxeoUI-v0.3.2-debug
+  executableName: FlaxeoImage
   icon: resources/icon.png
 nsis:
   artifactName: ${name}-${version}-setup.${ext}

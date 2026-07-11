@@ -81,11 +81,7 @@ const { entries: historyEntries } = useGenerationHistory()
 
 /** Optional tip bar — never after skip, permanent dismiss, only while checklist incomplete */
 const showOnboardingStrip = computed(
-  () =>
-    !isSetupNeeded.value &&
-    !skipped.value &&
-    !checklistComplete.value &&
-    !stripDismissed.value
+  () => !isSetupNeeded.value && !skipped.value && !checklistComplete.value && !stripDismissed.value
 )
 
 const queueBadge = computed(() => {
@@ -474,7 +470,11 @@ onUnmounted(() => {
             <button
               type="button"
               class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              :class="activeConfigPanel === 'embedding' || config.embeddings.length ? 'text-foreground' : ''"
+              :class="
+                activeConfigPanel === 'embedding' || config.embeddings.length
+                  ? 'text-foreground'
+                  : ''
+              "
               :aria-expanded="activeConfigPanel === 'embedding'"
               @click="openConfigPanel('embedding')"
             >
@@ -518,62 +518,62 @@ onUnmounted(() => {
             </div>
           </div>
 
-        <Teleport to="body">
-          <Transition name="modal">
-            <div
-              v-if="configPanelVisible"
-              class="aui-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-2 backdrop-blur-lg duration-150 dark:bg-black/55 md:p-4"
-              @click.self="closeConfigPanel"
-            >
-              <Transition name="modal-surface" appear>
-                <div
-                  v-if="configPanelVisible"
-                  class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
-                  @click.stop
-                >
-                  <ConfigPanel
-                    :collapsed="false"
-                    :focus="activeConfigPanel || 'generation'"
-                    @close="closeConfigPanel"
-                    @expand="activeConfigPanel = 'generation'"
-                  />
-                </div>
-              </Transition>
-            </div>
-          </Transition>
-        </Teleport>
-
-        <Teleport to="body">
-          <Transition name="modal">
-            <div
-              v-if="showSettings"
-              class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
-              @click.self="closeSettings"
-            >
-              <Transition name="modal-surface" appear>
-                <div
-                  v-if="showSettings"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="settings-title"
-                  class="aui-dialog-surface relative flex h-[min(82vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
-                  @click.stop
-                >
-                  <button
-                    type="button"
-                    class="aui-icon-button absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                    aria-label="Close settings"
-                    autofocus
-                    @click="closeSettings"
+          <Teleport to="body">
+            <Transition name="modal">
+              <div
+                v-if="configPanelVisible"
+                class="aui-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-2 backdrop-blur-lg duration-150 dark:bg-black/55 md:p-4"
+                @click.self="closeConfigPanel"
+              >
+                <Transition name="modal-surface" appear>
+                  <div
+                    v-if="configPanelVisible"
+                    class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
+                    @click.stop
                   >
-                    <X class="size-4" />
-                  </button>
-                  <Settings />
-                </div>
-              </Transition>
-            </div>
-          </Transition>
-        </Teleport>
+                    <ConfigPanel
+                      :collapsed="false"
+                      :focus="activeConfigPanel || 'generation'"
+                      @close="closeConfigPanel"
+                      @expand="activeConfigPanel = 'generation'"
+                    />
+                  </div>
+                </Transition>
+              </div>
+            </Transition>
+          </Teleport>
+
+          <Teleport to="body">
+            <Transition name="modal">
+              <div
+                v-if="showSettings"
+                class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
+                @click.self="closeSettings"
+              >
+                <Transition name="modal-surface" appear>
+                  <div
+                    v-if="showSettings"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="settings-title"
+                    class="aui-dialog-surface relative flex h-[min(82vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
+                    @click.stop
+                  >
+                    <button
+                      type="button"
+                      class="aui-icon-button absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                      aria-label="Close settings"
+                      autofocus
+                      @click="closeSettings"
+                    >
+                      <X class="size-4" />
+                    </button>
+                    <Settings />
+                  </div>
+                </Transition>
+              </div>
+            </Transition>
+          </Teleport>
 
           <main
             class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"

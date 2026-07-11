@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" fill="none" role="img" aria-label="Flaxeo Image" version="1.1">
-  <rect x="16" y="16" width="56" height="56" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-  <path d="M 44 70 L 44 26 Q 44 18 52 18 L 62 18" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M 34 42 L 62 42" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Flaxeo Image">
+  <!-- Full-bleed black — no rounded white tile, no corner padding -->
+  <rect width="512" height="512" fill="#000000"/>
+  <!-- Abstract modular glyph (deconstructed F / signal bars) -->
+  <g fill="#ffffff">
+    <!-- Vertical spine -->
+    <rect x="128" y="112" width="56" height="288"/>
+    <!-- Top bar -->
+    <rect x="128" y="112" width="200" height="48"/>
+    <!-- Top pixel -->
+    <rect x="344" y="112" width="40" height="40"/>
+    <!-- Mid bar (offset right) -->
+    <rect x="200" y="204" width="184" height="40"/>
+    <!-- Mid pixel -->
+    <rect x="200" y="268" width="36" height="36"/>
+    <!-- Lower bar with short leg -->
+    <rect x="200" y="268" width="40" height="88"/>
+    <rect x="200" y="316" width="136" height="40"/>
+  </g>
 </svg>

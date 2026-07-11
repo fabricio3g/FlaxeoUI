@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://flaxeo.local/schemas/recipe.schema.json",
-  "title": "FlaxeoUI Recipe",
+  "title": "Flaxeo Image Recipe",
   "description": "Shareable full-settings template (prompts + config snapshot). Data only — no executable code.",
   "type": "object",
   "required": ["version", "name", "surface", "configSnapshot"],

@@ -93,7 +93,10 @@ export async function copyImageUrlToClipboard(url: string): Promise<void> {
       if (ctx) {
         ctx.drawImage(bitmap, 0, 0)
         blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG encode failed'))), 'image/png')
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error('PNG encode failed'))),
+            'image/png'
+          )
         })
       }
       bitmap.close?.()

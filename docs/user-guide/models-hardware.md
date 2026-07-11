@@ -11,14 +11,14 @@ Packs show **on-disk** status when required files are installed.
 
 ## Profiles
 
-- **Low VRAM** — offload, stream layers, max VRAM auto, flash attention where available.  
-- **Cache presets** — EasyCache, UCache, and other sd.cpp caching recipes (Advanced).  
+- **Low VRAM** — offload, stream layers, max VRAM auto, flash attention where available.
+- **Cache presets** — EasyCache, UCache, and other sd.cpp caching recipes (Advanced).
 
 ## CLI vs Server
 
-| Mode | Best for |
-|------|----------|
-| **CLI** | Default. All modes (edit, video, batch, uploads). |
+| Mode       | Best for                                                                     |
+| ---------- | ---------------------------------------------------------------------------- |
+| **CLI**    | Default. All modes (edit, video, batch, uploads).                            |
 | **Server** | Warm multi-gen for simple T2I. Advanced jobs fall back to CLI with a notice. |
 
 ## Capabilities

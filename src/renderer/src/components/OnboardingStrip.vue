@@ -25,7 +25,9 @@ function onItemClick(id: string): void {
     role="region"
     aria-label="Getting started"
   >
-    <p class="hidden text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:block">
+    <p
+      class="hidden text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:block"
+    >
       Getting started
     </p>
     <ul class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">

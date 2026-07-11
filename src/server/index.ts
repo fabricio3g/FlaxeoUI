@@ -24,8 +24,14 @@ app.use(cors())
 app.use(express.json())
 app.use('/output', express.static(ctx.paths.outputDir))
 
-app.use('/fontawesome', express.static(path.join(ctx.paths.root, 'node_modules', '@fortawesome', 'fontawesome-free')))
-app.use('/tailwindcss', express.static(path.join(ctx.paths.root, 'node_modules', 'tailwindcss', 'dist')))
+app.use(
+  '/fontawesome',
+  express.static(path.join(ctx.paths.root, 'node_modules', '@fortawesome', 'fontawesome-free'))
+)
+app.use(
+  '/tailwindcss',
+  express.static(path.join(ctx.paths.root, 'node_modules', 'tailwindcss', 'dist'))
+)
 
 let publicDir = path.join(ctx.paths.root, 'out', 'renderer')
 if (!fs.existsSync(publicDir)) publicDir = path.join(ctx.paths.root, 'public')
@@ -34,7 +40,11 @@ if (fs.existsSync(publicDir)) {
   console.log('[Server] Web UI enabled from:', publicDir)
 } else {
   app.get('/', (_req, res) => {
-    res.json({ message: 'FlaxeoUI API Server', status: 'running', endpoints: { status: '/api/status', models: '/api/models', gallery: '/api/gallery' } })
+    res.json({
+      message: 'Flaxeo Image API',
+      status: 'running',
+      endpoints: { status: '/api/status', models: '/api/models', gallery: '/api/gallery' }
+    })
   })
 }
 
@@ -50,7 +60,8 @@ const keepAlive = setInterval(() => undefined, 1000)
 findAvailablePort(ctx.port)
   .then((port) => {
     ctx.state.server = app.listen(port, ctx.host, async () => {
-      ctx.state.networkStatus.local.enabled = ctx.state.networkStatus.local.enabled || ctx.host === '0.0.0.0'
+      ctx.state.networkStatus.local.enabled =
+        ctx.state.networkStatus.local.enabled || ctx.host === '0.0.0.0'
       updateLocalNetworkUrl(ctx)
       const localURL = `http://${getLocalIP()}:${port}`
       const localhostURL = `http://${ctx.host === '0.0.0.0' ? 'localhost' : ctx.host}:${port}`
@@ -61,7 +72,10 @@ findAvailablePort(ctx.port)
       if (ctx.hasFlag('--ngrok')) {
         const token = process.env.NGROK_AUTHTOKEN
         if (token) await startNgrok(ctx, port, token)
-        else console.warn('[Ngrok] No authtoken found in environment (NGROK_AUTHTOKEN). Tunnel not started.')
+        else
+          console.warn(
+            '[Ngrok] No authtoken found in environment (NGROK_AUTHTOKEN). Tunnel not started.'
+          )
       }
       if (ctx.hasFlag('--cloudflare')) await startCloudflare(ctx, port)
     })

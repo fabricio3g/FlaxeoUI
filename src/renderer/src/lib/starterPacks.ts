@@ -19,7 +19,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'sdxl',
     name: 'SDXL',
-    description: 'Classic checkpoint workflow. Downloads the SDXL base checkpoint plus recommended VAE.',
+    description:
+      'Classic checkpoint workflow. Downloads the SDXL base checkpoint plus recommended VAE.',
     presetId: 'builtin-sdxl',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md',
     files: [
@@ -116,7 +117,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'flux2',
     name: 'FLUX.2',
-    description: 'FLUX.2 uses an LLM text encoder and Flux2 VAE format. Includes a Dev GGUF diffusion option and Flux2 VAE.',
+    description:
+      'FLUX.2 uses an LLM text encoder and Flux2 VAE format. Includes a Dev GGUF diffusion option and Flux2 VAE.',
     presetId: 'builtin-flux2-dev',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux2.md',
     files: [
@@ -146,7 +148,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'qwen-image',
     name: 'Qwen Image',
-    description: 'Qwen Image split workflow with Qwen VAE, Qwen VL LLM, flow shift 3, and flash attention.',
+    description:
+      'Qwen Image split workflow with Qwen VAE, Qwen VL LLM, flow shift 3, and flash attention.',
     presetId: 'builtin-qwen-image',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/qwen_image.md',
     files: [
@@ -176,7 +179,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'wan21',
     name: 'Wan2.1 Video',
-    description: 'Wan video preset with UMT5, Wan VAE, flow shift, and optional CLIP Vision for I2V/FLF2V.',
+    description:
+      'Wan video preset with UMT5, Wan VAE, flow shift, and optional CLIP Vision for I2V/FLF2V.',
     presetId: 'builtin-wan21',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md',
     files: [
@@ -213,7 +217,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'wan22',
     name: 'Wan2.2 Video',
-    description: 'Wan2.2 preset supports high-noise + low-noise diffusion pairs and Wan VAE variants.',
+    description:
+      'Wan2.2 preset supports high-noise + low-noise diffusion pairs and Wan VAE variants.',
     presetId: 'builtin-wan22-a14b',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md',
     files: [
@@ -250,7 +255,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'ltx23',
     name: 'LTX-2.3 Video',
-    description: 'LTX-2.3 video preset with LLM, embeddings connectors, audio VAE, and temporal tiling args.',
+    description:
+      'LTX-2.3 video preset with LLM, embeddings connectors, audio VAE, and temporal tiling args.',
     presetId: 'builtin-ltx23',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/ltx2.md',
     files: [
@@ -525,7 +531,8 @@ export const hubModels: HubModel[] = [
   {
     id: 'ideogram4',
     name: 'Ideogram4',
-    description: 'Ideogram4 needs a main diffusion model, uncond diffusion model, Qwen3-VL LLM, and Flux2 VAE.',
+    description:
+      'Ideogram4 needs a main diffusion model, uncond diffusion model, Qwen3-VL LLM, and Flux2 VAE.',
     presetId: 'builtin-ideogram4',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/ideogram4.md',
     files: [

@@ -40,8 +40,7 @@ const filteredPresets = computed(() => {
 
 const canSave = computed(
   () =>
-    Boolean(presetName.value.trim()) &&
-    Boolean(prompt.value.trim() || negativePrompt.value.trim())
+    Boolean(presetName.value.trim()) && Boolean(prompt.value.trim() || negativePrompt.value.trim())
 )
 
 const matchingNamePreset = computed(() => {
@@ -75,7 +74,9 @@ function saveCurrentPreset(): void {
   if (!result) return
 
   presetName.value = ''
-  toast.success(result.updated ? `Updated “${result.preset.name}”` : `Saved “${result.preset.name}”`)
+  toast.success(
+    result.updated ? `Updated “${result.preset.name}”` : `Saved “${result.preset.name}”`
+  )
 }
 
 function selectPreset(id: string): void {

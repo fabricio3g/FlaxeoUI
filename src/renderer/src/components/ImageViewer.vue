@@ -19,11 +19,7 @@ import {
   normalizeImageParams,
   type ImageGenerationParams
 } from '@/lib/imageParams'
-import {
-  buildExportFilename,
-  copyImageUrlToClipboard,
-  downloadUrlAs
-} from '@/lib/mediaExport'
+import { buildExportFilename, copyImageUrlToClipboard, downloadUrlAs } from '@/lib/mediaExport'
 
 const props = defineProps<{
   src: string
@@ -95,9 +91,7 @@ function handleCopy() {
 
   const text = [
     metadata.value.prompt,
-    metadata.value.negative_prompt
-      ? `Negative prompt: ${metadata.value.negative_prompt}`
-      : '',
+    metadata.value.negative_prompt ? `Negative prompt: ${metadata.value.negative_prompt}` : '',
     `Steps: ${metadata.value.steps}, Sampler: ${metadata.value.sampler || 'Default'}, CFG scale: ${metadata.value.cfg_scale ?? metadata.value.cfgScale}, Seed: ${metadata.value.seed}, Size: ${metadata.value.width}x${metadata.value.height}, Model: ${metadata.value.model || metadata.value.diffusionModel}`
   ]
     .filter(Boolean)
@@ -392,9 +386,7 @@ onUnmounted(() => {
           :src="src"
           :alt="alt || filename"
           class="fade-in zoom-in-95 animate-in fill-mode-both max-h-full max-w-full touch-none select-none object-contain duration-200"
-          :class="
-            zoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'
-          "
+          :class="zoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'"
           :style="{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             ...imageFilterStyle

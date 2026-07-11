@@ -1946,7 +1946,10 @@ onUnmounted(() => {
             <div>
               <label class="mb-1.5 block text-base font-semibold text-muted-foreground">
                 Cache preset
-                <span v-if="!supportsCacheMode" class="text-[10px] font-normal text-muted-foreground">
+                <span
+                  v-if="!supportsCacheMode"
+                  class="text-[10px] font-normal text-muted-foreground"
+                >
                   (unsupported by backend)
                 </span>
               </label>

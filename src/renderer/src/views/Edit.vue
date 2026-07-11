@@ -25,7 +25,11 @@ import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { isAnyGenerationBusy, toastGenerationError, useGenerationStatus } from '@/composables/useGeneration'
+import {
+  isAnyGenerationBusy,
+  toastGenerationError,
+  useGenerationStatus
+} from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
@@ -686,9 +690,7 @@ onUnmounted(() => {
           ref="containerRef"
           class="group/canvas relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
           :class="
-            !baseImage && !isGenerating
-              ? 'border-transparent bg-transparent shadow-none'
-              : ''
+            !baseImage && !isGenerating ? 'border-transparent bg-transparent shadow-none' : ''
           "
           @wheel="handleViewportWheel"
           @mousedown="startPanning"
@@ -736,7 +738,9 @@ onUnmounted(() => {
                     accept="image/*"
                     class="hidden"
                     :multiple="editMode === 'ref'"
-                    @change="editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)"
+                    @change="
+                      editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)
+                    "
                   />
                 </label>
                 <button
@@ -864,7 +868,9 @@ onUnmounted(() => {
           v-if="isGenerating"
           class="mt-2 self-center"
           loading-text="Loading model"
-          :fallback-label="editMode === 'ref' ? 'Ref edit' : editMode === 'img2img' ? 'Img2Img' : 'Inpaint'"
+          :fallback-label="
+            editMode === 'ref' ? 'Ref edit' : editMode === 'img2img' ? 'Img2Img' : 'Inpaint'
+          "
         />
 
         <div v-if="editImages.length > 0" class="mt-3 w-full shrink-0">
@@ -996,7 +1002,9 @@ onUnmounted(() => {
             :key="chip.id"
             class="aui-media-strip inline-flex max-w-full items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 p-1.5"
           >
-            <div class="relative size-10 shrink-0 overflow-hidden rounded-xl border border-border bg-background">
+            <div
+              class="relative size-10 shrink-0 overflow-hidden rounded-xl border border-border bg-background"
+            >
               <img :src="chip.url" class="h-full w-full object-cover" />
             </div>
             <button
@@ -1060,15 +1068,16 @@ onUnmounted(() => {
               v-if="!activePrompt || activePrompt.trim().length === 0"
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
-            >{{
-              promptMode === 'positive'
-                ? editMode === 'ref'
-                  ? 'Describe the edit relative to the reference images...'
-                  : editMode === 'img2img'
-                    ? 'Describe how to transform the image...'
-                    : 'Describe what to generate in the masked area...'
-                : 'Describe what to avoid...'
-            }}</span>
+              >{{
+                promptMode === 'positive'
+                  ? editMode === 'ref'
+                    ? 'Describe the edit relative to the reference images...'
+                    : editMode === 'img2img'
+                      ? 'Describe how to transform the image...'
+                      : 'Describe what to generate in the masked area...'
+                  : 'Describe what to avoid...'
+              }}</span
+            >
           </div>
         </div>
 
@@ -1096,9 +1105,7 @@ onUnmounted(() => {
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Inpaint settings</p>
-                  <p class="mt-0.5 text-[11px] text-muted-foreground">
-                    Sampling and seed controls
-                  </p>
+                  <p class="mt-0.5 text-[11px] text-muted-foreground">Sampling and seed controls</p>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">

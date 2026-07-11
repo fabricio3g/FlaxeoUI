@@ -105,7 +105,11 @@ function parseParams(paramsText: string | null): Record<string, unknown> {
     const line = lines[i]
     if (line.startsWith('Negative prompt:')) {
       negativePrompt = line.replace('Negative prompt:', '').trim()
-    } else if (/^Steps:\s*/i.test(line) || /,\s*Steps:\s*/i.test(line) || line.startsWith('Steps:')) {
+    } else if (
+      /^Steps:\s*/i.test(line) ||
+      /,\s*Steps:\s*/i.test(line) ||
+      line.startsWith('Steps:')
+    ) {
       otherParams = line
     } else if (!negativePrompt && !otherParams) {
       prompt += '\n' + line
@@ -119,7 +123,10 @@ function parseParams(paramsText: string | null): Record<string, unknown> {
   // Some tools put the entire settings line as the last line without "Steps:" only.
   if (!otherParams) {
     for (let i = lines.length - 1; i >= 1; i--) {
-      if (lines[i].includes('Seed:') && (lines[i].includes('Steps:') || lines[i].includes('Size:'))) {
+      if (
+        lines[i].includes('Seed:') &&
+        (lines[i].includes('Steps:') || lines[i].includes('Size:'))
+      ) {
         otherParams = lines[i]
         break
       }
@@ -171,7 +178,11 @@ function listGallery(ctx: AppContext): string[] {
   return fs
     .readdirSync(ctx.paths.outputDir)
     .filter((file) => /\.(png|jpg|jpeg|webp|gif|mp4)$/i.test(file))
-    .sort((a, b) => fs.statSync(path.join(ctx.paths.outputDir, b)).mtime.getTime() - fs.statSync(path.join(ctx.paths.outputDir, a)).mtime.getTime())
+    .sort(
+      (a, b) =>
+        fs.statSync(path.join(ctx.paths.outputDir, b)).mtime.getTime() -
+        fs.statSync(path.join(ctx.paths.outputDir, a)).mtime.getTime()
+    )
 }
 
 export function registerMediaRoutes(app: Express, ctx: AppContext): void {
@@ -187,10 +198,12 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/delete', (req, res) => {
     try {
       const filename = req.body?.filename
-      if (!filename || typeof filename !== 'string') return res.status(400).json({ message: 'Filename required' })
+      if (!filename || typeof filename !== 'string')
+        return res.status(400).json({ message: 'Filename required' })
       const filePath = safeOutputPath(ctx, filename)
       if (!filePath) return res.status(400).json({ message: 'Invalid filename' })
-      if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found', filename })
+      if (!fs.existsSync(filePath))
+        return res.status(404).json({ message: 'File not found', filename })
       fs.unlinkSync(filePath)
       res.json({ message: 'Deleted', filename })
     } catch (error: unknown) {
@@ -205,10 +218,15 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
     const since = parseInt(String(req.query.since || 0), 10)
     const rawLimit = req.query.limit
     const limit = rawLimit === undefined ? 0 : parseInt(String(rawLimit), 10)
-    const logs = limit > 0
-      ? ctx.state.serverLogs.slice(since, since + limit)
-      : ctx.state.serverLogs.slice(since)
-    res.json({ logs, total: ctx.state.serverLogs.length, hasMore: since + logs.length < ctx.state.serverLogs.length })
+    const logs =
+      limit > 0
+        ? ctx.state.serverLogs.slice(since, since + limit)
+        : ctx.state.serverLogs.slice(since)
+    res.json({
+      logs,
+      total: ctx.state.serverLogs.length,
+      hasMore: since + logs.length < ctx.state.serverLogs.length
+    })
   })
 
   app.get('/api/logs/stream', (req, res) => {
@@ -267,7 +285,11 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
     const requested = String(req.query.path || '')
     if (!requested) return res.status(400).json({ error: 'Path required' })
     const resolved = path.resolve(requested)
-    const allowedRoots = [ctx.paths.outputDir, ctx.paths.tempDir, ...Object.values(ctx.paths.modelDirs)]
+    const allowedRoots = [
+      ctx.paths.outputDir,
+      ctx.paths.tempDir,
+      ...Object.values(ctx.paths.modelDirs)
+    ]
     if (!allowedRoots.some((root) => isPathInside(root, resolved)))
       return res.status(403).json({ error: 'Access denied' })
     if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'File not found' })
@@ -276,11 +298,17 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/open-folder', (req, res) => {
     const folder = req.body?.folder
-    const folderPath = folder === 'models' ? ctx.paths.modelsDir : folder === 'output' ? ctx.paths.outputDir : null
+    const folderPath =
+      folder === 'models' ? ctx.paths.modelsDir : folder === 'output' ? ctx.paths.outputDir : null
     if (!folderPath) return res.status(400).json({ success: false, error: 'Invalid folder' })
     fs.mkdirSync(folderPath, { recursive: true })
     const absPath = path.resolve(folderPath)
-    const command = process.platform === 'darwin' ? `open "${absPath}"` : process.platform === 'win32' ? `start "" "${absPath}"` : `xdg-open "${absPath}"`
+    const command =
+      process.platform === 'darwin'
+        ? `open "${absPath}"`
+        : process.platform === 'win32'
+          ? `start "" "${absPath}"`
+          : `xdg-open "${absPath}"`
     exec(command, (error) => {
       if (error) res.json({ success: false, error: error.message })
       else res.json({ success: true })

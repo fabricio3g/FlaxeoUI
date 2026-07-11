@@ -78,12 +78,8 @@ const recentDone = computed(() =>
 )
 
 function pruneOld(): void {
-  const active = jobs.value.filter(
-    (j) => j.status === 'pending' || j.status === 'running'
-  )
-  const done = jobs.value.filter(
-    (j) => j.status !== 'pending' && j.status !== 'running'
-  )
+  const active = jobs.value.filter((j) => j.status === 'pending' || j.status === 'running')
+  const done = jobs.value.filter((j) => j.status !== 'pending' && j.status !== 'running')
   const keptDone = done.slice(-MAX_RECENT)
   jobs.value = [...keptDone, ...active]
 }

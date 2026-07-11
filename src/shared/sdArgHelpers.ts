@@ -84,11 +84,7 @@ export function addOptionalArgs(args: string[], body: Record<string, unknown>): 
   pushArg(args, '--scm-policy', body.scmPolicy)
 }
 
-export function addHardwareArgs(
-  args: string[],
-  body: Record<string, unknown>,
-  prompt = ''
-): void {
+export function addHardwareArgs(args: string[], body: Record<string, unknown>, prompt = ''): void {
   if (!prompt.includes('<lora:')) pushBoolArg(args, '--diffusion-fa', body.diffusionFa)
   pushBoolArg(args, '--vae-tiling', body.vaeTiling)
   pushBoolArg(args, '--clip-on-cpu', body.clipOnCpu)

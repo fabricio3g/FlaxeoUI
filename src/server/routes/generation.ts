@@ -525,8 +525,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       Math.min(16, parseInt(String(body.batchCount || body.batch_count || 1), 10) || 1)
     )
     const stamp = Date.now()
-    const filename =
-      batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
+    const filename = batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
     const outputPath = path.join(ctx.paths.outputDir, filename)
     // Ensure body carries clamped batch so buildImageArgs emits -b
     body.batchCount = batchCount
@@ -608,8 +607,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       return res.status(404).json({ message: 'No preview available' })
     }
 
-    const etag =
-      ctx.state.previewEtag || `"${ctx.state.previewImageBuffer.length}"`
+    const etag = ctx.state.previewEtag || `"${ctx.state.previewImageBuffer.length}"`
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end()
     }
@@ -837,7 +835,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     if (Number.isFinite(repeats) && repeats > 1) args.push('--upscale-repeats', String(repeats))
 
     const tileSize = parseInt(String(body.upscaleTileSize ?? body.upscale_tile_size ?? 0), 10)
-    if (Number.isFinite(tileSize) && tileSize > 0) args.push('--upscale-tile-size', String(tileSize))
+    if (Number.isFinite(tileSize) && tileSize > 0)
+      args.push('--upscale-tile-size', String(tileSize))
 
     addHardwareArgs(args, body)
     args.push('-v')

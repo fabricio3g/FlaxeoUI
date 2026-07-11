@@ -1,25 +1,37 @@
 # Changelog
 
-All notable changes to FlaxeoUI are documented in this file.
+All notable changes to Flaxeo Image are documented in this file.
+
+## 0.7.3 — 2026-07-11
+
+### Branding
+
+- Product name: **Flaxeo Image** (window title, installer, docs)
+- New black & white app icon: abstract modular glyph on full-bleed black (no white tile / corners)
+- README header wordmark: Flaxeo Image
 
 ## 0.7.2 — 2026-07-11
 
 ### Capability recipes (content)
+
 - Built-in recipes for **surfaces** (base color, roughness look, normal style, tileable), **objects/icons**, **frames** (wide/tall/empty-state/interface mock), and **mood multi-seed**
 - Help workflows: Surfaces & maps, Frames & mockups, Batch & queue (no new chrome — use Recipes + Queue + History)
 
 ### Output & production tools
+
 - Resolution menu: power-of-two squares (`512²`…`2048²`) + standard frames (`16:9`, `9:16`, …)
 - Gallery / viewer: **Copy image** (clipboard pixels), **Save** with clearer filenames
 - Generation settings: **Queue 4 seed variants** (four queued jobs, distinct seeds)
 - Optional **Queue upscale after success**; Gallery one-click queue upscale
 
 ### Viewer inspection
+
 - Fullscreen viewer: **2×2 / 3×3 tile** preview and **Gray** (grayscale) toggle
 - **Save / Copy** always in the viewer header (not only when metadata exists)
 - Robust blob download for Save (Electron-friendly)
 
 ### Setup & UI
+
 - Setup wizard is **optional** — skip permanently; only blocks when backend/models missing
 - Getting started strip dismiss is permanent
 - Custom confirm dialog (delete, etc.) — text-only chrome, no trash badge icon
@@ -28,26 +40,31 @@ All notable changes to FlaxeoUI are documented in this file.
 ## 0.7.1 — 2026-07-11
 
 ### Fixes
+
 - **Try sample / Generate sample** applies prompt on keep-alive Text2Image (live event + `onActivated`)
 - **Setup wizard** closes after finish in dev (no longer forced open by `isDev`)
 - **Recipes** and **Prompt presets** use distinct icons (Bookmark vs FileText); each appears once (composer only)
 
 ### History
+
 - Generation history is a **float panel** (command strip **History**, Gallery icon) — scroll, re-run, remove, clear
 - Removed Gallery horizontal history strip
 
 ### Recipes UI
+
 - Larger panel and `text-sm` type for names, previews, and controls
 
 ## 0.7.0 — 2026-07-11
 
 ### Help & guide
+
 - In-app **Help** view (sidebar + mobile): searchable offline topics
 - User guide under `docs/user-guide/` (Getting started, Studio, Recipes, Queue, Models, Troubleshoot, Community)
 - Deep links: `#/help?topic=recipes` (and other topic ids)
 - Context **?** on Queue panel → Help · Queue
 
 ### Recipes (templates)
+
 - Full-settings **recipes**: prompts + config snapshot (not just prompt text)
 - Built-in starters (portrait, landscape, product, draft, anime, square)
 - Save / apply / import / export `.flaxeo-recipe.json`
@@ -55,11 +72,13 @@ All notable changes to FlaxeoUI are documented in this file.
 - **Recipes** control on Text2Image next to prompt presets
 
 ### Icons
+
 - Animated **Help** (BookText), **Bookmark** (recipes), **CircleHelp**, **Sparkles**
 
 ## 0.6.0 — 2026-07-11
 
 ### Local job queue (flagship)
+
 - Generate while busy **enqueues** instead of blocking
 - Queue panel: running job, pending list (reorder / remove), recent results, pause/resume, cancel current, **Clear** recent (done / failed / cancelled)
 - Works for Text2Image, Edit, Video, and Gallery upscale (FormData jobs snapshot files in memory)
@@ -69,6 +88,7 @@ All notable changes to FlaxeoUI are documented in this file.
 ## 0.5.0 — 2026-07-11
 
 ### Trust sprint (path to best-in-class)
+
 - **Phase-aware progress** from CLI logs: Loading text encoder → diffusion → VAE → encoding prompt → generating
 - **Server mode honesty**: badge for warm T2I; advanced jobs (batch, uploads, edit paths) fall back to CLI with a toast
 - **First-run checklist** in Setup finish: Backend · Models · First image
@@ -76,12 +96,14 @@ All notable changes to FlaxeoUI are documented in this file.
 - Version `0.5.0`
 
 ### UI (from 0.4.x train)
+
 - Simpler load/live-preview chip; larger preview canvas
 - Icon click border fix; T2I batch grid + seed lock/dice/copy
 
 ## 0.4.0 — 2026-07-11
 
 ### Pro studio fundamentals
+
 - PNG generation metadata reuse (seed / all settings) in Gallery and ImageViewer
 - Dedicated Gallery **Upscale** action (`sd-cli -M upscale`)
 - Local generation history strip
@@ -89,18 +111,21 @@ All notable changes to FlaxeoUI are documented in this file.
 - Runtime `sd-cli --help` capability probe (soft-gates unsupported controls)
 
 ### Edit & video parity
+
 - Edit modes: Inpaint | Ref Edit (multi `-r`) | Img2Img
 - Video modes: T2V | I2V | FLF2V (start/end frames), FPS control
 - High-noise MoE panel and VACE / control-video path
 - Model Hub packs: FLUX Kontext, Qwen Image Edit (+2511)
 
 ### Model ecosystem
+
 - Hub packs: Z-Image Turbo, Chroma, Krea2, Lens
 - Caching presets (EasyCache, UCache, Spectrum, Cache-DIT, …)
 - Wan high-noise LoRA branch target (`|high_noise|`)
 - Expanded quant formats (K-quants)
 
 ### Polish & reliability
+
 - Human-friendly CLI error messages (OOM, missing model/VAE, …)
 - Unit tests for CLI arg builders, error mapping, LoRA tokens, cache presets
 - Simple / Advanced config density toggle
@@ -108,6 +133,7 @@ All notable changes to FlaxeoUI are documented in this file.
 - Version `0.4.0` (dropped `-debug` suffix)
 
 ### Generation spine (reliability)
+
 - Shared client payload builder for Text2Image / Edit / Video (`buildGenerationPayload`)
 - Single-flight CLI: server returns **409** when a job is already running; client global busy across surfaces (incl. upscale)
 - CLI failures attach recent log tail so OOM / missing files humanize correctly
@@ -117,6 +143,7 @@ All notable changes to FlaxeoUI are documented in this file.
 - Golden multi-mode CLI arg tests (t2i / inpaint / video / upscale / Low VRAM)
 
 ### Performance
+
 - Debounced config localStorage persist (400ms) to avoid full JSON stringify on every keystroke
 - Shared singleton `useModels` with in-flight dedupe + short client TTL
 - Server model list cache (8s TTL), invalidated after Hub download / convert
@@ -124,12 +151,14 @@ All notable changes to FlaxeoUI are documented in this file.
 - Live preview: size+mtime gate, ETag/304, poll only while generating
 
 ### Standards
+
 - CI runs `lint:ci` (ESLint errors fail the build)
 - Broader capability soft-gates: cache mode, live preview, flash attn, CPU offload
 - `useGeneration` owns claim/busy/cancel only; views own payload HTTP path
 - Prettier `endOfLine: auto` (Windows CRLF noise)
 
 ### Depth (0.5 foundations)
+
 - Generation history **Re-run** restores compact `configSnapshot` + prompts
 - History stores wall-clock **duration** on jobs
 - Model Hub **on-disk install checks** (per-file + pack ready badge)
@@ -137,6 +166,7 @@ All notable changes to FlaxeoUI are documented in this file.
 - Progress ETA prefers CLI it/s (better for long video runs); video status shows step/ETA
 
 ### UI polish + batch/seed (T2I)
+
 - Fixed sticky **icon click border** (`.aui-icon-button` focus/ring; motion icons no longer `animateOnTap`)
 - Refreshed `sd-cli-help.txt` from live **master-769** binary
 - Batch jobs use modern CLI `-o name_%03d.png` and collect multi-file outputs

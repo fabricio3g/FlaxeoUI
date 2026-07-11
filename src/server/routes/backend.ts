@@ -11,7 +11,11 @@ import { downloadFile, fetchJson } from '../utils'
 
 const execFileAsync = promisify(execFile)
 
-function parseCliHelp(helpText: string): { flags: string[]; modes: string[]; versionLine?: string } {
+function parseCliHelp(helpText: string): {
+  flags: string[]
+  modes: string[]
+  versionLine?: string
+} {
   const flags = new Set<string>()
   const modes = new Set<string>()
   const lines = helpText.split(/\r?\n/)
@@ -85,7 +89,9 @@ function installedVersions(ctx: AppContext): string[] {
 
 function flattenNestedRelease(versionDir: string): void {
   const items = fs.readdirSync(versionDir)
-  const hasBinaries = items.some((item) => item.startsWith('sd-server') || item.startsWith('sd-cli'))
+  const hasBinaries = items.some(
+    (item) => item.startsWith('sd-server') || item.startsWith('sd-cli')
+  )
   if (hasBinaries || items.length !== 1) return
 
   const nestedDir = path.join(versionDir, items[0])
@@ -152,7 +158,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
 
   app.get('/api/backend/releases', async (_req, res) => {
     try {
-      if (releasesCache && Date.now() - releasesCacheTime < CACHE_TTL) return res.json(releasesCache)
+      if (releasesCache && Date.now() - releasesCacheTime < CACHE_TTL)
+        return res.json(releasesCache)
       const releases = await fetchJson<GithubRelease[]>(GITHUB_RELEASES_URL)
       const processed: ProcessedRelease[] = releases.slice(0, 10).map((release) => ({
         tag: release.tag_name,
@@ -184,7 +191,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
     } = { platform: process.platform, arch: process.arch, variant: null, note: null }
     if (process.platform === 'linux') {
       recommendation.variant = 'Linux-Ubuntu'
-      recommendation.note = 'The official Ubuntu build is CPU-only. For Vulkan/ROCm support on Linux, you need to compile from source and place the binaries in the backend/ folder.'
+      recommendation.note =
+        'The official Ubuntu build is CPU-only. For Vulkan/ROCm support on Linux, you need to compile from source and place the binaries in the backend/ folder.'
     } else if (process.platform === 'darwin') {
       recommendation.variant = 'Darwin-macOS'
       recommendation.note = 'macOS build uses Metal acceleration.'
@@ -196,11 +204,18 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
         recommendation.note = 'NVIDIA GPU detected. Recommend CUDA 12 build.'
       } catch {
         try {
-          const output = execSync('powershell -Command "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"', { encoding: 'utf8', stdio: 'pipe' })
+          const output = execSync(
+            'powershell -Command "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"',
+            { encoding: 'utf8', stdio: 'pipe' }
+          )
           if (output.includes('Radeon') || output.includes('AMD')) {
             gpuType = 'rocm'
             recommendation.note = 'AMD GPU detected. Recommend ROCM or Vulkan build.'
-          } else if (output.includes('NVIDIA') || output.includes('GeForce') || output.includes('Quadro')) {
+          } else if (
+            output.includes('NVIDIA') ||
+            output.includes('GeForce') ||
+            output.includes('Quadro')
+          ) {
             gpuType = 'cuda12'
             recommendation.note = 'NVIDIA GPU detected. Recommend CUDA 12 build.'
           } else recommendation.note = 'Vulkan is recommended as universal fallback.'
@@ -239,7 +254,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/backend/download', async (req, res) => {
     const { url, variant, version } = req.body || {}
-    if (!url || !version) return res.status(400).json({ error: 'Download URL and version required' })
+    if (!url || !version)
+      return res.status(400).json({ error: 'Download URL and version required' })
 
     const versionDir = path.join(ctx.paths.releasesDir, version)
     const isTarGz = url.endsWith('.tar.gz') || url.endsWith('.tgz')
@@ -286,7 +302,9 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       }
 
       ctx.state.backendConfig.activeVersion = version
-      ctx.state.backendConfig.installedVersions = Array.from(new Set([...(ctx.state.backendConfig.installedVersions || []), version]))
+      ctx.state.backendConfig.installedVersions = Array.from(
+        new Set([...(ctx.state.backendConfig.installedVersions || []), version])
+      )
       ctx.saveBackendConfig()
       ctx.state.downloads[id].status = 'completed'
       ctx.state.downloads[id].updatedAt = Date.now()
@@ -314,7 +332,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/backend/set-active', (req, res) => {
     const version = req.body?.version
     if (!version) return res.status(400).json({ error: 'Version required' })
-    if (version !== 'custom' && !backendHasBinaries(path.join(ctx.paths.releasesDir, version))) return res.status(400).json({ error: `Version ${version} not found` })
+    if (version !== 'custom' && !backendHasBinaries(path.join(ctx.paths.releasesDir, version)))
+      return res.status(400).json({ error: `Version ${version} not found` })
     ctx.state.backendConfig.activeVersion = version
     ctx.saveBackendConfig()
     res.json({ success: true, activeVersion: version })

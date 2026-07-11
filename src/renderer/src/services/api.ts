@@ -1,5 +1,5 @@
 /**
- * API service for FlaxeoUI backend communication
+ * API service for Flaxeo Image backend communication
  * The backend server port is dynamically determined from IPC or defaults to 3000
  */
 

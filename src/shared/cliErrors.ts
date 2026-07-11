@@ -60,7 +60,10 @@ export function humanizeCliError(raw: unknown): HumanizedError {
     }
   }
 
-  if (/No such file|ENOENT|not found|cannot find/i.test(text) && /model|gguf|safetensors/i.test(text)) {
+  if (
+    /No such file|ENOENT|not found|cannot find/i.test(text) &&
+    /model|gguf|safetensors/i.test(text)
+  ) {
     return {
       title: 'Model file not found',
       detail: 'A selected model path no longer exists on disk.',
@@ -101,7 +104,9 @@ export function humanizeCliError(raw: unknown): HumanizedError {
 }
 
 export function formatHumanizedError(error: HumanizedError): string {
-  return error.hint ? `${error.title}: ${error.detail} ${error.hint}` : `${error.title}: ${error.detail}`
+  return error.hint
+    ? `${error.title}: ${error.detail} ${error.hint}`
+    : `${error.title}: ${error.detail}`
 }
 
 function normalizeErrorText(raw: unknown): string {

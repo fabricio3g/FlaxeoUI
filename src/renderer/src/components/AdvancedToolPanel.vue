@@ -252,9 +252,7 @@ onUnmounted(() => {
                 class="w-full accent-foreground"
               />
             </div>
-            <label
-              class="flex cursor-pointer items-center gap-2.5 text-sm text-foreground"
-            >
+            <label class="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
               <input v-model="config.applyCanny" type="checkbox" class="rounded border-border" />
               Apply Canny preprocessor
             </label>
@@ -295,9 +293,7 @@ onUnmounted(() => {
             <div>
               <label class="mb-1.5 flex items-center justify-between text-sm text-foreground">
                 <span>Denoising</span>
-                <span class="tabular-nums text-muted-foreground">{{
-                  config.img2imgStrength
-                }}</span>
+                <span class="tabular-nums text-muted-foreground">{{ config.img2imgStrength }}</span>
               </label>
               <input
                 v-model.number="config.img2imgStrength"

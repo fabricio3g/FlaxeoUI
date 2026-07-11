@@ -48,7 +48,9 @@ function loadStoragePaths(resourcesPath: string): ResolvedStoragePaths {
   }
 
   try {
-    const parsed = JSON.parse(process.env.FLAXEO_STORAGE_PATHS || '{}') as Partial<ResolvedStoragePaths>
+    const parsed = JSON.parse(
+      process.env.FLAXEO_STORAGE_PATHS || '{}'
+    ) as Partial<ResolvedStoragePaths>
     const configuredRoot =
       typeof parsed.modelsRootDir === 'string' && path.isAbsolute(parsed.modelsRootDir)
         ? parsed.modelsRootDir

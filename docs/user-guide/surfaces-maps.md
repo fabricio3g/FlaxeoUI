@@ -11,12 +11,12 @@ Use **Recipes** tagged `surface` for material-style stills.
 
 ## Map-style recipes
 
-| Recipe | Intent |
-|--------|--------|
-| Base color | Flat-lit color, even lighting |
-| Roughness look | Grayscale map *style* |
-| Normal style | Technical purple/blue *look* |
-| Tileable | Edge-friendly repeating prompt |
+| Recipe         | Intent                         |
+| -------------- | ------------------------------ |
+| Base color     | Flat-lit color, even lighting  |
+| Roughness look | Grayscale map _style_          |
+| Normal style   | Technical purple/blue _look_   |
+| Tileable       | Edge-friendly repeating prompt |
 
 These are **prompted looks** for concepts and basing. True tangent-space normals and graph-authored maps belong in a DCC or specialist tool.
 

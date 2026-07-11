@@ -114,9 +114,7 @@ onUnmounted(() => {
                 class="flex max-h-[40vh] shrink-0 flex-col border-b border-border/80 bg-muted/15 px-3 py-4 md:max-h-none md:h-full md:w-48 md:min-h-0 md:border-b-0 md:border-r md:px-4 md:py-5"
               >
                 <div class="mb-3 flex shrink-0 items-center justify-between gap-2 px-1 md:mb-4">
-                  <p
-                    class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
-                  >
+                  <p class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                     Model Hub
                   </p>
                   <button
@@ -161,10 +159,7 @@ onUnmounted(() => {
                   class="aui-scroll-header flex items-start justify-between gap-3 bg-background px-5 py-5 md:px-6 md:py-6"
                 >
                   <div class="min-w-0 flex-1 pr-2">
-                    <h2
-                      id="model-hub-title"
-                      class="text-lg font-semibold tracking-[-0.02em]"
-                    >
+                    <h2 id="model-hub-title" class="text-lg font-semibold tracking-[-0.02em]">
                       {{ activeModel.name }}
                     </h2>
                     <p class="mt-1.5 text-sm leading-5 text-muted-foreground">
@@ -183,9 +178,7 @@ onUnmounted(() => {
                       <span v-else>
                         {{ activePackStatus.installed }}/{{ activePackStatus.total }} files on disk
                         <template v-if="activePackStatus.required">
-                          · {{ activePackStatus.requiredInstalled }}/{{
-                            activePackStatus.required
-                          }}
+                          · {{ activePackStatus.requiredInstalled }}/{{ activePackStatus.required }}
                           required
                         </template>
                       </span>
@@ -240,10 +233,7 @@ onUnmounted(() => {
                       weights from the docs into the model folders manually.
                     </div>
 
-                    <div
-                      v-else
-                      class="overflow-hidden rounded-lg border border-border/70 bg-card"
-                    >
+                    <div v-else class="overflow-hidden rounded-lg border border-border/70 bg-card">
                       <div
                         v-for="file in activeModel.files"
                         :key="`${file.category}/${file.filename}`"
@@ -254,9 +244,7 @@ onUnmounted(() => {
                             <span class="truncate text-sm font-medium">{{ file.label }}</span>
                             <span
                               class="aui-status-badge shrink-0 text-[10px] font-medium"
-                              :class="
-                                file.required ? 'text-foreground' : 'text-muted-foreground'
-                              "
+                              :class="file.required ? 'text-foreground' : 'text-muted-foreground'"
                             >
                               {{ file.required ? 'Required' : 'Optional' }}
                             </span>

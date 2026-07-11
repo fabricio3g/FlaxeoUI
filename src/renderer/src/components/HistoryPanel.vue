@@ -194,12 +194,16 @@ async function clearAll(): Promise<void> {
           class="aui-scroll-header aui-scroll-header--popover aui-scroll-header--compact flex items-center justify-between gap-2 bg-popover px-3.5 py-3"
         >
           <div class="min-w-0">
-            <h2 class="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+            <h2
+              class="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground"
+            >
               <History class="size-4 text-muted-foreground" />
               History
             </h2>
             <p class="mt-0.5 text-xs leading-4 text-muted-foreground">
-              <template v-if="list.length">{{ list.length }} recent job{{ list.length === 1 ? '' : 's' }}</template>
+              <template v-if="list.length"
+                >{{ list.length }} recent job{{ list.length === 1 ? '' : 's' }}</template
+              >
               <template v-else>No jobs yet</template>
             </p>
           </div>

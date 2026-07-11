@@ -21,7 +21,6 @@ interface CloudflaredModule {
 
 let ngrok: NgrokModule | null = null
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ngrok = require('@ngrok/ngrok') as NgrokModule
 } catch (error: unknown) {
   console.warn(
@@ -32,7 +31,6 @@ try {
 
 let cloudflared: CloudflaredModule | null = null
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   cloudflared = require('cloudflared') as CloudflaredModule
 } catch (error: unknown) {
   console.warn(
@@ -51,7 +49,11 @@ export function updateLocalNetworkUrl(ctx: AppContext): void {
   ctx.state.networkStatus.local.url = ctx.state.networkStatus.local.enabled ? url : null
 }
 
-export async function startNgrok(ctx: AppContext, port: number, authToken?: string): Promise<string> {
+export async function startNgrok(
+  ctx: AppContext,
+  port: number,
+  authToken?: string
+): Promise<string> {
   if (!ngrok) throw new Error('Ngrok package not installed')
   try {
     if (authToken) await ngrok.authtoken(authToken)
@@ -169,8 +171,7 @@ export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
         local: true,
         ngrok: Boolean(ngrok),
         cloudflare: Boolean(cloudflared),
-        note:
-          'Local network share is the supported default. Ngrok requires an auth token. Cloudflare quick tunnels are best-effort and may fail on some networks.'
+        note: 'Local network share is the supported default. Ngrok requires an auth token. Cloudflare quick tunnels are best-effort and may fail on some networks.'
       }
     })
   })
@@ -178,13 +179,21 @@ export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/network/local', (req, res) => {
     ctx.state.networkStatus.local.enabled = !!req.body?.enabled
     updateLocalNetworkUrl(ctx)
-    res.json({ success: true, enabled: ctx.state.networkStatus.local.enabled, url: ctx.state.networkStatus.local.url })
+    res.json({
+      success: true,
+      enabled: ctx.state.networkStatus.local.enabled,
+      url: ctx.state.networkStatus.local.url
+    })
   })
 
   app.post('/api/network/ngrok', async (req, res) => {
     try {
       if (req.body?.enabled) {
-        const url = await startNgrok(ctx, currentPort(ctx), req.body.token || process.env.NGROK_AUTHTOKEN)
+        const url = await startNgrok(
+          ctx,
+          currentPort(ctx),
+          req.body.token || process.env.NGROK_AUTHTOKEN
+        )
         res.json({ success: true, url })
       } else {
         await stopNgrok(ctx)

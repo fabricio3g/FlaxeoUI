@@ -26,8 +26,18 @@ for (const dir of dirsToProcess) {
 // Explicitly ensure standard model subfolders exist (with .gitkeep)
 // This ensures they are present in the build even if missing locally
 const modelSubdirs = [
-  'diffusion', 'vae', 'llm', 't5xxl', 'clip', 'clip_vision', 
-  'loras', 'controlnet', 'photomaker', 'upscale', 'taesd', 'embeddings'
+  'diffusion',
+  'vae',
+  'llm',
+  't5xxl',
+  'clip',
+  'clip_vision',
+  'loras',
+  'controlnet',
+  'photomaker',
+  'upscale',
+  'taesd',
+  'embeddings'
 ]
 
 const modelsTargetRoot = path.join(__dirname, outputDir, 'models')
@@ -50,7 +60,7 @@ function createFolderStructure(sourceDir, targetDir) {
   if (!fs.existsSync(sourceDir)) {
     // If it's one of our core folders (like temp) that might not exist yet, creates it
     if (dirsToProcess.includes(path.basename(sourceDir))) {
-        fs.mkdirSync(targetDir, { recursive: true })
+      fs.mkdirSync(targetDir, { recursive: true })
     }
     return
   }
@@ -68,7 +78,7 @@ function createFolderStructure(sourceDir, targetDir) {
     if (item.isDirectory()) {
       // Recursively create subdirectory structure
       createFolderStructure(sourcePath, targetPath)
-      
+
       // Add .gitkeep to ensure empty folders are preserved
       const gitkeepPath = path.join(targetPath, '.gitkeep')
       if (!fs.existsSync(gitkeepPath)) {

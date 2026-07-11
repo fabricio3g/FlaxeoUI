@@ -39,7 +39,9 @@ export function galleryFilenameFromUrlOrPath(imagePath: string): string {
   return imagePath.replace(/^.*[\\/]/, '')
 }
 
-export function normalizeImageParams(raw: Record<string, unknown> | null | undefined): ImageGenerationParams {
+export function normalizeImageParams(
+  raw: Record<string, unknown> | null | undefined
+): ImageGenerationParams {
   if (!raw || typeof raw !== 'object') return {}
   const prompt = typeof raw.prompt === 'string' ? raw.prompt : undefined
   const negative =
@@ -87,11 +89,11 @@ export function normalizeImageParams(raw: Record<string, unknown> | null | undef
 export function hasUsableImageParams(params: ImageGenerationParams): boolean {
   return Boolean(
     params.prompt ||
-      params.seed != null ||
-      params.steps != null ||
-      params.width != null ||
-      params.cfgScale != null ||
-      params.cfg_scale != null
+    params.seed != null ||
+    params.steps != null ||
+    params.width != null ||
+    params.cfgScale != null ||
+    params.cfg_scale != null
   )
 }
 

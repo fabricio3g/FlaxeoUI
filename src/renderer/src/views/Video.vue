@@ -20,11 +20,12 @@ import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import BrandMark from '@/components/BrandMark.vue'
-import { isAnyGenerationBusy, toastGenerationError, useGenerationStatus } from '@/composables/useGeneration'
 import {
-  formatProgressTime,
-  useGenerationProgress
-} from '@/composables/useGenerationProgress'
+  isAnyGenerationBusy,
+  toastGenerationError,
+  useGenerationStatus
+} from '@/composables/useGeneration'
+import { formatProgressTime, useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
@@ -402,9 +403,7 @@ onUnmounted(() => {
         <div
           class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
           :class="
-            !generatedVideo && !isGenerating
-              ? 'border-transparent bg-transparent shadow-none'
-              : ''
+            !generatedVideo && !isGenerating ? 'border-transparent bg-transparent shadow-none' : ''
           "
         >
           <video
@@ -419,9 +418,7 @@ onUnmounted(() => {
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
             <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
               <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
-                What will you move?
-              </h2>
+              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">What will you move?</h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 Describe a scene or add a reference frame to direct the motion.
               </p>
@@ -429,11 +426,7 @@ onUnmounted(() => {
             <div v-else class="fade-in flex max-w-sm flex-col items-center gap-2 px-4 text-center">
               <Loader2 class="size-5 animate-spin text-muted-foreground" />
               <p class="text-sm font-medium text-foreground">
-                {{
-                  progress.hasSteps
-                    ? 'Generating'
-                    : progress.phaseLabel || 'Loading model'
-                }}
+                {{ progress.hasSteps ? 'Generating' : progress.phaseLabel || 'Loading model' }}
               </p>
               <p class="text-xs tabular-nums leading-4 text-muted-foreground">
                 <template v-if="progress.hasSteps">
@@ -539,7 +532,12 @@ onUnmounted(() => {
               v-if="!activePrompt || activePrompt.trim().length === 0"
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
-            >{{ promptMode === 'positive' ? 'Describe the motion, subject, and visual direction...' : 'Describe motion or visual details to avoid...' }}</span>
+              >{{
+                promptMode === 'positive'
+                  ? 'Describe the motion, subject, and visual direction...'
+                  : 'Describe motion or visual details to avoid...'
+              }}</span
+            >
           </div>
         </div>
 
@@ -715,7 +713,9 @@ onUnmounted(() => {
             :title="videoMode === 'flf2v' ? 'Upload start frame' : 'Upload reference image'"
           >
             <Upload class="h-3.5 w-3.5" />
-            <span class="hidden sm:inline">{{ videoMode === 'flf2v' ? 'Start' : 'Reference' }}</span>
+            <span class="hidden sm:inline">{{
+              videoMode === 'flf2v' ? 'Start' : 'Reference'
+            }}</span>
             <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
           </label>
 
@@ -730,215 +730,217 @@ onUnmounted(() => {
           </label>
 
           <div class="ml-auto flex shrink-0 items-center gap-1">
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            compact
-            class="shrink-0"
-          />
+            <PromptPresetControls
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              compact
+              class="shrink-0"
+            />
 
-          <Popover>
-            <PopoverTrigger as-child>
-              <button
-                type="button"
-                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                aria-label="Video generation settings"
-                title="Video generation settings"
-              >
-                <SlidersHorizontal class="size-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="end" :side-offset="8" class="w-80 max-h-[70vh] overflow-y-auto p-3">
-              <div class="mb-3">
-                <p class="text-sm font-medium">Video settings</p>
-                <p class="mt-0.5 text-[11px] text-muted-foreground">
-                  Sampling, high-noise MoE, and VACE controls
-                </p>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2">
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Flow
-                  <input
-                    v-model.number="flowShift"
-                    type="number"
-                    min="0"
-                    max="10"
-                    step="0.5"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Steps
-                  <input
-                    v-model.number="config.steps"
-                    type="number"
-                    min="1"
-                    max="150"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  CFG
-                  <input
-                    v-model.number="config.cfgScale"
-                    type="number"
-                    min="0"
-                    max="30"
-                    step="0.5"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-              </div>
-
-              <div class="mt-3 space-y-2">
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Scheduler
-                  <Select
-                    v-model="config.scheduler"
-                    size="sm"
-                    aria-label="Scheduler"
-                    class="mt-1"
-                    :options="schedulerOptions"
-                  />
-                </label>
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Sampler
-                  <Select
-                    v-model="config.sampler"
-                    size="sm"
-                    aria-label="Sampler"
-                    class="mt-1"
-                    :options="samplerOptions"
-                  />
-                </label>
-              </div>
-
-              <div class="mt-4 border-t border-border/60 pt-3">
+            <Popover>
+              <PopoverTrigger as-child>
                 <button
                   type="button"
-                  class="mb-2 flex w-full items-center justify-between text-left text-xs font-medium text-foreground"
-                  @click="showHighNoise = !showHighNoise"
+                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  aria-label="Video generation settings"
+                  title="Video generation settings"
                 >
-                  High noise (Wan2.2 MoE)
-                  <span class="text-[10px] text-muted-foreground">{{
-                    showHighNoise || hasHighNoiseModel ? '▼' : '▶'
-                  }}</span>
+                  <SlidersHorizontal class="size-4" />
                 </button>
-                <p v-if="hasHighNoiseModel" class="mb-2 text-[10px] text-muted-foreground">
-                  High-noise model is selected in config.
-                </p>
-                <div
-                  v-if="showHighNoise || hasHighNoiseModel"
-                  class="grid grid-cols-2 gap-2"
-                >
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="end"
+                :side-offset="8"
+                class="w-80 max-h-[70vh] overflow-y-auto p-3"
+              >
+                <div class="mb-3">
+                  <p class="text-sm font-medium">Video settings</p>
+                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                    Sampling, high-noise MoE, and VACE controls
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
                   <label class="text-[10px] font-medium text-muted-foreground">
-                    HN steps
+                    Flow
                     <input
-                      v-model.number="highNoiseSteps"
+                      v-model.number="flowShift"
                       type="number"
-                      min="1"
-                      max="50"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
                   <label class="text-[10px] font-medium text-muted-foreground">
-                    HN CFG
+                    Steps
                     <input
-                      v-model.number="highNoiseCfg"
+                      v-model.number="config.steps"
+                      type="number"
+                      min="1"
+                      max="150"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    CFG
+                    <input
+                      v-model.number="config.cfgScale"
                       type="number"
                       min="0"
                       max="30"
                       step="0.5"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
-                  <label class="col-span-2 text-[10px] font-medium text-muted-foreground">
-                    HN sampler
+                </div>
+
+                <div class="mt-3 space-y-2">
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Scheduler
                     <Select
-                      v-model="highNoiseSampler"
+                      v-model="config.scheduler"
                       size="sm"
+                      aria-label="Scheduler"
+                      class="mt-1"
+                      :options="schedulerOptions"
+                    />
+                  </label>
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Sampler
+                    <Select
+                      v-model="config.sampler"
+                      size="sm"
+                      aria-label="Sampler"
                       class="mt-1"
                       :options="samplerOptions"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
-                    HN guidance
+                </div>
+
+                <div class="mt-4 border-t border-border/60 pt-3">
+                  <button
+                    type="button"
+                    class="mb-2 flex w-full items-center justify-between text-left text-xs font-medium text-foreground"
+                    @click="showHighNoise = !showHighNoise"
+                  >
+                    High noise (Wan2.2 MoE)
+                    <span class="text-[10px] text-muted-foreground">{{
+                      showHighNoise || hasHighNoiseModel ? '▼' : '▶'
+                    }}</span>
+                  </button>
+                  <p v-if="hasHighNoiseModel" class="mb-2 text-[10px] text-muted-foreground">
+                    High-noise model is selected in config.
+                  </p>
+                  <div v-if="showHighNoise || hasHighNoiseModel" class="grid grid-cols-2 gap-2">
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      HN steps
+                      <input
+                        v-model.number="highNoiseSteps"
+                        type="number"
+                        min="1"
+                        max="50"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      />
+                    </label>
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      HN CFG
+                      <input
+                        v-model.number="highNoiseCfg"
+                        type="number"
+                        min="0"
+                        max="30"
+                        step="0.5"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      />
+                    </label>
+                    <label class="col-span-2 text-[10px] font-medium text-muted-foreground">
+                      HN sampler
+                      <Select
+                        v-model="highNoiseSampler"
+                        size="sm"
+                        class="mt-1"
+                        :options="samplerOptions"
+                      />
+                    </label>
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      HN guidance
+                      <input
+                        v-model.number="highNoiseGuidance"
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="0.1"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      />
+                    </label>
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      MoE boundary
+                      <input
+                        v-model.number="moeBoundary"
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.001"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="mt-4 border-t border-border/60 pt-3 space-y-2">
+                  <p class="text-xs font-medium text-foreground">VACE / control video</p>
+                  <p class="text-[10px] leading-4 text-muted-foreground">
+                    Directory of frames in lexicographic order (e.g. 00.png, 01.png). Maps to
+                    <code class="text-foreground/80">--control-video</code>.
+                  </p>
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Control video path
                     <input
-                      v-model.number="highNoiseGuidance"
-                      type="number"
-                      min="0"
-                      max="20"
-                      step="0.1"
+                      v-model="controlVideoPath"
+                      type="text"
+                      placeholder="D:/frames/post+depth"
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
-                    MoE boundary
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    VACE strength
                     <input
-                      v-model.number="moeBoundary"
+                      v-model.number="vaceStrength"
                       type="number"
                       min="0"
-                      max="1"
-                      step="0.001"
+                      max="2"
+                      step="0.05"
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                     />
                   </label>
                 </div>
-              </div>
+              </PopoverContent>
+            </Popover>
 
-              <div class="mt-4 border-t border-border/60 pt-3 space-y-2">
-                <p class="text-xs font-medium text-foreground">VACE / control video</p>
-                <p class="text-[10px] leading-4 text-muted-foreground">
-                  Directory of frames in lexicographic order (e.g. 00.png, 01.png). Maps to
-                  <code class="text-foreground/80">--control-video</code>.
-                </p>
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Control video path
-                  <input
-                    v-model="controlVideoPath"
-                    type="text"
-                    placeholder="D:/frames/post+depth"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
-                  />
-                </label>
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  VACE strength
-                  <input
-                    v-model.number="vaceStrength"
-                    type="number"
-                    min="0"
-                    max="2"
-                    step="0.05"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
-                  />
-                </label>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <div class="flex shrink-0 items-center gap-1.5">
-            <button
-              v-if="isGenerating"
-              type="button"
-              @click="handleCancel"
-              class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
-              title="Cancel current job"
-              aria-label="Cancel current job"
-            >
-              <Square class="size-3.5 fill-current" />
-            </button>
-            <button
-              type="button"
-              @click="handleGenerate"
-              :disabled="!prompt.trim()"
-              class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-              :title="isGenerating ? 'Add to queue' : 'Generate video'"
-              :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"
-            >
-              <ArrowUp class="size-4 stroke-[2.5]" />
-            </button>
-          </div>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button
+                v-if="isGenerating"
+                type="button"
+                @click="handleCancel"
+                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
+                title="Cancel current job"
+                aria-label="Cancel current job"
+              >
+                <Square class="size-3.5 fill-current" />
+              </button>
+              <button
+                type="button"
+                @click="handleGenerate"
+                :disabled="!prompt.trim()"
+                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                :title="isGenerating ? 'Add to queue' : 'Generate video'"
+                :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"
+              >
+                <ArrowUp class="size-4 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

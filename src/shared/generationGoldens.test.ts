@@ -192,7 +192,8 @@ describe('golden: upscale args', () => {
     const repeats = parseInt(String(body.upscaleRepeats), 10)
     if (Number.isFinite(repeats) && repeats > 1) args.push('--upscale-repeats', String(repeats))
     const tileSize = parseInt(String(body.upscaleTileSize), 10)
-    if (Number.isFinite(tileSize) && tileSize > 0) args.push('--upscale-tile-size', String(tileSize))
+    if (Number.isFinite(tileSize) && tileSize > 0)
+      args.push('--upscale-tile-size', String(tileSize))
     addHardwareArgs(args, body)
 
     assert.equal(args[0], '-M')
@@ -223,12 +224,7 @@ describe('golden: hardware Low VRAM profile flags', () => {
 
   it('skips diffusion-fa when prompt already has lora tokens', () => {
     const args: string[] = []
-    addHardwareArgs(
-      args,
-      { diffusionFa: true },
-      'portrait <lora:style:0.8>'
-    )
+    addHardwareArgs(args, { diffusionFa: true }, 'portrait <lora:style:0.8>')
     assert.equal(hasFlag(args, '--diffusion-fa'), false)
   })
 })
-

@@ -53,10 +53,7 @@ onUnmounted(() => {
               <h2 id="confirm-title" class="text-base font-semibold tracking-tight text-foreground">
                 {{ state.title }}
               </h2>
-              <p
-                id="confirm-desc"
-                class="mt-1.5 text-sm leading-6 text-muted-foreground"
-              >
+              <p id="confirm-desc" class="mt-1.5 text-sm leading-6 text-muted-foreground">
                 {{ state.message }}
               </p>
             </div>

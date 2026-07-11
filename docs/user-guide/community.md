@@ -4,8 +4,8 @@ Flaxeo grows through **shareable data**, not random code plugins (for trust and 
 
 ## Share recipes
 
-1. Export a `.flaxeo-recipe.json` from Recipes.  
-2. Send the file or open a PR with a recipe under community contributions (see CONTRIBUTING when present).  
+1. Export a `.flaxeo-recipe.json` from Recipes.
+2. Send the file or open a PR with a recipe under community contributions (see CONTRIBUTING when present).
 3. Others **Import** the file — no install scripts.
 
 ## Packs
@@ -18,6 +18,6 @@ Use GitHub Issues with: OS, GPU, backend tag (`master-*`), steps, and a log snip
 
 ## Coming later
 
-- Official recipe catalog in-app  
-- Data-only extensions (recipe/pack/theme zips)  
-- Prompt Assistant (local llama.cpp) — documented when shipped  
+- Official recipe catalog in-app
+- Data-only extensions (recipe/pack/theme zips)
+- Prompt Assistant (local llama.cpp) — documented when shipped

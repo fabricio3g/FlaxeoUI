@@ -1,12 +1,12 @@
-![FlaxeoUI](docs/readme-header.svg)
+![Flaxeo Image](docs/readme-header.svg)
 
-# FlaxeoUI
+# Flaxeo Image
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
 **Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** — concepts, surface-style stills, presentation frames, edit, and video with zero cloud and minimal friction (Electron + Vue 3 + Node).
 
-![FlaxeoUI Screenshot](screenshot/screenshot.png)
+![Flaxeo Image Screenshot](screenshot/screenshot.png)
 
 ## Features
 
@@ -73,12 +73,12 @@ npm run build:linux  # Linux AppImage / deb
 
 ## Development
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Hot-reload Electron + Vue |
-| `npm run typecheck` | TypeScript (main + renderer) |
-| `npm test` | Unit tests (CLI args, errors, LoRA tokens, cache presets) |
-| `npm run lint` / `lint:ci` | ESLint (CI fails on errors) |
+| Command                    | Purpose                                                   |
+| -------------------------- | --------------------------------------------------------- |
+| `npm run dev`              | Hot-reload Electron + Vue                                 |
+| `npm run typecheck`        | TypeScript (main + renderer)                              |
+| `npm test`                 | Unit tests (CLI args, errors, LoRA tokens, cache presets) |
+| `npm run lint` / `lint:ci` | ESLint (CI fails on errors)                               |
 
 Release smoke checklist: [docs/SMOKE.md](docs/SMOKE.md).
 

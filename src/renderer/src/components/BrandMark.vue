@@ -5,7 +5,10 @@ defineProps<{
 </script>
 
 <template>
-  <span class="inline-flex select-none items-baseline gap-2 tracking-tight" aria-label="Flaxeo Image">
+  <span
+    class="inline-flex select-none items-baseline gap-2 tracking-tight"
+    aria-label="Flaxeo Image"
+  >
     <span
       :class="[
         'font-semibold',
@@ -14,7 +17,8 @@ defineProps<{
         size === 'lg' ? 'text-4xl tracking-[-0.04em]' : '',
         size === 'xl' ? 'text-5xl md:text-6xl tracking-[-0.045em]' : ''
       ]"
-    >Flaxeo</span>
+      >Flaxeo</span
+    >
     <span
       :class="[
         'font-thin',
@@ -23,6 +27,7 @@ defineProps<{
         size === 'lg' ? 'text-4xl tracking-[-0.04em]' : '',
         size === 'xl' ? 'text-5xl md:text-6xl tracking-[-0.045em]' : ''
       ]"
-    >Image</span>
+      >Image</span
+    >
   </span>
 </template>

@@ -95,12 +95,7 @@ export const usePromptPresetStore = defineStore('promptPresets', () => {
     return created ? { preset: created, updated: false } : null
   }
 
-  function updatePreset(
-    id: string,
-    prompt: string,
-    negativePrompt: string,
-    name?: string
-  ): void {
+  function updatePreset(id: string, prompt: string, negativePrompt: string, name?: string): void {
     const now = Date.now()
     presets.value = presets.value.map((preset) =>
       preset.id === id

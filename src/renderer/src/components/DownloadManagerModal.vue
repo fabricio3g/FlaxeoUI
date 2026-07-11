@@ -185,9 +185,7 @@ onUnmounted(stopPolling)
                           ? 'w-1/3 animate-pulse'
                           : ''
                       "
-                      :style="
-                        task.totalBytes ? { width: progressPercent(task) + '%' } : undefined
-                      "
+                      :style="task.totalBytes ? { width: progressPercent(task) + '%' } : undefined"
                     />
                   </div>
                   <p class="mt-1 text-[9px] tabular-nums text-muted-foreground">
@@ -196,7 +194,9 @@ onUnmounted(stopPolling)
                       / {{ formatBytes(task.totalBytes) }}</template
                     >
                   </p>
-                  <p v-if="task.error" class="mt-1 text-[10px] text-destructive">{{ task.error }}</p>
+                  <p v-if="task.error" class="mt-1 text-[10px] text-destructive">
+                    {{ task.error }}
+                  </p>
                 </div>
                 <button
                   v-if="task.status === 'downloading'"

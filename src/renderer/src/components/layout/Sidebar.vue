@@ -61,26 +61,15 @@ function openGalleryFolder(): void {
 <template>
   <aside
     class="flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200"
-    :class="
-      collapsed
-        ? 'w-14 items-center px-2 py-2'
-        : 'w-52 items-stretch px-3 py-3'
-    "
+    :class="collapsed ? 'w-14 items-center px-2 py-2' : 'w-52 items-stretch px-3 py-3'"
   >
     <!-- Brand (expanded) + collapse/expand — size-8 control -->
     <div
       class="mb-3 flex h-8 w-full shrink-0 items-center"
       :class="collapsed ? 'justify-center' : 'justify-between px-1'"
     >
-      <BrandMark
-        v-if="!collapsed"
-        size="sm"
-        class="min-w-0 truncate text-foreground"
-      />
-      <Tooltip
-        :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        position="right"
-      >
+      <BrandMark v-if="!collapsed" size="sm" class="min-w-0 truncate text-foreground" />
+      <Tooltip :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" position="right">
         <button
           type="button"
           class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
@@ -100,11 +89,7 @@ function openGalleryFolder(): void {
       aria-label="Primary navigation"
     >
       <template v-for="item in navItems" :key="item.id">
-        <Tooltip
-          v-if="collapsed"
-          :text="item.label"
-          position="right"
-        >
+        <Tooltip v-if="collapsed" :text="item.label" position="right">
           <button
             type="button"
             class="aui-icon-button relative inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
@@ -139,7 +124,9 @@ function openGalleryFolder(): void {
           <button
             type="button"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
-            :class="isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
+            :class="
+              isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''
+            "
             aria-label="Settings"
             :aria-current="isActive('settings') ? 'page' : undefined"
             @click="handleNavClick('settings')"

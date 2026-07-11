@@ -30,7 +30,7 @@ export const helpTopics: HelpTopic[] = [
 
 ## First run
 
-1. Open FlaxeoUI.
+1. Open Flaxeo Image.
 2. Complete the **setup wizard**: install or select an **sd.cpp** backend (\`sd-cli\`).
 3. Download a **starter pack** matched to your GPU (or pick SDXL / Z-Image as a safe default).
 4. Optionally enable **Low VRAM** if you have a smaller GPU.

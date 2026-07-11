@@ -399,7 +399,8 @@ async function loadStorageSettings(): Promise<void> {
     storageError.value = ''
     storageSettings.value = await window.electronAPI.getStorageSettings()
   } catch (error) {
-    storageError.value = error instanceof Error ? error.message : 'Failed to load storage locations.'
+    storageError.value =
+      error instanceof Error ? error.message : 'Failed to load storage locations.'
   }
 }
 
@@ -528,11 +529,7 @@ onMounted(async () => {
               </div>
               <span
                 class="aui-status-badge inline-flex w-fit items-center gap-1.5 text-[10px] font-medium"
-                :class="
-                  config.activeBackendValid
-                    ? 'text-foreground'
-                    : 'text-destructive'
-                "
+                :class="config.activeBackendValid ? 'text-foreground' : 'text-destructive'"
               >
                 <span
                   class="size-1.5 rounded-full"
@@ -723,7 +720,10 @@ onMounted(async () => {
             <div class="border-t border-border/70 px-4 py-4">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-medium">Ngrok tunnel <span class="text-[10px] font-normal text-muted-foreground">experimental</span></p>
+                  <p class="text-xs font-medium">
+                    Ngrok tunnel
+                    <span class="text-[10px] font-normal text-muted-foreground">experimental</span>
+                  </p>
                   <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
                     Requires an auth token. If the toggle fails, check the error below and your
                     NGROK_AUTHTOKEN.
@@ -838,7 +838,10 @@ onMounted(async () => {
               {{ storageError }}
             </div>
 
-            <div v-if="!storageSettings && !storageError" class="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+            <div
+              v-if="!storageSettings && !storageError"
+              class="flex items-center gap-2 py-4 text-sm text-muted-foreground"
+            >
               <Loader2 class="size-4 animate-spin" />
               Loading storage locations...
             </div>
@@ -851,11 +854,7 @@ onMounted(async () => {
                 </p>
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div
-                    v-for="location in storageLocations"
-                    :key="location.id"
-                    class="min-w-0"
-                  >
+                  <div v-for="location in storageLocations" :key="location.id" class="min-w-0">
                     <div class="flex items-center gap-2">
                       <p class="text-sm font-medium">{{ location.label }}</p>
                       <span
@@ -908,11 +907,7 @@ onMounted(async () => {
                 </p>
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div
-                    v-for="location in modelLocations"
-                    :key="location.id"
-                    class="min-w-0"
-                  >
+                  <div v-for="location in modelLocations" :key="location.id" class="min-w-0">
                     <div class="flex items-center gap-2">
                       <p class="text-sm font-medium">{{ location.label }}</p>
                       <span
@@ -999,7 +994,9 @@ onMounted(async () => {
                       : 'opacity-60 group-hover:opacity-90'
                   ]"
                 >
-                  <span class="absolute inset-x-[10%] top-[10%] h-[9%] bg-current opacity-65"></span>
+                  <span
+                    class="absolute inset-x-[10%] top-[10%] h-[9%] bg-current opacity-65"
+                  ></span>
                   <span
                     class="absolute bottom-[10%] left-[10%] top-[27%] w-[21%] bg-current opacity-20"
                   ></span>

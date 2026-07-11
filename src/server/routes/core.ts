@@ -83,9 +83,7 @@ const STATUS_LOG_TAIL = 150
 export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/models', (req, res) => {
     const force =
-      req.query.refresh === '1' ||
-      req.query.refresh === 'true' ||
-      req.query.force === '1'
+      req.query.refresh === '1' || req.query.refresh === 'true' || req.query.force === '1'
     res.json(getModelsPayload(ctx, force))
   })
 

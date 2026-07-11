@@ -74,14 +74,22 @@ export function normalizeRecipe(raw: unknown, opts?: { forceId?: string }): Flax
   if (!configSnapshot) return null
 
   const version = Number(o.version)
-  if (version !== RECIPE_VERSION && o.version != null && Number.isFinite(version) && version !== 1) {
+  if (
+    version !== RECIPE_VERSION &&
+    o.version != null &&
+    Number.isFinite(version) &&
+    version !== 1
+  ) {
     // only v1 for now
     return null
   }
 
   const now = Date.now()
   const tags = Array.isArray(o.tags)
-    ? o.tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 24)
+    ? o.tags
+        .map((t) => String(t).trim())
+        .filter(Boolean)
+        .slice(0, 24)
     : []
 
   let modelHints: RecipeModelHints | undefined
@@ -276,7 +284,8 @@ export function getBuiltinRecipes(): FlaxeoRecipe[] {
       author: 'Flaxeo',
       tags: ['square', 'social', 'builtin'],
       surface: 'text2image',
-      prompt: 'Eye-catching centered subject, bold simple background, high clarity, social media thumbnail',
+      prompt:
+        'Eye-catching centered subject, bold simple background, high clarity, social media thumbnail',
       negativePrompt: 'clutter, tiny subject, text, watermark, blurry',
       configSnapshot: {
         width: 1024,

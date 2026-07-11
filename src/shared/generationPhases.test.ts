@@ -1,10 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  advancePhase,
-  detectPhaseFromLine,
-  phaseLabel
-} from './generationPhases.ts'
+import { advancePhase, detectPhaseFromLine, phaseLabel } from './generationPhases.ts'
 
 describe('detectPhaseFromLine', () => {
   it('detects text encoder load', () => {
@@ -22,10 +18,7 @@ describe('detectPhaseFromLine', () => {
   })
 
   it('detects VAE load', () => {
-    assert.equal(
-      detectPhaseFromLine("[DEBUG] loading vae from 'models/vae/ae.sft'"),
-      'loading_vae'
-    )
+    assert.equal(detectPhaseFromLine("[DEBUG] loading vae from 'models/vae/ae.sft'"), 'loading_vae')
   })
 
   it('detects conditioning', () => {

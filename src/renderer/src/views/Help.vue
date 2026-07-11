@@ -58,14 +58,14 @@ watch(
       class="aui-scroll-header flex flex-col gap-3 bg-background px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6"
     >
       <div class="flex items-center gap-3">
-        <div
-          class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"
-        >
+        <div class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <BookOpen class="size-5" />
         </div>
         <div>
           <h1 class="text-lg font-semibold tracking-tight text-foreground">Help</h1>
-          <p class="text-xs text-muted-foreground">Offline guide — search topics or browse sections</p>
+          <p class="text-xs text-muted-foreground">
+            Offline guide — search topics or browse sections
+          </p>
         </div>
       </div>
       <div class="relative w-full max-w-sm">
@@ -88,7 +88,9 @@ watch(
       >
         <nav class="space-y-4 p-3 md:p-4" aria-label="Help topics">
           <div v-for="group in topicsBySection" :key="group.section">
-            <p class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p
+              class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
               {{ group.section }}
             </p>
             <ul class="space-y-0.5">
