@@ -225,21 +225,79 @@ function removeTemporaryFiles(
   files.forEach((file) => removeFile(file || undefined))
 }
 
+/**
+ * Collect batch outputs for modern sd-cli (master-769+).
+ * With `-b N` and `-o dir/name_%03d.png`, files are name_000.png, name_001.png, …
+ * Without %d, a single file at outputPath (plus optional legacy _1,_2 siblings).
+ */
+function collectOutputFilenames(outputPath: string, batchCount: number): string[] {
+  const dir = path.dirname(outputPath)
+  const base = path.basename(outputPath)
+
+  if (base.includes('%')) {
+    if (!fs.existsSync(dir)) return []
+    const patternSource = base
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/%0(\d+)d/g, '\\d{$1}')
+      .replace(/%d/g, '\\d+')
+    const re = new RegExp(`^${patternSource}$`)
+    const found: { idx: number; name: string }[] = []
+
+    for (const name of fs.readdirSync(dir)) {
+      if (!re.test(name)) continue
+      const full = path.join(dir, name)
+      try {
+        if (!fs.statSync(full).isFile()) continue
+      } catch {
+        continue
+      }
+      const nums = name.match(/\d+/g)
+      const idx = nums ? parseInt(nums[nums.length - 1], 10) : 0
+      found.push({ idx: Number.isFinite(idx) ? idx : 0, name })
+    }
+    found.sort((a, b) => a.idx - b.idx)
+    return found.map((f) => f.name)
+  }
+
+  const names: string[] = []
+  if (fs.existsSync(outputPath)) names.push(base)
+  const ext = path.extname(base)
+  const stem = path.basename(base, ext)
+  for (let i = 1; i < Math.max(batchCount, 1); i++) {
+    const sibling = `${stem}_${i}${ext}`
+    if (fs.existsSync(path.join(dir, sibling))) names.push(sibling)
+  }
+  return names
+}
+
 function sendCliResult(
   res: Response,
   result: { cancelled: boolean },
   outputPath: string,
   filename: string,
-  failedMessage: string
+  failedMessage: string,
+  batchCount = 1
 ): void {
   if (result.cancelled) {
     res.json({ message: 'Cancelled' })
     return
   }
+
+  const filenames = collectOutputFilenames(outputPath, batchCount)
+  if (filenames.length > 0) {
+    res.json({
+      message: 'Complete',
+      filenames,
+      filename: filenames[0]
+    })
+    return
+  }
+
   if (fs.existsSync(outputPath)) {
     res.json({ message: 'Complete', filenames: [filename], filename })
     return
   }
+
   const human = humanizeCliError(failedMessage)
   res.status(500).json({
     message: formatHumanizedError(human),
@@ -405,9 +463,22 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       })
     }
 
-    const filename = `gen_${Date.now()}.png`
+    // Modern sd-cli: use printf %d for multi-image sequences when batch > 1
+    // (see --output help: e.g. output_%03d.png + --output-begin-idx)
+    const batchCount = Math.max(
+      1,
+      Math.min(16, parseInt(String(body.batchCount || body.batch_count || 1), 10) || 1)
+    )
+    const stamp = Date.now()
+    const filename =
+      batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
     const outputPath = path.join(ctx.paths.outputDir, filename)
+    // Ensure body carries clamped batch so buildImageArgs emits -b
+    body.batchCount = batchCount
     const { args, cleanupDirs, cleanupFiles } = buildImageArgs(ctx, body, req, outputPath)
+    if (batchCount > 1 && filename.includes('%') && !args.includes('--output-begin-idx')) {
+      args.push('--output-begin-idx', '0')
+    }
 
     ctx.state.previewImageBuffer = null
 
@@ -418,7 +489,14 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
     try {
       const result = await runCli(ctx, args, 'CLI-GEN')
-      sendCliResult(res, result, outputPath, filename, 'Generation failed - no output file')
+      sendCliResult(
+        res,
+        result,
+        outputPath,
+        filename,
+        'Generation failed - no output file',
+        batchCount
+      )
     } catch (error: unknown) {
       sendCliFailure(res, error, 'CLI generation failed')
     } finally {

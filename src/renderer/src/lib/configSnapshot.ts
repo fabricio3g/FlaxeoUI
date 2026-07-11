@@ -30,6 +30,7 @@ const SNAPSHOT_KEYS = [
   'width',
   'height',
   'seed',
+  'seedLocked',
   'sampler',
   'scheduler',
   'clipSkip',

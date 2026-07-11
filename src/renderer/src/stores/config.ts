@@ -58,6 +58,8 @@ export interface GenerationConfig {
   guidance: number
   clipSkip: number
   seed: number
+  /** When true, keep seed fixed across gens (do not force -1) */
+  seedLocked: boolean
   width: number
   height: number
 
@@ -180,6 +182,7 @@ const defaultConfig: GenerationConfig = {
   guidance: 3.5,
   clipSkip: -1,
   seed: -1,
+  seedLocked: false,
   width: 1024,
   height: 1024,
   flashAttention: false,

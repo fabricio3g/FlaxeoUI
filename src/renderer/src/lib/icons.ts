@@ -51,7 +51,10 @@ import {
   ImagePlus as StaticImagePlus,
   Info as StaticInfo,
   Loader2 as StaticLoader2,
+  Lock as StaticLock,
+  LockOpen as StaticLockOpen,
   Minus as StaticMinus,
+  Dices as StaticDices,
   Save as StaticSave,
   Server as StaticServer,
   Sparkles as StaticSparkles,
@@ -64,11 +67,13 @@ function animatedIcon(icon: Component, animation?: string): Component {
   return defineComponent({
     inheritAttrs: false,
     setup(_props, { attrs }) {
+      // animateOnTap can leave a visible focus/stroke chrome on click in Electron —
+      // hover is enough for polish; keep SVG non-interactive so the button owns focus.
       return () =>
         h(icon, {
           ...attrs,
           animateOnHover: true,
-          animateOnTap: true,
+          animateOnTap: false,
           triggerTarget: 'parent',
           ...(animation ? { animation } : {})
         })
@@ -100,6 +105,7 @@ export const ChevronRight = animatedIcon(MotionChevronRight, 'lucide-animated')
 export const ChevronUp = animatedIcon(MotionChevronUp, 'lucide-animated')
 export const Copy = animatedIcon(MotionCopy, 'lucide-animated')
 export const Cpu = animatedIcon(MotionCpu)
+export const Dices = fallbackIcon(StaticDices)
 export const Database = animatedIcon(MotionDatabaseBackup)
 export const Download = animatedIcon(MotionDownload, 'lucide-animated')
 export const Eraser = fallbackIcon(StaticEraser)
@@ -117,6 +123,8 @@ export const Images = animatedIcon(MotionGalleryVertical, 'lucide-animated')
 export const Info = fallbackIcon(StaticInfo)
 export const LayoutGrid = animatedIcon(MotionLayoutGrid)
 export const Loader2 = fallbackIcon(StaticLoader2)
+export const Lock = fallbackIcon(StaticLock)
+export const LockOpen = fallbackIcon(StaticLockOpen)
 export const Maximize2 = animatedIcon(MotionMaximize2)
 export const Minus = fallbackIcon(StaticMinus)
 export const Moon = animatedIcon(MotionMoon, 'alt')

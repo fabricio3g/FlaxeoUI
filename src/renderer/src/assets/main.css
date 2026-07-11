@@ -306,15 +306,38 @@
   transform-origin: var(--reka-popper-transform-origin, center);
 }
 
+/* Icon chrome: no sticky mouse focus ring / border on the glyph */
 .aui-icon-button {
   -webkit-app-region: no-drag;
   outline: none !important;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-color: transparent;
 }
 
 .aui-icon-button:focus,
+.aui-icon-button:focus-visible,
+.aui-icon-button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-width: 0px !important;
+  --tw-ring-color: transparent !important;
+}
+
+/* Keyboard users still get a soft ring only via :focus-visible when we opt in */
 .aui-icon-button:focus-visible {
-  --tw-ring-offset-shadow: 0 0 #0000;
-  --tw-ring-shadow: 0 0 #0000;
+  outline: none !important;
+}
+
+.aui-icon-button svg,
+.aui-icon-button [data-lucide],
+.aui-icon-button .lucide {
+  outline: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 
 .aui-field {

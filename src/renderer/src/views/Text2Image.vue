@@ -5,6 +5,8 @@ import { storeToRefs } from 'pinia'
 import { apiPost, apiGet, getOutputUrl, apiPostForm, getFileUrl, getApiBase } from '@/services/api'
 import {
   ArrowUp,
+  Copy,
+  Dices,
   Download,
   Trash2,
   X,
@@ -17,6 +19,8 @@ import {
   ChevronRight,
   Image,
   Loader2,
+  Lock,
+  LockOpen,
   SlidersHorizontal,
   Square
 } from '@/lib/icons'
@@ -64,7 +68,9 @@ const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
 const isLivePreview = ref(false)
 const showImageViewer = ref(false)
-// const serverStats = ref<any>(null) // Unused
+/** Last successful batch size — drives multi-tile grid layout */
+const lastBatchSize = ref(1)
+const showBatchGrid = ref(false)
 
 // Preview polling (only while generating; 304/ETag avoids re-decoding unchanged frames)
 let previewPollInterval: ReturnType<typeof setInterval> | null = null
@@ -369,6 +375,49 @@ async function sendToParams(imagePath: string) {
   }
 }
 
+function clampBatchCount(value: number): number {
+  if (!Number.isFinite(value)) return 1
+  return Math.min(16, Math.max(1, Math.round(value)))
+}
+
+function randomizeSeed(): void {
+  // Positive 31-bit int; CLI uses random when seed < 0
+  const next = Math.floor(Math.random() * 2_147_483_647)
+  configStore.updateConfig({ seed: next, seedLocked: true })
+  toast.info(`Seed ${next} (locked)`)
+}
+
+function toggleSeedLock(): void {
+  const next = !config.value.seedLocked
+  if (next && config.value.seed < 0) {
+    // Locking while random: materialize a seed so re-runs are reproducible
+    randomizeSeed()
+    return
+  }
+  configStore.updateConfig({ seedLocked: next })
+  toast.info(next ? 'Seed locked' : 'Seed unlocked (random next gen)')
+}
+
+async function copySeed(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(String(config.value.seed))
+    toast.success(`Seed ${config.value.seed} copied`)
+  } catch {
+    toast.error('Could not copy seed')
+  }
+}
+
+/**
+ * Before each gen: if unlocked, force seed -1 so CLI randomizes.
+ * If locked, keep the stored seed.
+ */
+function resolveSeedForGenerate(): number {
+  if (config.value.seedLocked) {
+    return config.value.seed < 0 ? 0 : config.value.seed
+  }
+  return -1
+}
+
 /**
  * handleGenerate() - Initiates image generation
  */
@@ -384,10 +433,24 @@ async function handleGenerate(): Promise<void> {
     return
   }
 
+  // Clamp batch and apply seed lock policy
+  const batchCount = clampBatchCount(config.value.batchCount)
+  if (batchCount !== config.value.batchCount) {
+    configStore.updateConfig({ batchCount })
+  }
+  const seedForJob = resolveSeedForGenerate()
+  if (!config.value.seedLocked && config.value.seed !== -1) {
+    // Keep UI showing last seed unless locked; actual request uses -1
+  }
+
   progress.start()
   error.value = null
   const jobStartedAt = Date.now()
-  const snapshot = pickConfigSnapshot(config.value)
+  const snapshot = pickConfigSnapshot({
+    ...config.value,
+    batchCount,
+    seed: seedForJob
+  })
 
   // Start live preview polling if a preview method is selected
   if (config.value.livePreviewMethod) {
@@ -395,10 +458,13 @@ async function handleGenerate(): Promise<void> {
   }
 
   try {
-    const params = buildGenerationPayload(config.value, {
-      prompt: prompt.value,
-      negativePrompt: negativePrompt.value
-    })
+    const params = buildGenerationPayload(
+      { ...config.value, batchCount, seed: seedForJob },
+      {
+        prompt: prompt.value,
+        negativePrompt: negativePrompt.value
+      }
+    )
 
     // Check server status before choosing endpoint
     await checkServerStatus()
@@ -465,7 +531,13 @@ async function handleGenerate(): Promise<void> {
       previewImage.value = getOutputUrl(newImages[0])
       currentImageFilename.value = newImages[0]
       isLivePreview.value = false
-      toast.success('Generation complete!')
+      lastBatchSize.value = newImages.length
+      showBatchGrid.value = newImages.length > 1
+      toast.success(
+        newImages.length > 1
+          ? `Batch complete — ${newImages.length} images`
+          : 'Generation complete!'
+      )
       const durationMs = Date.now() - jobStartedAt
       for (const filename of newImages) {
         addHistoryEntry({
@@ -473,7 +545,7 @@ async function handleGenerate(): Promise<void> {
           status: 'success',
           prompt: prompt.value,
           negativePrompt: negativePrompt.value,
-          seed: config.value.seed,
+          seed: seedForJob,
           width: config.value.width,
           height: config.value.height,
           filename,
@@ -486,13 +558,15 @@ async function handleGenerate(): Promise<void> {
       previewImage.value = getOutputUrl(result.filename)
       currentImageFilename.value = result.filename
       isLivePreview.value = false
+      lastBatchSize.value = 1
+      showBatchGrid.value = false
       toast.success('Generation complete!')
       addHistoryEntry({
         surface: 'text2image',
         status: 'success',
         prompt: prompt.value,
         negativePrompt: negativePrompt.value,
-        seed: config.value.seed,
+        seed: seedForJob,
         width: config.value.width,
         height: config.value.height,
         filename: result.filename,
@@ -552,6 +626,15 @@ function selectGalleryImage(filename: string): void {
   previewImage.value = getOutputUrl(filename)
   currentImageFilename.value = filename
   isLivePreview.value = false
+  // Single-select from strip exits batch grid overview
+  showBatchGrid.value = false
+}
+
+function openBatchGrid(): void {
+  if (galleryImages.value.length > 1) {
+    lastBatchSize.value = Math.max(lastBatchSize.value, Math.min(galleryImages.value.length, 16))
+    showBatchGrid.value = true
+  }
 }
 
 /**
@@ -737,10 +820,50 @@ onMounted(async () => {
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
         >
+          <!-- Multi-result batch grid (2+ images) -->
+          <div
+            v-if="
+              !isGenerating &&
+              galleryImages.length > 1 &&
+              lastBatchSize > 1 &&
+              showBatchGrid
+            "
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both grid h-full w-full gap-2 overflow-y-auto p-2 duration-200 md:p-4"
+            :class="
+              lastBatchSize >= 4
+                ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2'
+                : 'grid-cols-2'
+            "
+          >
+            <button
+              v-for="img in galleryImages.slice(0, lastBatchSize)"
+              :key="img"
+              type="button"
+              class="aui-icon-button group relative aspect-square overflow-hidden rounded-2xl border border-border/60 bg-muted/20 transition-all hover:border-foreground/25 focus:outline-none"
+              :class="
+                currentImageFilename === img
+                  ? 'ring-2 ring-foreground/40'
+                  : 'opacity-90 hover:opacity-100'
+              "
+              :title="img"
+              @click="selectGalleryImage(img)"
+              @dblclick="
+                selectGalleryImage(img)
+                showImageViewer = true
+              "
+            >
+              <img
+                :src="getOutputUrl(img)"
+                class="h-full w-full object-cover"
+                loading="lazy"
+                :alt="img"
+              />
+            </button>
+          </div>
           <button
-            v-if="previewImage"
+            v-else-if="previewImage"
             type="button"
-            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center rounded-[24px] bg-background p-2 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:p-4"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center rounded-[24px] bg-background p-2 duration-200 focus:outline-none md:p-4"
             title="Open image fullscreen"
             aria-label="Open generated image fullscreen"
             @click="showImageViewer = true"
@@ -847,6 +970,18 @@ onMounted(async () => {
         />
 
         <div v-if="galleryImages.length > 0" class="mt-4 w-full shrink-0">
+          <div
+            v-if="galleryImages.length > 1"
+            class="mx-auto mb-1.5 flex max-w-4xl items-center justify-end px-1"
+          >
+            <button
+              type="button"
+              class="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              @click="showBatchGrid ? (showBatchGrid = false) : openBatchGrid()"
+            >
+              {{ showBatchGrid ? 'Single view' : 'Grid view' }}
+            </button>
+          </div>
           <div
             class="aui-media-strip relative mx-auto max-w-4xl rounded-2xl bg-background/70 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)] backdrop-blur"
           >
@@ -1139,15 +1274,77 @@ onMounted(async () => {
                     />
                   </label>
                   <label class="text-[10px] font-medium text-muted-foreground">
-                    Seed
+                    Batch
                     <input
-                      v-model.number="config.seed"
+                      v-model.number="config.batchCount"
                       type="number"
-                      min="-1"
-                      title="Use -1 for a random seed"
+                      min="1"
+                      max="16"
+                      title="Number of images per job (-b)"
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      @change="
+                        configStore.updateConfig({
+                          batchCount: clampBatchCount(config.batchCount)
+                        })
+                      "
                     />
                   </label>
+                </div>
+
+                <div class="mt-3">
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <span class="text-[10px] font-medium text-muted-foreground">Seed</span>
+                    <div class="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        :title="config.seedLocked ? 'Unlock seed (random next gen)' : 'Lock seed'"
+                        :aria-pressed="config.seedLocked"
+                        @click="toggleSeedLock"
+                      >
+                        <Lock v-if="config.seedLocked" class="size-3.5" />
+                        <LockOpen v-else class="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Randomize seed"
+                        @click="randomizeSeed"
+                      >
+                        <Dices class="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Copy seed"
+                        @click="copySeed"
+                      >
+                        <Copy class="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    v-model.number="config.seed"
+                    type="number"
+                    min="-1"
+                    title="Use -1 for a random seed when unlocked"
+                    class="aui-field h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none"
+                    @change="
+                      () => {
+                        if (config.seed >= 0) configStore.updateConfig({ seedLocked: true })
+                      }
+                    "
+                  />
+                  <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
+                    {{
+                      config.seedLocked
+                        ? 'Locked — same seed on every generate.'
+                        : 'Unlocked — CLI picks a random seed (-1) each run.'
+                    }}
+                    <span v-if="config.batchCount > 1">
+                      Batch {{ clampBatchCount(config.batchCount) }} uses -b on sd-cli.
+                    </span>
+                  </p>
                 </div>
 
                 <div class="mt-3 space-y-2">
