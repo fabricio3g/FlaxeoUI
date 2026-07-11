@@ -630,6 +630,11 @@ function selectGalleryImage(filename: string): void {
   showBatchGrid.value = false
 }
 
+function openGalleryImageFullscreen(filename: string): void {
+  selectGalleryImage(filename)
+  showImageViewer.value = true
+}
+
 function openBatchGrid(): void {
   if (galleryImages.value.length > 1) {
     lastBatchSize.value = Math.max(lastBatchSize.value, Math.min(galleryImages.value.length, 16))
@@ -847,10 +852,7 @@ onMounted(async () => {
               "
               :title="img"
               @click="selectGalleryImage(img)"
-              @dblclick="
-                selectGalleryImage(img)
-                showImageViewer = true
-              "
+              @dblclick="openGalleryImageFullscreen(img)"
             >
               <img
                 :src="getOutputUrl(img)"
