@@ -300,6 +300,13 @@
 
 .aui-icon-button {
   -webkit-app-region: no-drag;
+  outline: none !important;
+}
+
+.aui-icon-button:focus,
+.aui-icon-button:focus-visible {
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
 }
 
 .aui-field {
@@ -318,7 +325,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.grok-composer {
+.flaxeo-composer {
   overflow: visible;
   border: 0;
   border-radius: 2rem;
@@ -329,22 +336,22 @@
   transition: box-shadow 150ms ease;
 }
 
-.grok-composer:focus-within {
+.flaxeo-composer:focus-within {
   box-shadow:
     inset 0 0 0 1px #d0d0d0,
     0 1px 3px rgb(0 0 0 / 0.08);
 }
 
-.dark .grok-composer {
+.dark .flaxeo-composer {
   background: #212121;
   box-shadow: inset 0 0 0 1px #2a2a2a;
 }
 
-.dark .grok-composer:focus-within {
+.dark .flaxeo-composer:focus-within {
   box-shadow: inset 0 0 0 1px #3a3a3a;
 }
 
-@keyframes grok-hero-enter {
+@keyframes content-enter {
   from {
     opacity: 0;
     transform: translateY(6px) scale(0.98);
@@ -355,129 +362,102 @@
   }
 }
 
-.grok-hero-item {
-  animation: grok-hero-enter 200ms var(--motion-ease) both;
+.content-item {
+  animation: content-enter 200ms var(--motion-ease) both;
 }
 
-.flaxeo-hero {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  color: white;
-  background: #141414;
-}
-
-.flaxeo-hero::before,
-.flaxeo-hero::after {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  content: '';
-}
-
-.flaxeo-hero::before {
-  z-index: -2;
-  background-image: url('./sky-wallpaper.jpg');
-  background-position: center 58%;
-  background-size: cover;
-  animation: flaxeo-hero-image-enter 700ms var(--motion-ease) both;
-}
-
-.flaxeo-hero::after {
-  z-index: -1;
-  background:
-    radial-gradient(circle at 50% 35%, rgb(0 0 0 / 0.02), rgb(0 0 0 / 0.18) 78%),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.06) 42%, var(--background) 100%);
-}
-
-.dark .flaxeo-hero::after {
-  background:
-    radial-gradient(circle at 50% 35%, rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.34) 78%),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.12) 42%, var(--background) 100%);
-}
-
-.flaxeo-hero-copy {
-  color: #0d0d0d;
-  text-shadow: 0 1px 8px rgb(255 255 255 / 0.45);
-}
-
-.dark .flaxeo-hero-copy {
-  color: white;
-  text-shadow: 0 2px 20px rgb(0 0 0 / 0.45);
-}
-
-.flaxeo-hero-muted {
-  color: rgb(0 0 0 / 0.62);
-  text-shadow: 0 1px 6px rgb(255 255 255 / 0.4);
-}
-
-.dark .flaxeo-hero-muted {
-  color: rgb(255 255 255 / 0.72);
-  text-shadow: 0 1px 12px rgb(0 0 0 / 0.5);
-}
-
-.flaxeo-hero-control {
-  border-color: rgb(0 0 0 / 0.12);
-  color: rgb(0 0 0 / 0.7);
-  background: rgb(255 255 255 / 0.56);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-  backdrop-filter: blur(12px);
-}
-
-.flaxeo-hero-control:hover {
-  border-color: rgb(0 0 0 / 0.2);
-  color: #0d0d0d;
-  background: rgb(255 255 255 / 0.78);
-}
-
-.dark .flaxeo-hero-control {
-  border-color: rgb(255 255 255 / 0.2);
-  color: rgb(255 255 255 / 0.82);
-  background: rgb(20 20 20 / 0.38);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-}
-
-.dark .flaxeo-hero-control:hover {
-  border-color: rgb(255 255 255 / 0.34);
-  color: white;
-  background: rgb(20 20 20 / 0.58);
-}
-
-@keyframes flaxeo-hero-image-enter {
-  from {
-    opacity: 0;
-    transform: scale(1.035);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.grok-action-enter-active,
-.grok-action-leave-active {
+.flaxeo-action-enter-active,
+.flaxeo-action-leave-active {
   transition:
     opacity 300ms ease-out,
     transform 300ms ease-out;
 }
 
-.grok-action-enter-from,
-.grok-action-leave-to {
+.flaxeo-action-enter-from,
+.flaxeo-action-leave-to {
   opacity: 0;
   transform: scale(0);
 }
 
-.grok-action-enter-to,
-.grok-action-leave-from {
+.flaxeo-action-enter-to,
+.flaxeo-action-leave-from {
   opacity: 1;
   transform: scale(1);
 }
 
+.modal-enter-active {
+  transition: opacity 200ms var(--motion-ease);
+}
+
+.modal-leave-active {
+  transition: opacity 150ms var(--motion-ease);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-surface-enter-active {
+  transition: opacity 250ms var(--motion-ease), transform 250ms var(--motion-ease);
+}
+
+.modal-surface-leave-active {
+  transition: opacity 150ms var(--motion-ease), transform 150ms var(--motion-ease);
+}
+
+.modal-surface-enter-from {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
+
+.modal-surface-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #9a9a9a 25%, #d4d4d4 45%, #9a9a9a 65%);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text-sweep 2.8s ease-in-out infinite;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dark .shimmer-text {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.42) 25%, rgb(255 255 255 / 0.65) 45%, rgb(255 255 255 / 0.42) 65%);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes shimmer-text-sweep {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .workspace-view,
-  .grok-hero-item,
-  .flaxeo-hero::before {
+  .shimmer-text {
     animation: none;
+  }
+  .workspace-view,
+  .content-item {
+    animation: none;
+  }
+  .modal-enter-active,
+  .modal-leave-active,
+  .modal-surface-enter-active,
+  .modal-surface-leave-active {
+    transition: none;
   }
   *,
   ::before,

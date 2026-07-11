@@ -210,23 +210,30 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div
-            v-if="configPanelVisible"
-            class="aui-dialog-backdrop absolute inset-0 z-50 flex animate-in items-center justify-center bg-black/35 p-2 backdrop-blur-[2px] duration-150 fade-in-0 dark:bg-black/55 md:p-4"
-            @click.self="closeConfigPanel"
-          >
+        <Teleport to="body">
+          <Transition name="modal">
             <div
-              class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full animate-in flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 duration-200 fade-in-0 zoom-in-95 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
-              @click.stop
+              v-if="configPanelVisible"
+              class="aui-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-2 backdrop-blur-lg duration-150 dark:bg-black/55 md:p-4"
+              @click.self="closeConfigPanel"
             >
-              <ConfigPanel
-                :collapsed="false"
-                :focus="activeConfigPanel || 'generation'"
-                @close="closeConfigPanel"
-                @expand="activeConfigPanel = 'generation'"
-              />
+              <Transition name="modal-surface" appear>
+                <div
+                  v-if="configPanelVisible"
+                  class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
+                  @click.stop
+                >
+                  <ConfigPanel
+                    :collapsed="false"
+                    :focus="activeConfigPanel || 'generation'"
+                    @close="closeConfigPanel"
+                    @expand="activeConfigPanel = 'generation'"
+                  />
+                </div>
+              </Transition>
             </div>
-          </div>
+          </Transition>
+        </Teleport>
 
           <main
             class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"

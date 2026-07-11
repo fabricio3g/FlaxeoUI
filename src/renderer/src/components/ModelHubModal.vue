@@ -45,15 +45,17 @@ async function downloadPack(): Promise<void> {
 
 <template>
   <Teleport to="body">
-    <Transition name="aui-model-hub">
+    <Transition name="modal">
       <div
         v-if="open"
         class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
       >
-        <div
-          class="aui-dialog-surface model-hub-surface flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh] md:flex-row"
-        >
-          <aside
+        <Transition name="modal-surface" appear>
+          <div
+            v-if="open"
+            class="aui-dialog-surface model-hub-surface flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh] md:flex-row"
+          >
+            <aside
             class="w-full shrink-0 border-b border-border/80 bg-muted/20 p-3 md:w-52 md:border-b-0 md:border-r"
           >
             <div class="mb-2 flex items-center justify-between gap-3 px-1 py-1">
@@ -198,29 +200,8 @@ async function downloadPack(): Promise<void> {
             </div>
           </section>
         </div>
-      </div>
+          </Transition>
+        </div>
     </Transition>
   </Teleport>
 </template>
-
-<style scoped>
-.aui-model-hub-enter-active,
-.aui-model-hub-leave-active,
-.aui-model-hub-enter-active .model-hub-surface,
-.aui-model-hub-leave-active .model-hub-surface {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.aui-model-hub-enter-from,
-.aui-model-hub-leave-to {
-  opacity: 0;
-}
-
-.aui-model-hub-enter-from .model-hub-surface,
-.aui-model-hub-leave-to .model-hub-surface {
-  opacity: 0;
-  transform: translateY(6px) scale(0.98);
-}
-</style>

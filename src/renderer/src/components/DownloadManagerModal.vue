@@ -74,15 +74,17 @@ onUnmounted(stopPolling)
 
 <template>
   <Teleport to="body">
-    <Transition name="aui-downloads">
+    <Transition name="modal">
       <div
         v-if="open"
         class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
       >
-        <div
-          class="aui-dialog-surface downloads-surface flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh]"
-        >
-          <header
+        <Transition name="modal-surface" appear>
+          <div
+            v-if="open"
+            class="aui-dialog-surface downloads-surface flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-foreground/10 md:max-h-[86vh]"
+          >
+            <header
             class="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-4 sm:px-6"
           >
             <div class="flex min-w-0 items-center gap-3">
@@ -233,30 +235,9 @@ onUnmounted(stopPolling)
               </article>
             </div>
           </div>
+          </div>
+          </Transition>
         </div>
-      </div>
     </Transition>
   </Teleport>
 </template>
-
-<style scoped>
-.aui-downloads-enter-active,
-.aui-downloads-leave-active,
-.aui-downloads-enter-active .downloads-surface,
-.aui-downloads-leave-active .downloads-surface {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.aui-downloads-enter-from,
-.aui-downloads-leave-to {
-  opacity: 0;
-}
-
-.aui-downloads-enter-from .downloads-surface,
-.aui-downloads-leave-to .downloads-surface {
-  opacity: 0;
-  transform: translateY(6px) scale(0.98);
-}
-</style>

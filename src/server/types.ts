@@ -66,6 +66,7 @@ export interface RuntimeState {
   progressBus: EventEmitter
   previewImageBuffer: Buffer | null
   previewTempFile: string | null
+  convertOutputPath: string | null
 }
 
 export interface AppContext {

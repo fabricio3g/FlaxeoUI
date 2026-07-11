@@ -576,7 +576,7 @@ onUnmounted(() => {
           class="group/canvas relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
           :class="
             !baseImage && !isGenerating
-              ? 'flaxeo-hero border-transparent bg-transparent shadow-none'
+              ? 'border-transparent bg-transparent shadow-none'
               : ''
           "
           @wheel="handleViewportWheel"
@@ -595,11 +595,11 @@ onUnmounted(() => {
             v-if="!baseImage"
             class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
-            <div class="grok-hero-item flex max-w-sm flex-col items-center">
-              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+            <div class="content-item flex max-w-sm flex-col items-center">
+              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
                 Start with an image
               </h2>
-              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+              <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 Choose a source image, then paint the area you want to transform.
               </p>
               <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -612,7 +612,7 @@ onUnmounted(() => {
                 <button
                   type="button"
                   @click="goToGallery"
-                  class="flaxeo-hero-control inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  class="inline-flex h-9 items-center gap-1.5 rounded-full border border-input bg-background px-4 text-sm font-medium transition-all duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 >
                   <Images class="h-3.5 w-3.5" />
                   Select from Gallery
@@ -753,7 +753,7 @@ onUnmounted(() => {
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
       <div
-        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+        class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Top inline row: Positive/Negative + Brush/Strength controls -->
         <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
@@ -820,7 +820,7 @@ onUnmounted(() => {
                   ? 'Describe what to generate in the masked area...'
                   : 'Describe what to avoid in the masked area...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -828,8 +828,13 @@ onUnmounted(() => {
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
+            <span
+              v-if="!activePrompt || activePrompt.trim().length === 0"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              aria-hidden="true"
+            >{{ promptMode === 'positive' ? 'Describe what to generate in the masked area...' : 'Describe what to avoid in the masked area...' }}</span>
             <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="grok-action">
+              <Transition name="flaxeo-action">
                 <button
                   v-if="!isGenerating"
                   key="generate"

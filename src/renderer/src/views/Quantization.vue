@@ -15,6 +15,8 @@ const sourceModel = ref('')
 const targetFormat = ref('q8_0')
 const outputName = ref('')
 const isConverting = ref(false)
+const isCancelling = ref(false)
+const cancelToken = ref(0)
 const conversionResult = ref<{ success: boolean; outputPath?: string; error?: string } | null>(null)
 
 // Quantization options
@@ -91,7 +93,9 @@ async function handleConvert() {
   }
 
   isConverting.value = true
+  isCancelling.value = false
   conversionResult.value = null
+  const token = ++cancelToken.value
 
   try {
     const result = await apiPost<{ success: boolean; outputPath?: string; error?: string }>(
@@ -104,6 +108,8 @@ async function handleConvert() {
       }
     )
 
+    if (cancelToken.value !== token) return
+
     conversionResult.value = result
     if (result.success) {
       toast.success(`Converted to ${outputName.value}`)
@@ -111,19 +117,31 @@ async function handleConvert() {
       toast.error(result.error || 'Conversion failed')
     }
   } catch (e) {
+    if (cancelToken.value !== token) return
     const msg = e instanceof Error ? e.message : 'Conversion failed'
     conversionResult.value = { success: false, error: msg }
     toast.error(msg)
   } finally {
-    isConverting.value = false
+    if (cancelToken.value === token) {
+      isConverting.value = false
+    }
   }
 }
 
-function handleCancel() {
-  // Conversion can't be cancelled easily via the current API,
-  // but we can reset the UI state
+async function handleCancel() {
+  if (isCancelling.value) return
+  isCancelling.value = true
+  cancelToken.value++
+
+  try {
+    await apiPost('/api/cancel-cli', {})
+  } catch {
+    // best-effort
+  }
+
   isConverting.value = false
-  toast.warning('Conversion state reset')
+  conversionResult.value = null
+  toast.warning('Conversion cancelled')
 }
 
 function resetForm() {
@@ -155,7 +173,7 @@ onMounted(() => {
           class="aui-dialog-surface relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border"
           :class="
             !conversionResult && !isConverting
-              ? 'flaxeo-hero border-transparent'
+              ? 'border-transparent'
               : 'border-border/70 bg-card'
           "
         >
@@ -163,11 +181,11 @@ onMounted(() => {
             v-if="!conversionResult && !isConverting"
             class="absolute inset-0 flex items-center justify-center px-6 text-center"
           >
-            <div class="grok-hero-item flex max-w-sm flex-col items-center px-8 py-8">
-              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+            <div class="content-item flex max-w-sm flex-col items-center px-8 py-8">
+              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
                 Convert a model
               </h2>
-              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+              <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 Select a source model and output precision to create a quantized GGUF file.
               </p>
             </div>
@@ -358,9 +376,11 @@ onMounted(() => {
               v-else
               type="button"
               @click="handleCancel"
-              class="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/25 bg-destructive/10 px-4 text-xs font-medium text-destructive transition-colors duration-200 hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :disabled="isCancelling"
+              class="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/25 bg-destructive/10 px-4 text-xs font-medium text-destructive transition-colors duration-200 hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             >
-              <X class="size-4" />
+              <RefreshCw v-if="isCancelling" class="size-4 animate-spin" />
+              <X v-else class="size-4" />
               Cancel
             </button>
           </div>

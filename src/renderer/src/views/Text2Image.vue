@@ -817,7 +817,7 @@ onMounted(async () => {
       <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
         <div
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
-          :class="{ 'flaxeo-hero rounded-3xl': !previewImage && !isGenerating }"
+          :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
         >
           <img
             v-if="previewImage"
@@ -828,7 +828,7 @@ onMounted(async () => {
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
             <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
               <h1
-                class="flaxeo-hero-copy grok-hero-item text-3xl font-semibold tracking-[-0.035em]"
+                class="content-item text-4xl font-semibold tracking-[-0.035em]"
               >
                 What will you create?
               </h1>
@@ -837,7 +837,7 @@ onMounted(async () => {
                   v-for="(suggestion, index) in promptSuggestions"
                   :key="suggestion.label"
                   type="button"
-                  class="flaxeo-hero-control grok-hero-item inline-flex h-8 items-center rounded-lg border px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  class="content-item inline-flex h-8 items-center rounded-lg border border-input bg-background px-3.5 text-xs font-medium transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   :style="{ animationDelay: `${40 + index * 40}ms` }"
                   @click="usePromptSuggestion(suggestion.prompt)"
                 >
@@ -966,7 +966,7 @@ onMounted(async () => {
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
       <div
-        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+        class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Prompt mode -->
         <div
@@ -995,7 +995,7 @@ onMounted(async () => {
                   ? 'Describe the image you want to generate...'
                   : 'Describe what should stay out of the image...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -1004,12 +1004,17 @@ onMounted(async () => {
               @input="autoResize"
             ></textarea>
             <span
+              v-if="!activePrompt || activePrompt.trim().length === 0"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              aria-hidden="true"
+            >{{ promptMode === 'positive' ? 'Describe the image you want to generate...' : 'Describe what should stay out of the image...' }}</span>
+            <span
               v-if="promptMode === 'positive' && config.embeddings.length > 0"
               class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
               >{{ config.embeddings.length }} embeds</span
             >
             <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="grok-action">
+              <Transition name="flaxeo-action">
                 <button
                   v-if="!isGenerating"
                   key="generate"
@@ -1262,22 +1267,27 @@ onMounted(async () => {
     </div>
 
     <Teleport to="body">
-      <div
-        v-if="showPromptAssets"
-        class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-[200] flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm duration-200 motion-reduce:animate-none"
-        @click.self="showPromptAssets = false"
-      >
+      <Transition name="modal">
         <div
-          class="aui-dialog-surface fade-in slide-in-from-bottom-2 zoom-in-95 animate-in fill-mode-both flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
-          @click.stop
+          v-if="showPromptAssets"
+          class="aui-dialog-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm"
+          @click.self="showPromptAssets = false"
         >
-          <ConfigPanel
-            :collapsed="false"
-            :focus="promptAssetFocus"
-            @close="showPromptAssets = false"
-          />
+          <Transition name="modal-surface" appear>
+            <div
+              v-if="showPromptAssets"
+              class="aui-dialog-surface flex h-[min(60vh,480px)] w-[min(36rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl"
+              @click.stop
+            >
+              <ConfigPanel
+                :collapsed="false"
+                :focus="promptAssetFocus"
+                @close="showPromptAssets = false"
+              />
+            </div>
+          </Transition>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Advanced tool modal (PhotoMaker / ControlNet / Img2Img / Kontext) -->

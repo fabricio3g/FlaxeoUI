@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Download,
-  ImageIcon,
   Moon,
   Minus,
   Square,
@@ -120,16 +119,11 @@ function iconBtnClasses(active = false): string {
   <header
     class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
   >
-    <div class="hidden h-full items-center px-2 titlebar-no-drag md:flex">
-      <div
-        class="inline-flex h-8 items-center gap-2 px-2 text-sm font-semibold tracking-tight"
-        aria-label="Flaxeo"
-      >
-        <ImageIcon class="h-4 w-4" />
-        <span>Flaxeo</span>
-      </div>
-
-      <span class="inline-flex h-5 items-center text-xs font-medium text-muted-foreground">
+    <div class="hidden h-full items-center gap-2 px-2 titlebar-no-drag md:flex">
+      <span class="text-sm tracking-tight leading-none">
+        <span class="font-extrabold">F</span>laxeo Image
+      </span>
+      <span class="text-xs font-medium text-muted-foreground leading-none">
         {{ currentViewLabel }}
       </span>
 
@@ -199,9 +193,8 @@ function iconBtnClasses(active = false): string {
       </button>
     </div>
 
-    <div class="flex min-w-0 flex-1 items-center gap-2 px-3 md:hidden">
-      <ImageIcon class="h-4 w-4 shrink-0" />
-      <span class="truncate text-sm font-semibold tracking-tight">Flaxeo</span>
+    <div class="flex min-w-0 flex-1 items-center px-3 text-sm tracking-tight md:hidden">
+      <span><span class="font-extrabold">F</span>laxeo Image</span>
     </div>
 
     <div class="flex h-full items-center titlebar-no-drag">

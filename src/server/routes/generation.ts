@@ -346,6 +346,10 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         removeFile(ctx.state.previewTempFile)
         ctx.state.previewTempFile = null
       }
+      if (ctx.state.convertOutputPath) {
+        removeFile(ctx.state.convertOutputPath)
+        ctx.state.convertOutputPath = null
+      }
       res.json({ message: 'Cancelled' })
     } else {
       res.json({ message: 'No CLI process running' })
@@ -544,10 +548,13 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       return res.status(400).json({ success: false, error: 'Output file already exists' })
     const args = ['-M', 'convert', '-m', sourcePath, '-o', outputPath, '--type', outputFormat, '-v']
     try {
+      ctx.state.convertOutputPath = outputPath
       await runCli(ctx, args, 'CONVERT')
       res.json({ success: fs.existsSync(outputPath), outputPath: outputName })
     } catch (error: unknown) {
       res.status(500).json({ success: false, error: errorMessage(error) })
+    } finally {
+      ctx.state.convertOutputPath = null
     }
   })
 }

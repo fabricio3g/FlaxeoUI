@@ -95,7 +95,8 @@ export function createContext(): AppContext {
     progress: null,
     progressBus: new EventEmitter(),
     previewImageBuffer: null,
-    previewTempFile: null
+    previewTempFile: null,
+    convertOutputPath: null
   }
 
   return {

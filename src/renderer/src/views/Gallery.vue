@@ -329,11 +329,6 @@ onUnmounted(() => {
     >
       <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2.5">
-          <div
-            class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30"
-          >
-            <Images class="size-3.5 text-muted-foreground" />
-          </div>
           <h1 class="truncate text-sm font-medium tracking-tight">Gallery</h1>
           <span
             class="aui-status-badge shrink-0 rounded-full border border-border/70 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
@@ -387,13 +382,13 @@ onUnmounted(() => {
 
       <div
         v-else-if="images.length === 0"
-        class="flaxeo-hero flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
+        class="flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
       >
-        <div class="grok-hero-item flex max-w-sm flex-col items-center">
-          <p class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+        <div class="content-item flex max-w-sm flex-col items-center">
+          <p class="text-3xl font-semibold tracking-[-0.03em]">
             Your gallery is empty
           </p>
-          <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
             Generated images from Text2Image and Edit will appear here.
           </p>
         </div>

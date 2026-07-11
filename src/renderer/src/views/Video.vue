@@ -334,7 +334,7 @@ onUnmounted(() => {
           class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
           :class="
             !generatedVideo && !isGenerating
-              ? 'flaxeo-hero border-transparent bg-transparent shadow-none'
+              ? 'border-transparent bg-transparent shadow-none'
               : ''
           "
         >
@@ -348,11 +348,11 @@ onUnmounted(() => {
           ></video>
 
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
-            <div v-if="!isGenerating" class="grok-hero-item flex max-w-md flex-col items-center">
-              <h2 class="flaxeo-hero-copy text-2xl font-semibold tracking-[-0.03em]">
+            <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
+              <h2 class="text-3xl font-semibold tracking-[-0.03em]">
                 What will you move?
               </h2>
-              <p class="flaxeo-hero-muted mt-2 text-sm leading-6">
+              <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 Describe a scene or add a reference frame to direct the motion.
               </p>
             </div>
@@ -418,7 +418,7 @@ onUnmounted(() => {
 
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
       <div
-        class="aui-composer grok-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
+        class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Top inline row: Positive/Negative + video mode selector -->
         <div class="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-xs md:px-4 md:pt-4">
@@ -450,7 +450,7 @@ onUnmounted(() => {
                   ? 'Describe the motion, subject, and visual direction...'
                   : 'Describe motion or visual details to avoid...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 pr-14 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -458,8 +458,13 @@ onUnmounted(() => {
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
+            <span
+              v-if="!activePrompt || activePrompt.trim().length === 0"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              aria-hidden="true"
+            >{{ promptMode === 'positive' ? 'Describe the motion, subject, and visual direction...' : 'Describe motion or visual details to avoid...' }}</span>
             <div class="absolute bottom-3 right-1 size-9">
-              <Transition name="grok-action">
+              <Transition name="flaxeo-action">
                 <button
                   v-if="!isGenerating"
                   key="generate"
