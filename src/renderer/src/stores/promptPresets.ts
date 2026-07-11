@@ -71,12 +71,63 @@ export const usePromptPresetStore = defineStore('promptPresets', () => {
     return preset
   }
 
-  function updatePreset(id: string, prompt: string, negativePrompt: string): void {
+  /**
+   * Save under a name, or update the existing preset with the same name (case-insensitive).
+   */
+  function saveOrUpdateByName(
+    name: string,
+    prompt: string,
+    negativePrompt: string
+  ): { preset: PromptPreset; updated: boolean } | null {
+    const trimmedName = name.trim()
+    if (!trimmedName) return null
+
+    const existing = presets.value.find(
+      (preset) => preset.name.toLowerCase() === trimmedName.toLowerCase()
+    )
+    if (existing) {
+      updatePreset(existing.id, prompt, negativePrompt, trimmedName)
+      selectedPresetId.value = existing.id
+      return { preset: existing, updated: true }
+    }
+
+    const created = savePreset(trimmedName, prompt, negativePrompt)
+    return created ? { preset: created, updated: false } : null
+  }
+
+  function updatePreset(
+    id: string,
+    prompt: string,
+    negativePrompt: string,
+    name?: string
+  ): void {
     const now = Date.now()
     presets.value = presets.value.map((preset) =>
-      preset.id === id ? { ...preset, prompt, negativePrompt, updatedAt: now } : preset
+      preset.id === id
+        ? {
+            ...preset,
+            prompt,
+            negativePrompt,
+            name: name?.trim() || preset.name,
+            updatedAt: now
+          }
+        : preset
     )
     persistPresets()
+  }
+
+  function renamePreset(id: string, name: string): boolean {
+    const trimmed = name.trim()
+    if (!trimmed) return false
+    const now = Date.now()
+    let found = false
+    presets.value = presets.value.map((preset) => {
+      if (preset.id !== id) return preset
+      found = true
+      return { ...preset, name: trimmed, updatedAt: now }
+    })
+    if (found) persistPresets()
+    return found
   }
 
   function deletePreset(id: string): void {
@@ -94,7 +145,9 @@ export const usePromptPresetStore = defineStore('promptPresets', () => {
     selectedPresetId,
     loadPresets,
     savePreset,
+    saveOrUpdateByName,
     updatePreset,
+    renamePreset,
     deletePreset
   }
 })

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
+import type { ImageGenerationParams, ImageParamsReuseMode } from '@/lib/imageParams'
 
 /**
  * GenerationConfig - All parameters for image generation
@@ -37,8 +38,8 @@ export interface GenerationConfig {
   audioVaeModel: string
   vaeFormat: string
 
-  // LoRAs (array of { path, strength })
-  loras: Array<{ path: string; strength: number }>
+  // LoRAs (array of { path, strength, optional high_noise target for Wan MoE })
+  loras: Array<{ path: string; strength: number; target?: 'default' | 'high_noise' }>
   loraApplyMode: 'auto' | 'immediately' | 'at_runtime'
 
   // Embeddings
@@ -403,6 +404,180 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     })
   },
   {
+    id: 'builtin-flux-kontext',
+    name: 'FLUX Kontext',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      clipOnCpu: true,
+      t5xxlModel: '',
+      clipModel: '',
+      vaeModel: '',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-qwen-image-edit',
+    name: 'Qwen Image Edit',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 2.5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true,
+      qwenImageZeroCondT: false
+    })
+  },
+  {
+    id: 'builtin-qwen-image-edit-2511',
+    name: 'Qwen Image Edit 2511',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 2.5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true,
+      qwenImageZeroCondT: true
+    })
+  },
+  {
+    id: 'builtin-z-image-turbo',
+    name: 'Z-Image Turbo',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 8,
+      width: 512,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeModel: '',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-chroma',
+    name: 'Chroma',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 4,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      t5xxlModel: '',
+      vaeModel: '',
+      clipOnCpu: true,
+      chromaDisableDitMask: true,
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-krea2',
+    name: 'Krea2',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 3.5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeModel: '',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-lens',
+    name: 'Lens',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 5,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeFormat: 'flux2',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-lens-turbo',
+    name: 'Lens Turbo',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 1,
+      guidance: 3.5,
+      steps: 4,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeFormat: 'flux2',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
     id: 'builtin-ideogram4',
     name: 'Ideogram4',
     builtin: true,
@@ -633,10 +808,82 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   /**
+   * applyImageParams() - Apply PNG / webui generation metadata into config
+   */
+  function applyImageParams(
+    params: ImageGenerationParams,
+    mode: ImageParamsReuseMode = 'all'
+  ): void {
+    if (mode === 'seed') {
+      if (params.seed != null && Number.isFinite(params.seed)) {
+        config.value.seed = params.seed
+      }
+      return
+    }
+
+    const next: Partial<GenerationConfig> = {}
+    if (params.seed != null && Number.isFinite(params.seed)) next.seed = params.seed
+    if (params.steps != null && Number.isFinite(params.steps)) next.steps = params.steps
+    const cfg = params.cfgScale ?? params.cfg_scale
+    if (cfg != null && Number.isFinite(cfg)) next.cfgScale = cfg
+    if (params.width != null && Number.isFinite(params.width)) next.width = params.width
+    if (params.height != null && Number.isFinite(params.height)) next.height = params.height
+    if (params.sampler) next.sampler = params.sampler
+    if (params.scheduler) next.scheduler = params.scheduler
+    if (params.guidance != null && Number.isFinite(params.guidance)) next.guidance = params.guidance
+    const clipSkip = params.clipSkip ?? params.clip_skip
+    if (clipSkip != null && Number.isFinite(clipSkip)) next.clipSkip = clipSkip
+
+    const modelName = params.diffusionModel || params.model
+    if (modelName) {
+      // Metadata often stores basename only; assign to both load modes for convenience.
+      const base = modelName.split(/[\\/]/).pop() || modelName
+      if (config.value.loadMode === 'standard') next.standardModel = base
+      else next.diffusionModel = base
+    }
+
+    updateConfig(next)
+  }
+
+  /**
+   * applyLowVramProfile() - Docs-aligned low VRAM hardware recipe
+   * (offload + stream-layers + max-vram -1 + flash attention)
+   */
+  function applyLowVramProfile(): void {
+    updateConfig({
+      cpuOffload: true,
+      streamLayers: true,
+      maxVram: -1,
+      flashAttention: true
+    })
+  }
+
+  /**
    * addLora() - Add a LoRA to the list
    */
-  function addLora(path: string, strength: number = 1.0): void {
-    config.value.loras.push({ path, strength })
+  function addLora(
+    path: string,
+    strength: number = 1.0,
+    target: 'default' | 'high_noise' = 'default'
+  ): void {
+    config.value.loras.push({ path, strength, target })
+  }
+
+  /**
+   * applyCachePreset() - Apply a named caching recipe
+   */
+  function applyCachePreset(partial: {
+    cacheMode: string
+    cacheOption: string
+    scmPolicy?: string
+    scmMask?: string
+  }): void {
+    updateConfig({
+      cacheMode: partial.cacheMode || '',
+      cacheOption: partial.cacheOption || '',
+      scmPolicy: partial.scmPolicy || '',
+      scmMask: partial.scmMask || ''
+    })
   }
 
   /**
@@ -687,6 +934,9 @@ export const useConfigStore = defineStore('config', () => {
     presets,
     selectedPresetId,
     updateConfig,
+    applyImageParams,
+    applyLowVramProfile,
+    applyCachePreset,
     loadPresets,
     savePreset,
     updatePreset,

@@ -18,6 +18,7 @@ import {
   Frame as MotionFrame,
   GalleryVertical as MotionGalleryVertical,
   GripHorizontal as MotionGripHorizontal,
+  History as MotionHistory,
   LayoutGrid as MotionLayoutGrid,
   Maximize2 as MotionMaximize2,
   Moon as MotionMoon,
@@ -38,6 +39,7 @@ import {
 } from '@respeak/lucide-motion-vue'
 import {
   AlertTriangle as StaticAlertTriangle,
+  Bookmark as StaticBookmark,
   CheckCircle as StaticCheckCircle,
   CheckCircle2 as StaticCheckCircle2,
   Eraser as StaticEraser,
@@ -87,6 +89,7 @@ export const Activity = animatedIcon(MotionActivity, 'lucide-animated')
 export const AlertTriangle = fallbackIcon(StaticAlertTriangle)
 export const ArrowRight = animatedIcon(MotionArrowRight, 'lucide-animated')
 export const ArrowUp = animatedIcon(MotionArrowUp, 'lucide-animated')
+export const Bookmark = fallbackIcon(StaticBookmark)
 export const Brush = animatedIcon(MotionBrush, 'lucide-animated')
 export const Check = animatedIcon(MotionCheck, 'lucide-animated')
 export const CheckCircle = fallbackIcon(StaticCheckCircle)
@@ -106,6 +109,7 @@ export const Film = fallbackIcon(StaticFilm)
 export const FolderOpen = animatedIcon(MotionFolderOpen)
 export const Grid = fallbackIcon(StaticGrid)
 export const GripHorizontal = animatedIcon(MotionGripHorizontal)
+export const History = animatedIcon(MotionHistory, 'lucide-animated')
 export const Image = fallbackIcon(StaticImage)
 export const ImageIcon = animatedIcon(MotionFrame, 'lucide-animated')
 export const ImagePlus = fallbackIcon(StaticImagePlus)

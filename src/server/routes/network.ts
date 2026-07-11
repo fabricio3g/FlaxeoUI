@@ -54,24 +54,76 @@ export async function stopNgrok(ctx: AppContext): Promise<void> {
   ctx.state.networkStatus.ngrok.url = null
 }
 
-export async function startCloudflare(ctx: AppContext, port: number): Promise<void> {
+export async function startCloudflare(ctx: AppContext, port: number): Promise<string> {
   if (!cloudflared) throw new Error('cloudflared module not loaded')
   const cloudflaredBin = cloudflared.bin
-  ctx.state.cloudflareTunnel = spawn(cloudflaredBin, ['tunnel', '--url', `http://localhost:${port}`], { shell: process.platform === 'win32' })
-  ctx.state.networkStatus.cloudflare.enabled = true
-  ctx.state.cloudflareTunnel.stderr?.on('data', (data) => {
-    const output = data.toString()
-    console.log('[Cloudflare]', output)
-    const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/)
-    if (match) {
-      ctx.state.networkStatus.cloudflare.url = match[0]
-      ctx.state.networkStatus.cloudflare.enabled = true
-      ctx.state.networkStatus.cloudflare.error = null
-      console.log(`[Cloudflare] Tunnel active: ${ctx.state.networkStatus.cloudflare.url}`)
+
+  await stopCloudflare(ctx)
+
+  return await new Promise((resolve, reject) => {
+    const child = spawn(cloudflaredBin, ['tunnel', '--url', `http://localhost:${port}`], {
+      shell: process.platform === 'win32'
+    })
+    ctx.state.cloudflareTunnel = child
+    ctx.state.networkStatus.cloudflare.enabled = true
+    ctx.state.networkStatus.cloudflare.url = null
+    ctx.state.networkStatus.cloudflare.error = null
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (settled) return
+      settled = true
+      const message =
+        'Cloudflare tunnel did not return a public URL within 15s. Local network share still works.'
+      ctx.state.networkStatus.cloudflare.error = message
+      ctx.state.networkStatus.cloudflare.enabled = false
+      try {
+        child.kill()
+      } catch {
+        // ignore
+      }
+      ctx.state.cloudflareTunnel = null
+      reject(new Error(message))
+    }, 15000)
+
+    const onData = (data: Buffer): void => {
+      const output = data.toString()
+      console.log('[Cloudflare]', output)
+      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/)
+      if (match && !settled) {
+        settled = true
+        clearTimeout(timeout)
+        ctx.state.networkStatus.cloudflare.url = match[0]
+        ctx.state.networkStatus.cloudflare.enabled = true
+        ctx.state.networkStatus.cloudflare.error = null
+        console.log(`[Cloudflare] Tunnel active: ${ctx.state.networkStatus.cloudflare.url}`)
+        resolve(match[0])
+      }
+      if (/failed|error|unable/i.test(output) && !ctx.state.networkStatus.cloudflare.url) {
+        ctx.state.networkStatus.cloudflare.error = output.trim().slice(0, 240)
+      }
     }
-  })
-  ctx.state.cloudflareTunnel.on('error', (error) => {
-    ctx.state.networkStatus.cloudflare.error = error.message
+
+    child.stdout?.on('data', onData)
+    child.stderr?.on('data', onData)
+    child.on('error', (error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      ctx.state.networkStatus.cloudflare.error = error.message
+      ctx.state.networkStatus.cloudflare.enabled = false
+      reject(error)
+    })
+    child.on('exit', (code) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      const message = `Cloudflare tunnel exited early (code ${code ?? 'unknown'})`
+      ctx.state.networkStatus.cloudflare.error = message
+      ctx.state.networkStatus.cloudflare.enabled = false
+      ctx.state.cloudflareTunnel = null
+      reject(new Error(message))
+    })
   })
 }
 
@@ -87,7 +139,16 @@ export async function stopCloudflare(ctx: AppContext): Promise<void> {
 export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/network/status', (_req, res) => {
     updateLocalNetworkUrl(ctx)
-    res.json(ctx.state.networkStatus)
+    res.json({
+      ...ctx.state.networkStatus,
+      capabilities: {
+        local: true,
+        ngrok: Boolean(ngrok),
+        cloudflare: Boolean(cloudflared),
+        note:
+          'Local network share is the supported default. Ngrok requires an auth token. Cloudflare quick tunnels are best-effort and may fail on some networks.'
+      }
+    })
   })
 
   app.post('/api/network/local', (req, res) => {
@@ -113,8 +174,8 @@ export function registerNetworkRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/network/cloudflare', async (req, res) => {
     try {
       if (req.body?.enabled) {
-        await startCloudflare(ctx, currentPort(ctx))
-        setTimeout(() => res.json({ success: true, url: ctx.state.networkStatus.cloudflare.url }), 3000)
+        const url = await startCloudflare(ctx, currentPort(ctx))
+        res.json({ success: true, url })
       } else {
         await stopCloudflare(ctx)
         res.json({ success: true })

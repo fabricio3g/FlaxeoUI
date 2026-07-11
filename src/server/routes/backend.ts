@@ -1,12 +1,52 @@
 import fs from 'fs'
 import path from 'path'
-import { execSync } from 'child_process'
+import { execFile, execSync } from 'child_process'
+import { promisify } from 'util'
 import AdmZip from 'adm-zip'
 import * as tar from 'tar'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { backendHasBinaries } from '../sd'
+import { backendHasBinaries, getSdCliPath } from '../sd'
 import { downloadFile, fetchJson } from '../utils'
+
+const execFileAsync = promisify(execFile)
+
+function parseCliHelp(helpText: string): { flags: string[]; modes: string[]; versionLine?: string } {
+  const flags = new Set<string>()
+  const modes = new Set<string>()
+  const lines = helpText.split(/\r?\n/)
+  let versionLine: string | undefined
+
+  for (const line of lines) {
+    if (!versionLine && /stable-diffusion\.cpp|version/i.test(line)) {
+      versionLine = line.trim()
+    }
+
+    // Flags like: --upscale-model, -M, --mode
+    const flagMatches = line.matchAll(/(?:^|\s)(--?[a-zA-Z][\w-]*)/g)
+    for (const match of flagMatches) {
+      const flag = match[1]
+      if (flag === '-h' || flag === '--help') continue
+      flags.add(flag)
+    }
+
+    // mode list: one of [img_gen, vid_gen, upscale, convert, metadata]
+    const modeBlock = line.match(/\[([^\]]+)\]/)
+    if (modeBlock && /mode|one of/i.test(line)) {
+      for (const part of modeBlock[1].split(',')) {
+        const mode = part.trim()
+        if (/^[a-z][a-z0-9_]*$/.test(mode)) modes.add(mode)
+      }
+    }
+  }
+
+  // Common modes even if regex misses
+  for (const mode of ['img_gen', 'vid_gen', 'upscale', 'convert', 'metadata']) {
+    if (helpText.includes(mode)) modes.add(mode)
+  }
+
+  return { flags: [...flags].sort(), modes: [...modes].sort(), versionLine }
+}
 
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/leejet/stable-diffusion.cpp/releases'
 const CACHE_TTL = 5 * 60 * 1000
@@ -37,6 +77,58 @@ function flattenNestedRelease(versionDir: string): void {
 }
 
 export function registerBackendRoutes(app: Express, ctx: AppContext): void {
+  app.get('/api/backend/capabilities', async (_req, res) => {
+    try {
+      const cliPath = getSdCliPath(ctx)
+      if (!fs.existsSync(cliPath)) {
+        return res.json({
+          probed: true,
+          flags: [],
+          modes: [],
+          error: 'sd-cli binary not found'
+        })
+      }
+
+      let helpText = ''
+      try {
+        const { stdout, stderr } = await execFileAsync(cliPath, ['--help'], {
+          cwd: ctx.getActiveBackendPath(),
+          timeout: 15000,
+          windowsHide: true,
+          maxBuffer: 2 * 1024 * 1024
+        })
+        helpText = `${stdout || ''}\n${stderr || ''}`
+      } catch (error: any) {
+        // Many CLI tools print help to stderr and exit non-zero
+        helpText = `${error?.stdout || ''}\n${error?.stderr || ''}\n${error?.message || ''}`
+      }
+
+      if (!helpText.trim()) {
+        return res.json({
+          probed: true,
+          flags: [],
+          modes: [],
+          error: 'Empty help output from sd-cli'
+        })
+      }
+
+      const parsed = parseCliHelp(helpText)
+      res.json({
+        probed: true,
+        versionLine: parsed.versionLine,
+        flags: parsed.flags,
+        modes: parsed.modes
+      })
+    } catch (error: any) {
+      res.json({
+        probed: true,
+        flags: [],
+        modes: [],
+        error: error?.message || 'Failed to probe sd-cli'
+      })
+    }
+  })
+
   app.get('/api/backend/releases', async (_req, res) => {
     try {
       if (releasesCache && Date.now() - releasesCacheTime < CACHE_TTL) return res.json(releasesCache)

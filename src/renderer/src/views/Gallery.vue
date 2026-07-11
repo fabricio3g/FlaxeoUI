@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { apiGet, getApiBase, getOutputUrl } from '@/services/api'
+import { apiGet, apiPost, getApiBase, getOutputUrl } from '@/services/api'
 import {
   Brush,
   Trash2,
@@ -13,15 +13,40 @@ import {
   ChevronRight,
   Copy,
   Sparkles,
-  Video
+  Video,
+  Scale,
+  X,
+  History
 } from '@/lib/icons'
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
+import BrandMark from '@/components/BrandMark.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Select from '@/components/ui/Select.vue'
 import { useToast } from '@/composables/useToast'
+import { useConfigStore } from '@/stores/config'
+import { useModels } from '@/composables/useModels'
+import { useGenerationHistory } from '@/composables/useGenerationHistory'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
+import {
+  claimGeneration,
+  isAnyGenerationBusy,
+  releaseGeneration,
+  toastGenerationError
+} from '@/composables/useGeneration'
+import type { ImageGenerationParams } from '@/lib/imageParams'
 
 const router = useRouter()
 const toast = useToast()
+const configStore = useConfigStore()
+const { models, fetchModels } = useModels()
+const {
+  entries: historyEntries,
+  addEntry: addHistoryEntry,
+  clearHistory,
+  removeEntry
+} = useGenerationHistory()
+const { supportsUpscale, fetchCapabilities } = useBackendCapabilities()
 
 // Gallery state
 const images = ref<string[]>([])
@@ -33,9 +58,16 @@ const viewModeOptions = [
   { value: 'grid', label: 'Compact grid', icon: Grid },
   { value: 'large', label: 'Large grid', icon: LayoutGrid }
 ]
-const showImageViewer = ref(false) // New state for full screen
+const showImageViewer = ref(false)
+const showHistory = ref(false)
 
-// ... (pagination logic unchanged) ...
+// Upscale UI
+const showUpscale = ref(false)
+const upscaleModel = ref('')
+const upscaleRepeats = ref(1)
+const upscaleTileSize = ref(128)
+const isUpscaling = ref(false)
+
 // Pagination
 const currentPage = ref(1)
 const imagesPerPage = 20
@@ -44,10 +76,17 @@ const paginatedImages = computed(() => {
   const start = (currentPage.value - 1) * imagesPerPage
   return images.value.slice(start, start + imagesPerPage)
 })
-// ... (fetchGallery, selectImage, deleteImage, downloadImage, sendToEdit, sendToText2Image, copyImagePath, openGalleryFolder, navigatePage unchanged) ...
-/**
- * fetchGallery() - Fetches all images from the output directory
- */
+
+const upscaleModelOptions = computed(() => [
+  { label: models.value.upscale.length ? 'Select upscale model…' : 'No models in models/upscale', value: '' },
+  ...models.value.upscale.map((model) => ({
+    label: model.split(/[\\/]/).pop() || model,
+    value: model
+  }))
+])
+
+const recentHistory = computed(() => historyEntries.value.slice(0, 12))
+
 async function fetchGallery(): Promise<void> {
   isLoading.value = true
   try {
@@ -65,9 +104,6 @@ async function fetchGallery(): Promise<void> {
   }
 }
 
-/**
- * selectImage() - Sets the currently selected image for preview
- */
 function selectImage(filename: string): void {
   selectedImage.value = filename
 }
@@ -86,9 +122,6 @@ function handleViewMode(value: string): void {
   if (value === 'grid' || value === 'large') viewMode.value = value
 }
 
-/**
- * deleteImage() - Deletes selected image after confirmation
- */
 async function deleteImage(): Promise<void> {
   if (!selectedImage.value) return
 
@@ -115,9 +148,6 @@ async function deleteImage(): Promise<void> {
   }
 }
 
-/**
- * downloadImage() - Downloads the selected image
- */
 function downloadImage(): void {
   if (!selectedImage.value) return
 
@@ -128,36 +158,22 @@ function downloadImage(): void {
   toast.success('Download started')
 }
 
-/**
- * sendToEdit() - Sends selected image to the inpainting/edit view
- */
 function sendToEdit(): void {
   if (!selectedImage.value) return
-
-  // Store in sessionStorage for the Edit view to pick up
   sessionStorage.setItem('editImage', getOutputUrl(selectedImage.value))
   toast.success('Sent to Edit')
   router.push({ name: 'Edit' })
 }
 
-/**
- * sendToText2Image() - Sends selected image to Text2Image to load params
- */
 function sendToText2Image(): void {
   if (!selectedImage.value) return
-
-  // Store in sessionStorage for Text2Image to pick up
   sessionStorage.setItem('text2imageParams', getOutputUrl(selectedImage.value))
   toast.success('Sent to Text2Image')
   router.push({ name: 'Text2Image' })
 }
 
-/**
- * sendToVideo() - Sends selected image as an image-to-video reference
- */
 function sendToVideo(): void {
   if (!selectedImage.value) return
-
   sessionStorage.setItem('videoReferenceImage', getOutputUrl(selectedImage.value))
   toast.success('Sent to Video')
   router.push({ name: 'Video' })
@@ -183,9 +199,107 @@ async function deleteSelectedImage(): Promise<void> {
   if (!selectedImage.value) showImageViewer.value = false
 }
 
-/**
- * copyImagePath() - Copies the image path to clipboard
- */
+function handleReuseSeed(params: ImageGenerationParams): void {
+  configStore.applyImageParams(params, 'seed')
+  toast.success(params.seed != null ? `Seed set to ${params.seed}` : 'Seed applied')
+}
+
+function handleReuseAll(params: ImageGenerationParams): void {
+  configStore.applyImageParams(params, 'all')
+  // Store prompts for Text2Image to pick up even when navigating away
+  if (params.prompt) sessionStorage.setItem('text2imagePrompt', params.prompt)
+  if (params.negative_prompt || params.negativePrompt) {
+    sessionStorage.setItem(
+      'text2imageNegativePrompt',
+      params.negative_prompt || params.negativePrompt || ''
+    )
+  }
+  toast.success('Settings restored from image')
+  showImageViewer.value = false
+  router.push({ name: 'Text2Image' })
+}
+
+function openUpscalePanel(): void {
+  if (!selectedImage.value) {
+    toast.error('Select an image first')
+    return
+  }
+  if (!supportsUpscale.value) {
+    toast.error('Active backend does not advertise upscale mode')
+    return
+  }
+  if (!upscaleModel.value && models.value.upscale[0]) {
+    upscaleModel.value = models.value.upscale[0]
+  }
+  showUpscale.value = true
+}
+
+function closeUpscalePanel(): void {
+  if (isUpscaling.value) return
+  showUpscale.value = false
+}
+
+async function runUpscale(): Promise<void> {
+  if (!selectedImage.value) return
+  if (!upscaleModel.value) {
+    toast.error('Select an upscale model')
+    return
+  }
+  if (isAnyGenerationBusy()) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
+  if (!claimGeneration('upscale')) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
+
+  isUpscaling.value = true
+  try {
+    const result = await apiPost<{ message: string; filename?: string; filenames?: string[] }>(
+      '/api/upscale',
+      {
+        filename: selectedImage.value,
+        upscaleModel: upscaleModel.value,
+        upscaleRepeats: upscaleRepeats.value,
+        upscaleTileSize: upscaleTileSize.value,
+        offloadToCpu: configStore.config.cpuOffload,
+        diffusionFa: configStore.config.flashAttention,
+        streamLayers: configStore.config.streamLayers,
+        maxVram: configStore.config.maxVram,
+        threads: configStore.config.threads
+      }
+    )
+
+    const filename = result.filename || result.filenames?.[0]
+    if (!filename) throw new Error(result.message || 'Upscale failed')
+
+    addHistoryEntry({
+      surface: 'upscale',
+      status: 'success',
+      prompt: `Upscale ${selectedImage.value}`,
+      filename
+    })
+
+    toast.success('Upscale complete')
+    showUpscale.value = false
+    await fetchGallery()
+    openImageViewer(filename)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Upscale failed'
+    toastGenerationError(toast, e, 'Upscale failed')
+    addHistoryEntry({
+      surface: 'upscale',
+      status: 'failed',
+      prompt: selectedImage.value ? `Upscale ${selectedImage.value}` : 'Upscale',
+      error: msg
+    })
+  } finally {
+    isUpscaling.value = false
+    releaseGeneration('upscale')
+  }
+}
+
 async function copyImagePath(): Promise<void> {
   if (!selectedImage.value) return
 
@@ -198,16 +312,10 @@ async function copyImagePath(): Promise<void> {
   }
 }
 
-/**
- * openGalleryFolder() - Opens the output folder in file explorer
- */
 function openGalleryFolder(): void {
   window.electronAPI?.openGalleryFolder()
 }
 
-/**
- * navigatePage() - Navigate to a different page
- */
 function navigatePage(direction: 'prev' | 'next'): void {
   if (direction === 'prev' && currentPage.value > 1) {
     currentPage.value--
@@ -216,9 +324,6 @@ function navigatePage(direction: 'prev' | 'next'): void {
   }
 }
 
-/**
- * navigateImage() - Navigate to previous/next image
- */
 function navigateImage(direction: 'prev' | 'next'): void {
   if (!selectedImage.value) return
 
@@ -230,9 +335,30 @@ function navigateImage(direction: 'prev' | 'next'): void {
   }
 }
 
-// Keyboard navigation
+function openHistoryItem(filename?: string): void {
+  if (!filename) return
+  if (!images.value.includes(filename)) {
+    toast.error('File no longer in gallery')
+    return
+  }
+  openImageViewer(filename)
+}
+
+function formatHistoryTime(ts: number): string {
+  try {
+    return new Date(ts).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
 function handleKeydown(e: KeyboardEvent): void {
-  if (showImageViewer.value) return // Let ImageViewer handle its own logic
+  if (showImageViewer.value || showUpscale.value) return
 
   if (selectedImage.value) {
     if (e.key === 'ArrowLeft') navigateImage('prev')
@@ -242,8 +368,10 @@ function handleKeydown(e: KeyboardEvent): void {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchGallery()
+  fetchModels()
+  fetchCapabilities()
   window.addEventListener('keydown', handleKeydown)
 })
 
@@ -263,6 +391,8 @@ onUnmounted(() => {
       @close="showImageViewer = false"
       @prev="navigateImage('prev')"
       @next="navigateImage('next')"
+      @reuse-seed="handleReuseSeed"
+      @reuse-all="handleReuseAll"
     >
       <template #actions>
         <div class="flex items-center gap-1">
@@ -295,6 +425,16 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
+            @click="openUpscalePanel"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
+            title="Upscale"
+            aria-label="Upscale"
+            :disabled="!supportsUpscale"
+          >
+            <Scale class="size-4" />
+          </button>
+          <button
+            type="button"
             @click="copyImagePath"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             title="Copy filename"
@@ -324,6 +464,79 @@ onUnmounted(() => {
       </template>
     </ImageViewer>
 
+    <!-- Upscale dialog -->
+    <Teleport to="body">
+      <div
+        v-if="showUpscale && selectedImage"
+        class="fixed inset-0 z-[210] flex items-center justify-center bg-zinc-950/70 p-4 backdrop-blur-sm"
+        @click.self="closeUpscalePanel"
+      >
+        <div
+          class="aui-dialog-surface w-full max-w-md rounded-2xl border border-border bg-background p-4 shadow-2xl"
+          @click.stop
+        >
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium tracking-tight">Upscale image</p>
+              <p class="mt-0.5 truncate text-xs text-muted-foreground" :title="selectedImage">
+                {{ selectedImage }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              :disabled="isUpscaling"
+              @click="closeUpscalePanel"
+            >
+              <X class="size-4" />
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="mb-1 block text-xs text-muted-foreground">ESRGAN model</label>
+              <Select v-model="upscaleModel" size="md" :options="upscaleModelOptions" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="text-xs text-muted-foreground">
+                Repeats
+                <input
+                  v-model.number="upscaleRepeats"
+                  type="number"
+                  min="1"
+                  max="8"
+                  class="mt-1 w-full rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+              <label class="text-xs text-muted-foreground">
+                Tile size
+                <input
+                  v-model.number="upscaleTileSize"
+                  type="number"
+                  min="32"
+                  step="32"
+                  class="mt-1 w-full rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+            </div>
+            <p class="text-[11px] leading-4 text-muted-foreground">
+              Uses sd-cli <code class="text-foreground/80">-M upscale</code>. Place models in
+              <code class="text-foreground/80">models/upscale</code>.
+            </p>
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-3 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+              :disabled="isUpscaling || !upscaleModel"
+              @click="runUpscale"
+            >
+              <Scale class="size-4" :class="isUpscaling && 'animate-pulse'" />
+              {{ isUpscaling ? 'Upscaling…' : 'Run upscale' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <header
       class="shrink-0 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur md:px-6"
     >
@@ -340,6 +553,17 @@ onUnmounted(() => {
         <div class="flex shrink-0 items-center gap-1">
           <button
             type="button"
+            @click="showHistory = !showHistory"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            :class="showHistory && 'bg-muted text-foreground'"
+            title="Generation history"
+            aria-label="Generation history"
+            :aria-pressed="showHistory"
+          >
+            <History class="size-4" />
+          </button>
+          <button
+            type="button"
             @click="fetchGallery"
             :disabled="isLoading"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
@@ -349,6 +573,7 @@ onUnmounted(() => {
           </button>
 
           <button
+            type="button"
             @click="openGalleryFolder"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             title="Open gallery folder"
@@ -358,6 +583,60 @@ onUnmounted(() => {
         </div>
       </div>
     </header>
+
+    <!-- History strip -->
+    <div
+      v-if="showHistory"
+      class="shrink-0 border-b border-border/70 bg-muted/20 px-4 py-3 md:px-6"
+    >
+      <div class="mx-auto flex w-full max-w-7xl flex-col gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-medium text-muted-foreground">Recent jobs</p>
+          <button
+            v-if="recentHistory.length"
+            type="button"
+            class="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            @click="clearHistory"
+          >
+            Clear
+          </button>
+        </div>
+        <div v-if="!recentHistory.length" class="text-xs text-muted-foreground">
+          No generations recorded yet.
+        </div>
+        <div v-else class="flex gap-2 overflow-x-auto pb-1">
+          <button
+            v-for="entry in recentHistory"
+            :key="entry.id"
+            type="button"
+            class="min-w-[10.5rem] max-w-[14rem] shrink-0 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-left transition-colors hover:border-foreground/25 hover:bg-muted/40"
+            @click="openHistoryItem(entry.filename)"
+            @contextmenu.prevent="removeEntry(entry.id)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class="text-[10px] font-medium uppercase tracking-wide"
+                :class="
+                  entry.status === 'success'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : entry.status === 'cancelled'
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                "
+              >
+                {{ entry.surface }} · {{ entry.status }}
+              </span>
+              <span class="text-[10px] text-muted-foreground">{{
+                formatHistoryTime(entry.timestamp)
+              }}</span>
+            </div>
+            <p class="mt-1 line-clamp-2 text-[11px] leading-4 text-foreground/90">
+              {{ entry.prompt || entry.filename || '—' }}
+            </p>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <main class="mx-auto w-full max-w-7xl flex-1 overflow-y-auto p-4 md:p-6">
       <div
@@ -377,9 +656,7 @@ onUnmounted(() => {
       >
         <div class="content-item flex max-w-sm flex-col items-center">
           <BrandMark size="lg" class="text-foreground" />
-          <p class="mt-5 text-xl font-light tracking-[-0.03em]">
-            Your gallery is empty
-          </p>
+          <p class="mt-5 text-xl font-light tracking-[-0.03em]">Your gallery is empty</p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">
             Generated images from Text2Image and Edit will appear here.
           </p>

@@ -37,7 +37,22 @@ const iconStyles = {
           >
             <component :is="icons[toast.type]" class="h-4 w-4" />
           </span>
-          <span class="min-w-0 flex-1 pt-1 text-sm leading-5">{{ toast.message }}</span>
+          <div class="min-w-0 flex-1 pt-1">
+            <span class="text-sm leading-5">{{ toast.message }}</span>
+            <button
+              v-if="toast.action"
+              type="button"
+              class="mt-1.5 block text-xs font-medium text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
+              @click="
+                () => {
+                  toast.action?.onClick()
+                  remove(toast.id)
+                }
+              "
+            >
+              {{ toast.action.label }}
+            </button>
+          </div>
           <button
             type="button"
             class="aui-icon-button inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"

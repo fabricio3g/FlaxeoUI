@@ -8,76 +8,158 @@ import { isPathInside, safeOutputPath } from '../utils'
 function readPngParams(filePath: string): string | null {
   try {
     if (!fs.existsSync(filePath)) return null
+    const stat = fs.statSync(filePath)
+    // Cap read size for large gallery files while still covering param chunks near the end.
+    const maxRead = Math.min(stat.size, 4 * 1024 * 1024)
     const fd = fs.openSync(filePath, 'r')
-    const buffer = Buffer.alloc(1024 * 1024)
+    const buffer = Buffer.alloc(maxRead)
     const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0)
     fs.closeSync(fd)
     if (buffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') return null
 
     let offset = 8
-    while (offset < bytesRead) {
+    let parametersText: string | null = null
+    while (offset + 12 <= bytesRead) {
       const length = buffer.readUInt32BE(offset)
       const type = buffer.toString('utf8', offset + 4, offset + 8)
       const dataOffset = offset + 8
+      if (dataOffset + length > bytesRead) break
+
       if (type === 'tEXt') {
-        let nullByteIndex = -1
-        for (let i = 0; i < length; i++) {
-          if (buffer[dataOffset + i] === 0) {
-            nullByteIndex = i
-            break
-          }
-        }
-        if (nullByteIndex > 0) {
-          const keyword = buffer.toString('utf8', dataOffset, dataOffset + nullByteIndex)
-          const text = buffer.toString('utf8', dataOffset + nullByteIndex + 1, dataOffset + length)
-          if (keyword === 'parameters') return text
-        }
+        const text = decodeTextChunk(buffer, dataOffset, length)
+        if (text?.keyword === 'parameters') parametersText = text.value
+      } else if (type === 'iTXt') {
+        const text = decodeItxtChunk(buffer, dataOffset, length)
+        if (text?.keyword === 'parameters') parametersText = text.value
+      } else if (type === 'IEND') {
+        break
       }
+
       offset += 12 + length
     }
+    return parametersText
   } catch (error) {
     console.error('Error reading PNG params:', error)
   }
   return null
 }
 
+function decodeTextChunk(
+  buffer: Buffer,
+  dataOffset: number,
+  length: number
+): { keyword: string; value: string } | null {
+  let nullByteIndex = -1
+  for (let i = 0; i < length; i++) {
+    if (buffer[dataOffset + i] === 0) {
+      nullByteIndex = i
+      break
+    }
+  }
+  if (nullByteIndex <= 0) return null
+  const keyword = buffer.toString('utf8', dataOffset, dataOffset + nullByteIndex)
+  const value = buffer.toString('utf8', dataOffset + nullByteIndex + 1, dataOffset + length)
+  return { keyword, value }
+}
+
+function decodeItxtChunk(
+  buffer: Buffer,
+  dataOffset: number,
+  length: number
+): { keyword: string; value: string } | null {
+  // iTXt: keyword\0 compression_flag compression_method language\0 translated\0 text
+  let nullByteIndex = -1
+  for (let i = 0; i < length; i++) {
+    if (buffer[dataOffset + i] === 0) {
+      nullByteIndex = i
+      break
+    }
+  }
+  if (nullByteIndex <= 0 || nullByteIndex + 2 >= length) return null
+  const keyword = buffer.toString('utf8', dataOffset, dataOffset + nullByteIndex)
+  const compressionFlag = buffer[dataOffset + nullByteIndex + 1]
+  if (compressionFlag !== 0) return null // compressed iTXt not supported
+
+  let cursor = dataOffset + nullByteIndex + 3 // skip keyword, flag, method
+  // language tag
+  while (cursor < dataOffset + length && buffer[cursor] !== 0) cursor++
+  cursor++ // skip null
+  // translated keyword
+  while (cursor < dataOffset + length && buffer[cursor] !== 0) cursor++
+  cursor++ // skip null
+  if (cursor > dataOffset + length) return null
+  const value = buffer.toString('utf8', cursor, dataOffset + length)
+  return { keyword, value }
+}
+
 function parseParams(paramsText: string | null): Record<string, any> {
   const result: Record<string, any> = {}
   if (!paramsText) return result
 
-  const lines = paramsText.split('\n')
+  const lines = paramsText.replace(/\r\n/g, '\n').split('\n')
   let prompt = lines[0] || ''
   let negativePrompt = ''
   let otherParams = ''
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].startsWith('Negative prompt:')) negativePrompt = lines[i].replace('Negative prompt:', '').trim()
-    else if (lines[i].startsWith('Steps:')) otherParams = lines[i]
-    else if (!negativePrompt && !otherParams) prompt += '\n' + lines[i]
+    const line = lines[i]
+    if (line.startsWith('Negative prompt:')) {
+      negativePrompt = line.replace('Negative prompt:', '').trim()
+    } else if (/^Steps:\s*/i.test(line) || /,\s*Steps:\s*/i.test(line) || line.startsWith('Steps:')) {
+      otherParams = line
+    } else if (!negativePrompt && !otherParams) {
+      prompt += '\n' + line
+    } else if (otherParams && !line.includes(':')) {
+      // continuation of param line is rare; ignore
+    } else if (!otherParams && line.includes('Seed:') && line.includes('Size:')) {
+      otherParams = line
+    }
+  }
+
+  // Some tools put the entire settings line as the last line without "Steps:" only.
+  if (!otherParams) {
+    for (let i = lines.length - 1; i >= 1; i--) {
+      if (lines[i].includes('Seed:') && (lines[i].includes('Steps:') || lines[i].includes('Size:'))) {
+        otherParams = lines[i]
+        break
+      }
+    }
   }
 
   result.prompt = prompt.trim()
   result.negativePrompt = negativePrompt.trim()
   result.negative_prompt = result.negativePrompt
 
-  for (const pair of otherParams.split(', ')) {
-    const [key, value] = pair.split(': ')
+  // Split on ", " but values may contain commas rarely; webui uses ", Key: value"
+  const pairs = otherParams.split(/,\s*(?=[A-Za-z][A-Za-z0-9 +./()-]*:\s)/)
+  for (const pair of pairs) {
+    const colon = pair.indexOf(':')
+    if (colon <= 0) continue
+    const key = pair.slice(0, colon).trim()
+    const value = pair.slice(colon + 1).trim()
+    if (!value) continue
+
     if (key === 'Steps') result.steps = parseInt(value, 10)
-    if (key === 'CFG scale') {
+    else if (key === 'CFG scale' || key === 'CFG Scale') {
       result.cfgScale = parseFloat(value)
       result.cfg_scale = result.cfgScale
-    }
-    if (key === 'Seed') result.seed = parseInt(value, 10)
-    if (key === 'Size') {
-      const [width, height] = value.split('x')
+    } else if (key === 'Seed') result.seed = parseInt(value, 10)
+    else if (key === 'Size') {
+      const [width, height] = value.split(/x/i)
       result.width = parseInt(width, 10)
       result.height = parseInt(height, 10)
-    }
-    if (key === 'Sampler') result.sampler = value
-    if (key === 'Scheduler') result.scheduler = value
-    if (key === 'Model') {
-      result.diffusionModel = value
-      result.model = value
+    } else if (key === 'Sampler' || key === 'Sampling method') result.sampler = value
+    else if (key === 'Scheduler') result.scheduler = value
+    else if (key === 'Model' || key === 'Model hash') {
+      if (key === 'Model' || !result.model) {
+        result.diffusionModel = value
+        result.model = value
+      }
+    } else if (key === 'Guidance' || key === 'Distilled CFG Scale') {
+      result.guidance = parseFloat(value)
+    } else if (key === 'Clip skip' || key === 'CLIP skip') {
+      result.clipSkip = parseInt(value, 10)
+      result.clip_skip = result.clipSkip
     }
   }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
@@ -32,6 +32,9 @@ import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 import { useServerControls } from '@/composables/useServerControls'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
+import { useToast } from '@/composables/useToast'
+import { cachePresets, findCachePresetId } from '@/lib/cachePresets'
 
 const configStore = useConfigStore()
 const { config, presets, selectedPresetId } = storeToRefs(configStore)
@@ -66,7 +69,43 @@ const {
   stopRuntimeStatusPolling
 } = useRuntimeStatus()
 const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
+const {
+  supportsStreamLayers,
+  supportsMaxVram,
+  fetchCapabilities
+} = useBackendCapabilities()
+const toast = useToast()
 const showModelHub = ref(false)
+
+function applyLowVram(): void {
+  configStore.applyLowVramProfile()
+  toast.success('Low VRAM profile applied (offload + stream + max VRAM auto)')
+}
+
+const selectedCachePresetId = computed({
+  get: () => findCachePresetId(config.value),
+  set: (id: string) => {
+    if (id === 'custom') return
+    const preset = cachePresets.find((item) => item.id === id)
+    if (!preset) return
+    configStore.applyCachePreset(preset)
+    toast.success(`Cache: ${preset.label}`)
+  }
+})
+
+const cachePresetOptions = computed(() => [
+  ...cachePresets.map((preset) => ({
+    label: preset.label,
+    value: preset.id
+  })),
+  ...(findCachePresetId(config.value) === 'custom'
+    ? [{ label: 'Custom (manual fields)', value: 'custom' }]
+    : [])
+])
+
+const activeCachePreset = computed(() =>
+  cachePresets.find((preset) => preset.id === selectedCachePresetId.value)
+)
 
 type CollapsedSection = 'backend' | 'presets' | 'models' | 'generation' | 'hardware' | 'warnings'
 
@@ -79,7 +118,7 @@ const collapsedSelectOpen = ref(false)
 const presetName = ref('')
 const presetSearch = ref('')
 
-// Collapsible sections
+// Collapsible sections — start collapsed for progressive disclosure
 const expandedSections = ref({
   backend: false,
   presets: false,
@@ -90,6 +129,38 @@ const expandedSections = ref({
   generation: false,
   hardware: false
 })
+
+// Model setup modal never uses focus "all"; always show presets there expanded.
+watch(
+  () => props.focus,
+  (focus) => {
+    if (focus === 'model') {
+      expandedSections.value.presets = true
+      expandedSections.value.models = true
+    }
+  },
+  { immediate: true }
+)
+
+/** Simple hides advanced sampling/cache/chroma fields; advanced shows everything */
+const CONFIG_DENSITY_KEY = 'flaxeo-config-density'
+const configDensity = ref<'simple' | 'advanced'>(
+  typeof localStorage !== 'undefined' && localStorage.getItem(CONFIG_DENSITY_KEY) === 'advanced'
+    ? 'advanced'
+    : 'simple'
+)
+const showAdvancedConfig = computed(() => configDensity.value === 'advanced')
+
+function setConfigDensity(value: string): void {
+  if (value !== 'simple' && value !== 'advanced') return
+  configDensity.value = value
+  if (typeof localStorage !== 'undefined') localStorage.setItem(CONFIG_DENSITY_KEY, value)
+}
+
+const densityOptions = [
+  { value: 'simple', label: 'Simple' },
+  { value: 'advanced', label: 'Advanced' }
+]
 
 const filteredPresets = computed(() => {
   const query = presetSearch.value.trim().toLowerCase()
@@ -339,6 +410,7 @@ function addNewEmbedding(): void {
 onMounted(() => {
   fetchModels()
   startRuntimeStatusPolling()
+  fetchCapabilities().catch(() => undefined)
 })
 
 onUnmounted(() => {
@@ -767,6 +839,13 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="activeCollapsedSection === 'hardware'" class="space-y-3">
+          <button
+            type="button"
+            class="w-full rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            @click="applyLowVram"
+          >
+            Apply Low VRAM profile
+          </button>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <label class="flex items-center gap-2"
               ><input v-model="config.flashAttention" type="checkbox" /> Flash</label
@@ -908,15 +987,37 @@ onUnmounted(() => {
               class="w-full"
               @update:model-value="configStore.updateConfig({ videoMode: $event === 'video' })"
             />
+
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <span class="text-[11px] text-muted-foreground">Config density</span>
+              <SegmentedControl
+                :model-value="configDensity"
+                :options="densityOptions"
+                size="sm"
+                aria-label="Config density"
+                @update:model-value="setConfigDensity"
+              />
+            </div>
           </div>
         </section>
 
-        <!-- PRESETS -->
-        <section v-if="props.focus === 'all'" class="pt-3">
+        <!-- PRESETS (Model setup modal uses focus=model; "all" is unused by the app shell) -->
+        <section v-if="props.focus === 'all' || props.focus === 'model'" class="pt-3">
           <div class="flex w-full items-center justify-between py-1">
-            <span class="text-sm font-medium text-foreground">Presets</span>
-            <span class="aui-status-badge text-xs text-muted-foreground">{{ presets.length }}</span>
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 items-center gap-2 text-left"
+              @click="expandedSections.presets = !expandedSections.presets"
+            >
+              <span class="text-sm font-medium text-foreground">Presets</span>
+              <span class="aui-status-badge text-xs text-muted-foreground">{{
+                presets.length
+              }}</span>
+            </button>
           </div>
+          <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+            Load a model family preset or save the current stack (models + sampling + hardware).
+          </p>
 
           <div v-show="expandedSections.presets" class="space-y-3 pt-2">
             <div class="flex items-center gap-1">
@@ -1465,76 +1566,78 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <template v-if="showAdvancedConfig">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >SLG Start</label
+                  >
+                  <input
+                    v-model.number="config.skipLayerStart"
+                    type="number"
+                    step="0.01"
+                    class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                  />
+                </div>
+                <div>
+                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                    >SLG End</label
+                  >
+                  <input
+                    v-model.number="config.skipLayerEnd"
+                    type="number"
+                    step="0.01"
+                    class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >SLG Start</label
+                  >Skip Layers</label
                 >
                 <input
-                  v-model.number="config.skipLayerStart"
-                  type="number"
-                  step="0.01"
+                  v-model="config.skipLayers"
+                  type="text"
+                  placeholder="7,8,9"
                   class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
               </div>
+
               <div>
                 <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >SLG End</label
+                  >Sigmas</label
                 >
                 <input
-                  v-model.number="config.skipLayerEnd"
-                  type="number"
-                  step="0.01"
+                  v-model="config.sigmas"
+                  type="text"
+                  placeholder="14.61,7.8,3.5,0.0"
                   class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
               </div>
-            </div>
 
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >Skip Layers</label
-              >
-              <input
-                v-model="config.skipLayers"
-                type="text"
-                placeholder="7,8,9"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Extra Sample Args</label>
+                <input
+                  v-model="config.extraSampleArgs"
+                  type="text"
+                  placeholder="apg_eta=0.5,slg_uncond=1"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
 
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >Sigmas</label
-              >
-              <input
-                v-model="config.sigmas"
-                type="text"
-                placeholder="14.61,7.8,3.5,0.0"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">Extra Sample Args</label>
-              <input
-                v-model="config.extraSampleArgs"
-                type="text"
-                placeholder="apg_eta=0.5,slg_uncond=1"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
-
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >Extra Tiling Args</label
-              >
-              <input
-                v-model="config.extraTilingArgs"
-                type="text"
-                placeholder="temporal_tile_frames=4"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+              <div>
+                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
+                  >Extra Tiling Args</label
+                >
+                <input
+                  v-model="config.extraTilingArgs"
+                  type="text"
+                  placeholder="temporal_tile_frames=4"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </template>
           </div>
         </section>
 
@@ -1560,45 +1663,70 @@ onUnmounted(() => {
             <div
               v-for="(lora, index) in config.loras"
               :key="index"
-              class="config-panel__item flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3"
+              class="config-panel__item space-y-2 rounded-xl border border-border/70 bg-card p-3"
             >
-              <div class="flex-1 min-w-0">
-                <label
-                  class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5"
-                  >LoRA {{ index + 1 }}</label
+              <div class="flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <label
+                    class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >LoRA {{ index + 1 }}</label
+                  >
+                  <Select
+                    v-model="lora.path"
+                    size="md"
+                    :options="models.loras.map((m) => ({ label: m, value: m }))"
+                  />
+                </div>
+                <div class="shrink-0">
+                  <label
+                    class="mb-1.5 block text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >Strength</label
+                  >
+                  <input
+                    v-model.number="lora.strength"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2"
+                    class="w-20 rounded-lg bg-background px-3 py-2 text-center text-sm font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-ring/30"
+                    title="Strength"
+                  />
+                </div>
+                <button
+                  @click="configStore.removeLora(index)"
+                  class="aui-icon-button inline-flex h-9 w-9 items-center justify-center self-end rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Remove LoRA"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
+              <div>
+                <label class="mb-1 block text-[10px] font-medium text-muted-foreground"
+                  >Branch target (Wan MoE)</label
                 >
                 <Select
-                  v-model="lora.path"
-                  size="md"
-                  :options="models.loras.map((m) => ({ label: m, value: m }))"
+                  :model-value="lora.target || 'default'"
+                  size="sm"
+                  :options="[
+                    { label: 'Default / low noise', value: 'default' },
+                    { label: 'High noise (|high_noise|)', value: 'high_noise' }
+                  ]"
+                  @update:model-value="
+                    (value) => {
+                      lora.target = value === 'high_noise' ? 'high_noise' : 'default'
+                    }
+                  "
                 />
+                <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
+                  High noise emits
+                  <code class="text-foreground/80">&lt;lora:|high_noise|name:s&gt;</code>
+                  for Wan2.2 dual-branch LoRAs.
+                </p>
               </div>
-              <div class="shrink-0">
-                <label
-                  class="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 text-center"
-                  >Strength</label
-                >
-                <input
-                  v-model.number="lora.strength"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  class="w-20 px-3 py-2 text-sm rounded-lg bg-background text-center font-medium focus:outline-none focus:ring-1 focus:ring-ring/30 transition-colors"
-                  title="Strength"
-                />
-              </div>
-              <button
-                @click="configStore.removeLora(index)"
-                class="aui-icon-button inline-flex h-9 w-9 items-center justify-center self-end rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Remove LoRA"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
             </div>
 
             <div>
-              <label class="text-sm text-muted-foreground block mb-1">Apply mode</label>
+              <label class="mb-1 block text-sm text-muted-foreground">Apply mode</label>
               <Select
                 v-model="config.loraApplyMode"
                 size="md"
@@ -1610,13 +1738,30 @@ onUnmounted(() => {
               />
             </div>
 
-            <button
-              @click="addNewLora"
-              class="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium transition-colors duration-150 hover:bg-accent hover:text-foreground"
-            >
-              <Plus class="w-3.5 h-3.5" />
-              Add LoRA
-            </button>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                @click="addNewLora"
+                class="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium transition-colors duration-150 hover:bg-accent hover:text-foreground"
+              >
+                <Plus class="h-3.5 w-3.5" />
+                Add LoRA
+              </button>
+              <button
+                type="button"
+                @click="
+                  () => {
+                    if (models.loras.length > 0)
+                      configStore.addLora(models.loras[0], 1.0, 'high_noise')
+                    else toast.error('No LoRA files in models/loras')
+                  }
+                "
+                class="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium transition-colors duration-150 hover:bg-accent hover:text-foreground"
+                title="Add a LoRA tagged for the high-noise branch"
+              >
+                <Plus class="h-3.5 w-3.5" />
+                Add high-noise LoRA
+              </button>
+            </div>
           </div>
         </section>
 
@@ -1741,7 +1886,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div v-if="showAdvancedConfig" class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
                   >RNG</label
@@ -1776,66 +1921,88 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Cache Mode</label
-                >
-                <Select
-                  v-model="config.cacheMode"
-                  size="md"
-                  placeholder="Off"
-                  :options="[
-                    { label: 'Off', value: '' },
-                    { label: 'UCache', value: 'ucache' },
-                    { label: 'EasyCache', value: 'easycache' },
-                    { label: 'DBCache', value: 'dbcache' },
-                    { label: 'TaylorSeer', value: 'taylorseer' },
-                    { label: 'Cache-DIT', value: 'cache-dit' },
-                    { label: 'Spectrum', value: 'spectrum' }
-                  ]"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >SCM Policy</label
-                >
-                <Select
-                  v-model="config.scmPolicy"
-                  size="md"
-                  placeholder="Dynamic"
-                  :options="[
-                    { label: 'Default', value: '' },
-                    { label: 'Dynamic', value: 'dynamic' },
-                    { label: 'Static', value: 'static' }
-                  ]"
-                />
-              </div>
+            <div>
+              <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
+                >Cache preset</label
+              >
+              <Select
+                v-model="selectedCachePresetId"
+                size="md"
+                :options="cachePresetOptions"
+              />
+              <p
+                v-if="activeCachePreset"
+                class="mt-1.5 text-[11px] leading-4 text-muted-foreground"
+              >
+                {{ activeCachePreset.description }}
+              </p>
+              <p v-else class="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+                Manual fields below do not match a built-in recipe.
+              </p>
             </div>
 
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >Cache Options</label
-              >
-              <input
-                v-model="config.cacheOption"
-                type="text"
-                placeholder="threshold=0.25,warmup=4"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+            <template v-if="showAdvancedConfig">
+              <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
+                    >Cache Mode</label
+                  >
+                  <Select
+                    v-model="config.cacheMode"
+                    size="md"
+                    placeholder="Off"
+                    :options="[
+                      { label: 'Off', value: '' },
+                      { label: 'UCache', value: 'ucache' },
+                      { label: 'EasyCache', value: 'easycache' },
+                      { label: 'DBCache', value: 'dbcache' },
+                      { label: 'TaylorSeer', value: 'taylorseer' },
+                      { label: 'Cache-DIT', value: 'cache-dit' },
+                      { label: 'Spectrum', value: 'spectrum' }
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
+                    >SCM Policy</label
+                  >
+                  <Select
+                    v-model="config.scmPolicy"
+                    size="md"
+                    placeholder="Dynamic"
+                    :options="[
+                      { label: 'Default', value: '' },
+                      { label: 'Dynamic', value: 'dynamic' },
+                      { label: 'Static', value: 'static' }
+                    ]"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >SCM Mask</label
-              >
-              <input
-                v-model="config.scmMask"
-                type="text"
-                placeholder="1,1,1,0,0,1"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+              <div>
+                <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
+                  >Cache Options</label
+                >
+                <input
+                  v-model="config.cacheOption"
+                  type="text"
+                  placeholder="threshold=0.25,warmup=4"
+                  class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
+                  >SCM Mask</label
+                >
+                <input
+                  v-model="config.scmMask"
+                  type="text"
+                  placeholder="1,1,1,0,0,1"
+                  class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </template>
           </div>
         </section>
 
@@ -1846,6 +2013,18 @@ onUnmounted(() => {
           </div>
 
           <div v-show="expandedSections.hardware || props.focus === 'model'" class="space-y-5">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              @click="applyLowVram"
+            >
+              <Cpu class="h-3.5 w-3.5" />
+              Apply Low VRAM profile
+            </button>
+            <p class="text-[10px] leading-tight text-muted-foreground">
+              Enables CPU offload, layer streaming, max VRAM auto (−1 GiB headroom), and flash
+              attention. Matches the stable-diffusion.cpp performance guide.
+            </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <label class="flex items-center gap-2 text-sm cursor-pointer">
                 <input v-model="config.flashAttention" type="checkbox" class="rounded" />
@@ -1885,8 +2064,21 @@ onUnmounted(() => {
                 <input v-model="config.forceSDXLVaeConvScale" type="checkbox" class="rounded" />
                 SDXL VAE Scale
               </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.streamLayers" type="checkbox" class="rounded" />
+              <label
+                class="flex items-center gap-2 text-sm cursor-pointer"
+                :class="!supportsStreamLayers && 'opacity-50'"
+                :title="
+                  supportsStreamLayers
+                    ? 'Stream transformer blocks to fit larger models'
+                    : 'Not advertised by active sd-cli'
+                "
+              >
+                <input
+                  v-model="config.streamLayers"
+                  type="checkbox"
+                  class="rounded"
+                  :disabled="!supportsStreamLayers"
+                />
                 Stream Layers
               </label>
               <label class="flex items-center gap-2 text-sm cursor-pointer">
@@ -1945,13 +2137,19 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="text-sm text-muted-foreground block mb-1">Max VRAM GiB</label>
+                <label class="text-sm text-muted-foreground block mb-1">
+                  Max VRAM GiB
+                  <span v-if="!supportsMaxVram" class="text-[10px] text-muted-foreground">
+                    (unsupported)
+                  </span>
+                </label>
                 <input
                   v-model.number="config.maxVram"
                   type="number"
                   step="0.1"
                   placeholder="0"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                  :disabled="!supportsMaxVram"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors disabled:opacity-50"
                 />
               </div>
               <div>
@@ -1967,87 +2165,96 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">Quantization</label>
-              <Select
-                v-model="config.quantizationType"
-                size="md"
-                placeholder="Default"
-                :options="[
-                  { label: 'Default', value: '' },
-                  { label: 'f32 - 32-bit', value: 'f32' },
-                  { label: 'f16 - 16-bit', value: 'f16' },
-                  { label: 'q8_0 - 8-bit', value: 'q8_0' },
-                  { label: 'q5_0 - 5-bit', value: 'q5_0' },
-                  { label: 'q4_0 - 4-bit', value: 'q4_0' }
-                ]"
-              />
-            </div>
+            <template v-if="showAdvancedConfig">
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Quantization</label>
+                <Select
+                  v-model="config.quantizationType"
+                  size="md"
+                  placeholder="Default"
+                  :options="[
+                    { label: 'Default', value: '' },
+                    { label: 'f32 - 32-bit', value: 'f32' },
+                    { label: 'f16 - 16-bit', value: 'f16' },
+                    { label: 'q8_0 - 8-bit', value: 'q8_0' },
+                    { label: 'q5_0 - 5-bit', value: 'q5_0' },
+                    { label: 'q4_0 - 4-bit', value: 'q4_0' },
+                    { label: 'q4_K', value: 'q4_K' },
+                    { label: 'q3_K', value: 'q3_K' },
+                    { label: 'q2_K', value: 'q2_K' }
+                  ]"
+                />
+              </div>
 
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">Tensor Type Rules</label>
-              <input
-                v-model="config.tensorTypeRules"
-                type="text"
-                placeholder="^vae\\.=f16,model\\.=q8_0"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Tensor Type Rules</label>
+                <input
+                  v-model="config.tensorTypeRules"
+                  type="text"
+                  placeholder="^vae\\.=f16,model\\.=q8_0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
 
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">Prediction</label>
-              <Select
-                v-model="config.predictionType"
-                size="md"
-                placeholder="Auto"
-                :options="[
-                  { label: 'Auto', value: '' },
-                  { label: 'EPS', value: 'eps' },
-                  { label: 'V', value: 'v' },
-                  { label: 'EDM V', value: 'edm_v' },
-                  { label: 'SD3 Flow', value: 'sd3_flow' },
-                  { label: 'Flux Flow', value: 'flux_flow' },
-                  { label: 'Flux2 Flow', value: 'flux2_flow' }
-                ]"
-              />
-            </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Prediction</label>
+                <Select
+                  v-model="config.predictionType"
+                  size="md"
+                  placeholder="Auto"
+                  :options="[
+                    { label: 'Auto', value: '' },
+                    { label: 'EPS', value: 'eps' },
+                    { label: 'V', value: 'v' },
+                    { label: 'EDM V', value: 'edm_v' },
+                    { label: 'SD3 Flow', value: 'sd3_flow' },
+                    { label: 'Flux Flow', value: 'flux_flow' },
+                    { label: 'Flux2 Flow', value: 'flux2_flow' }
+                  ]"
+                />
+              </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.circular" type="checkbox" class="rounded" />
-                Circular
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.circularX" type="checkbox" class="rounded" />
-                Circular X
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.circularY" type="checkbox" class="rounded" />
-                Circular Y
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.qwenImageZeroCondT" type="checkbox" class="rounded" />
-                Qwen Zero T
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.chromaEnableT5Mask" type="checkbox" class="rounded" />
-                Chroma T5 Mask
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="config.chromaDisableDitMask" type="checkbox" class="rounded" />
-                Disable DiT Mask
-              </label>
-            </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.circular" type="checkbox" class="rounded" />
+                  Circular
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.circularX" type="checkbox" class="rounded" />
+                  Circular X
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.circularY" type="checkbox" class="rounded" />
+                  Circular Y
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.qwenImageZeroCondT" type="checkbox" class="rounded" />
+                  Qwen Zero T
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.chromaEnableT5Mask" type="checkbox" class="rounded" />
+                  Chroma T5 Mask
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input v-model="config.chromaDisableDitMask" type="checkbox" class="rounded" />
+                  Disable DiT Mask
+                </label>
+              </div>
 
-            <div>
-              <label class="text-sm text-muted-foreground block mb-1">Chroma T5 Mask Pad</label>
-              <input
-                v-model.number="config.chromaT5MaskPad"
-                type="number"
-                placeholder="0"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+              <div>
+                <label class="text-sm text-muted-foreground block mb-1">Chroma T5 Mask Pad</label>
+                <input
+                  v-model.number="config.chromaT5MaskPad"
+                  type="number"
+                  placeholder="0"
+                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </template>
+            <p v-else class="text-[11px] leading-4 text-muted-foreground">
+              Switch density to <strong>Advanced</strong> for quantization overrides, prediction
+              type, circular padding, and Chroma/Qwen flags.
+            </p>
           </div>
         </section>
 

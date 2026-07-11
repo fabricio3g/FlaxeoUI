@@ -1,7 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 import type { AppContext, JsonObject } from './types'
-import { asBool, firstString, modelDirectory, modelPath, roundTo } from './utils'
+import { firstString, modelDirectory, modelPath } from './utils'
+import {
+  addGenerationArgs as addGenerationArgsPure,
+  addHardwareArgs as addHardwareArgsPure,
+  addOptionalArgs as addOptionalArgsPure,
+  pushArg as pushArgPure
+} from '../shared/sdArgHelpers'
 
 export function getSdCliPath(ctx: AppContext): string {
   return getBackendBinaryPath(ctx, 'sd-cli')
@@ -73,24 +79,7 @@ export function pushModelArg(
   if (resolved) args.push(flag, resolved)
 }
 
-export function pushArg(args: string[], flag: string, value: unknown): void {
-  if (value) args.push(flag, String(value))
-}
-
-function pushNumericArg(
-  args: string[],
-  flag: string,
-  value: unknown,
-  predicate: (value: number) => boolean
-): void {
-  if (!value) return
-  const numberValue = Number(value)
-  if (predicate(numberValue)) args.push(flag, String(value))
-}
-
-function pushBoolArg(args: string[], flag: string, value: unknown): void {
-  if (asBool(value)) args.push(flag)
-}
+export const pushArg = pushArgPure
 
 export function addGenerationArgs(
   args: string[],
@@ -98,73 +87,15 @@ export function addGenerationArgs(
   outputPath: string,
   defaults: { width: number; height: number; cfg: number; multiple: number }
 ): void {
-  args.push('-p', String(body.prompt || ''))
-  if (body.negative_prompt) args.push('-n', String(body.negative_prompt))
-  args.push('--steps', String(body.steps || 20))
-  args.push('--cfg-scale', String(body.cfg_scale || defaults.cfg))
-  args.push('-W', String(roundTo(body.width, defaults.width, defaults.multiple)))
-  args.push('-H', String(roundTo(body.height, defaults.height, defaults.multiple)))
-  const seed = body.seed === '' || body.seed == null ? -1 : body.seed
-  args.push('-s', String(seed))
-  args.push('-o', outputPath)
+  addGenerationArgsPure(args, body, outputPath, defaults)
 }
 
 export function addOptionalArgs(args: string[], body: JsonObject): void {
-  const clipSkip = body.clip_skip ?? body.clipSkip
-  pushArg(args, '--guidance', body.guidance)
-  if (clipSkip && parseInt(String(clipSkip), 10) !== -1) pushArg(args, '--clip-skip', clipSkip)
-  pushArg(args, '--scheduler', body.scheduler)
-  pushArg(args, '--sampling-method', body.samplingMethod)
-  pushArg(args, '--lora-apply-mode', body.loraApplyMode)
-  pushNumericArg(args, '--vae-tile-size', body.vaeTileSize, (value) => value > 0)
-  pushArg(args, '--rng', body.rngType)
-  pushArg(args, '--sampler-rng', body.samplerRngType)
-  pushArg(args, '--prediction', body.predictionType)
-  pushArg(args, '--vae-format', body.vaeFormat)
-  pushNumericArg(args, '--flow-shift', body.flowShift, (value) => value !== 0)
-  pushNumericArg(args, '--eta', body.eta, (value) => value !== 0)
-  pushNumericArg(args, '--slg-scale', body.slgScale, (value) => value !== 0)
-  pushNumericArg(args, '--skip-layer-start', body.skipLayerStart, (value) => value !== 0.01)
-  pushNumericArg(args, '--skip-layer-end', body.skipLayerEnd, (value) => value !== 0.2)
-  pushArg(args, '--skip-layers', body.skipLayers)
-  pushArg(args, '--sigmas', body.sigmas)
-  pushNumericArg(args, '--img-cfg-scale', body.imgCfgScale, (value) => value > 0)
-  pushArg(args, '--extra-sample-args', body.extraSampleArgs)
-  pushArg(args, '--extra-tiling-args', body.extraTilingArgs)
-  pushArg(args, '--cache-mode', body.cacheMode)
-  pushArg(args, '--cache-option', body.cacheOption)
-  pushArg(args, '--scm-mask', body.scmMask)
-  pushArg(args, '--scm-policy', body.scmPolicy)
+  addOptionalArgsPure(args, body)
 }
 
 export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): void {
-  if (!prompt.includes('<lora:')) pushBoolArg(args, '--diffusion-fa', body.diffusionFa)
-  pushBoolArg(args, '--vae-tiling', body.vaeTiling)
-  pushBoolArg(args, '--clip-on-cpu', body.clipOnCpu)
-  pushBoolArg(args, '--vae-on-cpu', body.vaeOnCpu)
-  pushBoolArg(args, '--control-net-cpu', body.controlNetOnCpu)
-  pushBoolArg(args, '--offload-to-cpu', body.offloadToCpu)
-  pushBoolArg(args, '--diffusion-conv-direct', body.diffusionConvDirect)
-  pushBoolArg(args, '--vae-conv-direct', body.vaeConvDirect)
-  pushBoolArg(args, '--force-sdxl-vae-conv-scale', body.forceSDXLVaeConvScale)
-  pushBoolArg(args, '--stream-layers', body.streamLayers)
-  pushBoolArg(args, '--mmap', body.mmap)
-  pushBoolArg(args, '--circular', body.circular)
-  pushBoolArg(args, '--circularx', body.circularX)
-  pushBoolArg(args, '--circulary', body.circularY)
-  pushBoolArg(args, '--qwen-image-zero-cond-t', body.qwenImageZeroCondT)
-  pushBoolArg(args, '--chroma-enable-t5-mask', body.chromaEnableT5Mask)
-  pushBoolArg(args, '--chroma-disable-dit-mask', body.chromaDisableDitMask)
-  pushBoolArg(args, '--disable-image-metadata', body.disableImageMetadata)
-  if (!asBool(body.autoFit)) {
-    pushArg(args, '--backend', body.backendAssignment)
-    pushArg(args, '--params-backend', body.paramsBackendAssignment)
-  }
-  pushBoolArg(args, '--auto-fit', body.autoFit)
-  pushArg(args, '--split-mode', body.splitMode)
-  pushNumericArg(args, '--threads', body.threads, (value) => value > 0)
-  pushNumericArg(args, '--max-vram', body.maxVram, (value) => value !== 0)
-  pushNumericArg(args, '--chroma-t5-mask-pad', body.chromaT5MaskPad, (value) => value > 0)
+  addHardwareArgsPure(args, body, prompt)
 }
 
 export function addPromptModelExtras(
@@ -175,8 +106,7 @@ export function addPromptModelExtras(
 ): void {
   const embeddingsDir = modelDirectory(ctx, 'embeddings')
   if (fs.existsSync(embeddingsDir)) args.push('--embd-dir', embeddingsDir)
-  if (prompt.includes('<lora:'))
-    args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
+  if (prompt.includes('<lora:')) args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
   pushArg(args, '--type', body.quantizationType)
   pushArg(args, '--tensor-type-rules', body.tensorTypeRules)
 }

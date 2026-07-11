@@ -18,6 +18,8 @@ import Select from './components/ui/Select.vue'
 import { useRuntimeStatus } from './composables/useRuntimeStatus'
 import { useServerControls } from './composables/useServerControls'
 import { useModels } from './composables/useModels'
+import { useBackendCapabilities } from './composables/useBackendCapabilities'
+import { onOpenLogs } from './lib/appEvents'
 import Settings from './views/Settings.vue'
 
 const route = useRoute()
@@ -27,6 +29,7 @@ const { config } = storeToRefs(configStore)
 const { sdServerRunning, backendValid, fetchRuntimeStatus } = useRuntimeStatus()
 const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
 const { models, fetchModels } = useModels()
+const { fetchCapabilities } = useBackendCapabilities()
 const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
 
 const showMobileConfig = ref(false)
@@ -125,6 +128,8 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
   else if (configPanelVisible.value) closeConfigPanel()
 }
 
+let unsubscribeOpenLogs: (() => void) | null = null
+
 onMounted(async () => {
   try {
     const state = await window.electronAPI?.getInitState()
@@ -137,11 +142,17 @@ onMounted(async () => {
 
   await loadState()
   await fetchModels()
+  fetchCapabilities().catch(() => undefined)
   window.addEventListener('keydown', handleGlobalKeydown)
+  unsubscribeOpenLogs = onOpenLogs(() => {
+    showFloatingLogs.value = true
+  })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  unsubscribeOpenLogs?.()
+  unsubscribeOpenLogs = null
 })
 </script>
 

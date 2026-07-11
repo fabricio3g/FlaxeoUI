@@ -1,21 +1,29 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Save, Search, Trash2, X } from '@/lib/icons'
+import { Bookmark, Search, Trash2 } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePromptPresetStore } from '@/stores/promptPresets'
+import { useToast } from '@/composables/useToast'
 
 const prompt = defineModel<string>('prompt', { required: true })
 const negativePrompt = defineModel<string>('negativePrompt', { required: true })
 
+withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  { compact: false }
+)
+
+const toast = useToast()
 const promptPresetStore = usePromptPresetStore()
 const { presets, selectedPresetId } = storeToRefs(promptPresetStore)
 
 const presetName = ref('')
 const presetSearch = ref('')
-const showPresets = ref(false)
-const root = ref<HTMLElement | null>(null)
-const dialog = ref<HTMLElement | null>(null)
+const open = ref(false)
 
 const filteredPresets = computed(() => {
   const query = presetSearch.value.trim().toLowerCase()
@@ -29,39 +37,44 @@ const filteredPresets = computed(() => {
   )
 })
 
-const props = withDefaults(
-  defineProps<{
-    compact?: boolean
-  }>(),
-  { compact: false }
+const canSave = computed(
+  () =>
+    Boolean(presetName.value.trim()) &&
+    Boolean(prompt.value.trim() || negativePrompt.value.trim())
 )
 
-const selectedPreset = computed(() =>
-  presets.value.find((preset) => preset.id === selectedPresetId.value)
-)
+const matchingNamePreset = computed(() => {
+  const name = presetName.value.trim().toLowerCase()
+  if (!name) return null
+  return presets.value.find((preset) => preset.name.toLowerCase() === name) || null
+})
 
 const presetOptions = computed(() => [
-  { label: 'Select prompt...', value: '' },
-  ...(selectedPreset.value &&
-  !filteredPresets.value.some((preset) => preset.id === selectedPreset.value?.id)
-    ? [selectedPreset.value, ...filteredPresets.value]
-    : filteredPresets.value
-  ).map((preset) => ({
+  { label: presets.value.length ? 'Select preset…' : 'No presets yet', value: '' },
+  ...filteredPresets.value.map((preset) => ({
     label: preset.name,
     value: preset.id
   }))
 ])
 
+function previewText(text: string, max = 72): string {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return 'Empty prompt'
+  return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned
+}
+
 function saveCurrentPreset(): void {
-  const savedPreset = promptPresetStore.savePreset(
+  if (!canSave.value) return
+
+  const result = promptPresetStore.saveOrUpdateByName(
     presetName.value,
     prompt.value,
     negativePrompt.value
   )
-  if (savedPreset) {
-    presetName.value = ''
-    presetSearch.value = ''
-  }
+  if (!result) return
+
+  presetName.value = ''
+  toast.success(result.updated ? `Updated “${result.preset.name}”` : `Saved “${result.preset.name}”`)
 }
 
 function selectPreset(id: string): void {
@@ -69,198 +82,179 @@ function selectPreset(id: string): void {
 }
 
 function loadSelectedPreset(): void {
-  if (!selectedPreset.value) return
+  const preset = presets.value.find((item) => item.id === selectedPresetId.value)
+  if (!preset) return
 
-  prompt.value = selectedPreset.value.prompt
-  negativePrompt.value = selectedPreset.value.negativePrompt
-  showPresets.value = false
+  prompt.value = preset.prompt
+  negativePrompt.value = preset.negativePrompt
+  toast.success(`Loaded “${preset.name}”`)
+  open.value = false
 }
 
 function overwriteSelectedPreset(): void {
   if (!selectedPresetId.value) return
+  if (!prompt.value.trim() && !negativePrompt.value.trim()) {
+    toast.error('Nothing to save — write a prompt first')
+    return
+  }
+  const preset = presets.value.find((item) => item.id === selectedPresetId.value)
   promptPresetStore.updatePreset(selectedPresetId.value, prompt.value, negativePrompt.value)
+  toast.success(preset ? `Updated “${preset.name}”` : 'Preset updated')
 }
 
 function deleteSelectedPreset(): void {
   if (!selectedPresetId.value) return
+  const preset = presets.value.find((item) => item.id === selectedPresetId.value)
+  if (preset && !confirm(`Delete prompt preset “${preset.name}”?`)) return
   promptPresetStore.deletePreset(selectedPresetId.value)
+  toast.success(preset ? `Deleted “${preset.name}”` : 'Preset deleted')
 }
 
-function handleDocumentPointerDown(event: PointerEvent): void {
-  if (!showPresets.value || !root.value) return
-  const target = event.target as HTMLElement
-  if (
-    root.value.contains(target) ||
-    dialog.value?.contains(target) ||
-    target.closest('[data-slot="select-content"]')
-  )
-    return
-  showPresets.value = false
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handleDocumentPointerDown)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('pointerdown', handleDocumentPointerDown)
-})
+const selectedPreset = computed(() =>
+  presets.value.find((preset) => preset.id === selectedPresetId.value)
+)
 </script>
 
 <template>
-  <div ref="root" class="relative inline-flex">
-    <button
-      v-if="compact"
-      type="button"
-      class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      :class="showPresets ? 'border-border bg-background text-foreground shadow-sm' : ''"
-      @click="showPresets = !showPresets"
-      title="Prompt Presets"
-      aria-label="Toggle prompt presets"
-    >
-      <Save class="size-4" />
-    </button>
-    <button
-      v-else
-      type="button"
-      class="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      :class="showPresets ? 'border-foreground/20 bg-background text-foreground' : ''"
-      @click="showPresets = !showPresets"
-    >
-      <Save class="h-3.5 w-3.5" />
-      Prompt Presets
-      <span class="text-[10px] text-muted-foreground">{{ presets.length }}</span>
-    </button>
-
-    <Teleport to="body">
-      <div
-        v-if="showPresets"
-        class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm duration-200 motion-reduce:animate-none"
-        @click.self="showPresets = false"
+  <Popover v-model:open="open">
+    <PopoverTrigger as-child>
+      <button
+        v-if="compact"
+        type="button"
+        class="aui-icon-button relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        :class="open ? 'border-border bg-background text-foreground shadow-sm' : ''"
+        title="Prompt presets"
+        aria-label="Prompt presets"
       >
-        <div
-          ref="dialog"
-          class="aui-dialog-surface fade-in slide-in-from-bottom-2 zoom-in-95 animate-in fill-mode-both flex max-h-[min(42rem,calc(100vh-2rem))] w-[min(27rem,calc(100vw-2rem))] flex-col gap-0 overflow-y-auto rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Prompt presets"
-          @click.stop
+        <Bookmark class="size-4" />
+        <span
+          v-if="presets.length"
+          class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold tabular-nums text-background"
         >
-          <div class="flex items-center justify-between px-5 pb-3 pt-5">
-            <span class="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-              <span
-                class="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
-              >
-                <Save class="h-3.5 w-3.5" />
-              </span>
-              Prompt Presets
-              <span
-                class="aui-status-badge rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                >{{ presets.length }}</span
-              >
-            </span>
-            <button
-              type="button"
-              @click="showPresets = false"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Close"
-              aria-label="Close"
-            >
-              <X class="h-3.5 w-3.5" />
-            </button>
-          </div>
+          {{ presets.length > 99 ? '99+' : presets.length }}
+        </span>
+      </button>
+      <button
+        v-else
+        type="button"
+        class="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        :class="open ? 'border-border bg-background text-foreground' : ''"
+        aria-label="Prompt presets"
+      >
+        <Bookmark class="h-3.5 w-3.5" />
+        Prompt presets
+        <span class="text-[10px] text-muted-foreground">{{ presets.length }}</span>
+      </button>
+    </PopoverTrigger>
 
-          <div class="space-y-2 px-5 pb-5 pt-2">
-            <label class="aui-label block text-xs font-medium text-muted-foreground"
-              >Save current prompt</label
-            >
-            <div class="flex gap-2">
-              <input
-                v-model="presetName"
-                type="text"
-                placeholder="Preset name..."
-                class="aui-field h-10 min-w-0 flex-1 rounded-xl border border-input bg-background/70 px-3 text-sm text-foreground shadow-sm transition-colors duration-150 placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                @keyup.enter="saveCurrentPreset"
-              />
-              <button
-                type="button"
-                @click="saveCurrentPreset"
-                :disabled="!presetName.trim()"
-                class="inline-flex h-10 shrink-0 items-center rounded-full px-4 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :class="
-                  presetName.trim()
-                    ? 'bg-foreground text-background shadow-sm hover:bg-foreground/85'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
-                "
-              >
-                Save
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-2 border-t border-border/60 px-5 py-5">
-            <label class="aui-label block text-xs font-medium text-muted-foreground"
-              >Load or manage</label
-            >
-            <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
-              <div class="relative">
-                <Search
-                  class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                />
-                <input
-                  v-model="presetSearch"
-                  type="text"
-                  placeholder="Search presets..."
-                  class="aui-field h-10 w-full rounded-xl border border-input bg-background/70 pl-9 pr-3 text-sm text-foreground shadow-sm transition-colors duration-150 placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                />
-              </div>
-
-              <Select
-                :model-value="selectedPresetId"
-                size="sm"
-                placeholder="Select..."
-                :options="presetOptions"
-                class="h-10 min-w-[8rem] rounded-xl bg-background/70"
-                @update:model-value="selectPreset"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2 border-t border-border/60 bg-muted/30 px-5 py-4">
-            <button
-              type="button"
-              @click="loadSelectedPreset"
-              :disabled="!selectedPreset"
-              class="inline-flex h-9 flex-1 items-center justify-center rounded-full text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="
-                selectedPreset
-                  ? 'bg-foreground text-background shadow-sm hover:bg-foreground/85'
-                  : 'cursor-not-allowed bg-muted text-muted-foreground'
-              "
-            >
-              Load
-            </button>
-            <button
-              type="button"
-              @click="overwriteSelectedPreset"
-              :disabled="!selectedPreset"
-              class="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-input bg-background text-xs font-medium shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-            >
-              Overwrite
-            </button>
-            <button
-              type="button"
-              @click="deleteSelectedPreset"
-              :disabled="!selectedPreset"
-              class="aui-icon-button inline-flex size-9 items-center justify-center rounded-full border border-input bg-background text-muted-foreground shadow-sm transition-all duration-150 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Delete prompt preset"
-              aria-label="Delete prompt preset"
-            >
-              <Trash2 class="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+    <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+      <div class="mb-3">
+        <p class="text-sm font-medium">Prompt presets</p>
+        <p class="mt-0.5 text-[11px] text-muted-foreground">
+          Save and reuse positive / negative prompts
+        </p>
       </div>
-    </Teleport>
-  </div>
+
+      <!-- Save -->
+      <label class="block text-[10px] font-medium text-muted-foreground">
+        Save current
+        <span v-if="matchingNamePreset" class="font-normal text-muted-foreground/80">
+          · updates existing
+        </span>
+        <div class="mt-1 flex gap-1.5">
+          <input
+            v-model="presetName"
+            type="text"
+            placeholder="Preset name…"
+            class="aui-field h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+            @keyup.enter="saveCurrentPreset"
+          />
+          <button
+            type="button"
+            class="inline-flex h-8 shrink-0 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors"
+            :class="
+              canSave
+                ? 'bg-foreground text-background hover:bg-foreground/85'
+                : 'cursor-not-allowed bg-muted text-muted-foreground'
+            "
+            :disabled="!canSave"
+            @click="saveCurrentPreset"
+          >
+            {{ matchingNamePreset ? 'Update' : 'Save' }}
+          </button>
+        </div>
+      </label>
+
+      <!-- Load / manage -->
+      <div class="mt-3 space-y-2 border-t border-border/60 pt-3">
+        <label class="block text-[10px] font-medium text-muted-foreground">
+          Search
+          <div class="relative mt-1">
+            <Search
+              class="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              v-model="presetSearch"
+              type="search"
+              placeholder="Filter presets…"
+              class="aui-field h-8 w-full rounded-md border border-input bg-background py-0 pl-7 pr-2 text-xs text-foreground outline-none"
+            />
+          </div>
+        </label>
+
+        <label class="block text-[10px] font-medium text-muted-foreground">
+          Load preset
+          <Select
+            :model-value="selectedPresetId"
+            size="sm"
+            aria-label="Select prompt preset"
+            class="mt-1"
+            :options="presetOptions"
+            @update:model-value="selectPreset"
+          />
+        </label>
+
+        <p
+          v-if="selectedPreset"
+          class="line-clamp-2 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground"
+        >
+          {{ previewText(selectedPreset.prompt) }}
+        </p>
+      </div>
+
+      <div class="mt-3 flex items-center gap-1.5">
+        <button
+          type="button"
+          class="inline-flex h-8 flex-1 items-center justify-center rounded-md text-[11px] font-medium transition-colors"
+          :class="
+            selectedPreset
+              ? 'bg-foreground text-background hover:bg-foreground/85'
+              : 'cursor-not-allowed bg-muted text-muted-foreground'
+          "
+          :disabled="!selectedPreset"
+          @click="loadSelectedPreset"
+        >
+          Load
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-input bg-background text-[11px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+          :disabled="!selectedPreset"
+          @click="overwriteSelectedPreset"
+        >
+          Overwrite
+        </button>
+        <button
+          type="button"
+          class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+          :disabled="!selectedPreset"
+          title="Delete preset"
+          aria-label="Delete preset"
+          @click="deleteSelectedPreset"
+        >
+          <Trash2 class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </PopoverContent>
+  </Popover>
 </template>

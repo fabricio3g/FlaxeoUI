@@ -16,6 +16,7 @@ import {
 import Select from '@/components/ui/Select.vue'
 import { useSetup } from '@/composables/useSetup'
 import { useTheme, type ThemePreference } from '@/composables/useTheme'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import {
   isModelDirectoryKey,
   type StorageDirectoryId,
@@ -24,6 +25,7 @@ import {
 
 const { reopenSetup } = useSetup()
 const { themePreference, setTheme } = useTheme()
+const { fetchCapabilities } = useBackendCapabilities()
 
 type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
 
@@ -161,6 +163,7 @@ const ngrokToken = ref('')
 const ngrokError = ref('')
 const cloudflareEnabled = ref(false)
 const cloudflareUrl = ref('')
+const cloudflareError = ref('')
 
 // Get variants for selected release
 const selectedReleaseAssets = computed(() => {
@@ -264,8 +267,10 @@ async function fetchNetworkStatus(): Promise<void> {
     localNetworkUrl.value = data.local?.url || ''
     ngrokEnabled.value = data.ngrok?.enabled || false
     ngrokUrl.value = data.ngrok?.url || ''
+    ngrokError.value = data.ngrok?.error || ngrokError.value
     cloudflareEnabled.value = data.cloudflare?.enabled || false
     cloudflareUrl.value = data.cloudflare?.url || ''
+    cloudflareError.value = data.cloudflare?.error || ''
   } catch (e) {
     console.log('Network status not available')
   }
@@ -310,6 +315,7 @@ async function setActiveVersion(version: string): Promise<void> {
   try {
     await apiPost('/api/backend/set-active', { version })
     await fetchConfig()
+    await fetchCapabilities(true)
   } catch (e) {
     console.error('Failed to set version:', e)
   }
@@ -338,11 +344,14 @@ async function toggleNgrok(): Promise<void> {
  */
 async function toggleCloudflare(): Promise<void> {
   try {
+    cloudflareError.value = ''
     const newState = !cloudflareEnabled.value
     await apiPost('/api/network/cloudflare', { enabled: newState })
     await fetchNetworkStatus()
-  } catch (e) {
+  } catch (e: any) {
+    cloudflareError.value = e.message || 'Failed to toggle Cloudflare tunnel'
     console.error('Failed to toggle cloudflare:', e)
+    await fetchNetworkStatus()
   }
 }
 
@@ -706,12 +715,21 @@ onMounted(async () => {
               </button>
             </div>
 
+            <div
+              class="border-t border-border/70 bg-muted/20 px-4 py-3 text-[11px] leading-4 text-muted-foreground"
+            >
+              <strong class="font-medium text-foreground">Remote access:</strong>
+              Local network share is the supported default. Public tunnels (Ngrok / Cloudflare) are
+              experimental — they need working credentials/binaries and may fail on some networks.
+            </div>
+
             <div class="border-t border-border/70 px-4 py-4">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-medium">Ngrok tunnel</p>
+                  <p class="text-xs font-medium">Ngrok tunnel <span class="text-[10px] font-normal text-muted-foreground">experimental</span></p>
                   <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Expose the server through an authenticated public tunnel.
+                    Requires an auth token. If the toggle fails, check the error below and your
+                    NGROK_AUTHTOKEN.
                     <a
                       href="https://dashboard.ngrok.com/get-started/your-authtoken"
                       target="_blank"
@@ -763,9 +781,13 @@ onMounted(async () => {
             <div class="border-t border-border/70 px-4 py-4">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-medium">Cloudflare tunnel</p>
+                  <p class="text-xs font-medium">
+                    Cloudflare tunnel
+                    <span class="text-[10px] font-normal text-muted-foreground">experimental</span>
+                  </p>
                   <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Create a temporary public route without a local network flag.
+                    Quick tunnel via cloudflared (best-effort). Prefer local network share for LAN
+                    use.
                   </p>
                 </div>
                 <label class="relative inline-flex shrink-0 cursor-pointer items-center">
@@ -780,6 +802,13 @@ onMounted(async () => {
                     class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
                   ></span>
                 </label>
+              </div>
+
+              <div
+                v-if="cloudflareError"
+                class="aui-alert mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs text-destructive"
+              >
+                {{ cloudflareError }}
               </div>
 
               <button

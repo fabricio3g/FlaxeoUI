@@ -299,6 +299,230 @@ export const hubModels: HubModel[] = [
     ]
   },
   {
+    id: 'flux-kontext',
+    name: 'FLUX Kontext',
+    description:
+      'Image edit workflow with multi-ref support. Uses Kontext diffusion, FLUX AE, CLIP-L, and T5XXL. CFG 1 recommended.',
+    presetId: 'builtin-flux-kontext',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/kontext.md',
+    files: [
+      {
+        label: 'FLUX.1 Kontext Dev GGUF Q8',
+        category: 'diffusion',
+        filename: 'flux1-kontext-dev-Q8_0.gguf',
+        required: true,
+        url: 'https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF/resolve/main/flux1-kontext-dev-Q8_0.gguf'
+      },
+      {
+        label: 'CLIP-L',
+        category: 'clip',
+        filename: 'clip_l.safetensors',
+        required: true,
+        url: 'https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors'
+      },
+      {
+        label: 'T5XXL fp16',
+        category: 't5xxl',
+        filename: 't5xxl_fp16.safetensors',
+        required: true,
+        url: 'https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors'
+      },
+      {
+        label: 'FLUX AE',
+        category: 'vae',
+        filename: 'ae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'qwen-image-edit',
+    name: 'Qwen Image Edit',
+    description:
+      'Instruction image editing with multi-ref. Includes Edit diffusion, Qwen VAE, and Qwen2.5-VL LLM. Use Edit workspace → Ref Edit.',
+    presetId: 'builtin-qwen-image-edit',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/qwen_image_edit.md',
+    files: [
+      {
+        label: 'Qwen Image Edit GGUF Q8',
+        category: 'diffusion',
+        filename: 'Qwen_Image_Edit-Q8_0.gguf',
+        required: true,
+        url: 'https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/resolve/main/Qwen_Image_Edit-Q8_0.gguf'
+      },
+      {
+        label: 'Qwen2.5-VL 7B LLM GGUF Q8',
+        category: 'llm',
+        filename: 'Qwen2.5-VL-7B-Instruct-Q8_0.gguf',
+        required: true,
+        url: 'https://huggingface.co/mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct.Q8_0.gguf'
+      },
+      {
+        label: 'Qwen Image VAE',
+        category: 'vae',
+        filename: 'qwen_image_vae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'qwen-image-edit-2511',
+    name: 'Qwen Image Edit 2511',
+    description:
+      'Newer Qwen edit variant. Enables qwen_image_zero_cond_t for quality. Use Edit → Ref Edit after applying the pack.',
+    presetId: 'builtin-qwen-image-edit-2511',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/qwen_image_edit.md',
+    files: [
+      {
+        label: 'Qwen Image Edit 2511 GGUF Q4_K_M',
+        category: 'diffusion',
+        filename: 'qwen-image-edit-2511-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/unsloth/Qwen-Image-Edit-2511-GGUF/resolve/main/qwen-image-edit-2511-Q4_K_M.gguf'
+      },
+      {
+        label: 'Qwen2.5-VL 7B LLM GGUF Q8',
+        category: 'llm',
+        filename: 'Qwen2.5-VL-7B-Instruct-Q8_0.gguf',
+        required: true,
+        url: 'https://huggingface.co/mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct.Q8_0.gguf'
+      },
+      {
+        label: 'Qwen Image VAE',
+        category: 'vae',
+        filename: 'qwen_image_vae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'z-image-turbo',
+    name: 'Z-Image Turbo',
+    description:
+      'Fast low-VRAM image model. Diffusion GGUF + Qwen3 4B LLM + FLUX AE. CFG 1, 8 steps recommended.',
+    presetId: 'builtin-z-image-turbo',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/z_image.md',
+    files: [
+      {
+        label: 'Z-Image Turbo GGUF Q4_0',
+        category: 'diffusion',
+        filename: 'z_image_turbo-Q4_0.gguf',
+        required: true,
+        url: 'https://huggingface.co/leejet/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_0.gguf'
+      },
+      {
+        label: 'Qwen3 4B Instruct GGUF Q4_K_M',
+        category: 'llm',
+        filename: 'Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
+      },
+      {
+        label: 'FLUX AE',
+        category: 'vae',
+        filename: 'ae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'chroma',
+    name: 'Chroma',
+    description:
+      'FLUX-family DiT with T5XXL + AE. CFG ~4. Disables DiT mask by default (matches chroma docs).',
+    presetId: 'builtin-chroma',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/chroma.md',
+    files: [
+      {
+        label: 'Chroma1-HD GGUF Q4_K_M',
+        category: 'diffusion',
+        filename: 'Chroma1-HD-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/silveroxides/Chroma1-HD-GGUF/resolve/main/Chroma1-HD-Q4_K_M.gguf'
+      },
+      {
+        label: 'T5XXL fp16',
+        category: 't5xxl',
+        filename: 't5xxl_fp16.safetensors',
+        required: true,
+        url: 'https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors'
+      },
+      {
+        label: 'FLUX AE',
+        category: 'vae',
+        filename: 'ae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'krea2',
+    name: 'Krea2',
+    description:
+      'Krea2 diffusion + Wan2.1 VAE + Qwen3-VL 4B LLM. Flash attention and CPU offload recommended.',
+    presetId: 'builtin-krea2',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/krea2.md',
+    files: [
+      {
+        label: 'Krea2 Base GGUF Q4_K_M',
+        category: 'diffusion',
+        filename: 'Krea-2-Base-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/realrebelai/KREA-2_GGUFs/resolve/main/BASE/Krea-2-Base-Q4_K_M.gguf'
+      },
+      {
+        label: 'Qwen3-VL 4B Instruct GGUF Q4_K_M',
+        category: 'llm',
+        filename: 'Qwen3-VL-4B-Instruct-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/unsloth/Qwen3-VL-4B-Instruct-GGUF/resolve/main/Qwen3-VL-4B-Instruct-Q4_K_M.gguf'
+      },
+      {
+        label: 'Wan2.1 VAE',
+        category: 'vae',
+        filename: 'wan_2.1_vae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'lens',
+    name: 'Lens',
+    description:
+      'Lens diffusion + Flux2 VAE + GPT-OSS-20B LLM. Large download; prefer offload. Turbo preset is 4 steps / CFG 1.',
+    presetId: 'builtin-lens',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/lens.md',
+    files: [
+      {
+        label: 'Lens diffusion bf16',
+        category: 'diffusion',
+        filename: 'lens_bf16.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Lens/resolve/main/diffusion_models/lens_bf16.safetensors'
+      },
+      {
+        label: 'GPT-OSS-20B GGUF Q4_K_M',
+        category: 'llm',
+        filename: 'gpt-oss-20b-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/unsloth/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-Q4_K_M.gguf'
+      },
+      {
+        label: 'Flux2 AE',
+        category: 'vae',
+        filename: 'flux2_ae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/black-forest-labs/FLUX.2-dev/resolve/main/ae.safetensors'
+      }
+    ]
+  },
+  {
     id: 'ideogram4',
     name: 'Ideogram4',
     description: 'Ideogram4 needs a main diffusion model, uncond diffusion model, Qwen3-VL LLM, and Flux2 VAE.',

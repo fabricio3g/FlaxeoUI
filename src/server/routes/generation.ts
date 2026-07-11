@@ -15,6 +15,7 @@ import {
   spawnLoggedProcess,
   waitForProcess
 } from '../utils'
+import { formatHumanizedError, humanizeCliError } from '../../shared/cliErrors'
 import type { ParsedStep } from '../utils'
 import {
   addGenerationArgs,
@@ -26,6 +27,13 @@ import {
   pushArg,
   pushModelArg
 } from '../sd'
+
+function pushNumericArgIfPresent(args: string[], flag: string, value: unknown): void {
+  if (value === '' || value == null) return
+  const n = Number(value)
+  if (!Number.isFinite(n)) return
+  args.push(flag, String(value))
+}
 
 interface UploadRequest extends Request {
   pmImagesDir?: string
@@ -39,10 +47,11 @@ function uploadMiddleware(ctx: AppContext) {
     storage: multer.diskStorage({
       destination: (req: UploadRequest, file, cb) => {
         if (file.fieldname === 'kontextRefImage') {
-          const dir = path.join(ctx.paths.tempDir, `kontext_${Date.now()}`)
-          fs.mkdirSync(dir, { recursive: true })
-          req.kontextRefDir = dir
-          cb(null, dir)
+          if (!req.kontextRefDir) {
+            req.kontextRefDir = path.join(ctx.paths.tempDir, `kontext_${Date.now()}`)
+            fs.mkdirSync(req.kontextRefDir, { recursive: true })
+          }
+          cb(null, req.kontextRefDir)
           return
         }
 
@@ -62,10 +71,30 @@ function uploadMiddleware(ctx: AppContext) {
     })
   }).fields([
     { name: 'pmImages', maxCount: 4 },
-    { name: 'kontextRefImage', maxCount: 1 },
+    { name: 'kontextRefImage', maxCount: 8 },
     { name: 'controlNetImage', maxCount: 1 },
     { name: 'initImage', maxCount: 1 }
   ])
+}
+
+function sendCliBusy(res: Response): void {
+  const human = humanizeCliError('GENERATION_BUSY: Another generation is already running')
+  res.status(409).json({
+    message: formatHumanizedError(human),
+    error: 'GENERATION_BUSY',
+    title: human.title,
+    detail: human.detail,
+    hint: human.hint
+  })
+}
+
+/** Returns false if a response was already sent (busy). */
+function ensureCliIdle(ctx: AppContext, res: Response): boolean {
+  if (ctx.state.cliProcess) {
+    sendCliBusy(res)
+    return false
+  }
+  return true
 }
 
 async function runCli(
@@ -73,8 +102,13 @@ async function runCli(
   args: string[],
   label: string
 ): Promise<{ cancelled: boolean }> {
+  if (ctx.state.cliProcess) {
+    throw new Error('GENERATION_BUSY: Another generation is already running')
+  }
+
   const activeBackend = ctx.getActiveBackendPath()
   const startedAt = Date.now()
+  const logStart = ctx.state.serverLogs.length
   ctx.state.progressBus.emit('start', { label, startedAt })
   ctx.state.progress = { current: 0, total: 0, itPerSec: 0, label, startedAt, updatedAt: startedAt }
 
@@ -97,6 +131,19 @@ async function runCli(
 
   try {
     return await waitForProcess(ctx.state.cliProcess, label)
+  } catch (error: unknown) {
+    // Attach recent process output so humanizeCliError can detect OOM / missing files
+    const tail = ctx.state.serverLogs
+      .slice(logStart)
+      .join('')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(-24)
+      .join('\n')
+    const base = errorMessage(error) || 'CLI failed'
+    throw new Error(tail ? `${base}\n${tail}` : base)
   } finally {
     ctx.state.cliProcess = null
     ctx.state.progress = null
@@ -151,6 +198,13 @@ function fileFromUpload(req: UploadRequest, field: string): string | null {
   return files?.[0]?.path || null
 }
 
+function filesFromUpload(req: UploadRequest, field: string): string[] {
+  if (!req.files || Array.isArray(req.files)) return []
+  const files = req.files?.[field]
+  if (!files?.length) return []
+  return files.map((file) => file.path).filter(Boolean)
+}
+
 function resolveOutputFile(ctx: AppContext, filePath?: string): string | null {
   if (!filePath) return null
   return fs.existsSync(filePath) ? filePath : path.join(ctx.paths.outputDir, filePath)
@@ -179,7 +233,26 @@ function sendCliResult(
     res.json({ message: 'Complete', filenames: [filename], filename })
     return
   }
-  res.status(500).json({ message: failedMessage })
+  const human = humanizeCliError(failedMessage)
+  res.status(500).json({
+    message: formatHumanizedError(human),
+    error: failedMessage,
+    title: human.title,
+    detail: human.detail,
+    hint: human.hint
+  })
+}
+
+function sendCliFailure(res: Response, error: unknown, fallback = 'CLI operation failed'): void {
+  const raw = errorMessage(error) || fallback
+  const human = humanizeCliError(raw)
+  res.status(500).json({
+    message: formatHumanizedError(human),
+    error: raw,
+    title: human.title,
+    detail: human.detail,
+    hint: human.hint
+  })
 }
 
 function parseJsonArray(value: unknown): string[] {
@@ -234,19 +307,28 @@ function buildImageArgs(
   addHardwareArgs(args, body, prompt)
   addPromptModelExtras(ctx, args, body, prompt)
 
-  const kontextRefPath =
-    fileFromUpload(req, 'kontextRefImage') ||
+  // Multi-ref images for Kontext / Qwen Image Edit (`-r` can be repeated)
+  const refUploads = filesFromUpload(req, 'kontextRefImage')
+  const refFromBody = [
+    ...parseJsonArray(body.kontextRefPaths),
+    ...parseJsonArray(body.refImages),
     firstString(body.kontextRefPath, body.kontextRefGallery)
-  if (kontextRefPath) {
-    const resolved = resolveOutputFile(ctx, kontextRefPath)
+  ].filter(Boolean) as string[]
+
+  const allRefPaths = [...refUploads, ...refFromBody]
+  for (const refPath of allRefPaths) {
+    const resolved = resolveOutputFile(ctx, refPath)
     if (resolved && fs.existsSync(resolved)) args.push('-r', resolved)
   }
+
+  if (asBool(body.increaseRefIndex)) args.push('--increase-ref-index')
+  if (asBool(body.disableAutoResizeRefImage)) args.push('--disable-auto-resize-ref-image')
 
   const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
   if (initImage) {
     const resolved = resolveOutputFile(ctx, initImage)
     if (resolved && fs.existsSync(resolved)) args.push('-i', resolved)
-    pushArg(args, '--strength', body.img2imgStrength)
+    pushArg(args, '--strength', body.img2imgStrength ?? body.strength)
   }
 
   const upscaleModel = modelPath(ctx, 'upscale', firstString(body.upscaleModel))
@@ -294,14 +376,18 @@ function buildImageArgs(
   return {
     args,
     cleanupDirs: [pmImagesDir, req.kontextRefDir || null],
-    cleanupFiles: [fileFromUpload(req, 'controlNetImage'), fileFromUpload(req, 'initImage')].filter(
-      Boolean
-    ) as string[]
+    cleanupFiles: [
+      ...filesFromUpload(req, 'kontextRefImage'),
+      fileFromUpload(req, 'controlNetImage'),
+      fileFromUpload(req, 'initImage')
+    ].filter(Boolean) as string[]
   }
 }
 
 export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/generate-cli', uploadMiddleware(ctx), async (req: UploadRequest, res) => {
+    if (!ensureCliIdle(ctx, res)) return
+
     const body = req.body || {}
     const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
     if (!diffusionModel) {
@@ -327,7 +413,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       const result = await runCli(ctx, args, 'CLI-GEN')
       sendCliResult(res, result, outputPath, filename, 'Generation failed - no output file')
     } catch (error: unknown) {
-      res.status(500).json({ message: 'CLI generation failed', error: errorMessage(error) })
+      sendCliFailure(res, error, 'CLI generation failed')
     } finally {
       if (stopWatching) stopWatching()
       if (ctx.state.previewTempFile) {
@@ -393,6 +479,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       { name: 'mask', maxCount: 1 }
     ]),
     async (req: UploadRequest, res) => {
+      if (!ensureCliIdle(ctx, res)) return
+
       const body = req.body || {}
       const initImg =
         fileFromUpload(req, 'initImage') || resolveOutputFile(ctx, firstString(body.initImagePath))
@@ -422,7 +510,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         const result = await runCli(ctx, args, 'INPAINT')
         sendCliResult(res, result, outputPath, filename, 'Inpainting failed - no output file')
       } catch (error: unknown) {
-        res.status(500).json({ message: 'Inpainting failed', error: errorMessage(error) })
+        sendCliFailure(res, error, 'Inpainting failed')
       } finally {
         removeTemporaryFiles([], tempFiles)
       }
@@ -439,9 +527,13 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     '/api/generate-video',
     videoUpload.fields([
       { name: 'initImage', maxCount: 1 },
-      { name: 'reference_image', maxCount: 1 }
+      { name: 'reference_image', maxCount: 1 },
+      { name: 'endImage', maxCount: 1 },
+      { name: 'end_img', maxCount: 1 }
     ]),
     async (req: UploadRequest, res) => {
+      if (!ensureCliIdle(ctx, res)) return
+
       const body = req.body || {}
       const filename = `video_${Date.now()}.mp4`
       const outputPath = path.join(ctx.paths.outputDir, filename)
@@ -495,32 +587,114 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         fileFromUpload(req, 'reference_image') ||
         resolveOutputFile(ctx, firstString(body.initImagePath))
       if (initImg && fs.existsSync(initImg)) args.push('-i', initImg)
+
+      // FLF2V end frame
+      const endImg =
+        fileFromUpload(req, 'endImage') ||
+        fileFromUpload(req, 'end_img') ||
+        resolveOutputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
+      if (endImg && fs.existsSync(endImg)) args.push('--end-img', endImg)
+
+      // VACE control video: directory of frames in lexicographic order
+      const controlVideo = firstString(body.controlVideo, body.control_video, body.controlVideoPath)
+      if (controlVideo && fs.existsSync(controlVideo)) {
+        args.push('--control-video', controlVideo)
+      }
+
       addGenerationArgs(args, body, outputPath, { width: 832, height: 480, cfg: 6.0, multiple: 16 })
       args.push('--video-frames', String(body.videoFrames || body.video_frames || 33))
+      const fps = parseInt(String(body.fps ?? 24), 10)
+      if (Number.isFinite(fps) && fps > 0) args.push('--fps', String(fps))
       args.push('--flow-shift', String(body.flowShift || body.flow_shift || 3.0))
-      if (highNoise) {
-        pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg)
+
+      pushNumericArgIfPresent(args, '--vace-strength', body.vaceStrength ?? body.vace_strength)
+      pushNumericArgIfPresent(args, '--moe-boundary', body.moeBoundary ?? body.moe_boundary)
+
+      // High-noise suite (Wan2.2 MoE and similar)
+      if (highNoise || body.highNoiseSteps != null || body.highNoiseCfg != null) {
+        pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg ?? body.highNoiseCfgScale)
         pushArg(args, '--high-noise-steps', body.highNoiseSteps)
-        pushArg(args, '--high-noise-sampling-method', body.highNoiseSampler)
+        pushArg(
+          args,
+          '--high-noise-sampling-method',
+          body.highNoiseSampler ?? body.highNoiseSamplingMethod
+        )
+        pushArg(args, '--high-noise-guidance', body.highNoiseGuidance)
+        pushArg(args, '--high-noise-eta', body.highNoiseEta)
+        pushArg(args, '--high-noise-slg-scale', body.highNoiseSlgScale)
+        pushArg(args, '--high-noise-skip-layers', body.highNoiseSkipLayers)
+        pushArg(args, '--high-noise-skip-layer-start', body.highNoiseSkipLayerStart)
+        pushArg(args, '--high-noise-skip-layer-end', body.highNoiseSkipLayerEnd)
+        pushArg(args, '--high-noise-img-cfg-scale', body.highNoiseImgCfgScale)
       }
+
       addOptionalArgs(args, body)
       addHardwareArgs(args, body, String(body.prompt || ''))
       addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
       args.push('-v')
-      const tempFiles = [fileFromUpload(req, 'initImage'), fileFromUpload(req, 'reference_image')]
+      const tempFiles = [
+        fileFromUpload(req, 'initImage'),
+        fileFromUpload(req, 'reference_image'),
+        fileFromUpload(req, 'endImage'),
+        fileFromUpload(req, 'end_img')
+      ]
 
       try {
         const result = await runCli(ctx, args, 'VIDEO')
         sendCliResult(res, result, outputPath, filename, 'Video generation failed - no output file')
       } catch (error: unknown) {
-        res.status(500).json({ message: 'Video generation failed', error: errorMessage(error) })
+        sendCliFailure(res, error, 'Video generation failed')
       } finally {
         removeTemporaryFiles([], tempFiles)
       }
     }
   )
 
+  app.post('/api/upscale', async (req, res) => {
+    if (!ensureCliIdle(ctx, res)) return
+
+    const body = (req.body || {}) as JsonObject
+    const sourceFilename = firstString(body.filename, body.source, body.image)
+    if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
+
+    const sourcePath = resolveOutputFile(ctx, sourceFilename)
+    if (!sourcePath || !fs.existsSync(sourcePath))
+      return res.status(400).json({ message: 'Source image not found' })
+
+    const upscaleModelName = firstString(body.upscaleModel, body.upscale_model)
+    const upscaleModel = modelPath(ctx, 'upscale', upscaleModelName)
+    if (!upscaleModel)
+      return res.status(400).json({
+        message: 'Upscale model required. Place an ESRGAN model in models/upscale.',
+        error: 'UPSCALE_MODEL_REQUIRED'
+      })
+
+    const ext = path.extname(sourcePath) || '.png'
+    const filename = `upscale_${Date.now()}${ext}`
+    const outputPath = path.join(ctx.paths.outputDir, filename)
+    const args: string[] = ['-M', 'upscale', '-i', sourcePath, '-o', outputPath]
+    args.push('--upscale-model', upscaleModel)
+
+    const repeats = parseInt(String(body.upscaleRepeats ?? body.upscale_repeats ?? 1), 10)
+    if (Number.isFinite(repeats) && repeats > 1) args.push('--upscale-repeats', String(repeats))
+
+    const tileSize = parseInt(String(body.upscaleTileSize ?? body.upscale_tile_size ?? 0), 10)
+    if (Number.isFinite(tileSize) && tileSize > 0) args.push('--upscale-tile-size', String(tileSize))
+
+    addHardwareArgs(args, body)
+    args.push('-v')
+
+    try {
+      const result = await runCli(ctx, args, 'UPSCALE')
+      sendCliResult(res, result, outputPath, filename, 'Upscale failed - no output file')
+    } catch (error: unknown) {
+      sendCliFailure(res, error, 'Upscale failed')
+    }
+  })
+
   app.post('/api/convert', async (req, res) => {
+    if (!ensureCliIdle(ctx, res)) return
+
     const { sourceType, sourceModel, outputFormat, outputName } = req.body || {}
     if (!sourceType || !sourceModel || !outputFormat || !outputName)
       return res.status(400).json({ success: false, error: 'Missing required parameters' })
@@ -554,7 +728,16 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       await runCli(ctx, args, 'CONVERT')
       res.json({ success: fs.existsSync(outputPath), outputPath: outputName })
     } catch (error: unknown) {
-      res.status(500).json({ success: false, error: errorMessage(error) })
+      const raw = errorMessage(error)
+      const human = humanizeCliError(raw)
+      res.status(500).json({
+        success: false,
+        error: formatHumanizedError(human),
+        message: formatHumanizedError(human),
+        title: human.title,
+        detail: human.detail,
+        hint: human.hint
+      })
     } finally {
       ctx.state.convertOutputPath = null
     }

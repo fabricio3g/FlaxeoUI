@@ -1,7 +1,9 @@
-import { ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { apiPost } from '@/services/api'
+import { requestOpenLogs } from '@/lib/appEvents'
+import type { useToast } from '@/composables/useToast'
 
-export type GenerationSurface = 'text2image' | 'edit' | 'video'
+export type GenerationSurface = 'text2image' | 'edit' | 'video' | 'upscale'
 
 export interface GenerationParams {
   prompt: string
@@ -21,19 +23,13 @@ export interface GenerationParams {
 }
 
 /**
- * useGeneration() - Composable for image generation via sd-cli
- *
- * Provides reactive state and methods for:
- * - Triggering image generation
- * - Tracking generation progress
- * - Cancelling in-progress generation
- *
- * @returns {Object} Generation state and methods
+ * Module-level busy flags shared across workspaces (single-flight client side).
  */
-const generationStatus: Record<GenerationSurface, ReturnType<typeof ref<boolean>>> = {
+const generationStatus: Record<GenerationSurface, Ref<boolean>> = {
   text2image: ref(false),
   edit: ref(false),
-  video: ref(false)
+  video: ref(false),
+  upscale: ref(false)
 }
 
 const progress = ref(0)
@@ -47,15 +43,57 @@ export function useGenerationStatus(surface: GenerationSurface) {
   }
 }
 
+/** True if any CLI-backed surface is busy (generate / edit / video / upscale). */
+export function isAnyGenerationBusy(): boolean {
+  return Object.values(generationStatus).some((surface) => surface.value)
+}
+
+export function useGenerationBusy() {
+  const busy = computed(() => isAnyGenerationBusy())
+  return { busy, isAnyGenerationBusy }
+}
+
+/**
+ * Try to claim a surface for generation. Returns false if any surface is busy.
+ */
+export function claimGeneration(surface: GenerationSurface): boolean {
+  if (isAnyGenerationBusy()) return false
+  generationStatus[surface].value = true
+  return true
+}
+
+export function releaseGeneration(surface: GenerationSurface): void {
+  generationStatus[surface].value = false
+}
+
+type ToastApi = ReturnType<typeof useToast>
+
+/**
+ * Show a generation failure toast with an Open logs action.
+ */
+export function toastGenerationError(toast: ToastApi, err: unknown, fallback = 'Generation failed'): void {
+  const message = err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
+  toast.error(message, {
+    duration: 8000,
+    action: {
+      label: 'Open logs',
+      onClick: () => requestOpenLogs()
+    }
+  })
+}
+
 export function useGeneration() {
   const { isGenerating } = useGenerationStatus('text2image')
 
   /**
    * generateImage() - Initiates image generation via /api/generate-cli
-   * @param params - Generation parameters matching sd-cli arguments
+   * Prefer view-level handlers that use buildGenerationPayload; kept for simple JSON posts.
    */
   async function generateImage(params: GenerationParams): Promise<void> {
-    isGenerating.value = true
+    if (!claimGeneration('text2image')) {
+      error.value = 'Another generation is already running'
+      return
+    }
     error.value = null
     progress.value = 0
 
@@ -71,22 +109,18 @@ export function useGeneration() {
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Generation failed'
     } finally {
-      isGenerating.value = false
+      releaseGeneration('text2image')
       progress.value = 100
     }
   }
 
-  /**
-   * cancel() - Cancels the current generation process
-   * Sends SIGTERM to the sd-cli process
-   */
   async function cancel(): Promise<void> {
     try {
       await apiPost('/api/cancel-cli', {})
     } catch (e) {
       console.error('Cancel failed:', e)
     }
-    isGenerating.value = false
+    releaseGeneration('text2image')
   }
 
   return {

@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { X, Info, Copy, Check, ChevronLeft, ChevronRight } from '@/lib/icons'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { X, Info, Copy, Check, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from '@/lib/icons'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import {
+  hasUsableImageParams,
+  normalizeImageParams,
+  type ImageGenerationParams
+} from '@/lib/imageParams'
 
 const props = defineProps<{
   src: string
@@ -14,13 +19,16 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'prev'): void
   (e: 'next'): void
+  (e: 'reuse-seed', params: ImageGenerationParams): void
+  (e: 'reuse-all', params: ImageGenerationParams): void
 }>()
 
 const toast = useToast()
 const showInfo = ref(false)
-const metadata = ref<any>(null)
+const metadata = ref<ImageGenerationParams | null>(null)
 const isLoading = ref(false)
 const isCopied = ref(false)
+const hasParams = computed(() => hasUsableImageParams(metadata.value || {}))
 const zoom = ref(1)
 const pan = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
@@ -33,9 +41,12 @@ async function fetchMetadata() {
   metadata.value = null
 
   try {
-    const data = await apiPost('/api/image/params', { filename: props.filename })
-    if (data && !data.error) {
-      metadata.value = data
+    const data = await apiPost<Record<string, unknown>>('/api/image/params', {
+      filename: props.filename
+    })
+    if (data && !(data as { error?: string }).error) {
+      const normalized = normalizeImageParams(data)
+      metadata.value = hasUsableImageParams(normalized) ? normalized : null
     }
   } catch (e) {
     console.warn('Failed to fetch metadata:', e)
@@ -49,8 +60,10 @@ function handleCopy() {
 
   const text = [
     metadata.value.prompt,
-    metadata.value.negative_prompt ? `Negative prompt: ${metadata.value.negative_prompt}` : '',
-    `Steps: ${metadata.value.steps}, Sampler: ${metadata.value.sampler || 'Default'}, CFG scale: ${metadata.value.cfg_scale}, Seed: ${metadata.value.seed}, Size: ${metadata.value.width}x${metadata.value.height}, Model: ${metadata.value.model}`
+    metadata.value.negative_prompt
+      ? `Negative prompt: ${metadata.value.negative_prompt}`
+      : '',
+    `Steps: ${metadata.value.steps}, Sampler: ${metadata.value.sampler || 'Default'}, CFG scale: ${metadata.value.cfg_scale ?? metadata.value.cfgScale}, Seed: ${metadata.value.seed}, Size: ${metadata.value.width}x${metadata.value.height}, Model: ${metadata.value.model || metadata.value.diffusionModel}`
   ]
     .filter(Boolean)
     .join('\n')
@@ -59,6 +72,22 @@ function handleCopy() {
   isCopied.value = true
   toast.success('Parameters copied to clipboard')
   setTimeout(() => (isCopied.value = false), 2000)
+}
+
+function handleReuseSeed(): void {
+  if (!metadata.value || metadata.value.seed == null) {
+    toast.error('No seed in image metadata')
+    return
+  }
+  emit('reuse-seed', metadata.value)
+}
+
+function handleReuseAll(): void {
+  if (!metadata.value || !hasParams.value) {
+    toast.error('No generation parameters found')
+    return
+  }
+  emit('reuse-all', metadata.value)
 }
 
 function resetPan(): void {
@@ -303,69 +332,102 @@ onUnmounted(() => {
           </p>
         </div>
 
-        <div v-else class="flex-1 space-y-5 overflow-y-auto p-4">
-          <section>
-            <label
-              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
-              >Prompt</label
-            >
-            <p
-              class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
-            >
-              {{ metadata.prompt }}
-            </p>
-          </section>
+        <div v-else class="flex flex-1 flex-col overflow-hidden">
+          <div class="flex-1 space-y-5 overflow-y-auto p-4">
+            <section v-if="metadata.prompt">
+              <label
+                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                >Prompt</label
+              >
+              <p
+                class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
+              >
+                {{ metadata.prompt }}
+              </p>
+            </section>
 
-          <section v-if="metadata.negative_prompt">
-            <label
-              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
-              >Negative prompt</label
-            >
-            <p
-              class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
-            >
-              {{ metadata.negative_prompt }}
-            </p>
-          </section>
+            <section v-if="metadata.negative_prompt">
+              <label
+                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                >Negative prompt</label
+              >
+              <p
+                class="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-zinc-300"
+              >
+                {{ metadata.negative_prompt }}
+              </p>
+            </section>
 
-          <section>
-            <label
-              class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
-              >Parameters</label
-            >
-            <dl class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-              <div class="grid grid-cols-2 border-b border-white/10">
-                <div class="border-r border-white/10 px-3 py-2.5">
-                  <dt class="text-[10px] text-zinc-500">Steps</dt>
-                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">{{ metadata.steps }}</dd>
+            <section>
+              <label
+                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                >Parameters</label
+              >
+              <dl class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                <div class="grid grid-cols-2 border-b border-white/10">
+                  <div class="border-r border-white/10 px-3 py-2.5">
+                    <dt class="text-[10px] text-zinc-500">Steps</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-zinc-200">
+                      {{ metadata.steps ?? '—' }}
+                    </dd>
+                  </div>
+                  <div class="px-3 py-2.5">
+                    <dt class="text-[10px] text-zinc-500">CFG scale</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-zinc-200">
+                      {{ metadata.cfg_scale ?? metadata.cfgScale ?? '—' }}
+                    </dd>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 border-b border-white/10">
+                  <div class="border-r border-white/10 px-3 py-2.5">
+                    <dt class="text-[10px] text-zinc-500">Seed</dt>
+                    <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200">
+                      {{ metadata.seed ?? '—' }}
+                    </dd>
+                  </div>
+                  <div class="px-3 py-2.5">
+                    <dt class="text-[10px] text-zinc-500">Size</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-zinc-200">
+                      <template v-if="metadata.width && metadata.height">
+                        {{ metadata.width }} x {{ metadata.height }}
+                      </template>
+                      <template v-else>—</template>
+                    </dd>
+                  </div>
                 </div>
                 <div class="px-3 py-2.5">
-                  <dt class="text-[10px] text-zinc-500">CFG scale</dt>
-                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">{{ metadata.cfg_scale }}</dd>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 border-b border-white/10">
-                <div class="border-r border-white/10 px-3 py-2.5">
-                  <dt class="text-[10px] text-zinc-500">Seed</dt>
-                  <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200">
-                    {{ metadata.seed }}
+                  <dt class="text-[10px] text-zinc-500">Model</dt>
+                  <dd
+                    class="mt-0.5 truncate font-mono text-xs text-zinc-200"
+                    :title="metadata.model || metadata.diffusionModel"
+                  >
+                    {{ metadata.model || metadata.diffusionModel || '—' }}
                   </dd>
                 </div>
-                <div class="px-3 py-2.5">
-                  <dt class="text-[10px] text-zinc-500">Size</dt>
-                  <dd class="mt-0.5 font-mono text-xs text-zinc-200">
-                    {{ metadata.width }} x {{ metadata.height }}
-                  </dd>
-                </div>
-              </div>
-              <div class="px-3 py-2.5">
-                <dt class="text-[10px] text-zinc-500">Model</dt>
-                <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200" :title="metadata.model">
-                  {{ metadata.model }}
-                </dd>
-              </div>
-            </dl>
-          </section>
+              </dl>
+            </section>
+          </div>
+
+          <div class="shrink-0 space-y-2 border-t border-white/10 p-3">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+              :disabled="metadata.seed == null"
+              @click="handleReuseSeed"
+            >
+              <RefreshCw class="size-3.5" />
+              Reuse seed
+            </button>
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-40"
+              :disabled="!hasParams"
+              @click="handleReuseAll"
+            >
+              <Sparkles class="size-3.5" />
+              Reuse all settings
+            </button>
+          </div>
         </div>
       </aside>
 

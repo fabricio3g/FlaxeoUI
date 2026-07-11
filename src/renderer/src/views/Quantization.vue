@@ -19,26 +19,32 @@ const isCancelling = ref(false)
 const cancelToken = ref(0)
 const conversionResult = ref<{ success: boolean; outputPath?: string; error?: string } | null>(null)
 
-// Quantization options
+// Quantization options (legacy + K-quants used widely for DiT/LLM weights)
 const formatOptions = [
   { label: 'f32 (32-bit float)', value: 'f32' },
   { label: 'f16 (16-bit float)', value: 'f16' },
-  { label: 'q8_0 (8-bit int)', value: 'q8_0' },
-  { label: 'q5_0 (5-bit int)', value: 'q5_0' },
-  { label: 'q5_1 (5-bit int)', value: 'q5_1' },
-  { label: 'q4_0 (4-bit int)', value: 'q4_0' },
-  { label: 'q4_1 (4-bit int)', value: 'q4_1' }
+  { label: 'bf16 (bfloat16)', value: 'bf16' },
+  { label: 'q8_0 (8-bit)', value: 'q8_0' },
+  { label: 'q6_K (6-bit K-quant)', value: 'q6_K' },
+  { label: 'q5_0 (5-bit)', value: 'q5_0' },
+  { label: 'q5_1 (5-bit)', value: 'q5_1' },
+  { label: 'q5_K (5-bit K-quant)', value: 'q5_K' },
+  { label: 'q4_0 (4-bit)', value: 'q4_0' },
+  { label: 'q4_1 (4-bit)', value: 'q4_1' },
+  { label: 'q4_K (4-bit K-quant)', value: 'q4_K' },
+  { label: 'q3_K (3-bit K-quant)', value: 'q3_K' },
+  { label: 'q2_K (2-bit K-quant)', value: 'q2_K' }
 ]
 
-// Memory requirements table (Stable Diffusion 1.x, 512x512)
+// Approximate memory for SD 1.x @ 512² (classic quants); K-quants vary by model family
 const memoryTable = [
   { format: 'f32', memory: '~2.8G', memoryFA: '~2.4G' },
-  { format: 'f16', memory: '~2.3G', memoryFA: '~1.9G' },
+  { format: 'f16 / bf16', memory: '~2.3G', memoryFA: '~1.9G' },
   { format: 'q8_0', memory: '~2.1G', memoryFA: '~1.6G' },
-  { format: 'q5_0', memory: '~2.0G', memoryFA: '~1.5G' },
-  { format: 'q5_1', memory: '~2.0G', memoryFA: '~1.5G' },
-  { format: 'q4_0', memory: '~2.0G', memoryFA: '~1.5G' },
-  { format: 'q4_1', memory: '~2.0G', memoryFA: '~1.5G' }
+  { format: 'q6_K', memory: '~1.9G*', memoryFA: '~1.5G*' },
+  { format: 'q5_0 / q5_1 / q5_K', memory: '~2.0G', memoryFA: '~1.5G' },
+  { format: 'q4_0 / q4_1 / q4_K', memory: '~2.0G', memoryFA: '~1.5G' },
+  { format: 'q3_K / q2_K', memory: 'lower*', memoryFA: 'lower*' }
 ]
 
 const sourceModelGroups = [

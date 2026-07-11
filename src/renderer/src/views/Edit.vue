@@ -1,40 +1,84 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, computed, nextTick, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
-import { ArrowUp, Brush, Eraser, Images, Loader2, SlidersHorizontal, Square, Trash2, Upload, X } from '@/lib/icons'
+import { apiPost, apiPostForm, getOutputUrl } from '@/services/api'
+import { useToast } from '@/composables/useToast'
+import {
+  appendPayloadToFormData,
+  buildGenerationPayload
+} from '@/lib/generationPayload'
+import {
+  ArrowUp,
+  Brush,
+  Eraser,
+  Images,
+  Loader2,
+  Plus,
+  SlidersHorizontal,
+  Square,
+  Trash2,
+  Upload,
+  X
+} from '@/lib/icons'
 import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { useGenerationStatus } from '@/composables/useGeneration'
+import {
+  claimGeneration,
+  isAnyGenerationBusy,
+  releaseGeneration,
+  toastGenerationError,
+  useGenerationStatus
+} from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import { appendLoraPromptTokens } from '@/lib/promptTokens'
+import { useGenerationHistory } from '@/composables/useGenerationHistory'
 
 const router = useRouter()
+const toast = useToast()
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 
-// Inpainting state
+type EditMode = 'inpaint' | 'ref' | 'img2img'
+
+// Edit workspace state
 const prompt = ref('')
 const negativePrompt = ref('')
 const editImages = ref<string[]>([])
 const currentEditFilename = ref<string | null>(null)
 const { isGenerating } = useGenerationStatus('edit')
 const progress = useGenerationProgress()
+const { addEntry: addHistoryEntry } = useGenerationHistory()
 const error = ref<string | null>(null)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
 const promptMode = ref<'positive' | 'negative'>('positive')
+const editMode = ref<EditMode>('inpaint')
 
 const promptModeOptions = [
   { value: 'positive', label: 'Positive' },
   { value: 'negative', label: 'Negative' }
 ]
+
+const editModeOptions = [
+  { value: 'inpaint', label: 'Inpaint' },
+  { value: 'ref', label: 'Ref Edit' },
+  { value: 'img2img', label: 'Img2Img' }
+]
+
+/** Multi-ref chips for Kontext / Qwen Image Edit */
+interface RefChip {
+  id: string
+  url: string
+  file: File
+}
+const refChips = ref<RefChip[]>([])
+const showQwenZeroCondTip = computed(() => config.value.qwenImageZeroCondT)
 
 const activePrompt = computed({
   get: () => (promptMode.value === 'positive' ? prompt.value : negativePrompt.value),
@@ -86,6 +130,53 @@ function onPromptKeydown(e: KeyboardEvent): void {
 
 function setPromptMode(value: string): void {
   if (value === 'positive' || value === 'negative') promptMode.value = value
+}
+
+function setEditMode(value: string): void {
+  if (value === 'inpaint' || value === 'ref' || value === 'img2img') editMode.value = value
+}
+
+watch(editMode, async (mode) => {
+  if (mode === 'inpaint' && baseImage.value && imageElement) {
+    await nextTick()
+    initializeMaskCanvas()
+    syncCanvasToDisplayedImage()
+  }
+})
+
+function handleRefUpload(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  if (!files?.length) return
+  for (const file of Array.from(files)) {
+    refChips.value.push({
+      id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      url: URL.createObjectURL(file),
+      file
+    })
+  }
+  input.value = ''
+}
+
+function removeRefChip(id: string): void {
+  const chip = refChips.value.find((c) => c.id === id)
+  if (chip) URL.revokeObjectURL(chip.url)
+  refChips.value = refChips.value.filter((c) => c.id !== id)
+}
+
+function clearRefChips(): void {
+  for (const chip of refChips.value) URL.revokeObjectURL(chip.url)
+  refChips.value = []
+}
+
+/** Promote current base image into the multi-ref list (Kontext/Qwen workflows). */
+async function addBaseAsRef(): Promise<void> {
+  if (!baseImageFile.value) return
+  refChips.value.push({
+    id: `ref-${Date.now()}-base`,
+    url: baseImage.value || URL.createObjectURL(baseImageFile.value),
+    file: baseImageFile.value
+  })
 }
 
 function handleWindowResize(): void {
@@ -388,121 +479,117 @@ function getMaskDataUrl(): string | null {
 }
 
 /**
- * handleGenerate() - Generate inpainted image
+ * handleGenerate() - Inpaint, multi-ref edit, or img2img depending on editMode
  */
 async function handleGenerate(): Promise<void> {
-  if (!prompt.value.trim() || !baseImageFile.value) return
+  if (!prompt.value.trim()) return
 
-  isGenerating.value = true
+  if (editMode.value === 'ref') {
+    if (!refChips.value.length && !baseImageFile.value) {
+      error.value = 'Add at least one reference image for Ref Edit'
+      toast.error(error.value)
+      return
+    }
+  } else if (!baseImageFile.value) {
+    error.value = 'Load a source image first'
+    toast.error(error.value)
+    return
+  }
+
+  if (isAnyGenerationBusy()) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
+  if (!claimGeneration('edit')) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
+
   progress.start()
   error.value = null
 
   try {
     const formData = new FormData()
-    formData.append('prompt', appendLoraPromptTokens(prompt.value, config.value.loras))
-    formData.append('negative_prompt', negativePrompt.value)
-    formData.append('initImage', baseImageFile.value)
-    formData.append('strength', inpaintStrength.value.toString())
-    formData.append('steps', config.value.steps.toString())
-    formData.append('cfg_scale', config.value.cfgScale.toString())
-    formData.append('seed', config.value.seed.toString())
-    formData.append('width', String(imageElement?.naturalWidth || config.value.width))
-    formData.append('height', String(imageElement?.naturalHeight || config.value.height))
-
-    // Add mask if drawn
-    const maskDataUrl = getMaskDataUrl()
-    if (maskDataUrl && maskDataUrl !== 'data:,') {
-      // Convert data URL to blob
-      const response = await fetch(maskDataUrl)
-      const blob = await response.blob()
-      formData.append('mask', blob, 'mask.png')
-    }
-
-    // Add model info
-    if (config.value.loadMode === 'standard') {
-      formData.append('diffusionModel', config.value.standardModel)
-    } else {
-      formData.append('diffusionModel', config.value.diffusionModel)
-      if (config.value.highNoiseDiffusionModel)
-        formData.append('highNoiseDiffusionModel', config.value.highNoiseDiffusionModel)
-      if (config.value.uncondDiffusionModel)
-        formData.append('uncondDiffusionModel', config.value.uncondDiffusionModel)
-      if (config.value.t5xxlModel) formData.append('t5xxl', config.value.t5xxlModel)
-      if (config.value.llmModel) formData.append('llm', config.value.llmModel)
-      if (config.value.llmVisionModel) formData.append('llmVision', config.value.llmVisionModel)
-      if (config.value.embeddingsConnectorsModel)
-        formData.append('embeddingsConnectors', config.value.embeddingsConnectorsModel)
-      if (config.value.clipModel) formData.append('clipL', config.value.clipModel)
-      if (config.value.clipGModel) formData.append('clipG', config.value.clipGModel)
-      if (config.value.clipVisionModel) formData.append('clipVision', config.value.clipVisionModel)
-    }
-    if (config.value.vaeModel) formData.append('vae', config.value.vaeModel)
-    if (config.value.audioVaeModel) formData.append('audioVae', config.value.audioVaeModel)
-    if (config.value.vaeFormat) formData.append('vaeFormat', config.value.vaeFormat)
-    formData.append('samplingMethod', config.value.sampler)
-    formData.append('scheduler', config.value.scheduler)
-    if (config.value.imgCfgScale > 0)
-      formData.append('imgCfgScale', config.value.imgCfgScale.toString())
-    if (config.value.guidance) formData.append('guidance', config.value.guidance.toString())
-    if (config.value.clipSkip !== -1) formData.append('clipSkip', config.value.clipSkip.toString())
-    if (config.value.flashAttention) formData.append('diffusionFa', 'true')
-    if (config.value.vaeTiling) formData.append('vaeTiling', 'true')
-    if (config.value.clipOnCpu) formData.append('clipOnCpu', 'true')
-    if (config.value.vaeOnCpu) formData.append('vaeOnCpu', 'true')
-    if (config.value.controlNetOnCpu) formData.append('controlNetOnCpu', 'true')
-    if (config.value.cpuOffload) formData.append('offloadToCpu', 'true')
-    if (config.value.diffusionConvDirect) formData.append('diffusionConvDirect', 'true')
-    if (config.value.vaeConvDirect) formData.append('vaeConvDirect', 'true')
-    if (config.value.forceSDXLVaeConvScale) formData.append('forceSDXLVaeConvScale', 'true')
-    if (config.value.backendAssignment)
-      formData.append('backendAssignment', config.value.backendAssignment)
-    if (config.value.paramsBackendAssignment)
-      formData.append('paramsBackendAssignment', config.value.paramsBackendAssignment)
-    if (config.value.autoFit) formData.append('autoFit', 'true')
-    if (config.value.splitMode) formData.append('splitMode', config.value.splitMode)
-    if (config.value.threads > 0) formData.append('threads', config.value.threads.toString())
-    if (config.value.maxVram !== 0) formData.append('maxVram', config.value.maxVram.toString())
-    if (config.value.streamLayers) formData.append('streamLayers', 'true')
-    if (config.value.mmap) formData.append('mmap', 'true')
-    if (config.value.rngType) formData.append('rngType', config.value.rngType)
-    if (config.value.samplerRngType) formData.append('samplerRngType', config.value.samplerRngType)
-    if (config.value.loraApplyMode) formData.append('loraApplyMode', config.value.loraApplyMode)
-    if (config.value.quantizationType)
-      formData.append('quantizationType', config.value.quantizationType)
-    if (config.value.predictionType) formData.append('predictionType', config.value.predictionType)
-    if (config.value.cacheMode) formData.append('cacheMode', config.value.cacheMode)
-    if (config.value.cacheOption) formData.append('cacheOption', config.value.cacheOption)
-    if (config.value.scmMask) formData.append('scmMask', config.value.scmMask)
-    if (config.value.scmPolicy) formData.append('scmPolicy', config.value.scmPolicy)
-    if (config.value.flowShift) formData.append('flowShift', config.value.flowShift.toString())
-    if (config.value.extraSampleArgs)
-      formData.append('extraSampleArgs', config.value.extraSampleArgs)
-    if (config.value.extraTilingArgs)
-      formData.append('extraTilingArgs', config.value.extraTilingArgs)
-    if (config.value.disableImageMetadata) formData.append('disableImageMetadata', 'true')
-
-    const res = await fetch(`${getApiBase()}/api/inpaint`, {
-      method: 'POST',
-      body: formData
+    const payload = buildGenerationPayload(config.value, {
+      prompt: prompt.value,
+      negativePrompt: negativePrompt.value,
+      width: imageElement?.naturalWidth || config.value.width,
+      height: imageElement?.naturalHeight || config.value.height,
+      extra: {
+        strength: inpaintStrength.value,
+        img2imgStrength: inpaintStrength.value
+      }
     })
+    appendPayloadToFormData(formData, payload)
 
-    if (!res.ok) {
-      throw new Error(await res.text())
+    let endpoint = '/api/inpaint'
+
+    if (editMode.value === 'inpaint') {
+      formData.append('initImage', baseImageFile.value!)
+      formData.append('strength', inpaintStrength.value.toString())
+      const maskDataUrl = getMaskDataUrl()
+      if (maskDataUrl && maskDataUrl !== 'data:,') {
+        const response = await fetch(maskDataUrl)
+        const blob = await response.blob()
+        formData.append('mask', blob, 'mask.png')
+      }
+      endpoint = '/api/inpaint'
+    } else if (editMode.value === 'img2img') {
+      formData.append('initImage', baseImageFile.value!)
+      formData.append('img2imgStrength', inpaintStrength.value.toString())
+      formData.append('strength', inpaintStrength.value.toString())
+      endpoint = '/api/generate-cli'
+    } else {
+      // Ref Edit (Kontext / Qwen Image Edit): one or more -r images
+      const refs =
+        refChips.value.length > 0
+          ? refChips.value
+          : baseImageFile.value
+            ? [
+                {
+                  id: 'base',
+                  url: baseImage.value || '',
+                  file: baseImageFile.value
+                }
+              ]
+            : []
+      for (const chip of refs) {
+        formData.append('kontextRefImage', chip.file)
+      }
+      endpoint = '/api/generate-cli'
     }
 
-    const result = await res.json()
-    if (result.filename) {
-      editImages.value = [
-        result.filename,
-        ...editImages.value.filter((img) => img !== result.filename)
-      ]
-      await useOutputImage(result.filename)
+    const result = await apiPostForm<{
+      message: string
+      filename?: string
+      filenames?: string[]
+    }>(endpoint, formData)
+    const filename = result.filename || result.filenames?.[0]
+    if (filename) {
+      editImages.value = [filename, ...editImages.value.filter((img) => img !== filename)]
+      await useOutputImage(filename)
+      toast.success('Edit complete')
+      addHistoryEntry({
+        surface: 'edit',
+        status: 'success',
+        prompt: prompt.value,
+        negativePrompt: negativePrompt.value,
+        seed: config.value.seed,
+        filename
+      })
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Inpainting failed'
-    console.error('Inpainting error:', e)
+    error.value = e instanceof Error ? e.message : 'Edit failed'
+    toastGenerationError(toast, e, 'Edit failed')
+    console.error('Edit error:', e)
+    addHistoryEntry({
+      surface: 'edit',
+      status: 'failed',
+      prompt: prompt.value,
+      error: error.value || undefined
+    })
   } finally {
-    isGenerating.value = false
+    releaseGeneration('edit')
     progress.stop()
   }
 }
@@ -513,11 +600,12 @@ async function handleGenerate(): Promise<void> {
 async function handleCancel(): Promise<void> {
   try {
     await apiPost('/api/cancel-cli', {})
+    toast.warning('Edit cancelled')
   } catch (e) {
     console.error('Cancel failed:', e)
   }
   progress.stop()
-  isGenerating.value = false
+  releaseGeneration('edit')
 }
 
 /**
@@ -606,23 +694,41 @@ onUnmounted(() => {
           @contextmenu.prevent
         >
           <div
-            v-if="!baseImage"
+            v-if="!baseImage && !(editMode === 'ref' && refChips.length)"
             class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
             <div class="content-item flex max-w-sm flex-col items-center">
               <BrandMark size="lg" class="text-foreground" />
               <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
-                Start with an image
+                {{
+                  editMode === 'ref'
+                    ? 'Add reference images'
+                    : editMode === 'img2img'
+                      ? 'Start with a source image'
+                      : 'Start with an image'
+                }}
               </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                Choose a source image, then paint the area you want to transform.
+                {{
+                  editMode === 'ref'
+                    ? 'Kontext / Qwen Image Edit use one or more reference images with your prompt.'
+                    : editMode === 'img2img'
+                      ? 'Upload a source image, set strength, and describe the transformation.'
+                      : 'Choose a source image, then paint the area you want to transform.'
+                }}
               </p>
               <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <label
                   class="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-[#0d0d0d] shadow-sm transition-all duration-150 hover:bg-white/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-white/40"
                 >
-                  Upload Image
-                  <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
+                  {{ editMode === 'ref' ? 'Upload references' : 'Upload Image' }}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    :multiple="editMode === 'ref'"
+                    @change="editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)"
+                  />
                 </label>
                 <button
                   type="button"
@@ -637,7 +743,7 @@ onUnmounted(() => {
           </div>
 
           <div
-            v-else
+            v-else-if="baseImage"
             class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both relative inline-block max-h-full max-w-full transition-transform duration-200"
             :class="isPanning ? 'cursor-grabbing' : ''"
             :style="imageViewportStyle"
@@ -650,6 +756,7 @@ onUnmounted(() => {
               @load="syncCanvasToDisplayedImage"
             />
             <canvas
+              v-if="editMode === 'inpaint'"
               ref="canvasRef"
               class="absolute top-0 left-0 cursor-crosshair"
               :class="maskMode === 'erase' ? 'cursor-cell' : ''"
@@ -663,6 +770,19 @@ onUnmounted(() => {
           </div>
 
           <div
+            v-else-if="editMode === 'ref' && refChips.length"
+            class="fade-in flex max-h-full max-w-full flex-wrap items-center justify-center gap-3 p-4"
+          >
+            <div
+              v-for="chip in refChips"
+              :key="chip.id"
+              class="relative size-40 overflow-hidden rounded-2xl border border-border/70 shadow-sm md:size-52"
+            >
+              <img :src="chip.url" class="h-full w-full object-cover" :alt="chip.file.name" />
+            </div>
+          </div>
+
+          <div
             v-if="isGenerating"
             class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/45 backdrop-blur-[2px]"
           >
@@ -670,7 +790,15 @@ onUnmounted(() => {
               class="aui-status-badge fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
             >
               <Loader2 class="size-4 animate-spin text-muted-foreground" />
-              <span class="font-medium text-foreground">Inpainting image</span>
+              <span class="font-medium text-foreground">
+                {{
+                  editMode === 'ref'
+                    ? 'Editing with references'
+                    : editMode === 'img2img'
+                      ? 'Transforming image'
+                      : 'Inpainting image'
+                }}
+              </span>
             </div>
           </div>
 
@@ -727,7 +855,7 @@ onUnmounted(() => {
           v-if="isGenerating"
           class="mt-3 w-[min(100%,36rem)] self-center"
           loading-text="Loading model"
-          fallback-label="INPAINT"
+          :fallback-label="editMode === 'ref' ? 'REF EDIT' : editMode === 'img2img' ? 'IMG2IMG' : 'INPAINT'"
         />
 
         <div v-if="editImages.length > 0" class="mt-3 w-full shrink-0">
@@ -770,8 +898,15 @@ onUnmounted(() => {
       <div
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
-        <!-- Top inline row: Positive/Negative + Brush/Strength controls -->
+        <!-- Top inline row: modes + tools -->
         <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
+          <SegmentedControl
+            :model-value="editMode"
+            :options="editModeOptions"
+            size="sm"
+            aria-label="Edit mode"
+            @update:model-value="setEditMode"
+          />
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -779,7 +914,7 @@ onUnmounted(() => {
             aria-label="Prompt mode"
             @update:model-value="setPromptMode"
           />
-          <div class="flex shrink-0 items-center gap-1 pl-0.5">
+          <div v-if="editMode === 'inpaint'" class="flex shrink-0 items-center gap-1 pl-0.5">
             <button
               type="button"
               class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -821,6 +956,71 @@ onUnmounted(() => {
               />
             </label>
           </div>
+          <label
+            v-else-if="editMode === 'img2img'"
+            class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+          >
+            <span class="text-muted-foreground">Strength</span>
+            <input
+              v-model.number="inpaintStrength"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              class="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-muted accent-foreground"
+            />
+            <span class="tabular-nums text-muted-foreground">{{ inpaintStrength.toFixed(2) }}</span>
+          </label>
+          <p
+            v-if="showQwenZeroCondTip"
+            class="w-full text-[10px] text-muted-foreground md:w-auto"
+            title="Required for Qwen Image Edit 2511 quality"
+          >
+            Qwen zero-cond-t is on (Edit 2511)
+          </p>
+        </div>
+
+        <!-- Multi-ref chips (Ref Edit) -->
+        <div v-if="editMode === 'ref'" class="flex flex-wrap items-center gap-2 px-3 pb-1 md:px-4">
+          <div
+            v-for="chip in refChips"
+            :key="chip.id"
+            class="aui-media-strip inline-flex max-w-full items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 p-1.5"
+          >
+            <div class="relative size-10 shrink-0 overflow-hidden rounded-xl border border-border bg-background">
+              <img :src="chip.url" class="h-full w-full object-cover" />
+            </div>
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              @click="removeRefChip(chip.id)"
+            >
+              <X class="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <label
+            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:text-foreground"
+          >
+            <Plus class="h-3.5 w-3.5" />
+            Add ref
+            <input type="file" accept="image/*" multiple class="hidden" @change="handleRefUpload" />
+          </label>
+          <button
+            v-if="baseImageFile"
+            type="button"
+            class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            @click="addBaseAsRef"
+          >
+            Use source as ref
+          </button>
+          <button
+            v-if="refChips.length"
+            type="button"
+            class="inline-flex h-8 items-center rounded-full px-2 text-xs text-muted-foreground hover:text-destructive"
+            @click="clearRefChips"
+          >
+            Clear refs
+          </button>
         </div>
 
         <!-- Textarea + send/cancel -->
@@ -832,8 +1032,12 @@ onUnmounted(() => {
               rows="1"
               :placeholder="
                 promptMode === 'positive'
-                  ? 'Describe what to generate in the masked area...'
-                  : 'Describe what to avoid in the masked area...'
+                  ? editMode === 'ref'
+                    ? 'Describe the edit relative to the reference images...'
+                    : editMode === 'img2img'
+                      ? 'Describe how to transform the image...'
+                      : 'Describe what to generate in the masked area...'
+                  : 'Describe what to avoid...'
               "
               class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
               :style="{
@@ -847,121 +1051,131 @@ onUnmounted(() => {
               v-if="!activePrompt || activePrompt.trim().length === 0"
               class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
               aria-hidden="true"
-            >{{ promptMode === 'positive' ? 'Describe what to generate in the masked area...' : 'Describe what to avoid in the masked area...' }}</span>
+            >{{
+              promptMode === 'positive'
+                ? editMode === 'ref'
+                  ? 'Describe the edit relative to the reference images...'
+                  : editMode === 'img2img'
+                    ? 'Describe how to transform the image...'
+                    : 'Describe what to generate in the masked area...'
+                : 'Describe what to avoid...'
+            }}</span>
           </div>
         </div>
 
         <!-- Quick Controls (Steps, CFG, Seed, Scheduler, Sampler, PromptPresets) below -->
         <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            compact
-            class="ml-auto shrink-0"
-          />
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <PromptPresetControls
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              compact
+              class="shrink-0"
+            />
 
-          <Popover>
-            <PopoverTrigger as-child>
-              <button
-                type="button"
-                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                aria-label="Inpaint settings"
-                title="Inpaint settings"
-              >
-                <SlidersHorizontal class="size-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
-              <div class="mb-3">
-                <p class="text-sm font-medium">Inpaint settings</p>
-                <p class="mt-0.5 text-[11px] text-muted-foreground">
-                  Sampling and seed controls
-                </p>
-              </div>
+            <Popover>
+              <PopoverTrigger as-child>
+                <button
+                  type="button"
+                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  aria-label="Inpaint settings"
+                  title="Inpaint settings"
+                >
+                  <SlidersHorizontal class="size-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+                <div class="mb-3">
+                  <p class="text-sm font-medium">Inpaint settings</p>
+                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                    Sampling and seed controls
+                  </p>
+                </div>
 
-              <div class="grid grid-cols-3 gap-2">
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Steps
-                  <input
-                    v-model.number="config.steps"
-                    type="number"
-                    min="1"
-                    max="150"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  CFG
-                  <input
-                    v-model.number="config.cfgScale"
-                    type="number"
-                    min="0"
-                    max="30"
-                    step="0.5"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Seed
-                  <input
-                    v-model.number="config.seed"
-                    type="number"
-                    min="-1"
-                    title="Use -1 for a random seed"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-              </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    Steps
+                    <input
+                      v-model.number="config.steps"
+                      type="number"
+                      min="1"
+                      max="150"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    CFG
+                    <input
+                      v-model.number="config.cfgScale"
+                      type="number"
+                      min="0"
+                      max="30"
+                      step="0.5"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    Seed
+                    <input
+                      v-model.number="config.seed"
+                      type="number"
+                      min="-1"
+                      title="Use -1 for a random seed"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                </div>
 
-              <div class="mt-3 space-y-2">
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Scheduler
-                  <Select
-                    v-model="config.scheduler"
-                    size="sm"
-                    aria-label="Scheduler"
-                    class="mt-1"
-                    :options="schedulerOptions"
-                  />
-                </label>
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Sampler
-                  <Select
-                    v-model="config.sampler"
-                    size="sm"
-                    aria-label="Sampler"
-                    class="mt-1"
-                    :options="samplerOptions"
-                  />
-                </label>
-              </div>
-            </PopoverContent>
-          </Popover>
+                <div class="mt-3 space-y-2">
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Scheduler
+                    <Select
+                      v-model="config.scheduler"
+                      size="sm"
+                      aria-label="Scheduler"
+                      class="mt-1"
+                      :options="schedulerOptions"
+                    />
+                  </label>
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Sampler
+                    <Select
+                      v-model="config.sampler"
+                      size="sm"
+                      aria-label="Sampler"
+                      class="mt-1"
+                      :options="samplerOptions"
+                    />
+                  </label>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-          <div class="relative size-10 shrink-0">
-            <Transition name="flaxeo-action">
-              <button
-                v-if="!isGenerating"
-                key="generate"
-                @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
-                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Inpaint"
-                aria-label="Inpaint"
-              >
-                <ArrowUp class="size-4 stroke-[2.5]" />
-              </button>
-              <button
-                v-else
-                key="cancel"
-                @click="handleCancel"
-                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Cancel"
-                aria-label="Cancel generation"
-              >
-                <Square class="size-3.5 fill-current" />
-              </button>
-            </Transition>
+            <div class="relative size-10 shrink-0">
+              <Transition name="flaxeo-action">
+                <button
+                  v-if="!isGenerating"
+                  key="generate"
+                  @click="handleGenerate"
+                  :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Inpaint"
+                  aria-label="Inpaint"
+                >
+                  <ArrowUp class="size-4 stroke-[2.5]" />
+                </button>
+                <button
+                  v-else
+                  key="cancel"
+                  @click="handleCancel"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Cancel"
+                  aria-label="Cancel generation"
+                >
+                  <Square class="size-3.5 fill-current" />
+                </button>
+              </Transition>
+            </div>
           </div>
         </div>
       </div>

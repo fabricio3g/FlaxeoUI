@@ -4,65 +4,86 @@
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-A simple front end for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**, built with Electron and Node.js.
+A desktop front end for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** — local image, edit, and video generation with Electron, Vue 3, and Node.
 
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
+## Features
+
+- **Text2Image**, **Edit** (inpaint / multi-ref Kontext & Qwen Edit / img2img), **Video** (T2V, I2V, FLF2V)
+- **Gallery** with PNG parameter reuse, upscale, and generation history
+- **Model Hub** starter packs (SDXL, FLUX, Z-Image, Wan, LTX, Qwen, …)
+- Dual backend: **sd-cli** (default) or **sd-server**
+- Hardware helpers: flash attention, VAE tiling, Low VRAM profile, cache presets
+- Quantize / convert models to GGUF from the UI
+
 ## Disclaimer
 
-- The binary may be flagged as untrusted by browsers due to lacking a digital signature.
-- The Cloudflare and ngrok tunnels are currently broken. By default, the app shares on the local network for remote use on the same network.
-- Testing was limited due to VRAM constraints with larger models.
-- Developed and tested on Windows. Linux builds are available (Ubuntu/Debian, AppImage).
+- Installers may be flagged as untrusted until they are code-signed.
+- **Local network share** is the supported way to reach the UI from other devices on the same LAN.
+- **Ngrok / Cloudflare** tunnels are experimental (token/binary required; may fail on some networks).
+- Developed primarily on Windows; Linux builds (AppImage / deb) are produced in CI.
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- **Node.js** 20+ (tested with v22 / v23)
+- A **stable-diffusion.cpp** build (`sd-cli` + `sd-server`) — download from the app Settings, or place binaries under `backend/custom/`
 
-- **Node.js** v16+ (tested with v22.20.0)
-- **stable-diffusion.cpp** (tested with `master-418-200cb6f`)
+Tested against recent `master-*` release tags of stable-diffusion.cpp (see Settings → Backend).
 
-### Install & Run
+## Install & run
 
 ```bash
-git clone https://github.com/yourusername/flaxeo-ui.git
-cd flaxeo-ui
+git clone https://github.com/fabricio3g/FlaxeoUI.git
+cd FlaxeoUI
 npm install
+npm run dev
+```
+
+### Production preview
+
+```bash
 npm start
 ```
 
-### Run server only (no Electron)
+### API server only (no Electron)
 
 ```bash
 node ./server.js
 ```
 
-### Build for Windows
+### Build
 
 ```bash
-npm run build:win
+npm run build:win    # Windows
+npm run build:linux  # Linux AppImage / deb
 ```
 
 ## Development
 
-Run with hot-reloading:
-
-```bash
-npm run dev
-```
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Hot-reload Electron + Vue |
+| `npm run typecheck` | TypeScript (main + renderer) |
+| `npm test` | Unit tests (CLI args, errors, LoRA tokens, cache presets) |
+| `npm run lint` | ESLint |
 
 ## Architecture
 
-- **Frontend**: Vue 3, TypeScript, Tailwind CSS
-- **Backend**: Node.js (Express) managing the `sd-server`/`sd-cli` subprocess
-- **Desktop**: Electron wrapper
-- **Inference**: stable-diffusion.cpp via `sd-server`/`sd-cli`
+- **Frontend:** Vue 3, TypeScript, Tailwind CSS, Pinia
+- **App shell:** Electron (electron-vite)
+- **API:** Express managing `sd-cli` / `sd-server` subprocesses
+- **Inference:** [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+
+```
+UI workspaces → Express routes → sd.ts arg builders → sd-cli / sd-server
+```
 
 ## Credits
 
 UI for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
 
-sky image adapted from Wikimedia Commons: [Field, corn, Liechtenstein, Mountains, Alps, Vaduz, sky, clouds, landscape](https://commons.wikimedia.org/wiki/File:Field,_corn,_Liechtenstein,_Mountains,_Alps,_Vaduz,_sky,_clouds,_landscape.jpg), public domain (`PD-self`) by Wikimedia Commons user Paranoid.
+Sky image adapted from Wikimedia Commons: [Field, corn, Liechtenstein, Mountains, Alps, Vaduz, sky, clouds, landscape](https://commons.wikimedia.org/wiki/File:Field,_corn,_Liechtenstein,_Mountains,_Alps,_Vaduz,_sky,_clouds,_landscape.jpg), public domain (`PD-self`) by Wikimedia Commons user Paranoid.
 
 ## License
 

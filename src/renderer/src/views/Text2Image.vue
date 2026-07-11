@@ -21,7 +21,13 @@ import {
   Square
 } from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
-import { useGeneration } from '@/composables/useGeneration'
+import {
+  claimGeneration,
+  isAnyGenerationBusy,
+  releaseGeneration,
+  toastGenerationError,
+  useGeneration
+} from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
@@ -31,7 +37,12 @@ import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
-import { appendLoraPromptTokens } from '@/lib/promptTokens'
+import { useGenerationHistory } from '@/composables/useGenerationHistory'
+import { normalizeImageParams } from '@/lib/imageParams'
+import {
+  appendPayloadToFormData,
+  buildGenerationPayload
+} from '@/lib/generationPayload'
 
 const toast = useToast()
 
@@ -39,6 +50,7 @@ const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const { isGenerating } = useGeneration()
 const progress = useGenerationProgress()
+const { addEntry: addHistoryEntry } = useGenerationHistory()
 
 // Form state
 const prompt = ref('')
@@ -316,179 +328,27 @@ function handleInitImageUpload(event: Event) {
   }
 }
 
-function buildGenerationParams(): any {
-  const c = config.value
-
-  // Handle embeddings: append to prompt
-  let finalPrompt = prompt.value
-  if (c.embeddings && c.embeddings.length > 0) {
-    const embeddingTokens = c.embeddings.map((path) => {
-      const filename = path.split(/[\\/]/).pop() || ''
-      return '<' + filename.replace(/\.[^/.]+$/, '') + '>'
-    })
-    finalPrompt = finalPrompt + ' ' + embeddingTokens.join(' ')
-  }
-  finalPrompt = appendLoraPromptTokens(finalPrompt, c.loras)
-
-  const params: any = {
-    prompt: finalPrompt,
-    negative_prompt: negativePrompt.value,
-    steps: c.steps,
-    cfg_scale: c.cfgScale,
-    width: c.width,
-    height: c.height,
-    seed: c.seed,
-    samplingMethod: c.sampler,
-    scheduler: c.scheduler,
-    loadMode: c.loadMode,
-    batchCount: c.batchCount,
-    clipSkip: c.clipSkip,
-    livePreviewMethod: c.livePreviewMethod,
-
-    // Advanced
-    vaeTiling: c.vaeTiling,
-
-    // PhotoMaker
-    photoMaker: c.photoMakerModel,
-    pmImagesDir: undefined,
-    photoMakerImages: c.photoMakerImages,
-    pmStyleStrength: c.photoMakerStyleStrength,
-    pmIdEmbedsPath: c.photoMakerIdEmbedsPath,
-
-    // ControlNet
-    controlNet: c.controlNetModel,
-    controlImage: c.controlImagePath || undefined,
-    controlStrength: c.controlNetStrength,
-    applyCanny: c.applyCanny,
-
-    // Img2Img
-    initImagePath: c.initImagePath || undefined,
-    img2imgStrength: c.img2imgStrength,
-
-    // Kontext
-    kontextRefPath: c.kontextRefImage || undefined,
-
-    // Models - use correct model based on loadMode
-    diffusionModel: c.loadMode === 'standard' ? c.standardModel : c.diffusionModel,
-    highNoiseDiffusionModel: c.highNoiseDiffusionModel,
-    uncondDiffusionModel: c.uncondDiffusionModel,
-    vae: c.vaeModel,
-    vaeFormat: c.vaeFormat,
-    audioVae: c.audioVaeModel,
-    t5xxl: c.t5xxlModel,
-    llm: c.llmModel,
-    llmVision: c.llmVisionModel,
-    embeddingsConnectors: c.embeddingsConnectorsModel,
-    clipL: c.clipModel,
-    clipG: c.clipGModel,
-    clipVision: c.clipVisionModel,
-
-    flashAttention: c.flashAttention,
-    clipOnCpu: c.clipOnCpu,
-    vaeOnCpu: c.vaeOnCpu,
-    controlNetOnCpu: c.controlNetOnCpu,
-    offloadToCpu: c.cpuOffload,
-    diffusionFa: c.flashAttention,
-    diffusionConvDirect: c.diffusionConvDirect,
-    vaeConvDirect: c.vaeConvDirect,
-    forceSDXLVaeConvScale: c.forceSDXLVaeConvScale,
-    backendAssignment: c.backendAssignment,
-    paramsBackendAssignment: c.paramsBackendAssignment,
-    autoFit: c.autoFit,
-    splitMode: c.splitMode,
-    threads: c.threads,
-    maxVram: c.maxVram,
-    streamLayers: c.streamLayers,
-    mmap: c.mmap,
-    circular: c.circular,
-    circularX: c.circularX,
-    circularY: c.circularY,
-    qwenImageZeroCondT: c.qwenImageZeroCondT,
-    chromaEnableT5Mask: c.chromaEnableT5Mask,
-    chromaDisableDitMask: c.chromaDisableDitMask,
-    chromaT5MaskPad: c.chromaT5MaskPad,
-    disableImageMetadata: c.disableImageMetadata,
-
-    loraApplyMode: c.loraApplyMode,
-    rngType: c.rngType,
-    samplerRngType: c.samplerRngType,
-    quantizationType: c.quantizationType,
-    tensorTypeRules: c.tensorTypeRules,
-    predictionType: c.predictionType,
-    cacheMode: c.cacheMode,
-    cacheOption: c.cacheOption,
-    scmMask: c.scmMask,
-    scmPolicy: c.scmPolicy,
-    flowShift: c.flowShift,
-    eta: c.eta,
-    slgScale: c.slgScale,
-    skipLayerStart: c.skipLayerStart,
-    skipLayerEnd: c.skipLayerEnd,
-    skipLayers: c.skipLayers,
-    sigmas: c.sigmas,
-    imgCfgScale: c.imgCfgScale,
-    extraSampleArgs: c.extraSampleArgs,
-    extraTilingArgs: c.extraTilingArgs,
-    upscaleModel: c.upscaleModel,
-    taesdModel: c.taesdModel
-  }
-
-  // LoRAs
-  if (c.loras.length > 0) {
-    params.loras = c.loras.map((l) => ({ path: l.path, strength: l.strength }))
-    params.loraApplyMode = c.loraApplyMode
-  }
-
-  if (c.guidance) params.guidance = c.guidance
-  if (c.quantizationType) params.quantizationType = c.quantizationType
-  if (c.videoMode) params.videoMode = true // If needed?
-
-  return params
-}
-
 // Helper to get params from image
 async function sendToParams(imagePath: string) {
   try {
     let relativePath = imagePath
     if (imagePath.startsWith('http')) {
       const url = new URL(imagePath)
-      relativePath = url.pathname.replace('/output/', '')
+      relativePath = decodeURIComponent(url.pathname.replace(/^\/output\//, ''))
     } else if (imagePath.includes('/output/')) {
-      relativePath = imagePath.split('/output/')[1]
+      relativePath = imagePath.split('/output/').pop() || imagePath
     }
 
-    const data = await apiPost<{
-      prompt?: string
-      negativePrompt?: string
-      seed?: number
-      cfgScale?: number
-      steps?: number
-      width?: number
-      height?: number
-      sampler?: string
-      scheduler?: string
-      diffusionModel?: string
-    }>('/api/image/params', { path: relativePath })
+    const data = await apiPost<Record<string, unknown>>('/api/image/params', {
+      path: relativePath
+    })
+    const params = normalizeImageParams(data)
 
-    if (data.prompt) prompt.value = data.prompt
-    if (data.negativePrompt) negativePrompt.value = data.negativePrompt
-    if (data.seed) config.value.seed = data.seed
-    if (data.cfgScale) config.value.cfgScale = data.cfgScale
-    if (data.steps) config.value.steps = data.steps
-
-    // Restore dimensions
-    if (data.width) config.value.width = data.width
-    if (data.height) config.value.height = data.height
-
-    // Restore sampler/scheduler (if names match dropdown values)
-    if (data.sampler) config.value.sampler = data.sampler
-    if (data.scheduler) config.value.scheduler = data.scheduler
-
-    // Restore Model (Note: name must match exactly or logic needed)
-    if (data.diffusionModel) {
-      config.value.diffusionModel = data.diffusionModel
+    if (params.prompt) prompt.value = params.prompt
+    if (params.negativePrompt || params.negative_prompt) {
+      negativePrompt.value = params.negativePrompt || params.negative_prompt || ''
     }
-
+    configStore.applyImageParams(params, 'all')
     toast.success('Parameters restored from image')
   } catch (e) {
     console.error('Failed to restore params:', e)
@@ -502,8 +362,15 @@ async function sendToParams(imagePath: string) {
 
 async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
+  if (isAnyGenerationBusy()) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
+  if (!claimGeneration('text2image')) {
+    toastGenerationError(toast, 'Another generation is already running')
+    return
+  }
 
-  isGenerating.value = true
   progress.start()
   error.value = null
 
@@ -513,21 +380,24 @@ async function handleGenerate(): Promise<void> {
   }
 
   try {
-    const params = buildGenerationParams()
+    const params = buildGenerationPayload(config.value, {
+      prompt: prompt.value,
+      negativePrompt: negativePrompt.value
+    })
 
     // Check server status before choosing endpoint
     await checkServerStatus()
 
     // Choose endpoint based on mode
     let endpoint = '/api/generate-cli'
-    let payload: any = params
+    let payload: Record<string, unknown> = params
 
     // If server mode is active and server is online, use the server endpoint
+    // (server path supports a smaller subset — prefer CLI for full features)
     if (config.value.backendMode === 'server' && serverOnline.value) {
       endpoint = '/api/generate'
       payload = {
         ...params,
-
         batch_size: params.batchCount,
         clip_skip: params.clipSkip
       }
@@ -543,21 +413,8 @@ async function handleGenerate(): Promise<void> {
 
     if (needsFormData) {
       const formData = new FormData()
+      appendPayloadToFormData(formData, params)
 
-      Object.keys(payload).forEach((key) => {
-        const value = payload[key]
-        if (value !== undefined && value !== null) {
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            formData.append(key, JSON.stringify(value))
-          } else if (Array.isArray(value)) {
-            formData.append(key, JSON.stringify(value))
-          } else {
-            formData.append(key, String(value))
-          }
-        }
-      })
-
-      // Add file uploads
       if (kontextRefFile.value) {
         formData.append('kontextRefImage', kontextRefFile.value)
       }
@@ -568,27 +425,18 @@ async function handleGenerate(): Promise<void> {
         formData.append('initImage', initImageFile.value)
       }
 
-      // Add PhotoMaker files
       config.value.photoMakerImages.forEach((img) => {
         if (pmFileMap.has(img)) {
           formData.append('pmImages', pmFileMap.get(img)!)
         }
       })
 
-      // Use fetch for FormData
-      // Use apiPostForm helper which handles the URL correctly for both local/network
-      const response = await apiPostForm(endpoint, formData)
-
-      // apiPostForm returns the parsed JSON directly, no need for response.ok check manually here
-      result = response as any
-
-      if (!response.ok) {
-        throw new Error(await response.text())
-      }
-
-      result = await response.json()
+      // apiPostForm returns parsed JSON and throws on non-OK with humanized message
+      result = await apiPostForm<{ message: string; filenames?: string[]; filename?: string }>(
+        endpoint,
+        formData
+      )
     } else {
-      // Use regular JSON post
       result = await apiPost<{ message: string; filenames?: string[]; filename?: string }>(
         endpoint,
         payload
@@ -603,21 +451,57 @@ async function handleGenerate(): Promise<void> {
       currentImageFilename.value = newImages[0]
       isLivePreview.value = false
       toast.success('Generation complete!')
+      for (const filename of newImages) {
+        addHistoryEntry({
+          surface: 'text2image',
+          status: 'success',
+          prompt: prompt.value,
+          negativePrompt: negativePrompt.value,
+          seed: config.value.seed,
+          width: config.value.width,
+          height: config.value.height,
+          filename
+        })
+      }
     } else if (result.filename) {
       galleryImages.value = [result.filename, ...galleryImages.value]
       previewImage.value = getOutputUrl(result.filename)
       currentImageFilename.value = result.filename
       isLivePreview.value = false
       toast.success('Generation complete!')
+      addHistoryEntry({
+        surface: 'text2image',
+        status: 'success',
+        prompt: prompt.value,
+        negativePrompt: negativePrompt.value,
+        seed: config.value.seed,
+        width: config.value.width,
+        height: config.value.height,
+        filename: result.filename
+      })
+    } else if (result.message === 'Cancelled') {
+      addHistoryEntry({
+        surface: 'text2image',
+        status: 'cancelled',
+        prompt: prompt.value,
+        seed: config.value.seed
+      })
     }
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Generation failed'
     error.value = errorMsg
-    toast.error(errorMsg)
+    toastGenerationError(toast, e)
     console.error('Generation error:', e)
+    addHistoryEntry({
+      surface: 'text2image',
+      status: 'failed',
+      prompt: prompt.value,
+      seed: config.value.seed,
+      error: errorMsg
+    })
   } finally {
     stopPreviewPolling()
-    isGenerating.value = false
+    releaseGeneration('text2image')
     progress.stop()
   }
 }
@@ -634,7 +518,7 @@ async function handleCancel(): Promise<void> {
     console.error('Cancel failed:', e)
   }
   progress.stop()
-  isGenerating.value = false
+  releaseGeneration('text2image')
 }
 
 /**
@@ -767,6 +651,18 @@ onMounted(async () => {
     setTimeout(() => {
       sendToParams(paramsImage)
     }, 500)
+  }
+
+  // Prompt restored via "Reuse all settings" without full image re-parse
+  const restoredPrompt = sessionStorage.getItem('text2imagePrompt')
+  if (restoredPrompt != null) {
+    sessionStorage.removeItem('text2imagePrompt')
+    prompt.value = restoredPrompt
+  }
+  const restoredNegative = sessionStorage.getItem('text2imageNegativePrompt')
+  if (restoredNegative != null) {
+    sessionStorage.removeItem('text2imageNegativePrompt')
+    negativePrompt.value = restoredNegative
   }
 
   onUnmounted(() => {
@@ -1169,115 +1065,117 @@ onMounted(async () => {
             </div>
           </div>
 
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            compact
-            class="ml-auto shrink-0"
-          />
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <PromptPresetControls
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              compact
+              class="shrink-0"
+            />
 
-          <Popover>
-            <PopoverTrigger as-child>
-              <button
-                type="button"
-                class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                aria-label="Generation settings"
-                title="Generation settings"
-              >
-                <SlidersHorizontal class="size-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
-              <div class="mb-3">
-                <p class="text-sm font-medium">Generation settings</p>
-                <p class="mt-0.5 text-[11px] text-muted-foreground">
-                  Sampling and seed controls
-                </p>
-              </div>
+            <Popover>
+              <PopoverTrigger as-child>
+                <button
+                  type="button"
+                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  aria-label="Generation settings"
+                  title="Generation settings"
+                >
+                  <SlidersHorizontal class="size-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
+                <div class="mb-3">
+                  <p class="text-sm font-medium">Generation settings</p>
+                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                    Sampling and seed controls
+                  </p>
+                </div>
 
-              <div class="grid grid-cols-3 gap-2">
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Steps
-                  <input
-                    v-model.number="config.steps"
-                    type="number"
-                    min="1"
-                    max="150"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  CFG
-                  <input
-                    v-model.number="config.cfgScale"
-                    type="number"
-                    min="0"
-                    max="30"
-                    step="0.5"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-                <label class="text-[10px] font-medium text-muted-foreground">
-                  Seed
-                  <input
-                    v-model.number="config.seed"
-                    type="number"
-                    min="-1"
-                    title="Use -1 for a random seed"
-                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-                  />
-                </label>
-              </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    Steps
+                    <input
+                      v-model.number="config.steps"
+                      type="number"
+                      min="1"
+                      max="150"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    CFG
+                    <input
+                      v-model.number="config.cfgScale"
+                      type="number"
+                      min="0"
+                      max="30"
+                      step="0.5"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                  <label class="text-[10px] font-medium text-muted-foreground">
+                    Seed
+                    <input
+                      v-model.number="config.seed"
+                      type="number"
+                      min="-1"
+                      title="Use -1 for a random seed"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                    />
+                  </label>
+                </div>
 
-              <div class="mt-3 space-y-2">
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Scheduler
-                  <Select
-                    v-model="config.scheduler"
-                    size="sm"
-                    aria-label="Scheduler"
-                    class="mt-1"
-                    :options="schedulerOptions"
-                  />
-                </label>
-                <label class="block text-[10px] font-medium text-muted-foreground">
-                  Sampler
-                  <Select
-                    v-model="config.sampler"
-                    size="sm"
-                    aria-label="Sampler"
-                    class="mt-1"
-                    :options="samplerOptions"
-                  />
-                </label>
-              </div>
-            </PopoverContent>
-          </Popover>
+                <div class="mt-3 space-y-2">
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Scheduler
+                    <Select
+                      v-model="config.scheduler"
+                      size="sm"
+                      aria-label="Scheduler"
+                      class="mt-1"
+                      :options="schedulerOptions"
+                    />
+                  </label>
+                  <label class="block text-[10px] font-medium text-muted-foreground">
+                    Sampler
+                    <Select
+                      v-model="config.sampler"
+                      size="sm"
+                      aria-label="Sampler"
+                      class="mt-1"
+                      :options="samplerOptions"
+                    />
+                  </label>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-          <div class="relative size-10 shrink-0">
-            <Transition name="flaxeo-action">
-              <button
-                v-if="!isGenerating"
-                key="generate"
-                @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim()"
-                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Generate"
-                aria-label="Generate image"
-              >
-                <ArrowUp class="size-4 stroke-[2.5]" />
-              </button>
-              <button
-                v-else
-                key="cancel"
-                @click="handleCancel"
-                class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                title="Cancel"
-                aria-label="Cancel generation"
-              >
-                <Square class="size-3.5 fill-current" />
-              </button>
-            </Transition>
+            <div class="relative size-10 shrink-0">
+              <Transition name="flaxeo-action">
+                <button
+                  v-if="!isGenerating"
+                  key="generate"
+                  @click="handleGenerate"
+                  :disabled="promptMode !== 'positive' || !prompt.trim()"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Generate"
+                  aria-label="Generate image"
+                >
+                  <ArrowUp class="size-4 stroke-[2.5]" />
+                </button>
+                <button
+                  v-else
+                  key="cancel"
+                  @click="handleCancel"
+                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Cancel"
+                  aria-label="Cancel generation"
+                >
+                  <Square class="size-3.5 fill-current" />
+                </button>
+              </Transition>
+            </div>
           </div>
 
         </div>

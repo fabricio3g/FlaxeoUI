@@ -52,6 +52,28 @@ export function getFileUrl(path: string): string {
  * @param options - Fetch options
  * @returns Parsed JSON response
  */
+function errorFromResponseBody(text: string, status: number): Error {
+  if (!text) return new Error(`Request failed: ${status}`)
+  try {
+    const parsed = JSON.parse(text) as {
+      message?: string
+      error?: string
+      title?: string
+      detail?: string
+      hint?: string
+    }
+    if (parsed.message) return new Error(parsed.message)
+    if (parsed.title && parsed.detail) {
+      const hint = parsed.hint ? ` ${parsed.hint}` : ''
+      return new Error(`${parsed.title}: ${parsed.detail}${hint}`)
+    }
+    if (parsed.error) return new Error(String(parsed.error))
+  } catch {
+    // plain text body
+  }
+  return new Error(text)
+}
+
 export async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${getApiBase()}${endpoint}`, {
     headers: {
@@ -63,7 +85,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(error || `Request failed: ${response.status}`)
+    throw errorFromResponseBody(error, response.status)
   }
 
   return response.json()
@@ -105,7 +127,7 @@ export async function apiPostForm<T>(endpoint: string, formData: FormData): Prom
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(error || `Request failed: ${response.status}`)
+    throw errorFromResponseBody(error, response.status)
   }
 
   return response.json()
@@ -153,9 +175,13 @@ export const API_ENDPOINTS = {
 
   // Backend management
   BACKEND_CONFIG: '/api/backend/config',
+  BACKEND_CAPABILITIES: '/api/backend/capabilities',
   BACKEND_RELEASES: '/api/backend/releases',
   BACKEND_DOWNLOAD: '/api/backend/download',
   BACKEND_SET_ACTIVE: '/api/backend/set-active',
+
+  // Upscale
+  UPSCALE: '/api/upscale',
 
   // Network
   NETWORK_STATUS: '/api/network/status',
