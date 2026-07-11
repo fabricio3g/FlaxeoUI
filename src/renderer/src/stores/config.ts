@@ -701,6 +701,19 @@ function persistConfig(value: GenerationConfig): void {
   localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(value))
 }
 
+/** Debounce deep config watches — every keystroke used to JSON.stringify the full tree. */
+const CONFIG_PERSIST_DEBOUNCE_MS = 400
+let configPersistTimer: ReturnType<typeof setTimeout> | null = null
+
+function schedulePersistConfig(value: GenerationConfig): void {
+  if (typeof localStorage === 'undefined') return
+  if (configPersistTimer) clearTimeout(configPersistTimer)
+  configPersistTimer = setTimeout(() => {
+    configPersistTimer = null
+    persistConfig(value)
+  }, CONFIG_PERSIST_DEBOUNCE_MS)
+}
+
 /**
  * useConfigStore - Pinia store for generation configuration
  * Centralizes all settings from the sidebar
@@ -711,8 +724,8 @@ export const useConfigStore = defineStore('config', () => {
   const presets = ref<ConfigPreset[]>([...BUILTIN_PRESETS])
   const selectedPresetId = ref('')
 
-  // Keep direct v-model changes from the setup panel available after restarting the app.
-  watch(config, persistConfig, { deep: true })
+  // Keep direct v-model changes available after restart (debounced for main-thread cost).
+  watch(config, (value) => schedulePersistConfig(value), { deep: true })
 
   function persistPresets(): void {
     if (typeof localStorage === 'undefined') return

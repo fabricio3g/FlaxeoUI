@@ -17,6 +17,7 @@ import {
 } from '../utils'
 import { formatHumanizedError, humanizeCliError } from '../../shared/cliErrors'
 import type { ParsedStep } from '../utils'
+import { invalidateModelsCache } from '../modelsCache'
 import {
   addGenerationArgs,
   addHardwareArgs,
@@ -171,24 +172,30 @@ function updateProgress(
 
 function watchPreviewFile(ctx: AppContext, previewPath: string): () => void {
   let lastSize = 0
+  let lastMtimeMs = 0
   const interval = setInterval(() => {
     try {
       if (!fs.existsSync(previewPath)) return
       const stat = fs.statSync(previewPath)
-      if (stat.size === 0 || stat.size === lastSize) return
+      const mtimeMs = stat.mtimeMs
+      // Skip full read when file has not changed (size + mtime gate)
+      if (stat.size === 0 || (stat.size === lastSize && mtimeMs === lastMtimeMs)) return
       lastSize = stat.size
+      lastMtimeMs = mtimeMs
       const buffer = fs.readFileSync(previewPath)
       if (buffer.length > 0) {
         ctx.state.previewImageBuffer = buffer
+        ctx.state.previewEtag = `"${stat.size}-${Math.floor(mtimeMs)}"`
       }
     } catch {
       // File locked by writer, skip this tick
     }
-  }, 300)
+  }, 400)
   return () => {
     clearInterval(interval)
     ctx.state.previewImageBuffer = null
     ctx.state.previewTempFile = null
+    ctx.state.previewEtag = null
   }
 }
 
@@ -443,25 +450,43 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     }
   })
 
-  app.get('/api/preview-image', (_req, res) => {
+  app.get('/api/preview-image', (req, res) => {
     if (!ctx.state.previewImageBuffer) {
       const fallback = ctx.state.previewTempFile
       if (fallback && fs.existsSync(fallback)) {
-        res.set({
-          'Content-Type': 'image/png',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0'
-        })
-        return res.sendFile(fallback)
+        try {
+          const stat = fs.statSync(fallback)
+          const etag = `"${stat.size}-${Math.floor(stat.mtimeMs)}"`
+          if (req.headers['if-none-match'] === etag) {
+            return res.status(304).end()
+          }
+          res.set({
+            'Content-Type': 'image/png',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+            ETag: etag
+          })
+          return res.sendFile(fallback)
+        } catch {
+          return res.status(404).json({ message: 'No preview available' })
+        }
       }
       return res.status(404).json({ message: 'No preview available' })
     }
+
+    const etag =
+      ctx.state.previewEtag || `"${ctx.state.previewImageBuffer.length}"`
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end()
+    }
+
     res.set({
       'Content-Type': 'image/png',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       Pragma: 'no-cache',
-      Expires: '0'
+      Expires: '0',
+      ETag: etag
     })
     res.send(ctx.state.previewImageBuffer)
   })
@@ -726,6 +751,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     try {
       ctx.state.convertOutputPath = outputPath
       await runCli(ctx, args, 'CONVERT')
+      // New GGUF on disk — drop model list cache
+      invalidateModelsCache()
       res.json({ success: fs.existsSync(outputPath), outputPath: outputName })
     } catch (error: unknown) {
       const raw = errorMessage(error)

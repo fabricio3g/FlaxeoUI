@@ -125,6 +125,7 @@ export function createContext(): AppContext {
     progressBus: new EventEmitter(),
     previewImageBuffer: null,
     previewTempFile: null,
+    previewEtag: null,
     convertOutputPath: null
   }
 

@@ -65,14 +65,15 @@ const isLivePreview = ref(false)
 const showImageViewer = ref(false)
 // const serverStats = ref<any>(null) // Unused
 
-// Preview polling
+// Preview polling (only while generating; 304/ETag avoids re-decoding unchanged frames)
 let previewPollInterval: ReturnType<typeof setInterval> | null = null
+let previewEtag: string | null = null
 
 /**
- * getPreviewImageUrl() - Get the current preview image URL with cache bust
+ * getPreviewImageUrl() - Live preview endpoint
  */
 function getPreviewImageUrl(): string {
-  return `${getApiBase()}/api/preview-image?t=${Date.now()}`
+  return `${getApiBase()}/api/preview-image`
 }
 
 /**
@@ -81,23 +82,33 @@ function getPreviewImageUrl(): string {
 function startPreviewPolling(): void {
   stopPreviewPolling()
   isLivePreview.value = true
+  previewEtag = null
   previewPollInterval = setInterval(async () => {
+    // Guard: never poll when generation already finished
+    if (!isGenerating.value) {
+      stopPreviewPolling()
+      return
+    }
     try {
-      const response = await fetch(getPreviewImageUrl())
-      if (response.ok) {
-        const blob = await response.blob()
-        if (blob.size > 0) {
-          const oldUrl = previewObjectUrl.value
-          const newUrl = URL.createObjectURL(blob)
-          previewObjectUrl.value = newUrl
-          previewImage.value = newUrl
-          if (oldUrl) URL.revokeObjectURL(oldUrl)
-        }
+      const headers: HeadersInit = {}
+      if (previewEtag) headers['If-None-Match'] = previewEtag
+      const response = await fetch(getPreviewImageUrl(), { headers })
+      if (response.status === 304) return
+      if (!response.ok) return
+      const nextEtag = response.headers.get('ETag')
+      if (nextEtag) previewEtag = nextEtag
+      const blob = await response.blob()
+      if (blob.size > 0) {
+        const oldUrl = previewObjectUrl.value
+        const newUrl = URL.createObjectURL(blob)
+        previewObjectUrl.value = newUrl
+        previewImage.value = newUrl
+        if (oldUrl) URL.revokeObjectURL(oldUrl)
       }
-    } catch (e) {
+    } catch {
       // Preview not available yet, silently ignore
     }
-  }, 1000)
+  }, 750)
 }
 
 /**
@@ -108,6 +119,7 @@ function stopPreviewPolling(): void {
     clearInterval(previewPollInterval)
     previewPollInterval = null
   }
+  previewEtag = null
   if (previewObjectUrl.value) {
     URL.revokeObjectURL(previewObjectUrl.value)
     previewObjectUrl.value = null

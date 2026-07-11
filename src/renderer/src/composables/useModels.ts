@@ -22,57 +22,80 @@ export interface ModelCategories {
   embeddings: string[]
 }
 
+const emptyModels = (): ModelCategories => ({
+  diffusion: [],
+  uncondDiffusion: [],
+  loras: [],
+  vae: [],
+  audioVae: [],
+  llm: [],
+  llmVision: [],
+  t5xxl: [],
+  embeddingsConnectors: [],
+  clip: [],
+  clipG: [],
+  clipVision: [],
+  controlnet: [],
+  photomaker: [],
+  upscale: [],
+  hiresUpscalers: [],
+  taesd: [],
+  embeddings: []
+})
+
+/** Module-level singleton — all callers share one list (avoids N× /api/models on mount). */
+const models = ref<ModelCategories>(emptyModels())
+const isLoading = ref(false)
+const lastFetchedAt = ref(0)
+let inflight: Promise<void> | null = null
+
+export interface FetchModelsOptions {
+  /** Bypass short client TTL and request server refresh */
+  force?: boolean
+}
+
 /**
- * useModels() - Composable for model file management
- *
- * Provides reactive access to available model files across all categories:
- * diffusion, LoRAs, VAE, CLIP, T5XXL, LLM, ControlNet, etc.
- *
- * @returns {Object} Model state and fetch method
+ * useModels() - Shared model file lists across App / Config / Gallery / Quant / Setup.
  */
 export function useModels() {
-  const models = ref<ModelCategories>({
-  diffusion: [],
-    uncondDiffusion: [],
-    loras: [],
-    vae: [],
-    audioVae: [],
-    llm: [],
-    llmVision: [],
-    t5xxl: [],
-    embeddingsConnectors: [],
-    clip: [],
-    clipG: [],
-    clipVision: [],
-    controlnet: [],
-    photomaker: [],
-    upscale: [],
-    hiresUpscalers: [],
-    taesd: [],
-    embeddings: []
-  })
-
-  const isLoading = ref(false)
-
   /**
    * fetchModels() - Fetches available models from /api/models
-   * Updates the reactive models ref with categorized file lists
+   * Concurrent callers share one in-flight request.
    */
-  async function fetchModels(): Promise<void> {
-    isLoading.value = true
-    try {
-      const data = await apiGet<ModelCategories>('/api/models')
-      models.value = data
-    } catch (e) {
-      console.error('Failed to fetch models:', e)
-    } finally {
-      isLoading.value = false
+  async function fetchModels(options: FetchModelsOptions = {}): Promise<void> {
+    if (inflight) {
+      if (!options.force) return inflight
+      await inflight
     }
+
+    // Soft client TTL (2s) — rapid remounts (route switches) reuse memory
+    if (!options.force && lastFetchedAt.value && Date.now() - lastFetchedAt.value < 2000) {
+      return
+    }
+
+    isLoading.value = true
+    const force = options.force === true
+    inflight = (async () => {
+      try {
+        const endpoint = force ? '/api/models?refresh=1' : '/api/models'
+        const data = await apiGet<ModelCategories>(endpoint)
+        models.value = data
+        lastFetchedAt.value = Date.now()
+      } catch (e) {
+        console.error('Failed to fetch models:', e)
+      } finally {
+        isLoading.value = false
+        inflight = null
+      }
+    })()
+
+    return inflight
   }
 
   return {
     models,
     isLoading,
+    lastFetchedAt,
     fetchModels
   }
 }

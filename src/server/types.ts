@@ -68,6 +68,8 @@ export interface RuntimeState {
   progressBus: EventEmitter
   previewImageBuffer: Buffer | null
   previewTempFile: string | null
+  /** Weak ETag for /api/preview-image 304 responses */
+  previewEtag: string | null
   convertOutputPath: string | null
 }
 

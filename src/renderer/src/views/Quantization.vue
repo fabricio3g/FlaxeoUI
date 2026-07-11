@@ -119,6 +119,7 @@ async function handleConvert() {
     conversionResult.value = result
     if (result.success) {
       toast.success(`Converted to ${outputName.value}`)
+      await fetchModels({ force: true })
     } else {
       toast.error(result.error || 'Conversion failed')
     }

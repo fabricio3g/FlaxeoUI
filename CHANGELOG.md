@@ -39,6 +39,13 @@ All notable changes to FlaxeoUI are documented in this file.
 - Edit / Video use typed API helpers + toast errors (no raw JSON dumps)
 - Golden multi-mode CLI arg tests (t2i / inpaint / video / upscale / Low VRAM)
 
+### Performance
+- Debounced config localStorage persist (400ms) to avoid full JSON stringify on every keystroke
+- Shared singleton `useModels` with in-flight dedupe + short client TTL
+- Server model list cache (8s TTL), invalidated after Hub download / convert
+- `/api/status` returns log tail only (150 lines); server log buffer hard-capped
+- Live preview: size+mtime gate, ETag/304, poll only while generating
+
 ## 0.3.x
 
 Earlier Electron + Vue studio with Text2Image, Edit, Video, Gallery, Quantization, Model Hub, and dual CLI/server backend mode.

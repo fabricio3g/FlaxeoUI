@@ -23,8 +23,14 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** Hard cap so long gen sessions don't grow unbounded memory / status payloads. */
+const MAX_SERVER_LOG_ENTRIES = 2500
+
 export function appendLog(ctx: AppContext, msg: string): void {
   ctx.state.serverLogs.push(msg)
+  if (ctx.state.serverLogs.length > MAX_SERVER_LOG_ENTRIES) {
+    ctx.state.serverLogs.splice(0, ctx.state.serverLogs.length - MAX_SERVER_LOG_ENTRIES)
+  }
   ctx.state.logBus.emit('log', msg)
 }
 

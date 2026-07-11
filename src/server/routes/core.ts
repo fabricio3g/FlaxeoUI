@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { appendLog, errorMessage, listFiles, modelDirectory, spawnLoggedProcess } from '../utils'
+import { appendLog, errorMessage, modelDirectory, spawnLoggedProcess } from '../utils'
 import { MODEL_DIRECTORY_KEYS } from '../../shared/storage'
 import {
   addHardwareArgs,
@@ -13,6 +13,7 @@ import {
   pushArg
 } from '../sd'
 import { downloadFile } from '../utils'
+import { getModelsPayload, invalidateModelsCache } from '../modelsCache'
 
 const MODEL_DOWNLOAD_DIRS = new Set<string>(MODEL_DIRECTORY_KEYS)
 
@@ -76,29 +77,16 @@ function filenameFromUrl(url: string): string {
   return name || `model_${Date.now()}`
 }
 
+/** Status poll should not ship multi-MB log arrays every 2s. */
+const STATUS_LOG_TAIL = 150
+
 export function registerCoreRoutes(app: Express, ctx: AppContext): void {
-  app.get('/api/models', (_req, res) => {
-    const modelDir = (subdir: string) => modelDirectory(ctx, subdir)
-    res.json({
-      diffusion: listFiles(modelDir('diffusion')),
-      uncondDiffusion: listFiles(modelDir('uncond_diffusion')),
-      loras: listFiles(modelDir('loras')),
-      vae: listFiles(modelDir('vae')),
-      audioVae: listFiles(modelDir('audio_vae')),
-      llm: listFiles(modelDir('llm')),
-      llmVision: listFiles(modelDir('llm_vision')),
-      t5xxl: listFiles(modelDir('t5xxl')),
-      embeddingsConnectors: listFiles(modelDir('embeddings_connectors')),
-      clip: listFiles(modelDir('clip')),
-      clipG: listFiles(modelDir('clip')),
-      clipVision: listFiles(modelDir('clip_vision')),
-      controlnet: listFiles(modelDir('controlnet')),
-      photomaker: listFiles(modelDir('photomaker')),
-      upscale: listFiles(modelDir('upscale')),
-      hiresUpscalers: listFiles(modelDir('hires_upscalers')),
-      taesd: listFiles(modelDir('taesd')),
-      embeddings: listFiles(modelDir('embeddings'))
-    })
+  app.get('/api/models', (req, res) => {
+    const force =
+      req.query.refresh === '1' ||
+      req.query.refresh === 'true' ||
+      req.query.force === '1'
+    res.json(getModelsPayload(ctx, force))
   })
 
   app.post('/api/models/download', async (req, res) => {
@@ -120,6 +108,7 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
       await trackedDownload(ctx, id, url, targetPath)
       ctx.state.downloads[id].status = 'completed'
       ctx.state.downloads[id].updatedAt = Date.now()
+      invalidateModelsCache()
       res.json({ success: true, id, category, filename: safeFilename, path: targetPath })
     } catch (error: unknown) {
       if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
@@ -201,7 +190,13 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   })
 
   app.get('/api/status', (_req, res) => {
-    res.json({ running: !!ctx.state.sdProcess, logs: ctx.state.serverLogs })
+    const all = ctx.state.serverLogs
+    res.json({
+      running: !!ctx.state.sdProcess,
+      logs: all.slice(-STATUS_LOG_TAIL),
+      logTotal: all.length,
+      logTail: STATUS_LOG_TAIL
+    })
   })
 
   app.post('/api/generate', async (req, res) => {

@@ -3,12 +3,14 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { Download, ExternalLink, Loader2, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { apiPost } from '@/services/api'
+import { useModels } from '@/composables/useModels'
 import { hubModels, type HubModel, type HubFile } from '@/lib/starterPacks'
 
 const props = defineProps<{ open: boolean }>()
 
 const emit = defineEmits<{ close: [] }>()
 const configStore = useConfigStore()
+const { fetchModels } = useModels()
 const activeModelId = ref(hubModels[0]?.id || 'flux1-dev')
 const downloading = ref<string | null>(null)
 const downloadStatus = ref<Record<string, string>>({})
@@ -36,6 +38,7 @@ async function downloadFile(file: HubFile): Promise<void> {
   try {
     await apiPost('/api/models/download', file)
     downloadStatus.value[key] = 'Downloaded'
+    await fetchModels({ force: true })
   } catch (error) {
     downloadStatus.value[key] = error instanceof Error ? error.message : 'Download failed'
   } finally {
@@ -48,6 +51,7 @@ async function downloadPack(): Promise<void> {
   for (const file of activeModel.value.files) {
     await downloadFile(file)
   }
+  await fetchModels({ force: true })
 }
 
 function onKeydown(event: KeyboardEvent): void {
