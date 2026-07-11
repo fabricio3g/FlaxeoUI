@@ -35,7 +35,6 @@ const navItems: NavItem[] = [
   { id: 'edit', label: 'Edit', icon: Brush },
   { id: 'video', label: 'Video', icon: Video },
   { id: 'gallery', label: 'Gallery', icon: Images },
-  { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'quantization', label: 'Quantize', icon: Scale }
 ]
 
@@ -116,6 +115,18 @@ function openGalleryFolder(): void {
 
     <div class="mt-auto flex flex-col gap-0.5 border-t border-sidebar-border/70 pt-2">
       <template v-if="collapsed">
+        <Tooltip text="Settings" position="right">
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            :class="isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
+            aria-label="Settings"
+            :aria-current="isActive('settings') ? 'page' : undefined"
+            @click="handleNavClick('settings')"
+          >
+            <Settings class="size-4" />
+          </button>
+        </Tooltip>
         <Tooltip text="Open Models Folder" position="right">
           <button
             type="button"
@@ -138,6 +149,16 @@ function openGalleryFolder(): void {
         </Tooltip>
       </template>
       <template v-else>
+        <button
+          type="button"
+          class="aui-icon-button inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          :class="isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
+          :aria-current="isActive('settings') ? 'page' : undefined"
+          @click="handleNavClick('settings')"
+        >
+          <Settings class="size-4 shrink-0" />
+          <span>Settings</span>
+        </button>
         <button
           type="button"
           class="aui-icon-button inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"

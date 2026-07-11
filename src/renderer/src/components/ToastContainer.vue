@@ -11,18 +11,11 @@ const icons = {
   info: Info
 }
 
-const styles = {
-  success: 'border-l-emerald-500',
-  error: 'border-l-destructive',
-  warning: 'border-l-amber-500',
-  info: 'border-l-blue-500'
-}
-
 const iconStyles = {
-  success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  error: 'bg-destructive/10 text-destructive',
-  warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
-  info: 'bg-blue-500/10 text-blue-700 dark:text-blue-300'
+  success: 'text-foreground',
+  error: 'text-foreground',
+  warning: 'text-foreground',
+  info: 'text-foreground'
 }
 </script>
 
@@ -36,13 +29,10 @@ const iconStyles = {
           v-for="toast in toasts"
           :key="toast.id"
           :role="toast.type === 'error' ? 'alert' : 'status'"
-          :class="[
-            'aui-alert pointer-events-auto flex items-start gap-3 rounded-xl border border-border/80 border-l-2 bg-popover/95 p-3 text-popover-foreground shadow-lg shadow-foreground/10 backdrop-blur-md',
-            styles[toast.type]
-          ]"
+          class="aui-alert pointer-events-auto flex items-start gap-3 rounded-2xl bg-background/90 p-3 text-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_44px_rgb(0_0_0/0.14)] backdrop-blur-xl"
         >
           <span
-            class="flex size-7 shrink-0 items-center justify-center rounded-lg"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted/60"
             :class="iconStyles[toast.type]"
           >
             <component :is="icons[toast.type]" class="h-4 w-4" />

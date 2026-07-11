@@ -328,25 +328,16 @@ onUnmounted(() => {
       class="shrink-0 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur md:px-6"
     >
       <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-2.5">
-          <h1 class="truncate text-sm font-medium tracking-tight">Gallery</h1>
-          <span
-            class="aui-status-badge shrink-0 rounded-full border border-border/70 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-          >
-            {{ images.length }} image{{ images.length === 1 ? '' : 's' }}
-          </span>
-        </div>
+        <SegmentedControl
+          :model-value="viewMode"
+          :options="viewModeOptions"
+          size="sm"
+          icon-only
+          aria-label="Gallery view"
+          @update:model-value="handleViewMode"
+        />
 
         <div class="flex shrink-0 items-center gap-1">
-          <SegmentedControl
-            :model-value="viewMode"
-            :options="viewModeOptions"
-            size="sm"
-            icon-only
-            aria-label="Gallery view"
-            @update:model-value="handleViewMode"
-          />
-
           <button
             type="button"
             @click="fetchGallery"

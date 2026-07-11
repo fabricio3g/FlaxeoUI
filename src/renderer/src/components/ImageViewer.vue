@@ -21,6 +21,11 @@ const showInfo = ref(false)
 const metadata = ref<any>(null)
 const isLoading = ref(false)
 const isCopied = ref(false)
+const zoom = ref(1)
+const pan = ref({ x: 0, y: 0 })
+const isDragging = ref(false)
+const hasDragged = ref(false)
+const dragStart = ref({ x: 0, y: 0, panX: 0, panY: 0 })
 
 async function fetchMetadata() {
   if (!props.filename) return
@@ -56,13 +61,85 @@ function handleCopy() {
   setTimeout(() => (isCopied.value = false), 2000)
 }
 
+function resetPan(): void {
+  pan.value = { x: 0, y: 0 }
+}
+
+function setZoom(value: number): void {
+  const nextZoom = Math.min(4, Math.max(1, Number(value.toFixed(2))))
+  zoom.value = nextZoom
+  if (nextZoom === 1) resetPan()
+}
+
+function toggleZoom(): void {
+  setZoom(zoom.value > 1 ? 1 : 2)
+}
+
+function handleWheel(e: WheelEvent): void {
+  e.preventDefault()
+  setZoom(zoom.value + (e.deltaY > 0 ? -0.25 : 0.25))
+}
+
+function resetZoom(): void {
+  zoom.value = 1
+  resetPan()
+}
+
+function handleImagePointerDown(e: PointerEvent): void {
+  hasDragged.value = false
+  if (zoom.value <= 1) return
+
+  isDragging.value = true
+  dragStart.value = {
+    x: e.clientX,
+    y: e.clientY,
+    panX: pan.value.x,
+    panY: pan.value.y
+  }
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
+
+function handleImagePointerMove(e: PointerEvent): void {
+  if (!isDragging.value) return
+
+  const dx = e.clientX - dragStart.value.x
+  const dy = e.clientY - dragStart.value.y
+  if (Math.abs(dx) + Math.abs(dy) > 3) hasDragged.value = true
+  pan.value = {
+    x: dragStart.value.panX + dx,
+    y: dragStart.value.panY + dy
+  }
+}
+
+function handleImagePointerUp(e: PointerEvent): void {
+  if (!isDragging.value) return
+
+  isDragging.value = false
+  ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+}
+
+function handleImageClick(): void {
+  if (hasDragged.value) return
+  toggleZoom()
+}
+
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
   if (e.key === 'ArrowLeft') emit('prev')
   if (e.key === 'ArrowRight') emit('next')
+  if (e.key === '+' || e.key === '=') setZoom(zoom.value + 0.25)
+  if (e.key === '-') setZoom(zoom.value - 0.25)
+  if (e.key === '0') resetZoom()
 }
 
-watch(() => props.filename, fetchMetadata, { immediate: true })
+watch(
+  () => props.filename,
+  () => {
+    resetZoom()
+    fetchMetadata()
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
@@ -94,6 +171,15 @@ onUnmounted(() => {
         <div
           class="pointer-events-auto flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-zinc-950/55 p-1 shadow-sm backdrop-blur-xl"
         >
+          <button
+            type="button"
+            @click="resetZoom"
+            class="aui-icon-button inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium tabular-nums text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Reset zoom"
+            aria-label="Reset zoom"
+          >
+            {{ Math.round(zoom * 100) }}%
+          </button>
           <button
             type="button"
             @click="showInfo = !showInfo"
@@ -136,14 +222,25 @@ onUnmounted(() => {
       </button>
 
       <div
-        class="flex h-full w-full items-center justify-center p-12 transition-[padding] duration-200 md:p-16"
+        class="flex h-full w-full items-center justify-center overflow-hidden p-12 transition-[padding] duration-200 md:p-16"
         :class="showInfo && 'md:pr-[25rem]'"
         @click.stop
+        @wheel="handleWheel"
       >
         <img
           :src="src"
           :alt="alt || filename"
-          class="fade-in zoom-in-95 animate-in fill-mode-both max-h-full max-w-full object-contain shadow-2xl duration-200"
+          class="fade-in zoom-in-95 animate-in fill-mode-both max-h-full max-w-full touch-none select-none object-contain duration-200"
+          :class="
+            zoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'
+          "
+          :style="{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }"
+          draggable="false"
+          @pointerdown="handleImagePointerDown"
+          @pointermove="handleImagePointerMove"
+          @pointerup="handleImagePointerUp"
+          @pointercancel="handleImagePointerUp"
+          @click="handleImageClick"
         />
       </div>
 

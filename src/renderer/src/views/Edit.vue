@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, computed, nextTick } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { apiPost, getApiBase, getOutputUrl } from '@/services/api'
@@ -526,23 +526,36 @@ function goToGallery(): void {
   router.push({ name: 'Gallery' })
 }
 
+/**
+ * consumeGalleryHandoff() - Reads the gallery handoff payload and loads it
+ */
+function consumeGalleryHandoff(): void {
+  const editImage = sessionStorage.getItem('editImage')
+  if (!editImage) return
+
+  sessionStorage.removeItem('editImage')
+  // Create a fetch to get the file for upload
+  fetch(editImage)
+    .then((res) => res.blob())
+    .then((blob) => {
+      baseImageFile.value = new File([blob], 'image.png', { type: 'image/png' })
+      currentEditFilename.value = null
+      loadImage(editImage)
+    })
+    .catch((e) => {
+      console.error('Failed to load image from gallery:', e)
+    })
+}
+
 // Check for image from gallery on mount
 onMounted(() => {
   handleWindowResize()
   window.addEventListener('resize', handleWindowResize)
+  consumeGalleryHandoff()
+})
 
-  const editImage = sessionStorage.getItem('editImage')
-  if (editImage) {
-    sessionStorage.removeItem('editImage')
-    // Create a fetch to get the file for upload
-    fetch(editImage)
-      .then((res) => res.blob())
-      .then((blob) => {
-        baseImageFile.value = new File([blob], 'image.png', { type: 'image/png' })
-        currentEditFilename.value = null
-        loadImage(editImage)
-      })
-  }
+onActivated(() => {
+  consumeGalleryHandoff()
 })
 
 onUnmounted(() => {

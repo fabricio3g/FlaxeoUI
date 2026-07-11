@@ -26,6 +26,7 @@ import { useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
+import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
@@ -49,6 +50,7 @@ const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
 const isLivePreview = ref(false)
+const showImageViewer = ref(false)
 // const serverStats = ref<any>(null) // Unused
 
 // Preview polling
@@ -713,6 +715,7 @@ function navigateImage(direction: number) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (showImageViewer.value) return
   if (e.key === 'Escape' && showResolutionMenu.value) {
     showResolutionMenu.value = false
     return
@@ -786,6 +789,16 @@ onMounted(async () => {
   <div
     class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
   >
+    <ImageViewer
+      v-if="showImageViewer && previewImage"
+      :src="previewImage"
+      :filename="currentImageFilename || 'Generated image'"
+      alt="Generated image"
+      @close="showImageViewer = false"
+      @prev="navigateImage(-1)"
+      @next="navigateImage(1)"
+    />
+
     <!-- Preview Area -->
     <div class="relative min-h-0 flex-1 overflow-hidden px-3 pt-3 md:px-6 md:pt-6">
       <div
@@ -807,12 +820,20 @@ onMounted(async () => {
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
         >
-          <img
+          <button
             v-if="previewImage"
-            :src="previewImage"
-            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both h-full max-h-full max-w-full rounded-[18px] object-contain shadow-[0_8px_32px_rgb(0_0_0/0.12)] duration-200"
-            alt="Generated image"
-          />
+            type="button"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center rounded-[24px] bg-background p-2 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:p-4"
+            title="Open image fullscreen"
+            aria-label="Open generated image fullscreen"
+            @click="showImageViewer = true"
+          >
+            <img
+              :src="previewImage"
+              class="max-h-full max-w-full rounded-[18px] object-contain"
+              alt="Generated image"
+            />
+          </button>
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
               <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
               <BrandMark size="xl" class="text-foreground" />
@@ -902,37 +923,29 @@ onMounted(async () => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-3 w-[min(100%,36rem)] self-center"
+          class="my-4 w-[min(100%,36rem)] self-center"
           loading-text="Loading model"
           fallback-label="CLI-GEN"
           :live-preview="isLivePreview"
         />
 
-        <div v-if="galleryImages.length > 0" class="mt-3 w-full shrink-0">
-          <div class="mb-1.5 flex items-center justify-between px-2">
-            <h3
-              class="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground"
-            >
-              <Image class="h-3.5 w-3.5" /> Recent generations ({{ galleryImages.length }})
-            </h3>
-          </div>
+        <div v-if="galleryImages.length > 0" class="mt-4 w-full shrink-0">
           <div
-            class="aui-media-strip group/carousel relative rounded-[18px] border border-border/60 bg-background/60 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)]"
+            class="aui-media-strip relative mx-auto max-w-4xl rounded-2xl bg-background/70 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)] backdrop-blur"
           >
             <div
               ref="carouselRef"
-              class="no-scrollbar flex snap-x gap-2 overflow-x-auto scroll-smooth p-0.5"
+              class="no-scrollbar flex snap-x gap-1.5 overflow-x-auto scroll-smooth p-0.5"
+              :aria-label="`Recent generations, ${galleryImages.length}`"
             >
               <button
                 v-for="img in galleryImages"
                 :key="img"
                 @click="selectGalleryImage(img)"
-                class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl border border-transparent transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
-                :class="
-                  previewImage === getOutputUrl(img)
-                    ? 'border-foreground/80 ring-2 ring-ring/40 z-10'
-                    : 'opacity-70'
-                "
+                class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl opacity-70 transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
+                :class="previewImage === getOutputUrl(img) ? 'opacity-100 ring-1 ring-foreground/30' : ''"
+                :title="img"
+                :aria-label="`Select generation ${img}`"
               >
                 <img
                   :src="getOutputUrl(img)"
@@ -943,10 +956,10 @@ onMounted(async () => {
               </button>
             </div>
             <div
-              class="pointer-events-none absolute inset-y-0 left-0 w-8 rounded-l-[18px] bg-gradient-to-r from-background/80 to-transparent"
+              class="pointer-events-none absolute inset-y-0 left-0 w-8 rounded-l-2xl bg-gradient-to-r from-background/80 to-transparent"
             ></div>
             <div
-              class="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-[18px] bg-gradient-to-l from-background/80 to-transparent"
+              class="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-2xl bg-gradient-to-l from-background/80 to-transparent"
             ></div>
           </div>
         </div>
