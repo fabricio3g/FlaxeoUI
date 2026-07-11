@@ -8,7 +8,7 @@ All notable changes to Flaxeo Image are documented in this file.
 
 - Product name: **Flaxeo Image** (window title, installer, docs)
 - New black & white app icon: abstract modular glyph on full-bleed black (no white tile / corners)
-- README header wordmark: Flaxeo Image
+- Wordmark: **Flaxeo** hard (`font-black`) + **Image** slim (`font-extralight`); ambient **square** field animation (not dots) on large empty states; README header SVG matches
 
 ## 0.7.2 — 2026-07-11
 

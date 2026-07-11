@@ -1,10 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="Flaxeo Image">
   <defs>
-    <clipPath id="rounded"><rect width="1200" height="360" rx="28" /></clipPath>
-    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#172033" flood-opacity="0.28" /></filter>
+    <clipPath id="rounded">
+      <rect width="1200" height="360" rx="28" />
+    </clipPath>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
   </defs>
+
   <g clip-path="url(#rounded)">
     <rect width="1200" height="360" fill="#0a0a0a" />
-    <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" filter="url(#soft-shadow)" font-family="Inter, SF Pro Display, Segoe UI, Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="-4">Flaxeo Image</text>
+
+    <!--
+      Square field — static-first so GitHub README shows them.
+      SMIL is optional polish (GitHub often freezes it).
+    -->
+    <g>
+      <!-- outlined squares -->
+      <rect x="64" y="40" width="28" height="28" rx="3" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.45">
+        <animate attributeName="opacity" values="0.35;0.7;0.35" dur="4s" repeatCount="indefinite" />
+      </rect>
+      <rect x="120" y="250" width="42" height="42" rx="4" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4">
+        <animate attributeName="opacity" values="0.3;0.65;0.3" dur="5s" repeatCount="indefinite" />
+      </rect>
+      <rect x="200" y="70" width="18" height="18" rx="2" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.5" />
+      <rect x="260" y="280" width="22" height="22" rx="3" fill="#ffffff" opacity="0.12" />
+      <rect x="320" y="36" width="14" height="14" rx="2" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35" />
+
+      <rect x="900" y="48" width="32" height="32" rx="3" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.45">
+        <animate attributeName="opacity" values="0.35;0.7;0.35" dur="4.5s" repeatCount="indefinite" />
+      </rect>
+      <rect x="980" y="240" width="48" height="48" rx="4" fill="none" stroke="#ffffff" stroke-width="2.5" opacity="0.4" />
+      <rect x="1060" y="90" width="20" height="20" rx="2" fill="#ffffff" opacity="0.14" />
+      <rect x="1100" y="280" width="16" height="16" rx="2" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.5" />
+      <rect x="860" y="290" width="26" height="26" rx="3" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35" />
+
+      <rect x="70" y="160" width="12" height="12" rx="2" fill="#ffffff" opacity="0.18" />
+      <rect x="1080" y="170" width="14" height="14" rx="2" fill="#ffffff" opacity="0.16" />
+      <rect x="150" y="120" width="10" height="10" rx="1.5" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4" />
+      <rect x="1020" y="40" width="12" height="12" rx="2" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4" />
+
+      <!-- near wordmark (clearly visible frame pieces) -->
+      <rect x="380" y="90" width="16" height="16" rx="2" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.3" />
+      <rect x="800" y="250" width="18" height="18" rx="2" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.3" />
+      <rect x="420" y="250" width="12" height="12" rx="2" fill="#ffffff" opacity="0.1" />
+      <rect x="760" y="80" width="12" height="12" rx="2" fill="#ffffff" opacity="0.1" />
+    </g>
+
+    <!-- Wordmark: hard Flaxeo + slim Image -->
+    <text
+      x="600"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      filter="url(#soft-shadow)"
+      font-family="Inter, SF Pro Display, Segoe UI, Arial, sans-serif"
+    >
+      <tspan fill="#ffffff" font-size="104" font-weight="900" letter-spacing="-7">Flaxeo</tspan>
+      <tspan fill="#e8e8e8" font-size="104" font-weight="200" letter-spacing="8"> Image</tspan>
+    </text>
   </g>
 </svg>

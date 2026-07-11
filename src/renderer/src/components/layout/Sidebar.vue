@@ -68,7 +68,12 @@ function openGalleryFolder(): void {
       class="mb-3 flex h-8 w-full shrink-0 items-center"
       :class="collapsed ? 'justify-center' : 'justify-between px-1'"
     >
-      <BrandMark v-if="!collapsed" size="sm" class="min-w-0 truncate text-foreground" />
+      <BrandMark
+        v-if="!collapsed"
+        size="sm"
+        :ambient="false"
+        class="min-w-0 truncate text-foreground"
+      />
       <Tooltip :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" position="right">
         <button
           type="button"

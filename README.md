@@ -1,4 +1,4 @@
-![Flaxeo Image](docs/readme-header.svg)
+![Flaxeo Image](docs/readme-header.png)
 
 # Flaxeo Image
 
