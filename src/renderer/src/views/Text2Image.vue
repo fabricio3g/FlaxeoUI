@@ -1379,30 +1379,27 @@ onMounted(async () => {
               </PopoverContent>
             </Popover>
 
-            <div class="relative size-10 shrink-0">
-              <Transition name="flaxeo-action">
-                <button
-                  v-if="!isGenerating"
-                  key="generate"
-                  @click="handleGenerate"
-                  :disabled="promptMode !== 'positive' || !prompt.trim()"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Generate"
-                  aria-label="Generate image"
-                >
-                  <ArrowUp class="size-4 stroke-[2.5]" />
-                </button>
-                <button
-                  v-else
-                  key="cancel"
-                  @click="handleCancel"
-                  class="aui-icon-button absolute inset-0 inline-flex items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Cancel"
-                  aria-label="Cancel generation"
-                >
-                  <Square class="size-3.5 fill-current" />
-                </button>
-              </Transition>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button
+                v-if="isGenerating"
+                type="button"
+                @click="handleCancel"
+                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
+                title="Cancel current job"
+                aria-label="Cancel current job"
+              >
+                <Square class="size-3.5 fill-current" />
+              </button>
+              <button
+                type="button"
+                @click="handleGenerate"
+                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                :title="isGenerating ? 'Add to queue' : 'Generate'"
+                :aria-label="isGenerating ? 'Add to queue' : 'Generate image'"
+              >
+                <ArrowUp class="size-4 stroke-[2.5]" />
+              </button>
             </div>
           </div>
 
