@@ -2,6 +2,15 @@
 
 All notable changes to FlaxeoUI are documented in this file.
 
+## 0.6.0 — 2026-07-11
+
+### Local job queue (flagship)
+- Generate while busy **enqueues** instead of blocking
+- Queue panel: running job, pending list (reorder / remove), recent results, pause/resume, cancel current
+- Works for Text2Image, Edit, Video, and Gallery upscale (FormData jobs snapshot files in memory)
+- Progress chip shows current job label + pending count badge
+- Command strip **Queue** button with live count
+
 ## 0.5.0 — 2026-07-11
 
 ### Trust sprint (path to best-in-class)

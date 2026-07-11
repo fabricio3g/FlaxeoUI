@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiGet, getOutputUrl, apiPostForm, getFileUrl, getApiBase } from '@/services/api'
+import { apiPost, apiGet, getOutputUrl, getFileUrl, getApiBase } from '@/services/api'
 import {
   ArrowUp,
   Copy,
@@ -25,14 +25,9 @@ import {
   Square
 } from '@/lib/icons'
 import { useToast } from '@/composables/useToast'
-import {
-  claimGeneration,
-  isAnyGenerationBusy,
-  releaseGeneration,
-  toastGenerationError,
-  useGeneration
-} from '@/composables/useGeneration'
+import { isAnyGenerationBusy, toastGenerationError, useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
@@ -43,15 +38,27 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
 import { normalizeImageParams } from '@/lib/imageParams'
-import {
-  appendPayloadToFormData,
-  buildGenerationPayload
-} from '@/lib/generationPayload'
+import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import { useSetup } from '@/composables/useSetup'
 
 const toast = useToast()
 const { markFirstImageDone } = useSetup()
+const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
+
+function payloadToFormParts(payload: GenerationPayload): FormPart[] {
+  const parts: FormPart[] = []
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'object') {
+      parts.push({ name: key, type: 'text', value: JSON.stringify(value) })
+      continue
+    }
+    if (value === '' && key !== 'prompt' && key !== 'negative_prompt') continue
+    parts.push({ name: key, type: 'text', value: String(value) })
+  }
+  return parts
+}
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
@@ -424,9 +431,8 @@ function resolveSeedForGenerate(): number {
 }
 
 /**
- * handleGenerate() - Initiates image generation
+ * handleGenerate() - Snapshot settings and enqueue (runs immediately if idle)
  */
-
 async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
 
@@ -439,221 +445,187 @@ async function handleGenerate(): Promise<void> {
     return
   }
 
-  if (isAnyGenerationBusy()) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
-  if (!claimGeneration('text2image')) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
-
-  // Clamp batch and apply seed lock policy
   const batchCount = clampBatchCount(config.value.batchCount)
   if (batchCount !== config.value.batchCount) {
     configStore.updateConfig({ batchCount })
   }
   const seedForJob = resolveSeedForGenerate()
-  if (!config.value.seedLocked && config.value.seed !== -1) {
-    // Keep UI showing last seed unless locked; actual request uses -1
-  }
-
-  progress.start()
-  error.value = null
-  const jobStartedAt = Date.now()
   const snapshot = pickConfigSnapshot({
     ...config.value,
     batchCount,
     seed: seedForJob
   })
+  const promptSnap = prompt.value
+  const negSnap = negativePrompt.value
+  const widthSnap = config.value.width
+  const heightSnap = config.value.height
 
-  // Start live preview polling if a preview method is selected
-  if (config.value.livePreviewMethod) {
-    startPreviewPolling()
+  await checkServerStatus()
+
+  const params = buildGenerationPayload(
+    { ...config.value, batchCount, seed: seedForJob },
+    { prompt: promptSnap, negativePrompt: negSnap }
+  )
+
+  let endpoint = '/api/generate-cli'
+  let kind: 'json' | 'form' = 'json'
+  let jsonBody: Record<string, unknown> | undefined = params as Record<string, unknown>
+  let formParts: FormPart[] | undefined
+
+  const hasPMFiles = config.value.photoMakerImages.some((img) => pmFileMap.has(img))
+  const needsFormData =
+    !!kontextRefFile.value || !!controlNetFile.value || !!initImageFile.value || hasPMFiles
+
+  const wantsServer =
+    config.value.backendMode === 'server' &&
+    serverOnline.value &&
+    batchCount === 1 &&
+    !config.value.photoMakerImages?.length &&
+    !config.value.controlImagePath &&
+    !config.value.initImagePath &&
+    !config.value.kontextRefImage
+
+  if (config.value.backendMode === 'server' && serverOnline.value && !wantsServer) {
+    toast.info('Using CLI for this job — Server mode is core T2I only')
   }
 
-  try {
-    const params = buildGenerationPayload(
-      { ...config.value, batchCount, seed: seedForJob },
-      {
-        prompt: prompt.value,
-        negativePrompt: negativePrompt.value
-      }
-    )
-
-    // Check server status before choosing endpoint
-    await checkServerStatus()
-
-    // Choose endpoint based on mode
-    let endpoint = '/api/generate-cli'
-    let payload: Record<string, unknown> = params
-
-    // Server mode: warm path for core T2I only (prompt/size/steps/cfg/seed).
-    // Advanced features (batch>1, files, LoRA form paths) stay on CLI.
-    const wantsServer =
-      config.value.backendMode === 'server' &&
-      serverOnline.value &&
-      batchCount === 1 &&
-      !config.value.photoMakerImages?.length &&
-      !config.value.controlImagePath &&
-      !config.value.initImagePath &&
-      !config.value.kontextRefImage
-
-    if (config.value.backendMode === 'server' && serverOnline.value && !wantsServer) {
-      toast.info('Using CLI for this job — Server mode is core T2I only')
+  if (wantsServer) {
+    endpoint = '/api/generate'
+    jsonBody = {
+      prompt: params.prompt,
+      negative_prompt: params.negative_prompt,
+      width: params.width,
+      height: params.height,
+      steps: params.steps,
+      cfg_scale: params.cfg_scale,
+      seed: params.seed,
+      guidance: params.guidance,
+      batch_size: 1,
+      clip_skip: params.clipSkip
     }
-
-    if (wantsServer) {
-      endpoint = '/api/generate'
-      payload = {
-        prompt: params.prompt,
-        negative_prompt: params.negative_prompt,
-        width: params.width,
-        height: params.height,
-        steps: params.steps,
-        cfg_scale: params.cfg_scale,
-        seed: params.seed,
-        guidance: params.guidance,
-        batch_size: 1,
-        clip_skip: params.clipSkip
-      }
+  } else if (needsFormData) {
+    kind = 'form'
+    formParts = payloadToFormParts(params)
+    if (kontextRefFile.value) {
+      formParts.push({ name: 'kontextRefImage', type: 'file', file: kontextRefFile.value })
     }
-
-    // Check if we need to use FormData (for file uploads)
-    const hasPMFiles = config.value.photoMakerImages.some((img) => pmFileMap.has(img))
-
-    const needsFormData =
-      kontextRefFile.value || controlNetFile.value || initImageFile.value || hasPMFiles
-
-    let result: { message: string; filenames?: string[]; filename?: string }
-
-    if (needsFormData) {
-      const formData = new FormData()
-      appendPayloadToFormData(formData, params)
-
-      if (kontextRefFile.value) {
-        formData.append('kontextRefImage', kontextRefFile.value)
+    if (controlNetFile.value) {
+      formParts.push({ name: 'controlNetImage', type: 'file', file: controlNetFile.value })
+    }
+    if (initImageFile.value) {
+      formParts.push({ name: 'initImage', type: 'file', file: initImageFile.value })
+    }
+    config.value.photoMakerImages.forEach((img) => {
+      if (pmFileMap.has(img)) {
+        formParts!.push({ name: 'pmImages', type: 'file', file: pmFileMap.get(img)! })
       }
-      if (controlNetFile.value) {
-        formData.append('controlNetImage', controlNetFile.value)
-      }
-      if (initImageFile.value) {
-        formData.append('initImage', initImageFile.value)
-      }
+    })
+    jsonBody = undefined
+  }
 
-      config.value.photoMakerImages.forEach((img) => {
-        if (pmFileMap.has(img)) {
-          formData.append('pmImages', pmFileMap.get(img)!)
+  const busy = isAnyGenerationBusy()
+  error.value = null
+
+  enqueue({
+    surface: 'text2image',
+    label: promptSnap,
+    prompt: promptSnap,
+    negativePrompt: negSnap,
+    seed: seedForJob,
+    width: widthSnap,
+    height: heightSnap,
+    configSnapshot: snapshot,
+    kind,
+    endpoint,
+    jsonBody,
+    formParts,
+    onStart: () => {
+      progress.start()
+      if (config.value.livePreviewMethod) startPreviewPolling()
+    },
+    onSuccess: (result) => {
+      const names =
+        result.filenames?.length
+          ? result.filenames
+          : result.filename
+            ? [result.filename]
+            : []
+      if (names.length > 0) {
+        galleryImages.value = [...names, ...galleryImages.value]
+        previewImage.value = getOutputUrl(names[0])
+        currentImageFilename.value = names[0]
+        isLivePreview.value = false
+        lastBatchSize.value = names.length
+        showBatchGrid.value = names.length > 1
+        toast.success(
+          names.length > 1 ? `Batch complete — ${names.length} images` : 'Generation complete!'
+        )
+        markFirstImageDone()
+        for (const filename of names) {
+          addHistoryEntry({
+            surface: 'text2image',
+            status: 'success',
+            prompt: promptSnap,
+            negativePrompt: negSnap,
+            seed: seedForJob,
+            width: widthSnap,
+            height: heightSnap,
+            filename,
+            configSnapshot: snapshot
+          })
         }
-      })
-
-      // apiPostForm returns parsed JSON and throws on non-OK with humanized message
-      result = await apiPostForm<{ message: string; filenames?: string[]; filename?: string }>(
-        endpoint,
-        formData
-      )
-    } else {
-      result = await apiPost<{ message: string; filenames?: string[]; filename?: string }>(
-        endpoint,
-        payload
-      )
-    }
-
-    // Handle result
-    if (result.filenames && result.filenames.length > 0) {
-      const newImages = result.filenames
-      galleryImages.value = [...newImages, ...galleryImages.value]
-      previewImage.value = getOutputUrl(newImages[0])
-      currentImageFilename.value = newImages[0]
-      isLivePreview.value = false
-      lastBatchSize.value = newImages.length
-      showBatchGrid.value = newImages.length > 1
-      toast.success(
-        newImages.length > 1
-          ? `Batch complete — ${newImages.length} images`
-          : 'Generation complete!'
-      )
-      markFirstImageDone()
-      const durationMs = Date.now() - jobStartedAt
-      for (const filename of newImages) {
+      } else if (result.message === 'Cancelled') {
         addHistoryEntry({
           surface: 'text2image',
-          status: 'success',
-          prompt: prompt.value,
-          negativePrompt: negativePrompt.value,
+          status: 'cancelled',
+          prompt: promptSnap,
           seed: seedForJob,
-          width: config.value.width,
-          height: config.value.height,
-          filename,
-          durationMs,
           configSnapshot: snapshot
         })
       }
-    } else if (result.filename) {
-      galleryImages.value = [result.filename, ...galleryImages.value]
-      previewImage.value = getOutputUrl(result.filename)
-      currentImageFilename.value = result.filename
-      isLivePreview.value = false
-      lastBatchSize.value = 1
-      showBatchGrid.value = false
-      toast.success('Generation complete!')
-      markFirstImageDone()
+    },
+    onError: (msg) => {
+      if (msg === 'Cancelled') {
+        toast.warning('Generation cancelled')
+        addHistoryEntry({
+          surface: 'text2image',
+          status: 'cancelled',
+          prompt: promptSnap,
+          seed: seedForJob,
+          configSnapshot: snapshot
+        })
+        return
+      }
+      error.value = msg
+      toastGenerationError(toast, msg)
       addHistoryEntry({
         surface: 'text2image',
-        status: 'success',
-        prompt: prompt.value,
-        negativePrompt: negativePrompt.value,
+        status: 'failed',
+        prompt: promptSnap,
         seed: seedForJob,
-        width: config.value.width,
-        height: config.value.height,
-        filename: result.filename,
-        durationMs: Date.now() - jobStartedAt,
+        error: msg,
         configSnapshot: snapshot
       })
-    } else if (result.message === 'Cancelled') {
-      addHistoryEntry({
-        surface: 'text2image',
-        status: 'cancelled',
-        prompt: prompt.value,
-        seed: config.value.seed,
-        durationMs: Date.now() - jobStartedAt,
-        configSnapshot: snapshot
-      })
+    },
+    onSettled: () => {
+      stopPreviewPolling()
+      progress.stop()
     }
-  } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : 'Generation failed'
-    error.value = errorMsg
-    toastGenerationError(toast, e)
-    console.error('Generation error:', e)
-    addHistoryEntry({
-      surface: 'text2image',
-      status: 'failed',
-      prompt: prompt.value,
-      seed: config.value.seed,
-      error: errorMsg,
-      durationMs: Date.now() - jobStartedAt,
-      configSnapshot: snapshot
-    })
-  } finally {
-    stopPreviewPolling()
-    releaseGeneration('text2image')
-    progress.stop()
+  })
+
+  if (busy) {
+    toast.info(`Queued · ${pendingCount.value} waiting`)
   }
 }
 
 /**
- * handleCancel() - Cancels the current generation
+ * handleCancel() - Cancels the current queue job
  */
 async function handleCancel(): Promise<void> {
-  try {
-    await apiPost('/api/cancel-cli', {})
-    toast.warning('Generation cancelled')
-  } catch (e) {
-    toast.error('Failed to cancel generation')
-    console.error('Cancel failed:', e)
-  }
+  await cancelCurrent()
+  toast.warning('Cancelling current job…')
   progress.stop()
-  releaseGeneration('text2image')
+  stopPreviewPolling()
 }
 
 /**

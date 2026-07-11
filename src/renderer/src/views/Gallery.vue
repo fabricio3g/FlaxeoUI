@@ -28,12 +28,8 @@ import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
 import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
-import {
-  claimGeneration,
-  isAnyGenerationBusy,
-  releaseGeneration,
-  toastGenerationError
-} from '@/composables/useGeneration'
+import { isAnyGenerationBusy, toastGenerationError } from '@/composables/useGeneration'
+import { useJobQueue } from '@/composables/useJobQueue'
 import type { ImageGenerationParams } from '@/lib/imageParams'
 import type { GenerationHistoryEntry } from '@/composables/useGenerationHistory'
 import { isConfigSnapshot } from '@/lib/configSnapshot'
@@ -49,6 +45,7 @@ const {
   removeEntry
 } = useGenerationHistory()
 const { supportsUpscale, fetchCapabilities } = useBackendCapabilities()
+const { enqueue, pendingCount } = useJobQueue()
 
 // Gallery state
 const images = ref<string[]>([])
@@ -317,58 +314,64 @@ async function runUpscale(): Promise<void> {
     toast.error('Select an upscale model')
     return
   }
-  if (isAnyGenerationBusy()) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
-  if (!claimGeneration('upscale')) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
 
+  const source = selectedImage.value
+  const model = upscaleModel.value
+  const busy = isAnyGenerationBusy()
   isUpscaling.value = true
-  try {
-    const result = await apiPost<{ message: string; filename?: string; filenames?: string[] }>(
-      '/api/upscale',
-      {
-        filename: selectedImage.value,
-        upscaleModel: upscaleModel.value,
-        upscaleRepeats: upscaleRepeats.value,
-        upscaleTileSize: upscaleTileSize.value,
-        offloadToCpu: configStore.config.cpuOffload,
-        diffusionFa: configStore.config.flashAttention,
-        streamLayers: configStore.config.streamLayers,
-        maxVram: configStore.config.maxVram,
-        threads: configStore.config.threads
+
+  enqueue({
+    surface: 'upscale',
+    label: `Upscale ${source}`,
+    prompt: `Upscale ${source}`,
+    kind: 'json',
+    endpoint: '/api/upscale',
+    jsonBody: {
+      filename: source,
+      upscaleModel: model,
+      upscaleRepeats: upscaleRepeats.value,
+      upscaleTileSize: upscaleTileSize.value,
+      offloadToCpu: configStore.config.cpuOffload,
+      diffusionFa: configStore.config.flashAttention,
+      streamLayers: configStore.config.streamLayers,
+      maxVram: configStore.config.maxVram,
+      threads: configStore.config.threads
+    },
+    onSuccess: async (result) => {
+      const filename = result.filename || result.filenames?.[0]
+      if (!filename) {
+        toastGenerationError(toast, result.message || 'Upscale failed', 'Upscale failed')
+        return
       }
-    )
+      addHistoryEntry({
+        surface: 'upscale',
+        status: 'success',
+        prompt: `Upscale ${source}`,
+        filename
+      })
+      toast.success('Upscale complete')
+      showUpscale.value = false
+      await fetchGallery()
+      openImageViewer(filename)
+    },
+    onError: (msg) => {
+      if (msg === 'Cancelled') return
+      toastGenerationError(toast, msg, 'Upscale failed')
+      addHistoryEntry({
+        surface: 'upscale',
+        status: 'failed',
+        prompt: `Upscale ${source}`,
+        error: msg
+      })
+    },
+    onSettled: () => {
+      isUpscaling.value = false
+    }
+  })
 
-    const filename = result.filename || result.filenames?.[0]
-    if (!filename) throw new Error(result.message || 'Upscale failed')
-
-    addHistoryEntry({
-      surface: 'upscale',
-      status: 'success',
-      prompt: `Upscale ${selectedImage.value}`,
-      filename
-    })
-
-    toast.success('Upscale complete')
-    showUpscale.value = false
-    await fetchGallery()
-    openImageViewer(filename)
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Upscale failed'
-    toastGenerationError(toast, e, 'Upscale failed')
-    addHistoryEntry({
-      surface: 'upscale',
-      status: 'failed',
-      prompt: selectedImage.value ? `Upscale ${selectedImage.value}` : 'Upscale',
-      error: msg
-    })
-  } finally {
-    isUpscaling.value = false
-    releaseGeneration('upscale')
+  if (busy) toast.info(`Queued · ${pendingCount.value} waiting`)
+  else if (!busy) {
+    // will clear when settled
   }
 }
 

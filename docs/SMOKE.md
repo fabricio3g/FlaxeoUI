@@ -25,7 +25,8 @@ Run before tagging a release. Goal: cold install feels trustworthy.
 - [ ] Progress chip advances through load phases (not stuck on generic text only)
 - [ ] Cancel mid-load works (exit cancelled, UI unlocks)
 - [ ] Failed gen shows human message + **Open logs**
-- [ ] Second concurrent gen is blocked (busy toast / 409)
+- [ ] Second concurrent gen is **queued** (not rejected); Queue badge increments
+- [ ] Queue panel: reorder / remove pending; pause; cancel current starts next
 - [ ] History records success; **Re-run** restores seed/settings
 
 ## Modes

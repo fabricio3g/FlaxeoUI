@@ -2,12 +2,9 @@
 import { ref, onMounted, onUnmounted, onActivated, computed, nextTick, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiPostForm, getOutputUrl } from '@/services/api'
+import { getOutputUrl } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import {
-  appendPayloadToFormData,
-  buildGenerationPayload
-} from '@/lib/generationPayload'
+import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import {
   ArrowUp,
@@ -28,14 +25,9 @@ import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  claimGeneration,
-  isAnyGenerationBusy,
-  releaseGeneration,
-  toastGenerationError,
-  useGenerationStatus
-} from '@/composables/useGeneration'
+import { isAnyGenerationBusy, toastGenerationError, useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
@@ -55,7 +47,22 @@ const currentEditFilename = ref<string | null>(null)
 const { isGenerating } = useGenerationStatus('edit')
 const progress = useGenerationProgress()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
+const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
 const error = ref<string | null>(null)
+
+function payloadToFormParts(payload: GenerationPayload): FormPart[] {
+  const parts: FormPart[] = []
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'object') {
+      parts.push({ name: key, type: 'text', value: JSON.stringify(value) })
+      continue
+    }
+    if (value === '' && key !== 'prompt' && key !== 'negative_prompt') continue
+    parts.push({ name: key, type: 'text', value: String(value) })
+  }
+  return parts
+}
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
 const promptMode = ref<'positive' | 'negative'>('positive')
@@ -480,7 +487,7 @@ function getMaskDataUrl(): string | null {
 }
 
 /**
- * handleGenerate() - Inpaint, multi-ref edit, or img2img depending on editMode
+ * handleGenerate() - Snapshot + enqueue edit job
  */
 async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
@@ -497,122 +504,116 @@ async function handleGenerate(): Promise<void> {
     return
   }
 
-  if (isAnyGenerationBusy()) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
-  if (!claimGeneration('edit')) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
-  }
-
-  progress.start()
-  error.value = null
-  const jobStartedAt = Date.now()
   const snapshot = pickConfigSnapshot(config.value)
-
-  try {
-    const formData = new FormData()
-    const payload = buildGenerationPayload(config.value, {
-      prompt: prompt.value,
-      negativePrompt: negativePrompt.value,
-      width: imageElement?.naturalWidth || config.value.width,
-      height: imageElement?.naturalHeight || config.value.height,
-      extra: {
-        strength: inpaintStrength.value,
-        img2imgStrength: inpaintStrength.value
-      }
-    })
-    appendPayloadToFormData(formData, payload)
-
-    let endpoint = '/api/inpaint'
-
-    if (editMode.value === 'inpaint') {
-      formData.append('initImage', baseImageFile.value!)
-      formData.append('strength', inpaintStrength.value.toString())
-      const maskDataUrl = getMaskDataUrl()
-      if (maskDataUrl && maskDataUrl !== 'data:,') {
-        const response = await fetch(maskDataUrl)
-        const blob = await response.blob()
-        formData.append('mask', blob, 'mask.png')
-      }
-      endpoint = '/api/inpaint'
-    } else if (editMode.value === 'img2img') {
-      formData.append('initImage', baseImageFile.value!)
-      formData.append('img2imgStrength', inpaintStrength.value.toString())
-      formData.append('strength', inpaintStrength.value.toString())
-      endpoint = '/api/generate-cli'
-    } else {
-      // Ref Edit (Kontext / Qwen Image Edit): one or more -r images
-      const refs =
-        refChips.value.length > 0
-          ? refChips.value
-          : baseImageFile.value
-            ? [
-                {
-                  id: 'base',
-                  url: baseImage.value || '',
-                  file: baseImageFile.value
-                }
-              ]
-            : []
-      for (const chip of refs) {
-        formData.append('kontextRefImage', chip.file)
-      }
-      endpoint = '/api/generate-cli'
+  const promptSnap = prompt.value
+  const negSnap = negativePrompt.value
+  const seedSnap = config.value.seed
+  const payload = buildGenerationPayload(config.value, {
+    prompt: promptSnap,
+    negativePrompt: negSnap,
+    width: imageElement?.naturalWidth || config.value.width,
+    height: imageElement?.naturalHeight || config.value.height,
+    extra: {
+      strength: inpaintStrength.value,
+      img2imgStrength: inpaintStrength.value
     }
+  })
 
-    const result = await apiPostForm<{
-      message: string
-      filename?: string
-      filenames?: string[]
-    }>(endpoint, formData)
-    const filename = result.filename || result.filenames?.[0]
-    if (filename) {
-      editImages.value = [filename, ...editImages.value.filter((img) => img !== filename)]
-      await useOutputImage(filename)
-      toast.success('Edit complete')
-      addHistoryEntry({
-        surface: 'edit',
-        status: 'success',
-        prompt: prompt.value,
-        negativePrompt: negativePrompt.value,
-        seed: config.value.seed,
-        filename,
-        durationMs: Date.now() - jobStartedAt,
-        configSnapshot: snapshot
+  let endpoint = '/api/inpaint'
+  const formParts = payloadToFormParts(payload)
+
+  if (editMode.value === 'inpaint') {
+    formParts.push({ name: 'initImage', type: 'file', file: baseImageFile.value! })
+    formParts.push({ name: 'strength', type: 'text', value: String(inpaintStrength.value) })
+    const maskDataUrl = getMaskDataUrl()
+    if (maskDataUrl && maskDataUrl !== 'data:,') {
+      const response = await fetch(maskDataUrl)
+      const blob = await response.blob()
+      formParts.push({
+        name: 'mask',
+        type: 'file',
+        file: new File([blob], 'mask.png', { type: 'image/png' })
       })
     }
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Edit failed'
-    toastGenerationError(toast, e, 'Edit failed')
-    console.error('Edit error:', e)
-    addHistoryEntry({
-      surface: 'edit',
-      status: 'failed',
-      prompt: prompt.value,
-      error: error.value || undefined,
-      durationMs: Date.now() - jobStartedAt,
-      configSnapshot: snapshot
+    endpoint = '/api/inpaint'
+  } else if (editMode.value === 'img2img') {
+    formParts.push({ name: 'initImage', type: 'file', file: baseImageFile.value! })
+    formParts.push({
+      name: 'img2imgStrength',
+      type: 'text',
+      value: String(inpaintStrength.value)
     })
-  } finally {
-    releaseGeneration('edit')
-    progress.stop()
+    formParts.push({ name: 'strength', type: 'text', value: String(inpaintStrength.value) })
+    endpoint = '/api/generate-cli'
+  } else {
+    const refs =
+      refChips.value.length > 0
+        ? refChips.value
+        : baseImageFile.value
+          ? [{ id: 'base', url: baseImage.value || '', file: baseImageFile.value }]
+          : []
+    for (const chip of refs) {
+      formParts.push({ name: 'kontextRefImage', type: 'file', file: chip.file })
+    }
+    endpoint = '/api/generate-cli'
   }
+
+  const busy = isAnyGenerationBusy()
+  error.value = null
+
+  enqueue({
+    surface: 'edit',
+    label: promptSnap,
+    prompt: promptSnap,
+    negativePrompt: negSnap,
+    seed: seedSnap,
+    configSnapshot: snapshot,
+    kind: 'form',
+    endpoint,
+    formParts,
+    onStart: () => progress.start(),
+    onSuccess: async (result) => {
+      const filename = result.filename || result.filenames?.[0]
+      if (filename) {
+        editImages.value = [filename, ...editImages.value.filter((img) => img !== filename)]
+        await useOutputImage(filename)
+        toast.success('Edit complete')
+        addHistoryEntry({
+          surface: 'edit',
+          status: 'success',
+          prompt: promptSnap,
+          negativePrompt: negSnap,
+          seed: seedSnap,
+          filename,
+          configSnapshot: snapshot
+        })
+      }
+    },
+    onError: (msg) => {
+      if (msg === 'Cancelled') {
+        toast.warning('Edit cancelled')
+        return
+      }
+      error.value = msg
+      toastGenerationError(toast, msg, 'Edit failed')
+      addHistoryEntry({
+        surface: 'edit',
+        status: 'failed',
+        prompt: promptSnap,
+        error: msg,
+        configSnapshot: snapshot
+      })
+    },
+    onSettled: () => progress.stop()
+  })
+
+  if (busy) toast.info(`Queued · ${pendingCount.value} waiting`)
 }
 
-/**
- * handleCancel() - Cancel generation
- */
 async function handleCancel(): Promise<void> {
-  try {
-    await apiPost('/api/cancel-cli', {})
-    toast.warning('Edit cancelled')
-  } catch (e) {
-    console.error('Cancel failed:', e)
-  }
+  await cancelCurrent()
+  toast.warning('Cancelling current job…')
   progress.stop()
-  releaseGeneration('edit')
 }
 
 /**

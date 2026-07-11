@@ -2,12 +2,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiPostForm, getOutputUrl } from '@/services/api'
+import { getOutputUrl } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import {
-  appendPayloadToFormData,
-  buildGenerationPayload
-} from '@/lib/generationPayload'
+import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import {
   ArrowUp,
@@ -23,14 +20,9 @@ import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import BrandMark from '@/components/BrandMark.vue'
-import {
-  claimGeneration,
-  isAnyGenerationBusy,
-  releaseGeneration,
-  toastGenerationError,
-  useGenerationStatus
-} from '@/composables/useGeneration'
+import { isAnyGenerationBusy, toastGenerationError, useGenerationStatus } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -46,6 +38,21 @@ const negativePrompt = ref('')
 const { isGenerating } = useGenerationStatus('video')
 const progress = useGenerationProgress()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
+const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
+
+function payloadToFormParts(payload: GenerationPayload): FormPart[] {
+  const parts: FormPart[] = []
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'object') {
+      parts.push({ name: key, type: 'text', value: JSON.stringify(value) })
+      continue
+    }
+    if (value === '' && key !== 'prompt' && key !== 'negative_prompt') continue
+    parts.push({ name: key, type: 'text', value: String(value) })
+  }
+  return parts
+}
 const generatedVideo = ref<string | null>(null)
 const generatedVideos = ref<string[]>([])
 const error = ref<string | null>(null)
@@ -217,129 +224,124 @@ function selectGeneratedVideo(filename: string): void {
 }
 
 /**
- * handleGenerate() - Generate video
+ * handleGenerate() - Snapshot + enqueue video job
  */
 async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
 
-  if (isAnyGenerationBusy()) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
+  const snapshot = {
+    ...pickConfigSnapshot(config.value),
+    width: videoWidth.value,
+    height: videoHeight.value,
+    flowShift: flowShift.value
   }
-  if (!claimGeneration('video')) {
-    toastGenerationError(toast, 'Another generation is already running')
-    return
+  const promptSnap = prompt.value
+  const negSnap = negativePrompt.value
+  const seedSnap = config.value.seed
+  const w = videoWidth.value
+  const h = videoHeight.value
+
+  const extra: Record<string, string | number | boolean | undefined> = {
+    video_frames: videoFrames.value,
+    videoFrames: videoFrames.value,
+    fps: videoFps.value,
+    flow_shift: flowShift.value,
+    flowShift: flowShift.value,
+    videoMode: true
   }
 
-  progress.start()
+  if (hasHighNoiseModel.value || showHighNoise.value) {
+    extra.highNoiseSteps = highNoiseSteps.value
+    extra.highNoiseCfg = highNoiseCfg.value
+    extra.highNoiseSampler = highNoiseSampler.value
+    if (highNoiseGuidance.value > 0) extra.highNoiseGuidance = highNoiseGuidance.value
+    extra.moeBoundary = moeBoundary.value
+  }
+
+  if (controlVideoPath.value.trim()) {
+    extra.controlVideo = controlVideoPath.value.trim()
+    extra.vaceStrength = vaceStrength.value
+  }
+
+  const payload = buildGenerationPayload(config.value, {
+    prompt: promptSnap,
+    negativePrompt: negSnap,
+    width: w,
+    height: h,
+    extra
+  })
+  const formParts = payloadToFormParts(payload)
+
+  if ((videoMode.value === 'i2v' || videoMode.value === 'flf2v') && referenceFile.value) {
+    formParts.push({ name: 'reference_image', type: 'file', file: referenceFile.value })
+  }
+  if (videoMode.value === 'flf2v' && endFile.value) {
+    formParts.push({ name: 'endImage', type: 'file', file: endFile.value })
+  }
+
+  const busy = isAnyGenerationBusy()
   error.value = null
   generatedVideo.value = null
-  const jobStartedAt = Date.now()
-  const snapshot = pickConfigSnapshot(config.value)
 
-  try {
-    const formData = new FormData()
-    const extra: Record<string, string | number | boolean | undefined> = {
-      video_frames: videoFrames.value,
-      videoFrames: videoFrames.value,
-      fps: videoFps.value,
-      flow_shift: flowShift.value,
-      flowShift: flowShift.value,
-      videoMode: true
-    }
-
-    if (hasHighNoiseModel.value || showHighNoise.value) {
-      extra.highNoiseSteps = highNoiseSteps.value
-      extra.highNoiseCfg = highNoiseCfg.value
-      extra.highNoiseSampler = highNoiseSampler.value
-      if (highNoiseGuidance.value > 0) extra.highNoiseGuidance = highNoiseGuidance.value
-      extra.moeBoundary = moeBoundary.value
-    }
-
-    if (controlVideoPath.value.trim()) {
-      extra.controlVideo = controlVideoPath.value.trim()
-      extra.vaceStrength = vaceStrength.value
-    }
-
-    const payload = buildGenerationPayload(config.value, {
-      prompt: prompt.value,
-      negativePrompt: negativePrompt.value,
-      width: videoWidth.value,
-      height: videoHeight.value,
-      extra
-    })
-    appendPayloadToFormData(formData, payload)
-
-    // I2V start frame / FLF2V first frame
-    if ((videoMode.value === 'i2v' || videoMode.value === 'flf2v') && referenceFile.value) {
-      formData.append('reference_image', referenceFile.value)
-    }
-    // FLF2V end frame
-    if (videoMode.value === 'flf2v' && endFile.value) {
-      formData.append('endImage', endFile.value)
-    }
-
-    const result = await apiPostForm<{
-      message: string
-      filename?: string
-      filenames?: string[]
-    }>('/api/generate-video', formData)
-
-    if (result.filename) {
-      generatedVideos.value = [
-        result.filename,
-        ...generatedVideos.value.filter((video) => video !== result.filename)
-      ]
-      selectGeneratedVideo(result.filename)
-      toast.success('Video complete')
+  enqueue({
+    surface: 'video',
+    label: promptSnap,
+    prompt: promptSnap,
+    negativePrompt: negSnap,
+    seed: seedSnap,
+    width: w,
+    height: h,
+    configSnapshot: snapshot,
+    kind: 'form',
+    endpoint: '/api/generate-video',
+    formParts,
+    onStart: () => progress.start(),
+    onSuccess: (result) => {
+      if (result.filename) {
+        generatedVideos.value = [
+          result.filename,
+          ...generatedVideos.value.filter((video) => video !== result.filename)
+        ]
+        selectGeneratedVideo(result.filename)
+        toast.success('Video complete')
+        addHistoryEntry({
+          surface: 'video',
+          status: 'success',
+          prompt: promptSnap,
+          negativePrompt: negSnap,
+          seed: seedSnap,
+          width: w,
+          height: h,
+          filename: result.filename,
+          configSnapshot: snapshot
+        })
+      }
+    },
+    onError: (msg) => {
+      if (msg === 'Cancelled') {
+        toast.warning('Video cancelled')
+        return
+      }
+      error.value = msg
+      toastGenerationError(toast, msg, 'Video generation failed')
       addHistoryEntry({
         surface: 'video',
-        status: 'success',
-        prompt: prompt.value,
-        negativePrompt: negativePrompt.value,
-        seed: config.value.seed,
-        width: videoWidth.value,
-        height: videoHeight.value,
-        filename: result.filename,
-        durationMs: Date.now() - jobStartedAt,
-        configSnapshot: {
-          ...snapshot,
-          width: videoWidth.value,
-          height: videoHeight.value,
-          flowShift: flowShift.value
-        }
+        status: 'failed',
+        prompt: promptSnap,
+        error: msg,
+        configSnapshot: snapshot
       })
-    }
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Video generation failed'
-    toastGenerationError(toast, e, 'Video generation failed')
-    console.error('Video generation error:', e)
-    addHistoryEntry({
-      surface: 'video',
-      status: 'failed',
-      prompt: prompt.value,
-      error: error.value || undefined,
-      durationMs: Date.now() - jobStartedAt,
-      configSnapshot: snapshot
-    })
-  } finally {
-    releaseGeneration('video')
-    progress.stop()
-  }
+    },
+    onSettled: () => progress.stop()
+  })
+
+  if (busy) toast.info(`Queued · ${pendingCount.value} waiting`)
 }
 
-/**
- * handleCancel() - Cancel video generation
- */
 async function handleCancel(): Promise<void> {
-  try {
-    await apiPost('/api/cancel-cli', {})
-    toast.warning('Video cancelled')
-  } catch (e) {
-    console.error('Cancel failed:', e)
-  }
+  await cancelCurrent()
+  toast.warning('Cancelling current job…')
   progress.stop()
-  releaseGeneration('video')
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {

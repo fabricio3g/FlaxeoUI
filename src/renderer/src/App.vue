@@ -13,6 +13,8 @@ import { initializeApi } from './services/api'
 import { useSetup } from './composables/useSetup'
 import SetupWizard from './components/SetupWizard.vue'
 import OnboardingStrip from './components/OnboardingStrip.vue'
+import QueuePanel from './components/QueuePanel.vue'
+import { useJobQueue } from './composables/useJobQueue'
 import { useConfigStore } from './stores/config'
 import SegmentedControl from './components/ui/SegmentedControl.vue'
 import Select from './components/ui/Select.vue'
@@ -53,10 +55,17 @@ const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') ==
 const stripDismissed = ref(
   typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STRIP_DISMISS_KEY) === '1'
 )
+const showQueuePanel = ref(false)
+const { pendingCount, current: currentJob } = useJobQueue()
 
 const showOnboardingStrip = computed(
   () => !isSetupNeeded.value && !checklistComplete.value && !stripDismissed.value
 )
+
+const queueBadge = computed(() => {
+  const n = pendingCount.value + (currentJob.value ? 1 : 0)
+  return n
+})
 
 function toggleSidebar(): void {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -302,6 +311,22 @@ onUnmounted(() => {
             <button
               type="button"
               class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :class="queueBadge ? 'text-foreground' : ''"
+              :aria-expanded="showQueuePanel"
+              title="Job queue"
+              @click="showQueuePanel = true"
+            >
+              <span>Queue</span>
+              <span
+                v-if="queueBadge"
+                class="inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-medium text-background"
+              >
+                {{ queueBadge }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               :aria-expanded="activeConfigPanel === 'generation'"
               @click="openConfigPanel('generation')"
             >
@@ -449,5 +474,6 @@ onUnmounted(() => {
     <FloatingLogPanel v-model="showFloatingLogs" />
 
     <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="skipForNow" />
+    <QueuePanel :open="showQueuePanel" @close="showQueuePanel = false" />
   </div>
 </template>
