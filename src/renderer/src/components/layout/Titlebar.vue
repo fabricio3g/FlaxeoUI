@@ -79,13 +79,21 @@ const currentViewLabel = computed(() => {
 
 const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
 
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && showDownloadManager.value) {
+    showDownloadManager.value = false
+  }
+}
+
 onMounted(() => {
   isElectron.value = !!window.electronAPI
   startRuntimeStatusPolling()
+  window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
   stopRuntimeStatusPolling()
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 function handleMinimize(): void {
@@ -226,11 +234,13 @@ function iconBtnClasses(active = false): string {
       </button>
 
       <button
-        @click="showDownloadManager = true"
-        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+        @click="showDownloadManager = !showDownloadManager"
+        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:hidden"
         type="button"
         title="Downloads"
         aria-label="Open download manager"
+        :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
+        :aria-expanded="showDownloadManager"
       >
         <Download class="h-4 w-4" />
       </button>
@@ -257,10 +267,12 @@ function iconBtnClasses(active = false): string {
 
       <Tooltip text="Downloads" position="bottom">
         <button
-          @click="showDownloadManager = true"
-          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          @click="showDownloadManager = !showDownloadManager"
+          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:inline-flex"
           type="button"
           aria-label="Open download manager"
+          :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
+          :aria-expanded="showDownloadManager"
         >
           <Download class="h-4 w-4" />
         </button>

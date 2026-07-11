@@ -212,7 +212,8 @@ function onStripFirstImage(): void {
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
-  if (showSettings.value) closeSettings()
+  if (showQueuePanel.value) showQueuePanel.value = false
+  else if (showSettings.value) closeSettings()
   else if (configPanelVisible.value) closeConfigPanel()
 }
 
@@ -310,11 +311,11 @@ onUnmounted(() => {
             />
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              :class="queueBadge ? 'text-foreground' : ''"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+              :class="showQueuePanel || queueBadge ? 'bg-accent/80 text-foreground' : ''"
               :aria-expanded="showQueuePanel"
               title="Job queue"
-              @click="showQueuePanel = true"
+              @click="showQueuePanel = !showQueuePanel"
             >
               <span>Queue</span>
               <span
