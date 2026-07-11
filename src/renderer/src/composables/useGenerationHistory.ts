@@ -14,6 +14,9 @@ export interface GenerationHistoryEntry {
   height?: number
   filename?: string
   error?: string
+  /** Wall-clock duration of the job in ms (when known) */
+  durationMs?: number
+  /** Compact config for Re-run */
   configSnapshot?: Record<string, unknown>
 }
 
@@ -67,6 +70,7 @@ export function useGenerationHistory() {
       height: partial.height,
       filename: partial.filename,
       error: partial.error,
+      durationMs: partial.durationMs,
       configSnapshot: partial.configSnapshot
     }
     entries.value = [entry, ...entries.value].slice(0, MAX_ENTRIES)

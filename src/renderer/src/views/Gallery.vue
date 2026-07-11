@@ -35,6 +35,8 @@ import {
   toastGenerationError
 } from '@/composables/useGeneration'
 import type { ImageGenerationParams } from '@/lib/imageParams'
+import type { GenerationHistoryEntry } from '@/composables/useGenerationHistory'
+import { isConfigSnapshot } from '@/lib/configSnapshot'
 
 const router = useRouter()
 const toast = useToast()
@@ -53,10 +55,17 @@ const images = ref<string[]>([])
 const isLoading = ref(false)
 const selectedImage = ref<string | null>(null)
 const viewMode = ref<'grid' | 'large'>('grid')
+const mediaFilter = ref<'all' | 'images' | 'videos' | 'upscales'>('all')
 const loadedImages = ref(new Set<string>())
 const viewModeOptions = [
   { value: 'grid', label: 'Compact grid', icon: Grid },
   { value: 'large', label: 'Large grid', icon: LayoutGrid }
+]
+const mediaFilterOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'images', label: 'Images' },
+  { value: 'videos', label: 'Videos' },
+  { value: 'upscales', label: 'Upscales' }
 ]
 const showImageViewer = ref(false)
 const showHistory = ref(false)
@@ -71,10 +80,23 @@ const isUpscaling = ref(false)
 // Pagination
 const currentPage = ref(1)
 const imagesPerPage = 20
-const totalPages = computed(() => Math.ceil(images.value.length / imagesPerPage))
+
+const filteredImages = computed(() => {
+  return images.value.filter((name) => {
+    if (mediaFilter.value === 'all') return true
+    const isVideo = /\.mp4$/i.test(name)
+    const isUpscale = /^upscale_/i.test(name)
+    if (mediaFilter.value === 'videos') return isVideo
+    if (mediaFilter.value === 'upscales') return isUpscale
+    // images: stills that are not primarily video
+    return !isVideo
+  })
+})
+
+const totalPages = computed(() => Math.ceil(filteredImages.value.length / imagesPerPage) || 1)
 const paginatedImages = computed(() => {
   const start = (currentPage.value - 1) * imagesPerPage
-  return images.value.slice(start, start + imagesPerPage)
+  return filteredImages.value.slice(start, start + imagesPerPage)
 })
 
 const upscaleModelOptions = computed(() => [
@@ -102,6 +124,56 @@ async function fetchGallery(): Promise<void> {
   } finally {
     isLoading.value = false
   }
+}
+
+function handleMediaFilter(value: string): void {
+  if (value === 'all' || value === 'images' || value === 'videos' || value === 'upscales') {
+    mediaFilter.value = value
+    currentPage.value = 1
+  }
+}
+
+function formatDuration(ms?: number): string {
+  if (!ms || ms <= 0) return ''
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const rem = s % 60
+  return `${m}m ${rem}s`
+}
+
+function openHistoryItem(filename?: string): void {
+  if (!filename) return
+  if (images.value.includes(filename) || /\.(png|jpe?g|webp|gif|mp4)$/i.test(filename)) {
+    openImageViewer(filename)
+  }
+}
+
+function rerunHistoryEntry(entry: GenerationHistoryEntry): void {
+  if (entry.configSnapshot && isConfigSnapshot(entry.configSnapshot)) {
+    configStore.applyConfigSnapshot(entry.configSnapshot)
+  }
+  if (entry.prompt) sessionStorage.setItem('text2imagePrompt', entry.prompt)
+  if (entry.negativePrompt) {
+    sessionStorage.setItem('text2imageNegativePrompt', entry.negativePrompt)
+  }
+
+  const routeName =
+    entry.surface === 'edit'
+      ? 'Edit'
+      : entry.surface === 'video'
+        ? 'Video'
+        : 'Text2Image'
+
+  if (entry.surface === 'upscale' && entry.filename) {
+    selectImage(entry.filename)
+    openUpscalePanel()
+    toast.info('Restored settings — run upscale when ready')
+    return
+  }
+
+  toast.success('Settings restored — ready to re-run')
+  router.push({ name: routeName })
 }
 
 function selectImage(filename: string): void {
@@ -335,15 +407,6 @@ function navigateImage(direction: 'prev' | 'next'): void {
   }
 }
 
-function openHistoryItem(filename?: string): void {
-  if (!filename) return
-  if (!images.value.includes(filename)) {
-    toast.error('File no longer in gallery')
-    return
-  }
-  openImageViewer(filename)
-}
-
 function formatHistoryTime(ts: number): string {
   try {
     return new Date(ts).toLocaleString(undefined, {
@@ -541,14 +604,23 @@ onUnmounted(() => {
       class="shrink-0 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur md:px-6"
     >
       <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
-        <SegmentedControl
-          :model-value="viewMode"
-          :options="viewModeOptions"
-          size="sm"
-          icon-only
-          aria-label="Gallery view"
-          @update:model-value="handleViewMode"
-        />
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <SegmentedControl
+            :model-value="viewMode"
+            :options="viewModeOptions"
+            size="sm"
+            icon-only
+            aria-label="Gallery view"
+            @update:model-value="handleViewMode"
+          />
+          <SegmentedControl
+            :model-value="mediaFilter"
+            :options="mediaFilterOptions"
+            size="sm"
+            aria-label="Media filter"
+            @update:model-value="handleMediaFilter"
+          />
+        </div>
 
         <div class="flex shrink-0 items-center gap-1">
           <button
@@ -605,35 +677,53 @@ onUnmounted(() => {
           No generations recorded yet.
         </div>
         <div v-else class="flex gap-2 overflow-x-auto pb-1">
-          <button
+          <div
             v-for="entry in recentHistory"
             :key="entry.id"
-            type="button"
-            class="min-w-[10.5rem] max-w-[14rem] shrink-0 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-left transition-colors hover:border-foreground/25 hover:bg-muted/40"
-            @click="openHistoryItem(entry.filename)"
-            @contextmenu.prevent="removeEntry(entry.id)"
+            class="min-w-[11.5rem] max-w-[15rem] shrink-0 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-left transition-colors hover:border-foreground/25 hover:bg-muted/40"
           >
-            <div class="flex items-center justify-between gap-2">
-              <span
-                class="text-[10px] font-medium uppercase tracking-wide"
-                :class="
-                  entry.status === 'success'
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : entry.status === 'cancelled'
-                      ? 'text-muted-foreground'
-                      : 'text-destructive'
-                "
+            <button
+              type="button"
+              class="w-full text-left"
+              @click="openHistoryItem(entry.filename)"
+              @contextmenu.prevent="removeEntry(entry.id)"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span
+                  class="text-[10px] font-medium uppercase tracking-wide"
+                  :class="
+                    entry.status === 'success'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : entry.status === 'cancelled'
+                        ? 'text-muted-foreground'
+                        : 'text-destructive'
+                  "
+                >
+                  {{ entry.surface }} · {{ entry.status }}
+                </span>
+                <span class="text-[10px] text-muted-foreground">{{
+                  formatHistoryTime(entry.timestamp)
+                }}</span>
+              </div>
+              <p class="mt-1 line-clamp-2 text-[11px] leading-4 text-foreground/90">
+                {{ entry.prompt || entry.filename || '—' }}
+              </p>
+              <p
+                v-if="entry.durationMs"
+                class="mt-1 text-[10px] tabular-nums text-muted-foreground"
               >
-                {{ entry.surface }} · {{ entry.status }}
-              </span>
-              <span class="text-[10px] text-muted-foreground">{{
-                formatHistoryTime(entry.timestamp)
-              }}</span>
-            </div>
-            <p class="mt-1 line-clamp-2 text-[11px] leading-4 text-foreground/90">
-              {{ entry.prompt || entry.filename || '—' }}
-            </p>
-          </button>
+                {{ formatDuration(entry.durationMs) }}
+              </p>
+            </button>
+            <button
+              v-if="entry.configSnapshot || entry.prompt"
+              type="button"
+              class="mt-1.5 text-[10px] font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
+              @click.stop="rerunHistoryEntry(entry)"
+            >
+              Re-run
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -651,14 +741,20 @@ onUnmounted(() => {
       </div>
 
       <div
-        v-else-if="images.length === 0"
+        v-else-if="filteredImages.length === 0"
         class="flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
       >
         <div class="content-item flex max-w-sm flex-col items-center">
           <BrandMark size="lg" class="text-foreground" />
-          <p class="mt-5 text-xl font-light tracking-[-0.03em]">Your gallery is empty</p>
+          <p class="mt-5 text-xl font-light tracking-[-0.03em]">
+            {{ images.length === 0 ? 'Your gallery is empty' : 'No matches for this filter' }}
+          </p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">
-            Generated images from Text2Image and Edit will appear here.
+            {{
+              images.length === 0
+                ? 'Generated images from Text2Image and Edit will appear here.'
+                : 'Try another media filter or clear the filter to All.'
+            }}
           </p>
         </div>
       </div>

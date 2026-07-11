@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { Download, ExternalLink, Loader2, X } from '@/lib/icons'
+import { Check, Download, ExternalLink, Loader2, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { apiPost } from '@/services/api'
 import { useModels } from '@/composables/useModels'
 import { hubModels, type HubModel, type HubFile } from '@/lib/starterPacks'
+import { getPackInstallStatus, isHubFileInstalled } from '@/lib/hubInstall'
 
 const props = defineProps<{ open: boolean }>()
 
 const emit = defineEmits<{ close: [] }>()
 const configStore = useConfigStore()
-const { fetchModels } = useModels()
+const { models, fetchModels } = useModels()
 const activeModelId = ref(hubModels[0]?.id || 'flux1-dev')
 const downloading = ref<string | null>(null)
 const downloadStatus = ref<Record<string, string>>({})
@@ -18,6 +19,16 @@ const downloadStatus = ref<Record<string, string>>({})
 const activeModel = computed(
   () => hubModels.find((model) => model.id === activeModelId.value) || hubModels[0]
 )
+
+const activePackStatus = computed(() => getPackInstallStatus(activeModel.value, models.value))
+
+function fileInstalled(file: HubFile): boolean {
+  return isHubFileInstalled(file, models.value)
+}
+
+function packReady(model: HubModel): boolean {
+  return getPackInstallStatus(model, models.value).ready
+}
 
 function close(): void {
   emit('close')
@@ -65,8 +76,12 @@ function onKeydown(event: KeyboardEvent): void {
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) window.addEventListener('keydown', onKeydown)
-    else window.removeEventListener('keydown', onKeydown)
+    if (isOpen) {
+      window.addEventListener('keydown', onKeydown)
+      fetchModels({ force: true }).catch(() => undefined)
+    } else {
+      window.removeEventListener('keydown', onKeydown)
+    }
   },
   { immediate: true }
 )
@@ -131,6 +146,11 @@ onUnmounted(() => {
                     @click="activeModelId = model.id"
                   >
                     <span class="truncate">{{ model.name }}</span>
+                    <Check
+                      v-if="packReady(model)"
+                      class="ml-auto size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                      aria-label="Installed"
+                    />
                   </button>
                 </nav>
               </aside>
@@ -149,6 +169,26 @@ onUnmounted(() => {
                     </h2>
                     <p class="mt-1.5 text-sm leading-5 text-muted-foreground">
                       {{ activeModel.description }}
+                    </p>
+                    <p
+                      v-if="activeModel.files.length"
+                      class="mt-2 text-[11px] font-medium text-muted-foreground"
+                    >
+                      <span
+                        v-if="activePackStatus.ready"
+                        class="text-emerald-600 dark:text-emerald-400"
+                      >
+                        Installed
+                      </span>
+                      <span v-else>
+                        {{ activePackStatus.installed }}/{{ activePackStatus.total }} files on disk
+                        <template v-if="activePackStatus.required">
+                          · {{ activePackStatus.requiredInstalled }}/{{
+                            activePackStatus.required
+                          }}
+                          required
+                        </template>
+                      </span>
                     </p>
                   </div>
                   <button
@@ -218,6 +258,13 @@ onUnmounted(() => {
                               "
                             >
                               {{ file.required ? 'Required' : 'Optional' }}
+                            </span>
+                            <span
+                              v-if="fileInstalled(file)"
+                              class="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                            >
+                              <Check class="size-3" />
+                              On disk
                             </span>
                           </div>
                           <p class="mt-1 truncate font-mono text-[11px] text-muted-foreground">

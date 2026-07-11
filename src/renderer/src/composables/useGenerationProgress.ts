@@ -26,13 +26,22 @@ let emaStepMs = 0
 const EMA_ALPHA = 0.3
 
 function computeETA(): void {
-  if (current.value <= 0 || total.value <= 0) return
+  if (total.value <= 0 || current.value < 0) return
+  const remaining = Math.max(0, total.value - current.value)
+  if (remaining === 0) {
+    etaSeconds.value = 0
+    return
+  }
+  // Prefer CLI-reported it/s when available (more accurate for video long runs)
+  if (itPerSec.value > 0) {
+    etaSeconds.value = remaining / itPerSec.value
+    return
+  }
+  if (current.value <= 0 || startedAt <= 0) return
   const elapsed = Date.now() - startedAt
   const msPerStep = elapsed / current.value
-  emaStepMs = emaStepMs > 0
-    ? emaStepMs + EMA_ALPHA * (msPerStep - emaStepMs)
-    : msPerStep
-  etaSeconds.value = Math.max(0, ((total.value - current.value) * emaStepMs) / 1000)
+  emaStepMs = emaStepMs > 0 ? emaStepMs + EMA_ALPHA * (msPerStep - emaStepMs) : msPerStep
+  etaSeconds.value = Math.max(0, (remaining * emaStepMs) / 1000)
 }
 
 function reset(): void {

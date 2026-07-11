@@ -8,6 +8,7 @@ import {
   appendPayloadToFormData,
   buildGenerationPayload
 } from '@/lib/generationPayload'
+import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import {
   ArrowUp,
   Brush,
@@ -507,6 +508,8 @@ async function handleGenerate(): Promise<void> {
 
   progress.start()
   error.value = null
+  const jobStartedAt = Date.now()
+  const snapshot = pickConfigSnapshot(config.value)
 
   try {
     const formData = new FormData()
@@ -575,7 +578,9 @@ async function handleGenerate(): Promise<void> {
         prompt: prompt.value,
         negativePrompt: negativePrompt.value,
         seed: config.value.seed,
-        filename
+        filename,
+        durationMs: Date.now() - jobStartedAt,
+        configSnapshot: snapshot
       })
     }
   } catch (e) {
@@ -586,7 +591,9 @@ async function handleGenerate(): Promise<void> {
       surface: 'edit',
       status: 'failed',
       prompt: prompt.value,
-      error: error.value || undefined
+      error: error.value || undefined,
+      durationMs: Date.now() - jobStartedAt,
+      configSnapshot: snapshot
     })
   } finally {
     releaseGeneration('edit')

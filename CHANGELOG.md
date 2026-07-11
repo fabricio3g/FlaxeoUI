@@ -52,6 +52,13 @@ All notable changes to FlaxeoUI are documented in this file.
 - `useGeneration` owns claim/busy/cancel only; views own payload HTTP path
 - Prettier `endOfLine: auto` (Windows CRLF noise)
 
+### Depth (0.5 foundations)
+- Generation history **Re-run** restores compact `configSnapshot` + prompts
+- History stores wall-clock **duration** on jobs
+- Model Hub **on-disk install checks** (per-file + pack ready badge)
+- Gallery media filters: All / Images / Videos / Upscales
+- Progress ETA prefers CLI it/s (better for long video runs); video status shows step/ETA
+
 ## 0.3.x
 
 Earlier Electron + Vue studio with Text2Image, Edit, Video, Gallery, Quantization, Model Hub, and dual CLI/server backend mode.

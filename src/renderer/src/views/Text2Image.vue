@@ -43,6 +43,7 @@ import {
   appendPayloadToFormData,
   buildGenerationPayload
 } from '@/lib/generationPayload'
+import { pickConfigSnapshot } from '@/lib/configSnapshot'
 
 const toast = useToast()
 
@@ -385,6 +386,8 @@ async function handleGenerate(): Promise<void> {
 
   progress.start()
   error.value = null
+  const jobStartedAt = Date.now()
+  const snapshot = pickConfigSnapshot(config.value)
 
   // Start live preview polling if a preview method is selected
   if (config.value.livePreviewMethod) {
@@ -463,6 +466,7 @@ async function handleGenerate(): Promise<void> {
       currentImageFilename.value = newImages[0]
       isLivePreview.value = false
       toast.success('Generation complete!')
+      const durationMs = Date.now() - jobStartedAt
       for (const filename of newImages) {
         addHistoryEntry({
           surface: 'text2image',
@@ -472,7 +476,9 @@ async function handleGenerate(): Promise<void> {
           seed: config.value.seed,
           width: config.value.width,
           height: config.value.height,
-          filename
+          filename,
+          durationMs,
+          configSnapshot: snapshot
         })
       }
     } else if (result.filename) {
@@ -489,14 +495,18 @@ async function handleGenerate(): Promise<void> {
         seed: config.value.seed,
         width: config.value.width,
         height: config.value.height,
-        filename: result.filename
+        filename: result.filename,
+        durationMs: Date.now() - jobStartedAt,
+        configSnapshot: snapshot
       })
     } else if (result.message === 'Cancelled') {
       addHistoryEntry({
         surface: 'text2image',
         status: 'cancelled',
         prompt: prompt.value,
-        seed: config.value.seed
+        seed: config.value.seed,
+        durationMs: Date.now() - jobStartedAt,
+        configSnapshot: snapshot
       })
     }
   } catch (e) {
@@ -509,7 +519,9 @@ async function handleGenerate(): Promise<void> {
       status: 'failed',
       prompt: prompt.value,
       seed: config.value.seed,
-      error: errorMsg
+      error: errorMsg,
+      durationMs: Date.now() - jobStartedAt,
+      configSnapshot: snapshot
     })
   } finally {
     stopPreviewPolling()

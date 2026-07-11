@@ -8,6 +8,7 @@ import {
   appendPayloadToFormData,
   buildGenerationPayload
 } from '@/lib/generationPayload'
+import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import {
   ArrowUp,
   ChevronDown,
@@ -215,6 +216,13 @@ function selectGeneratedVideo(filename: string): void {
   generatedVideo.value = getOutputUrl(filename)
 }
 
+function formatVideoEta(secs: number): string {
+  if (!Number.isFinite(secs) || secs <= 0) return '…'
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /**
  * handleGenerate() - Generate video
  */
@@ -233,6 +241,8 @@ async function handleGenerate(): Promise<void> {
   progress.start()
   error.value = null
   generatedVideo.value = null
+  const jobStartedAt = Date.now()
+  const snapshot = pickConfigSnapshot(config.value)
 
   try {
     const formData = new FormData()
@@ -297,7 +307,14 @@ async function handleGenerate(): Promise<void> {
         seed: config.value.seed,
         width: videoWidth.value,
         height: videoHeight.value,
-        filename: result.filename
+        filename: result.filename,
+        durationMs: Date.now() - jobStartedAt,
+        configSnapshot: {
+          ...snapshot,
+          width: videoWidth.value,
+          height: videoHeight.value,
+          flowShift: flowShift.value
+        }
       })
     }
   } catch (e) {
@@ -308,7 +325,9 @@ async function handleGenerate(): Promise<void> {
       surface: 'video',
       status: 'failed',
       prompt: prompt.value,
-      error: error.value || undefined
+      error: error.value || undefined,
+      durationMs: Date.now() - jobStartedAt,
+      configSnapshot: snapshot
     })
   } finally {
     releaseGeneration('video')
@@ -417,6 +436,15 @@ onUnmounted(() => {
                 <p class="text-sm font-medium text-foreground">Creating video</p>
                 <p class="mt-1 text-xs text-muted-foreground">
                   {{ progress.label || 'Preparing generation' }}
+                  <template v-if="progress.hasSteps">
+                    · {{ progress.current }}/{{ progress.total }}
+                  </template>
+                  <template v-if="progress.etaSeconds > 0">
+                    · ETA {{ formatVideoEta(progress.etaSeconds) }}
+                  </template>
+                  <template v-if="progress.itPerSec > 0">
+                    · {{ progress.itPerSec.toFixed(2) }} it/s
+                  </template>
                 </p>
               </div>
             </div>

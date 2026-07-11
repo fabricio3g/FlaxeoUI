@@ -821,6 +821,18 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   /**
+   * applyConfigSnapshot() - Restore a compact history snapshot into live config
+   */
+  function applyConfigSnapshot(snapshot: Partial<GenerationConfig>): void {
+    if (!snapshot || typeof snapshot !== 'object') return
+    const next: Partial<GenerationConfig> = { ...snapshot }
+    if (Array.isArray(snapshot.loras)) {
+      next.loras = snapshot.loras.map((l) => ({ ...l }))
+    }
+    config.value = normalizeConfig({ ...config.value, ...next })
+  }
+
+  /**
    * applyImageParams() - Apply PNG / webui generation metadata into config
    */
   function applyImageParams(
@@ -947,6 +959,7 @@ export const useConfigStore = defineStore('config', () => {
     presets,
     selectedPresetId,
     updateConfig,
+    applyConfigSnapshot,
     applyImageParams,
     applyLowVramProfile,
     applyCachePreset,
