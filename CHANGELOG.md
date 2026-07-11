@@ -2,6 +2,43 @@
 
 All notable changes to FlaxeoUI are documented in this file.
 
+## 0.7.2 — 2026-07-11
+
+### Capability recipes (content)
+- Built-in recipes for **surfaces** (base color, roughness look, normal style, tileable), **objects/icons**, **frames** (wide/tall/empty-state/interface mock), and **mood multi-seed**
+- Help workflows: Surfaces & maps, Frames & mockups, Batch & queue (no new chrome — use Recipes + Queue + History)
+
+### Output & production tools
+- Resolution menu: power-of-two squares (`512²`…`2048²`) + standard frames (`16:9`, `9:16`, …)
+- Gallery / viewer: **Copy image** (clipboard pixels), **Save** with clearer filenames
+- Generation settings: **Queue 4 seed variants** (four queued jobs, distinct seeds)
+- Optional **Queue upscale after success**; Gallery one-click queue upscale
+
+### Viewer inspection
+- Fullscreen viewer: **2×2 / 3×3 tile** preview and **Gray** (grayscale) toggle
+- **Save / Copy** always in the viewer header (not only when metadata exists)
+- Robust blob download for Save (Electron-friendly)
+
+### Setup & UI
+- Setup wizard is **optional** — skip permanently; only blocks when backend/models missing
+- Getting started strip dismiss is permanent
+- Custom confirm dialog (delete, etc.) — text-only chrome, no trash badge icon
+- Advanced tools float panel; History float; queue upscale helpers
+
+## 0.7.1 — 2026-07-11
+
+### Fixes
+- **Try sample / Generate sample** applies prompt on keep-alive Text2Image (live event + `onActivated`)
+- **Setup wizard** closes after finish in dev (no longer forced open by `isDev`)
+- **Recipes** and **Prompt presets** use distinct icons (Bookmark vs FileText); each appears once (composer only)
+
+### History
+- Generation history is a **float panel** (command strip **History**, Gallery icon) — scroll, re-run, remove, clear
+- Removed Gallery horizontal history strip
+
+### Recipes UI
+- Larger panel and `text-sm` type for names, previews, and controls
+
 ## 0.7.0 — 2026-07-11
 
 ### Help & guide

@@ -29,7 +29,7 @@ withDefaults(
         <TooltipContent
           :side="position"
           :side-offset="6"
-          class="z-[999] max-w-64 rounded-md bg-foreground px-2.5 py-1.5 text-center text-xs font-medium text-background shadow-md data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=delayed-open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=delayed-open]:zoom-in-95 data-[state=closed]:zoom-out-95"
+          class="z-[999] max-w-xs whitespace-pre-wrap rounded-md bg-foreground px-2.5 py-1.5 text-left text-xs font-medium leading-relaxed text-background shadow-md data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=delayed-open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=delayed-open]:zoom-in-95 data-[state=closed]:zoom-out-95 sm:max-w-sm"
         >
           {{ text }}
         </TooltipContent>

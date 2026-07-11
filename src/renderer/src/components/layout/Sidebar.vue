@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Database,
   ChevronLeft,
+  ChevronRight,
   BookOpen
 } from '@/lib/icons'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -66,24 +67,38 @@ function openGalleryFolder(): void {
         : 'w-52 items-stretch px-3 py-3'
     "
   >
+    <!-- Brand (expanded) + collapse/expand — size-8 control -->
     <div
-      v-if="!collapsed"
-      class="mb-3 flex items-center justify-between px-1"
+      class="mb-3 flex h-8 w-full shrink-0 items-center"
+      :class="collapsed ? 'justify-center' : 'justify-between px-1'"
     >
-      <BrandMark size="sm" class="text-foreground" />
-      <Tooltip text="Collapse sidebar" position="right">
+      <BrandMark
+        v-if="!collapsed"
+        size="sm"
+        class="min-w-0 truncate text-foreground"
+      />
+      <Tooltip
+        :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        position="right"
+      >
         <button
           type="button"
-          class="aui-icon-button inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
-          aria-label="Collapse sidebar"
+          class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
           @click="emit('toggleCollapse')"
         >
-          <ChevronLeft class="size-4" />
+          <ChevronRight v-if="collapsed" class="size-4" />
+          <ChevronLeft v-else class="size-4" />
         </button>
       </Tooltip>
     </div>
 
-    <nav class="flex flex-1 flex-col gap-0.5" aria-label="Primary navigation">
+    <!-- Same gap as expanded; collapsed icons match collapse button (size-8) -->
+    <nav
+      class="flex flex-1 flex-col gap-0.5"
+      :class="collapsed ? 'items-center' : ''"
+      aria-label="Primary navigation"
+    >
       <template v-for="item in navItems" :key="item.id">
         <Tooltip
           v-if="collapsed"
@@ -92,7 +107,7 @@ function openGalleryFolder(): void {
         >
           <button
             type="button"
-            class="aui-icon-button relative inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            class="aui-icon-button relative inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             :class="isActive(item.id) ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
             :aria-label="item.label"
             :aria-current="isActive(item.id) ? 'page' : undefined"
@@ -104,7 +119,7 @@ function openGalleryFolder(): void {
         <button
           v-else
           type="button"
-          class="aui-icon-button relative inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          class="aui-icon-button relative inline-flex h-8 w-full items-center gap-3 rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
           :class="isActive(item.id) ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
           :aria-current="isActive(item.id) ? 'page' : undefined"
           @click="handleNavClick(item.id)"
@@ -115,12 +130,15 @@ function openGalleryFolder(): void {
       </template>
     </nav>
 
-    <div class="mt-auto flex flex-col gap-0.5 border-t border-sidebar-border/70 pt-2">
+    <div
+      class="mt-auto flex flex-col gap-0.5 border-t border-sidebar-border/70 pt-2"
+      :class="collapsed ? 'items-center' : ''"
+    >
       <template v-if="collapsed">
         <Tooltip text="Settings" position="right">
           <button
             type="button"
-            class="aui-icon-button inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             :class="isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
             aria-label="Settings"
             :aria-current="isActive('settings') ? 'page' : undefined"
@@ -132,7 +150,7 @@ function openGalleryFolder(): void {
         <Tooltip text="Open Models Folder" position="right">
           <button
             type="button"
-            class="aui-icon-button inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             aria-label="Open Models Folder"
             @click="openModelsFolder"
           >
@@ -142,7 +160,7 @@ function openGalleryFolder(): void {
         <Tooltip text="Open Gallery Folder" position="right">
           <button
             type="button"
-            class="aui-icon-button inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             aria-label="Open Gallery Folder"
             @click="openGalleryFolder"
           >
@@ -153,7 +171,7 @@ function openGalleryFolder(): void {
       <template v-else>
         <button
           type="button"
-          class="aui-icon-button inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          class="aui-icon-button inline-flex h-8 w-full items-center gap-3 rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
           :class="isActive('settings') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''"
           :aria-current="isActive('settings') ? 'page' : undefined"
           @click="handleNavClick('settings')"
@@ -163,7 +181,7 @@ function openGalleryFolder(): void {
         </button>
         <button
           type="button"
-          class="aui-icon-button inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          class="aui-icon-button inline-flex h-8 w-full items-center gap-3 rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
           @click="openModelsFolder"
         >
           <Database class="size-4 shrink-0" />
@@ -171,7 +189,7 @@ function openGalleryFolder(): void {
         </button>
         <button
           type="button"
-          class="aui-icon-button inline-flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          class="aui-icon-button inline-flex h-8 w-full items-center gap-3 rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
           @click="openGalleryFolder"
         >
           <FolderOpen class="size-4 shrink-0" />

@@ -21,7 +21,10 @@ import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { isAnyGenerationBusy, toastGenerationError, useGenerationStatus } from '@/composables/useGeneration'
-import { useGenerationProgress } from '@/composables/useGenerationProgress'
+import {
+  formatProgressTime,
+  useGenerationProgress
+} from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
@@ -144,7 +147,8 @@ function autoResize(): void {
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
-  if (promptMode.value === 'positive' && e.key === 'Enter' && !e.shiftKey) {
+  // Enter generates from either tab — both prompts are shared in the payload
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleGenerate()
   }
@@ -422,10 +426,23 @@ onUnmounted(() => {
                 Describe a scene or add a reference frame to direct the motion.
               </p>
             </div>
-            <div v-else class="fade-in flex flex-col items-center gap-2 text-center">
+            <div v-else class="fade-in flex max-w-sm flex-col items-center gap-2 px-4 text-center">
               <Loader2 class="size-5 animate-spin text-muted-foreground" />
-              <p class="text-xs font-medium text-muted-foreground">
-                {{ progress.hasSteps ? 'Generating' : 'Loading model' }}
+              <p class="text-sm font-medium text-foreground">
+                {{
+                  progress.hasSteps
+                    ? 'Generating'
+                    : progress.phaseLabel || 'Loading model'
+                }}
+              </p>
+              <p class="text-xs tabular-nums leading-4 text-muted-foreground">
+                <template v-if="progress.hasSteps">
+                  {{ progress.current }}/{{ progress.total }} ·
+                </template>
+                {{ formatProgressTime(progress.elapsedSeconds) }}
+                <template v-if="progress.hasSteps && progress.etaSeconds > 0">
+                  · ETA {{ formatProgressTime(progress.etaSeconds) }}
+                </template>
               </p>
             </div>
           </div>
@@ -485,7 +502,7 @@ onUnmounted(() => {
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
-            size="sm"
+            size="md"
             aria-label="Prompt mode"
             @update:model-value="setPromptMode"
           />
@@ -510,7 +527,7 @@ onUnmounted(() => {
                   ? 'Describe the motion, subject, and visual direction...'
                   : 'Describe motion or visual details to avoid...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5 md:text-[17px] md:leading-7"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -520,7 +537,7 @@ onUnmounted(() => {
             ></textarea>
             <span
               v-if="!activePrompt || activePrompt.trim().length === 0"
-              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
             >{{ promptMode === 'positive' ? 'Describe the motion, subject, and visual direction...' : 'Describe motion or visual details to avoid...' }}</span>
           </div>
@@ -914,7 +931,7 @@ onUnmounted(() => {
             <button
               type="button"
               @click="handleGenerate"
-              :disabled="promptMode !== 'positive' || !prompt.trim()"
+              :disabled="!prompt.trim()"
               class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
               :title="isGenerating ? 'Add to queue' : 'Generate video'"
               :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"

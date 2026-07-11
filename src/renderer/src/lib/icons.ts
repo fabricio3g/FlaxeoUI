@@ -16,6 +16,7 @@ import {
   Cpu as MotionCpu,
   DatabaseBackup as MotionDatabaseBackup,
   Download as MotionDownload,
+  FileText as MotionFileText,
   FolderOpen as MotionFolderOpen,
   Frame as MotionFrame,
   GalleryVertical as MotionGalleryVertical,
@@ -87,7 +88,14 @@ function fallbackIcon(icon: Component): Component {
   return defineComponent({
     inheritAttrs: false,
     setup(_props, { attrs }) {
-      return () => h(icon, { ...attrs, class: attrs.class })
+      // Always pass explicit size so lucide SVGs paint even without Tailwind size classes
+      return () =>
+        h(icon, {
+          size: 24,
+          strokeWidth: 2,
+          absoluteStrokeWidth: false,
+          ...attrs
+        })
     }
   })
 }
@@ -118,6 +126,8 @@ export const Download = animatedIcon(MotionDownload, 'lucide-animated')
 export const Eraser = fallbackIcon(StaticEraser)
 export const ExternalLink = fallbackIcon(StaticExternalLink)
 export const FileCode = fallbackIcon(StaticFileCode)
+/** Prompt text presets (distinct from Recipes Bookmark) */
+export const FileText = animatedIcon(MotionFileText, 'lucide-animated')
 export const Film = fallbackIcon(StaticFilm)
 export const FolderOpen = animatedIcon(MotionFolderOpen)
 export const Grid = fallbackIcon(StaticGrid)

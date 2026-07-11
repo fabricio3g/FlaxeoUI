@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
-import { X, Info, Copy, Check, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from '@/lib/icons'
+import {
+  X,
+  Info,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Sparkles,
+  Download,
+  Image as ImageIcon
+} from '@/lib/icons'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import {
@@ -8,6 +19,11 @@ import {
   normalizeImageParams,
   type ImageGenerationParams
 } from '@/lib/imageParams'
+import {
+  buildExportFilename,
+  copyImageUrlToClipboard,
+  downloadUrlAs
+} from '@/lib/mediaExport'
 
 const props = defineProps<{
   src: string
@@ -34,6 +50,25 @@ const pan = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
 const hasDragged = ref(false)
 const dragStart = ref({ x: 0, y: 0, panX: 0, panY: 0 })
+/** 1 = normal, 2 = 2×2 tile, 3 = 3×3 tile */
+const tileRepeat = ref<1 | 2 | 3>(1)
+const grayscale = ref(false)
+
+const imageFilterStyle = computed(() => ({
+  filter: grayscale.value ? 'grayscale(1)' : undefined
+}))
+
+function cycleTile(): void {
+  tileRepeat.value = tileRepeat.value === 1 ? 2 : tileRepeat.value === 2 ? 3 : 1
+  if (tileRepeat.value > 1) {
+    zoom.value = 1
+    resetPan()
+  }
+}
+
+function toggleGrayscale(): void {
+  grayscale.value = !grayscale.value
+}
 
 async function fetchMetadata() {
   if (!props.filename) return
@@ -72,6 +107,37 @@ function handleCopy() {
   isCopied.value = true
   toast.success('Parameters copied to clipboard')
   setTimeout(() => (isCopied.value = false), 2000)
+}
+
+async function copyImagePixels(): Promise<void> {
+  try {
+    await copyImageUrlToClipboard(props.src)
+    toast.success('Image copied to clipboard')
+  } catch (e) {
+    console.error(e)
+    toast.error('Could not copy image')
+  }
+}
+
+async function saveImageFile(): Promise<void> {
+  if (!props.src) {
+    toast.error('No image to save')
+    return
+  }
+  const name = buildExportFilename({
+    originalName: props.filename,
+    prompt: metadata.value?.prompt,
+    seed: metadata.value?.seed,
+    width: metadata.value?.width,
+    height: metadata.value?.height
+  })
+  try {
+    await downloadUrlAs(props.src, name)
+    toast.success('Download started')
+  } catch (e) {
+    console.error(e)
+    toast.error('Could not save image')
+  }
 }
 
 function handleReuseSeed(): void {
@@ -165,6 +231,8 @@ watch(
   () => props.filename,
   () => {
     resetZoom()
+    tileRepeat.value = 1
+    grayscale.value = false
     fetchMetadata()
   },
   { immediate: true }
@@ -202,12 +270,58 @@ onUnmounted(() => {
         >
           <button
             type="button"
+            @click="cycleTile"
+            class="aui-icon-button inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium tabular-nums text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            :class="tileRepeat > 1 && 'bg-white/10 text-white'"
+            :title="
+              tileRepeat === 1
+                ? 'Tile preview 2×2'
+                : tileRepeat === 2
+                  ? 'Tile preview 3×3'
+                  : 'Single image'
+            "
+            :aria-label="`Tile repeat ${tileRepeat}x${tileRepeat}`"
+          >
+            {{ tileRepeat }}×{{ tileRepeat }}
+          </button>
+          <button
+            type="button"
+            @click="toggleGrayscale"
+            class="aui-icon-button inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            :class="grayscale && 'bg-white/10 text-white'"
+            title="Grayscale preview"
+            aria-label="Toggle grayscale"
+            :aria-pressed="grayscale"
+          >
+            Gray
+          </button>
+          <button
+            type="button"
             @click="resetZoom"
             class="aui-icon-button inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium tabular-nums text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             title="Reset zoom"
             aria-label="Reset zoom"
+            :disabled="tileRepeat > 1"
           >
             {{ Math.round(zoom * 100) }}%
+          </button>
+          <button
+            type="button"
+            @click="copyImagePixels"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Copy image"
+            aria-label="Copy image to clipboard"
+          >
+            <ImageIcon class="size-4" />
+          </button>
+          <button
+            type="button"
+            @click="saveImageFile"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-zinc-400 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            title="Save image"
+            aria-label="Save image"
+          >
+            <Download class="size-4" />
           </button>
           <button
             type="button"
@@ -233,6 +347,7 @@ onUnmounted(() => {
       </header>
 
       <button
+        v-if="tileRepeat === 1"
         type="button"
         @click="emit('prev')"
         class="aui-icon-button absolute left-3 top-1/2 z-10 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/45 text-zinc-400 shadow-sm backdrop-blur-xl transition-[background-color,color,border-color] duration-200 hover:border-white/20 hover:bg-zinc-900/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 md:left-5 md:size-10"
@@ -242,6 +357,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="tileRepeat === 1"
         type="button"
         @click="emit('next')"
         class="aui-icon-button absolute right-3 top-1/2 z-10 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/45 text-zinc-400 shadow-sm backdrop-blur-xl transition-[background-color,color,border-color] duration-200 hover:border-white/20 hover:bg-zinc-900/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 md:right-5 md:size-10"
@@ -254,16 +370,35 @@ onUnmounted(() => {
         class="flex h-full w-full items-center justify-center overflow-hidden p-12 transition-[padding] duration-200 md:p-16"
         :class="showInfo && 'md:pr-[25rem]'"
         @click.stop
-        @wheel="handleWheel"
+        @wheel="tileRepeat === 1 ? handleWheel($event) : undefined"
       >
+        <!-- Tile preview: client-side repeat for seamless inspection -->
+        <div
+          v-if="tileRepeat > 1"
+          class="fade-in max-h-full max-w-full overflow-hidden rounded-lg border border-white/10 shadow-2xl"
+          :style="{
+            width: 'min(70vmin, 100%)',
+            aspectRatio: '1',
+            backgroundImage: `url(${src})`,
+            backgroundSize: `${100 / tileRepeat}% ${100 / tileRepeat}%`,
+            backgroundRepeat: 'repeat',
+            filter: grayscale ? 'grayscale(1)' : undefined
+          }"
+          role="img"
+          :aria-label="`${tileRepeat} by ${tileRepeat} tile preview of ${filename}`"
+        />
         <img
+          v-else
           :src="src"
           :alt="alt || filename"
           class="fade-in zoom-in-95 animate-in fill-mode-both max-h-full max-w-full touch-none select-none object-contain duration-200"
           :class="
             zoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'
           "
-          :style="{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }"
+          :style="{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            ...imageFilterStyle
+          }"
           draggable="false"
           @pointerdown="handleImagePointerDown"
           @pointermove="handleImagePointerMove"
@@ -317,23 +452,24 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div
-          v-else-if="!metadata"
-          class="flex flex-1 flex-col items-center justify-center px-8 text-center"
-        >
-          <div
-            class="mb-3 flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500"
-          >
-            <Info class="size-4" />
-          </div>
-          <p class="text-xs font-medium text-zinc-300">No metadata found</p>
-          <p class="mt-1 text-[11px] leading-4 text-zinc-500">
-            This image does not include generation parameters.
-          </p>
-        </div>
-
         <div v-else class="flex flex-1 flex-col overflow-hidden">
-          <div class="flex-1 space-y-5 overflow-y-auto p-4">
+          <div
+            v-if="!metadata"
+            class="flex flex-1 flex-col items-center justify-center px-8 text-center"
+          >
+            <div
+              class="mb-3 flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500"
+            >
+              <Info class="size-4" />
+            </div>
+            <p class="text-xs font-medium text-zinc-300">No metadata found</p>
+            <p class="mt-1 text-[11px] leading-4 text-zinc-500">
+              This image does not include generation parameters. You can still copy or save the
+              image.
+            </p>
+          </div>
+
+          <div v-else class="flex-1 space-y-5 overflow-y-auto p-4">
             <section v-if="metadata.prompt">
               <label
                 class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
@@ -408,11 +544,30 @@ onUnmounted(() => {
             </section>
           </div>
 
+          <!-- Always available: save/copy do not require metadata -->
           <div class="shrink-0 space-y-2 border-t border-white/10 p-3">
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-white/10"
+                @click="copyImagePixels"
+              >
+                <ImageIcon class="size-3.5" />
+                Copy image
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-white/10"
+                @click="saveImageFile"
+              >
+                <Download class="size-3.5" />
+                Save
+              </button>
+            </div>
             <button
               type="button"
               class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
-              :disabled="metadata.seed == null"
+              :disabled="!metadata || metadata.seed == null"
               @click="handleReuseSeed"
             >
               <RefreshCw class="size-3.5" />

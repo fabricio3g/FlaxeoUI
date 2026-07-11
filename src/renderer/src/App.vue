@@ -2,19 +2,22 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Play, SlidersHorizontal, Square, X } from '@/lib/icons'
+import { History, Play, SlidersHorizontal, Square, X } from '@/lib/icons'
 import Titlebar from './components/layout/Titlebar.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import ConfigPanel from './components/layout/ConfigPanel.vue'
 import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
-import { useSetup } from './composables/useSetup'
+import { useSetup, STRIP_DISMISS_KEY } from './composables/useSetup'
 import SetupWizard from './components/SetupWizard.vue'
 import OnboardingStrip from './components/OnboardingStrip.vue'
 import QueuePanel from './components/QueuePanel.vue'
+import HistoryPanel from './components/HistoryPanel.vue'
 import { useJobQueue } from './composables/useJobQueue'
+import { useGenerationHistory } from './composables/useGenerationHistory'
 import { useConfigStore } from './stores/config'
 import SegmentedControl from './components/ui/SegmentedControl.vue'
 import Select from './components/ui/Select.vue'
@@ -22,12 +25,11 @@ import { useRuntimeStatus } from './composables/useRuntimeStatus'
 import { useServerControls } from './composables/useServerControls'
 import { useModels } from './composables/useModels'
 import { useBackendCapabilities } from './composables/useBackendCapabilities'
-import { onOpenLogs } from './lib/appEvents'
+import { onOpenLogs, onOpenHistory, requestStarterPrompt } from './lib/appEvents'
 import Settings from './views/Settings.vue'
 
 const STARTER_PROMPT =
   'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
-const STRIP_DISMISS_KEY = 'flaxeo-onboarding-strip-dismissed'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,6 +42,7 @@ const { fetchCapabilities } = useBackendCapabilities()
 const {
   isSetupNeeded,
   checklistComplete,
+  skipped,
   loadState,
   skipForNow,
   completeSetup,
@@ -53,10 +56,12 @@ const showFloatingLogs = ref(false)
 const showSettings = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
 const stripDismissed = ref(
-  typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STRIP_DISMISS_KEY) === '1'
+  typeof localStorage !== 'undefined' && localStorage.getItem(STRIP_DISMISS_KEY) === '1'
 )
 const showQueuePanel = ref(false)
+const showHistoryPanel = ref(false)
 const queueBtnRef = ref<HTMLElement | null>(null)
+const historyBtnRef = ref<HTMLElement | null>(null)
 const queueAnchor = ref<{
   top: number
   left: number
@@ -64,10 +69,23 @@ const queueAnchor = ref<{
   bottom: number
   width: number
 } | null>(null)
+const historyAnchor = ref<{
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+} | null>(null)
 const { pendingCount, current: currentJob } = useJobQueue()
+const { entries: historyEntries } = useGenerationHistory()
 
+/** Optional tip bar — never after skip, permanent dismiss, only while checklist incomplete */
 const showOnboardingStrip = computed(
-  () => !isSetupNeeded.value && !checklistComplete.value && !stripDismissed.value
+  () =>
+    !isSetupNeeded.value &&
+    !skipped.value &&
+    !checklistComplete.value &&
+    !stripDismissed.value
 )
 
 const queueBadge = computed(() => {
@@ -75,11 +93,12 @@ const queueBadge = computed(() => {
   return n
 })
 
-function updateQueueAnchor(): void {
-  const el = queueBtnRef.value
-  if (!el) return
+const historyCount = computed(() => historyEntries.value.length)
+
+function rectFromEl(el: HTMLElement | null) {
+  if (!el) return null
   const r = el.getBoundingClientRect()
-  queueAnchor.value = {
+  return {
     top: r.top,
     left: r.left,
     right: r.right,
@@ -88,13 +107,48 @@ function updateQueueAnchor(): void {
   }
 }
 
+function updateQueueAnchor(): void {
+  queueAnchor.value = rectFromEl(queueBtnRef.value)
+}
+
+function updateHistoryAnchor(): void {
+  historyAnchor.value = rectFromEl(historyBtnRef.value)
+}
+
 function toggleQueuePanel(): void {
   if (!showQueuePanel.value) {
+    showHistoryPanel.value = false
     updateQueueAnchor()
     showQueuePanel.value = true
   } else {
     showQueuePanel.value = false
   }
+}
+
+function toggleHistoryPanel(): void {
+  if (!showHistoryPanel.value) {
+    showQueuePanel.value = false
+    updateHistoryAnchor()
+    showHistoryPanel.value = true
+  } else {
+    showHistoryPanel.value = false
+  }
+}
+
+function openHistoryPanel(): void {
+  showQueuePanel.value = false
+  updateHistoryAnchor()
+  // Fallback anchor if button not in DOM (e.g. Gallery page)
+  if (!historyAnchor.value && typeof window !== 'undefined') {
+    historyAnchor.value = {
+      top: 48,
+      left: 16,
+      right: 120,
+      bottom: 80,
+      width: 100
+    }
+  }
+  showHistoryPanel.value = true
 }
 
 function toggleSidebar(): void {
@@ -196,10 +250,15 @@ function handleBackendMode(value: string): void {
 function dismissOnboardingStrip(): void {
   stripDismissed.value = true
   try {
-    sessionStorage.setItem(STRIP_DISMISS_KEY, '1')
+    localStorage.setItem(STRIP_DISMISS_KEY, '1')
   } catch {
     /* ignore */
   }
+}
+
+async function handleSkipSetup(): Promise<void> {
+  await skipForNow()
+  stripDismissed.value = true
 }
 
 function queueStarterPrompt(): void {
@@ -209,6 +268,8 @@ function queueStarterPrompt(): void {
   } catch {
     /* ignore */
   }
+  // keep-alive Text2Image may already be mounted — fire event so prompt applies now
+  requestStarterPrompt({ prompt: STARTER_PROMPT, fromOnboarding: true })
   showSettings.value = false
   closeConfigPanel()
   router.push({ name: 'Text2Image' })
@@ -243,12 +304,19 @@ function onStripFirstImage(): void {
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
-  if (showQueuePanel.value) showQueuePanel.value = false
+  if (showHistoryPanel.value) showHistoryPanel.value = false
+  else if (showQueuePanel.value) showQueuePanel.value = false
   else if (showSettings.value) closeSettings()
   else if (configPanelVisible.value) closeConfigPanel()
 }
 
+function onWindowResize(): void {
+  updateQueueAnchor()
+  updateHistoryAnchor()
+}
+
 let unsubscribeOpenLogs: (() => void) | null = null
+let unsubscribeOpenHistory: (() => void) | null = null
 
 onMounted(async () => {
   try {
@@ -264,17 +332,22 @@ onMounted(async () => {
   await fetchModels()
   fetchCapabilities().catch(() => undefined)
   window.addEventListener('keydown', handleGlobalKeydown)
-  window.addEventListener('resize', updateQueueAnchor)
+  window.addEventListener('resize', onWindowResize)
   unsubscribeOpenLogs = onOpenLogs(() => {
     showFloatingLogs.value = true
+  })
+  unsubscribeOpenHistory = onOpenHistory(() => {
+    openHistoryPanel()
   })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
-  window.removeEventListener('resize', updateQueueAnchor)
+  window.removeEventListener('resize', onWindowResize)
   unsubscribeOpenLogs?.()
   unsubscribeOpenLogs = null
+  unsubscribeOpenHistory?.()
+  unsubscribeOpenHistory = null
 })
 </script>
 
@@ -357,6 +430,24 @@ onUnmounted(() => {
                 class="inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-medium text-background"
               >
                 {{ queueBadge }}
+              </span>
+            </button>
+            <button
+              ref="historyBtnRef"
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+              :class="showHistoryPanel || historyCount ? 'bg-accent/80 text-foreground' : ''"
+              :aria-expanded="showHistoryPanel"
+              title="Generation history"
+              @click="toggleHistoryPanel"
+            >
+              <History class="h-3.5 w-3.5" />
+              <span>History</span>
+              <span
+                v-if="historyCount"
+                class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground"
+              >
+                {{ historyCount > 99 ? '99+' : historyCount }}
               </span>
             </button>
             <button
@@ -505,14 +596,20 @@ onUnmounted(() => {
     </div>
 
     <ToastContainer />
+    <ConfirmDialog />
 
     <FloatingLogPanel v-model="showFloatingLogs" />
 
-    <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="skipForNow" />
+    <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="handleSkipSetup" />
     <QueuePanel
       :open="showQueuePanel"
       :anchor="queueAnchor || undefined"
       @close="showQueuePanel = false"
+    />
+    <HistoryPanel
+      :open="showHistoryPanel"
+      :anchor="historyAnchor || undefined"
+      @close="showHistoryPanel = false"
     />
   </div>
 </template>

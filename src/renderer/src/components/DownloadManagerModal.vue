@@ -107,7 +107,9 @@ onUnmounted(stopPolling)
         class="aui-float-panel fixed right-2 top-11 z-[110] flex max-h-[min(70vh,28rem)] w-[min(calc(100vw-1rem),22rem)] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground titlebar-no-drag sm:right-3"
         @pointerdown.stop
       >
-        <header class="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2.5">
+        <header
+          class="aui-scroll-header aui-scroll-header--popover aui-scroll-header--compact flex items-center justify-between gap-2 bg-popover px-3 py-2.5"
+        >
           <div class="min-w-0">
             <div class="flex items-center gap-2">
               <h2 class="text-xs font-semibold tracking-tight">Downloads</h2>
@@ -138,6 +140,7 @@ onUnmounted(stopPolling)
               <X class="size-3.5" />
             </button>
           </div>
+          <div class="aui-scroll-header__fade" aria-hidden="true" />
         </header>
 
         <div class="min-h-0 flex-1 overflow-y-auto p-2">

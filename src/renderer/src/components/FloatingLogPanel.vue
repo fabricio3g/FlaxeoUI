@@ -126,10 +126,10 @@ onUnmounted(() => {
       :style="style"
       class="aui-dialog-surface fixed z-[10001] flex h-[min(400px,calc(100vh-1.5rem))] w-[600px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
     >
-      <!-- Drag Handle / Title Bar -->
+      <!-- Drag Handle / Title Bar — fade instead of border under title -->
       <div
         ref="dragHandleRef"
-        class="flex min-h-11 cursor-move select-none items-center justify-between gap-3 border-b border-border/80 bg-muted/20 px-3"
+        class="aui-scroll-header aui-scroll-header--popover aui-scroll-header--compact flex min-h-11 cursor-move select-none items-center justify-between gap-3 bg-popover px-3"
       >
         <div class="flex min-w-0 items-center gap-2">
           <GripHorizontal class="h-4 w-4 shrink-0 text-muted-foreground/70" />
@@ -192,6 +192,7 @@ onUnmounted(() => {
             <X class="h-3.5 w-3.5" />
           </button>
         </div>
+        <div class="aui-scroll-header__fade" aria-hidden="true" />
       </div>
 
       <!-- Logs content -->

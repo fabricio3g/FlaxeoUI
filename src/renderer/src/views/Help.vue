@@ -55,7 +55,7 @@ watch(
 <template>
   <div class="flex h-full min-h-0 flex-col bg-background">
     <header
-      class="flex shrink-0 flex-col gap-3 border-b border-border/70 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6"
+      class="aui-scroll-header flex flex-col gap-3 bg-background px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6"
     >
       <div class="flex items-center gap-3">
         <div
@@ -79,6 +79,7 @@ watch(
           class="h-9 w-full rounded-lg border border-border/70 bg-background pl-9 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
         />
       </div>
+      <div class="aui-scroll-header__fade" aria-hidden="true" />
     </header>
 
     <div class="flex min-h-0 flex-1 flex-col md:flex-row">

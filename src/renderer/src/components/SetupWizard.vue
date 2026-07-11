@@ -286,9 +286,9 @@ watch(selectedRelease, (release) => {
       <div
         class="aui-dialog-surface fade-in zoom-in-95 animate-in flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 duration-200 motion-reduce:animate-none dark:shadow-black/40"
       >
-        <!-- Header -->
+        <!-- Header — no border; gradient fade over scroll -->
         <header
-          class="flex items-center justify-between gap-4 border-b border-border/80 px-5 py-4 sm:px-6"
+          class="aui-scroll-header aui-scroll-header--popover flex items-center justify-between gap-4 bg-popover px-5 py-4 sm:px-6"
         >
           <div class="min-w-0">
             <div class="flex items-center gap-2">
@@ -317,6 +317,7 @@ watch(selectedRelease, (release) => {
           >
             <X class="h-4 w-4" />
           </button>
+          <div class="aui-scroll-header__fade" aria-hidden="true" />
         </header>
 
         <!-- Content -->

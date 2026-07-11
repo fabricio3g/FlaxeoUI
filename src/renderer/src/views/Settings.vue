@@ -478,17 +478,14 @@ onMounted(async () => {
     </aside>
 
     <section class="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header class="relative z-10 shrink-0 px-4 py-4 pr-14 md:px-6 md:py-5">
+      <header class="aui-scroll-header bg-background px-4 py-4 pr-14 md:px-6 md:py-5">
         <h2 id="settings-title" class="text-lg font-semibold tracking-[-0.02em]">
           {{ activeCategoryDetails.label }}
         </h2>
         <p class="mt-1 text-sm leading-5 text-muted-foreground">
           {{ activeCategoryDetails.description }}
         </p>
-        <div
-          class="pointer-events-none absolute inset-x-0 top-full h-6 bg-linear-to-b from-background to-transparent"
-          aria-hidden="true"
-        ></div>
+        <div class="aui-scroll-header__fade" aria-hidden="true" />
       </header>
 
       <div class="flex-1 overflow-y-auto p-4 md:p-6">

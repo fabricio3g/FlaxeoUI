@@ -942,8 +942,7 @@ onUnmounted(() => {
 
     <template v-if="!props.collapsed">
       <div
-        class="config-panel__header hidden h-12 shrink-0 items-center justify-between gap-3 px-4 md:flex md:px-5"
-        :class="isSetupModal ? '' : 'border-b border-border/60'"
+        class="aui-scroll-header config-panel__header hidden h-12 items-center justify-between gap-3 bg-background px-4 md:flex md:px-5"
       >
         <div class="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight">
           <SlidersHorizontal class="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -960,17 +959,18 @@ onUnmounted(() => {
         >
           <X class="h-3.5 w-3.5" />
         </button>
+        <div class="aui-scroll-header__fade" aria-hidden="true" />
       </div>
 
       <!-- Mobile Header -->
       <div
-        class="config-panel__header mobile-sheet-header flex h-12 shrink-0 items-center bg-background px-4 md:hidden"
-        :class="isSetupModal ? '' : 'border-b border-border/60'"
+        class="aui-scroll-header config-panel__header mobile-sheet-header flex h-12 items-center bg-background px-4 md:hidden"
       >
         <h2 class="flex items-center gap-2 text-sm font-semibold">
           <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
           {{ panelTitle }}
         </h2>
+        <div class="aui-scroll-header__fade" aria-hidden="true" />
       </div>
 
       <!-- Scrollable Content -->

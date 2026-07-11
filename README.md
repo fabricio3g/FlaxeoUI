@@ -4,7 +4,7 @@
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** — install, generate, edit, and iterate with zero cloud and minimal friction (Electron + Vue 3 + Node).
+**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** — concepts, surface-style stills, presentation frames, edit, and video with zero cloud and minimal friction (Electron + Vue 3 + Node).
 
 ![FlaxeoUI Screenshot](screenshot/screenshot.png)
 
@@ -12,8 +12,8 @@
 
 - **Text2Image**, **Edit** (inpaint / multi-ref Kontext & Qwen Edit / img2img), **Video** (T2V, I2V, FLF2V)
 - **Job queue** — generate while busy; reorder, pause, cancel
-- **Recipes** — full-settings templates; import/export `.flaxeo-recipe.json`
-- **Help** — offline user guide in the app (`docs/user-guide/` on GitHub)
+- **Recipes** — full-settings templates (surfaces, frames, objects, moods); import/export `.flaxeo-recipe.json`
+- **Help** — offline guide including surfaces, frames, and batch/queue workflows
 - **Gallery** with PNG parameter reuse, upscale, and generation history
 - **Model Hub** starter packs (SDXL, FLUX, Z-Image, Wan, LTX, Qwen, …)
 - Dual backend: **sd-cli** (default) or **sd-server**

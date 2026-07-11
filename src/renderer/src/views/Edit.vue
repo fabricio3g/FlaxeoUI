@@ -130,7 +130,8 @@ function autoResize(): void {
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
-  if (promptMode.value === 'positive' && e.key === 'Enter' && !e.shiftKey) {
+  // Enter generates from either tab — both prompts are shared in the payload
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleGenerate()
   }
@@ -918,7 +919,7 @@ onUnmounted(() => {
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
-            size="sm"
+            size="md"
             aria-label="Prompt mode"
             @update:model-value="setPromptMode"
           />
@@ -1047,7 +1048,7 @@ onUnmounted(() => {
                       : 'Describe what to generate in the masked area...'
                   : 'Describe what to avoid...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5 md:text-[17px] md:leading-7"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -1057,7 +1058,7 @@ onUnmounted(() => {
             ></textarea>
             <span
               v-if="!activePrompt || activePrompt.trim().length === 0"
-              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
             >{{
               promptMode === 'positive'
@@ -1173,7 +1174,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim() || !baseImage"
+                :disabled="!prompt.trim() || !baseImage"
                 class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
                 :title="isGenerating ? 'Add to queue' : 'Generate'"
                 :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"

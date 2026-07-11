@@ -6,9 +6,12 @@ import { useGenerationHistory } from './useGenerationHistory'
 const setupComplete = ref(false)
 const skipped = ref(false)
 const stateLoaded = ref(false)
-const isDev = ref(false)
+/** User opened setup from Settings / titlebar — show even if backend+models already OK */
+const forceSetup = ref(false)
 
 const FIRST_IMAGE_KEY = 'flaxeo-first-image-done'
+/** Permanent omit of the "Getting started" strip */
+export const STRIP_DISMISS_KEY = 'flaxeo-onboarding-strip-dismissed'
 
 export function useSetup() {
   const { backendValid } = useRuntimeStatus()
@@ -43,14 +46,17 @@ export function useSetup() {
 
   const checklistComplete = computed(() => checklist.value.every((item) => item.done))
 
+  /**
+   * Setup wizard is optional:
+   * - Show when user reopens it, or when backend/models are missing and not finished/skipped
+   * - Never force the full wizard just because first-run flags are unset
+   */
   const isSetupNeeded = computed(() => {
     if (!stateLoaded.value) return false
-    if (skipped.value) return false
-    if (isDev.value) return true
-    if (!setupComplete.value) return true
-    if (!backendValid.value) return true
-    if (!hasAnyModel.value) return true
-    return false
+    if (forceSetup.value) return true
+    if (setupComplete.value || skipped.value) return false
+    // Only block the app when something essential is missing
+    return !backendValid.value || !hasAnyModel.value
   })
 
   async function loadState(): Promise<void> {
@@ -58,11 +64,9 @@ export function useSetup() {
       const state = await window.electronAPI?.getInitState()
       setupComplete.value = state?.setupComplete ?? false
       skipped.value = state?.skipped ?? false
-      isDev.value = state?.isDev ?? false
     } catch {
       setupComplete.value = false
       skipped.value = false
-      isDev.value = false
     } finally {
       stateLoaded.value = true
     }
@@ -71,6 +75,7 @@ export function useSetup() {
   async function completeSetup(): Promise<void> {
     setupComplete.value = true
     skipped.value = false
+    forceSetup.value = false
     try {
       await window.electronAPI?.setFirstRunComplete()
     } catch (e) {
@@ -81,6 +86,7 @@ export function useSetup() {
   async function reopenSetup(): Promise<void> {
     setupComplete.value = false
     skipped.value = false
+    forceSetup.value = true
     try {
       await window.electronAPI?.reopenSetup()
     } catch (e) {
@@ -88,8 +94,17 @@ export function useSetup() {
     }
   }
 
+  /** Permanently omit setup wizard + getting-started strip */
   async function skipForNow(): Promise<void> {
     skipped.value = true
+    forceSetup.value = false
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STRIP_DISMISS_KEY, '1')
+      }
+    } catch {
+      /* ignore */
+    }
     try {
       await window.electronAPI?.setSetupSkipped()
     } catch (e) {
@@ -105,6 +120,7 @@ export function useSetup() {
   return {
     setupComplete,
     skipped,
+    forceSetup,
     isSetupNeeded,
     hasAnyModel,
     hasFirstImage,

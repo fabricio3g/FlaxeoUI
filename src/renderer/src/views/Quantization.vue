@@ -3,9 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useModels } from '@/composables/useModels'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { Scale, ArrowUp, X, FileCode, CheckCircle2, RefreshCw } from '@/lib/icons'
+import { Scale, ArrowUp, X, CheckCircle2, RefreshCw } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
-import Tooltip from '@/components/ui/Tooltip.vue'
 
 const toast = useToast()
 const { models, fetchModels } = useModels()
@@ -18,6 +17,7 @@ const isConverting = ref(false)
 const isCancelling = ref(false)
 const cancelToken = ref(0)
 const conversionResult = ref<{ success: boolean; outputPath?: string; error?: string } | null>(null)
+const showMemory = ref(false)
 
 // Quantization options (legacy + K-quants used widely for DiT/LLM weights)
 const formatOptions = [
@@ -63,7 +63,7 @@ const sourceModelGroups = [
 
 // Values carry the model directory so the CLI conversion route can resolve the same file.
 const sourceModelOptions = computed(() => [
-  { label: 'Select source model...', value: '' },
+  { label: 'Select source model…', value: '' },
   ...sourceModelGroups.flatMap((group) =>
     group.getModels().map((model) => ({
       label: `${group.label} · ${model}`,
@@ -75,24 +75,23 @@ const sourceModelOptions = computed(() => [
 const sourceModelCategory = computed(() => sourceModel.value.split('/')[0] || '')
 const sourceModelFilename = computed(() => sourceModel.value.split('/').slice(1).join('/'))
 
-// Auto-generate output name
 function autoOutputName(): string {
   if (!sourceModelFilename.value || !targetFormat.value) return ''
   const base = sourceModelFilename.value.replace(/\.[^.]+$/, '')
   return `${base}.${targetFormat.value}.gguf`
 }
 
-function handleFormatChange() {
+function handleFormatChange(): void {
   if (!outputName.value || outputName.value === autoOutputName()) {
     outputName.value = autoOutputName()
   }
 }
 
-function handleSourceChange() {
+function handleSourceChange(): void {
   outputName.value = autoOutputName()
 }
 
-async function handleConvert() {
+async function handleConvert(): Promise<void> {
   if (!sourceModel.value || !targetFormat.value || !outputName.value) {
     toast.error('Please fill in all fields')
     return
@@ -135,7 +134,7 @@ async function handleConvert() {
   }
 }
 
-async function handleCancel() {
+async function handleCancel(): Promise<void> {
   if (isCancelling.value) return
   isCancelling.value = true
   cancelToken.value++
@@ -151,7 +150,7 @@ async function handleCancel() {
   toast.warning('Conversion cancelled')
 }
 
-function resetForm() {
+function resetForm(): void {
   sourceModel.value = ''
   targetFormat.value = 'q8_0'
   outputName.value = ''
@@ -172,228 +171,166 @@ onMounted(() => {
   <div
     class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
   >
-    <div
-      class="relative min-h-0 flex-1 overflow-hidden border-b border-border/70 bg-muted/10 p-3 md:p-5"
-    >
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
-        <div
-          class="aui-dialog-surface relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border"
-          :class="
-            !conversionResult && !isConverting
-              ? 'border-transparent'
-              : 'border-border/70 bg-card'
-          "
-        >
-          <div
-            v-if="!conversionResult && !isConverting"
-            class="absolute inset-0 flex items-center justify-center px-6 text-center"
-          >
-            <div class="content-item flex max-w-sm flex-col items-center px-8 py-8">
-              <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
-                Convert a model
-              </h2>
-              <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                Select a source model and output precision to create a quantized GGUF file.
-              </p>
-            </div>
-          </div>
-
-          <div v-if="isConverting" class="absolute inset-0 flex items-center justify-center px-6">
-            <div
-              class="aui-dialog-surface flex max-w-sm flex-col items-center rounded-lg border border-border bg-background/80 px-8 py-7 text-center shadow-sm backdrop-blur"
-            >
-              <div
-                class="mb-3 flex size-9 items-center justify-center rounded-lg border border-border bg-muted/30"
-              >
-                <RefreshCw class="size-4 animate-spin text-muted-foreground" />
-              </div>
-              <span class="text-sm font-medium">Converting model</span>
-              <p class="mt-1.5 text-xs leading-5 text-muted-foreground">
-                This may take a few minutes depending on model size.
-              </p>
-              <span
-                class="aui-status-badge mt-3 rounded-full border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium text-muted-foreground"
-                >In progress</span
-              >
-            </div>
-          </div>
-
-          <div
-            v-if="conversionResult && !isConverting"
-            class="relative z-10 flex flex-col items-center px-8 text-center"
-          >
-            <div v-if="conversionResult.success" class="flex max-w-md flex-col items-center">
-              <div
-                class="mb-4 flex size-10 items-center justify-center rounded-lg border border-border bg-muted/30"
-              >
-                <CheckCircle2 class="size-4 text-foreground" />
-              </div>
-              <h3 class="text-sm font-medium tracking-tight">Conversion complete</h3>
-              <p class="mt-1.5 break-all text-xs leading-5 text-muted-foreground">
-                {{ conversionResult.outputPath }}
-              </p>
-              <button
-                type="button"
-                @click="resetForm"
-                class="mt-4 inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                Convert another
-              </button>
-            </div>
-            <div v-else class="flex max-w-md flex-col items-center">
-              <div
-                class="mb-4 flex size-10 items-center justify-center rounded-lg border border-destructive/25 bg-destructive/10"
-              >
-                <X class="size-4 text-destructive" />
-              </div>
-              <h3 class="text-sm font-medium tracking-tight">Conversion failed</h3>
-              <p class="mt-1.5 text-xs leading-5 text-muted-foreground">
-                {{ conversionResult.error }}
-              </p>
-              <button
-                type="button"
-                @click="resetConversionError"
-                class="mt-4 inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
+    <div class="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col overflow-y-auto px-4 py-6 md:px-6 md:py-8">
+      <!-- Header -->
+      <header class="mb-8">
+        <div class="flex items-center gap-2.5">
+          <Scale class="size-5 text-muted-foreground" />
+          <h1 class="text-xl font-semibold tracking-tight text-foreground">Quantize</h1>
         </div>
-      </div>
-    </div>
+        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+          Convert a model to a smaller GGUF precision for lower VRAM use.
+        </p>
+      </header>
 
-    <div class="shrink-0 px-3 pb-3 pt-2.5 md:px-5 md:pb-5 md:pt-4">
-      <div
-        class="aui-dialog-surface mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border/70 bg-card"
+      <!-- Status (idle / progress / result) — flat, no nested cards -->
+      <section v-if="isConverting" class="mb-8 flex items-start gap-3">
+        <RefreshCw class="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground" />
+        <div>
+          <p class="text-base font-medium text-foreground">Converting…</p>
+          <p class="mt-1 text-sm leading-5 text-muted-foreground">
+            This can take a few minutes depending on model size.
+          </p>
+        </div>
+      </section>
+
+      <section
+        v-else-if="conversionResult"
+        class="mb-8 flex items-start gap-3"
       >
-        <div class="flex items-center justify-between border-b border-border/70 px-4 py-3">
-          <div class="flex items-center gap-2">
-            <Scale class="size-3.5 text-muted-foreground" />
-            <div>
-              <h1 class="text-xs font-medium">Quantization</h1>
-              <p class="mt-0.5 hidden text-[10px] text-muted-foreground sm:block">
-                Configure model precision and output.
-              </p>
-            </div>
-          </div>
-          <Tooltip text="Memory requirements" position="left">
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              aria-label="Memory requirements"
-            >
-              <FileCode class="size-3.5" />
-            </button>
-          </Tooltip>
+        <CheckCircle2
+          v-if="conversionResult.success"
+          class="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        />
+        <X v-else class="mt-0.5 size-5 shrink-0 text-destructive" />
+        <div class="min-w-0 flex-1">
+          <p class="text-base font-medium text-foreground">
+            {{ conversionResult.success ? 'Conversion complete' : 'Conversion failed' }}
+          </p>
+          <p
+            v-if="conversionResult.success && conversionResult.outputPath"
+            class="mt-1 break-all text-sm leading-5 text-muted-foreground"
+          >
+            {{ conversionResult.outputPath }}
+          </p>
+          <p v-else-if="conversionResult.error" class="mt-1 text-sm leading-5 text-muted-foreground">
+            {{ conversionResult.error }}
+          </p>
+          <button
+            type="button"
+            class="mt-3 text-sm font-medium text-primary hover:underline"
+            @click="conversionResult.success ? resetForm() : resetConversionError()"
+          >
+            {{ conversionResult.success ? 'Convert another' : 'Try again' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- Form -->
+      <section class="space-y-5">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-foreground">Source model</label>
+          <Select
+            v-model="sourceModel"
+            size="md"
+            class="aui-field"
+            placeholder="Select model…"
+            :options="sourceModelOptions"
+            :disabled="isConverting"
+            @update:model-value="handleSourceChange"
+          />
         </div>
 
-        <div class="space-y-4 p-4">
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-                >Source model</label
-              >
-              <Select
-                v-model="sourceModel"
-                size="sm"
-                class="aui-field"
-                placeholder="Select model..."
-                :options="sourceModelOptions"
-                @update:model-value="handleSourceChange"
-              />
-            </div>
-            <div>
-              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-                >Target format</label
-              >
-              <Select
-                v-model="targetFormat"
-                size="sm"
-                class="aui-field"
-                placeholder="Select format..."
-                :options="formatOptions"
-                @update:model-value="handleFormatChange"
-              />
-            </div>
-            <div>
-              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
-                >Output filename</label
-              >
-              <input
-                v-model="outputName"
-                type="text"
-                placeholder="model.q8_0.gguf"
-                class="aui-field h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] duration-200 placeholder:font-normal placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-              />
-            </div>
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-foreground">Target format</label>
+            <Select
+              v-model="targetFormat"
+              size="md"
+              class="aui-field"
+              placeholder="Select format…"
+              :options="formatOptions"
+              :disabled="isConverting"
+              @update:model-value="handleFormatChange"
+            />
           </div>
-
-          <div class="overflow-hidden rounded-lg border border-border/70">
-            <div
-              class="flex items-center justify-between border-b border-border/70 bg-muted/20 px-3 py-2"
-            >
-              <h4 class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Memory requirements
-              </h4>
-              <span
-                class="aui-status-badge rounded-full border border-border bg-background px-2 py-0.5 text-[9px] font-medium text-muted-foreground"
-                >SD 1.x / 512 x 512</span
-              >
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-[11px]">
-                <thead>
-                  <tr class="border-b border-border/70 text-muted-foreground">
-                    <th class="px-3 py-2 text-left font-medium">Precision</th>
-                    <th class="px-3 py-2 text-left font-medium">Standard</th>
-                    <th class="px-3 py-2 text-left font-medium">Flash attention</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in memoryTable"
-                    :key="row.format"
-                    class="border-b border-border/60 transition-colors duration-200 last:border-b-0"
-                    :class="row.format === targetFormat ? 'bg-muted/40' : 'hover:bg-muted/20'"
-                  >
-                    <td class="px-3 py-1.5 font-mono font-medium text-foreground">
-                      {{ row.format }}
-                    </td>
-                    <td class="px-3 py-1.5 text-muted-foreground">{{ row.memory }}</td>
-                    <td class="px-3 py-1.5 text-muted-foreground">{{ row.memoryFA }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end gap-2">
-            <button
-              v-if="!isConverting"
-              type="button"
-              @click="handleConvert"
-              :disabled="!sourceModel || !targetFormat || !outputName"
-              class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            >
-              <ArrowUp class="size-4" />
-              Convert model
-            </button>
-            <button
-              v-else
-              type="button"
-              @click="handleCancel"
-              :disabled="isCancelling"
-              class="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/25 bg-destructive/10 px-4 text-xs font-medium text-destructive transition-colors duration-200 hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            >
-              <RefreshCw v-if="isCancelling" class="size-4 animate-spin" />
-              <X v-else class="size-4" />
-              Cancel
-            </button>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-foreground">Output filename</label>
+            <input
+              v-model="outputName"
+              type="text"
+              placeholder="model.q8_0.gguf"
+              :disabled="isConverting"
+              class="aui-field h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
+            />
           </div>
         </div>
-      </div>
+
+        <!-- Memory reference — optional, no card chrome -->
+        <div>
+          <button
+            type="button"
+            class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            @click="showMemory = !showMemory"
+          >
+            {{ showMemory ? 'Hide' : 'Show' }} memory guide
+          </button>
+          <div v-if="showMemory" class="mt-3">
+            <p class="mb-2 text-xs text-muted-foreground">
+              Approximate VRAM for SD 1.x @ 512×512 (* K-quants vary by family)
+            </p>
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="text-muted-foreground">
+                  <th class="pb-2 pr-3 font-medium">Precision</th>
+                  <th class="pb-2 pr-3 font-medium">Standard</th>
+                  <th class="pb-2 font-medium">Flash attn</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in memoryTable"
+                  :key="row.format"
+                  class="border-t border-border/40"
+                  :class="
+                    row.format.includes(targetFormat)
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
+                  "
+                >
+                  <td class="py-2 pr-3 font-mono text-[13px]">{{ row.format }}</td>
+                  <td class="py-2 pr-3">{{ row.memory }}</td>
+                  <td class="py-2">{{ row.memoryFA }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-1">
+          <button
+            v-if="!isConverting"
+            type="button"
+            :disabled="!sourceModel || !targetFormat || !outputName"
+            class="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            @click="handleConvert"
+          >
+            <ArrowUp class="size-4" />
+            Convert model
+          </button>
+          <button
+            v-else
+            type="button"
+            :disabled="isCancelling"
+            class="inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            @click="handleCancel"
+          >
+            <RefreshCw v-if="isCancelling" class="size-4 animate-spin" />
+            <X v-else class="size-4" />
+            Cancel
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </template>

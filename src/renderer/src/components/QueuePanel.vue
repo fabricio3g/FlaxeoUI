@@ -109,7 +109,7 @@ watch(
         @pointerdown.stop
       >
         <header
-          class="flex items-center justify-between gap-2 border-b border-border/70 px-3.5 py-3"
+          class="aui-scroll-header aui-scroll-header--popover aui-scroll-header--compact flex items-center justify-between gap-2 bg-popover px-3.5 py-3"
         >
           <div class="min-w-0">
             <h2 class="text-sm font-semibold tracking-tight text-foreground">Queue</h2>
@@ -155,6 +155,7 @@ watch(
               <X class="size-4" />
             </button>
           </div>
+          <div class="aui-scroll-header__fade" aria-hidden="true" />
         </header>
 
         <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">

@@ -39,7 +39,9 @@ describe('recipes', () => {
 
   it('round-trips JSON serialize/parse', () => {
     const builtins = getBuiltinRecipes()
-    assert.ok(builtins.length >= 4)
+    assert.ok(builtins.length >= 12)
+    assert.ok(builtins.some((r) => r.id === 'builtin-surface-tile'))
+    assert.ok(builtins.some((r) => r.tags.includes('surface')))
     const json = serializeRecipe(builtins[0], { stripBuiltin: true })
     const parsed = parseRecipeJson(json)
     assert.ok(parsed)

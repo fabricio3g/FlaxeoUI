@@ -286,6 +286,219 @@ export function getBuiltinRecipes(): FlaxeoRecipe[] {
         seed: -1,
         loadMode: 'diffusion'
       }
+    }),
+
+    // --- Surfaces / map-style looks (prompted; not true PBR bakes) ---
+    base({
+      id: 'builtin-surface-albedo',
+      name: 'Surface · base color',
+      description: 'Flat-lit material color. Square power-of-two size for pipeline handoff.',
+      author: 'Flaxeo',
+      tags: ['surface', 'albedo', 'material', 'builtin', '1024'],
+      surface: 'text2image',
+      prompt:
+        'Seamless tileable material base color, flat even lighting, no strong shadows, high detail surface texture, neutral presentation, tileable pattern',
+      negativePrompt:
+        'strong shadows, dramatic lighting, people, objects, logo, watermark, text, vignette, perspective, 3d render frame',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 28,
+        cfgScale: 4.5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-surface-roughness',
+      name: 'Surface · roughness look',
+      description: 'Grayscale map-style look (prompted, not a material bake).',
+      author: 'Flaxeo',
+      tags: ['surface', 'roughness', 'grayscale', 'material', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Grayscale roughness map style, seamless tileable, pure black and white values, technical material map, no color, flat lighting, high frequency detail',
+      negativePrompt: 'color, chromatic, people, text, watermark, 3d scene, perspective',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 24,
+        cfgScale: 4,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-surface-normal-style',
+      name: 'Surface · normal style',
+      description: 'Normal-map aesthetic for concepts — not a real tangent-space bake.',
+      author: 'Flaxeo',
+      tags: ['surface', 'normal', 'technical', 'material', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Normal map style texture, purple blue technical look, seamless tileable, bump detail, material normal map aesthetic, flat orthographic',
+      negativePrompt: 'photoreal photo, people, text, watermark, perspective scene',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 24,
+        cfgScale: 4.5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-surface-tile',
+      name: 'Surface · tileable',
+      description: 'Tile-friendly square surface. Check edges in your DCC by repeating.',
+      author: 'Flaxeo',
+      tags: ['surface', 'seamless', 'tile', 'builtin', '1024'],
+      surface: 'text2image',
+      prompt:
+        'Seamless repeating tile texture, edge-matched pattern, uniform density, high detail, material surface, no borders',
+      negativePrompt: 'border, frame, logo, watermark, text, strong vignette, people',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 28,
+        cfgScale: 4.5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-object-hero',
+      name: 'Object · hero on ground',
+      description: 'Single subject on a clean ground plane.',
+      author: 'Flaxeo',
+      tags: ['object', 'prop', 'product', 'studio', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Single hero object centered on a neutral seamless ground, soft studio lighting, sharp focus, commercial product photography, clean composition',
+      negativePrompt: 'clutter, crowd, text, watermark, logo, blurry, extra objects',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 28,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-icon-solid-bg',
+      name: 'Icon · solid background',
+      description: 'Simple centered graphic on solid color for easy keying.',
+      author: 'Flaxeo',
+      tags: ['icon', 'sprite', 'solid-bg', 'builtin', '512'],
+      surface: 'text2image',
+      prompt:
+        'Simple bold icon graphic centered, solid pure color background, clean shapes, high contrast, minimal detail, flat design friendly',
+      negativePrompt: 'photo noise, complex background, text, watermark, photoreal clutter',
+      configSnapshot: {
+        width: 512,
+        height: 512,
+        steps: 20,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-wide-hero',
+      name: 'Wide · hero banner',
+      description: 'Wide cinematic frame (~16:9).',
+      author: 'Flaxeo',
+      tags: ['wide', 'hero', 'banner', '16:9', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Wide cinematic hero image, strong focal subject, atmospheric depth, premium art direction, space for optional text on one side',
+      negativePrompt: 'busy clutter, unreadable text, watermark, logo, low quality',
+      configSnapshot: {
+        width: 1344,
+        height: 768,
+        steps: 28,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-story-tall',
+      name: 'Tall · story frame',
+      description: 'Vertical full-bleed (~9:16).',
+      author: 'Flaxeo',
+      tags: ['tall', 'story', '9:16', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Vertical full-bleed composition, strong subject in upper third, clean background, mobile-friendly framing, high clarity',
+      negativePrompt: 'tiny subject, watermark, text, blurry edges',
+      configSnapshot: {
+        width: 768,
+        height: 1344,
+        steps: 26,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-empty-state',
+      name: 'Illustration · empty state',
+      description: 'Soft illustration with negative space.',
+      author: 'Flaxeo',
+      tags: ['illustration', 'empty-state', 'soft', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Friendly soft illustration, simple character or object, ample negative space, calm pastel palette, clean vector-like shapes, minimal composition',
+      negativePrompt: 'dark horror, gore, photoreal, watermark, text, clutter',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 26,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-ui-mock-screen',
+      name: 'Interface · mock screen',
+      description: 'Abstract interface mock for comps (illustration, not real UI).',
+      author: 'Flaxeo',
+      tags: ['interface', 'mock', 'layout', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Clean modern app interface mockup on a device-free canvas, soft shadows, neat cards and sidebar, professional product design presentation, high clarity',
+      negativePrompt: 'illegible text, watermark, messy wireframe, low contrast',
+      configSnapshot: {
+        width: 1216,
+        height: 832,
+        steps: 28,
+        cfgScale: 5,
+        seed: -1,
+        loadMode: 'diffusion'
+      }
+    }),
+    base({
+      id: 'builtin-mood-board',
+      name: 'Mood · multi-seed set',
+      description: 'Cohesive look with batch count for a small set. Lock seed after you like one.',
+      author: 'Flaxeo',
+      tags: ['mood', 'set', 'batch', 'consistent', 'builtin'],
+      surface: 'text2image',
+      prompt:
+        'Cohesive visual style, unified color palette, same lighting language, clear subject, art direction suitable for a multi-image set',
+      negativePrompt: 'style mismatch, random filters, watermark, text, low quality',
+      configSnapshot: {
+        width: 1024,
+        height: 1024,
+        steps: 24,
+        cfgScale: 5,
+        seed: -1,
+        batchCount: 4,
+        loadMode: 'diffusion'
+      }
     })
   ]
 }

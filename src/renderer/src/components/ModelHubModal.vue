@@ -158,7 +158,7 @@ onUnmounted(() => {
               <!-- Content -->
               <section class="flex min-h-0 min-w-0 flex-1 flex-col">
                 <header
-                  class="relative z-10 flex shrink-0 items-start justify-between gap-3 px-5 py-5 md:px-6 md:py-6"
+                  class="aui-scroll-header flex items-start justify-between gap-3 bg-background px-5 py-5 md:px-6 md:py-6"
                 >
                   <div class="min-w-0 flex-1 pr-2">
                     <h2
@@ -199,6 +199,7 @@ onUnmounted(() => {
                   >
                     <X class="size-4" />
                   </button>
+                  <div class="aui-scroll-header__fade" aria-hidden="true" />
                 </header>
 
                 <div class="flex-1 overflow-y-auto px-5 pb-6 pt-1 md:px-6 md:pb-7">

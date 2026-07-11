@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Bookmark, Search, Trash2 } from '@/lib/icons'
+import { FileText, Search, Trash2 } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePromptPresetStore } from '@/stores/promptPresets'
 import { useToast } from '@/composables/useToast'
+import { requestConfirm } from '@/composables/useConfirm'
 
 const prompt = defineModel<string>('prompt', { required: true })
 const negativePrompt = defineModel<string>('negativePrompt', { required: true })
@@ -102,10 +103,18 @@ function overwriteSelectedPreset(): void {
   toast.success(preset ? `Updated “${preset.name}”` : 'Preset updated')
 }
 
-function deleteSelectedPreset(): void {
+async function deleteSelectedPreset(): Promise<void> {
   if (!selectedPresetId.value) return
   const preset = presets.value.find((item) => item.id === selectedPresetId.value)
-  if (preset && !confirm(`Delete prompt preset “${preset.name}”?`)) return
+  if (preset) {
+    const ok = await requestConfirm({
+      title: 'Delete preset',
+      message: `Delete prompt preset “${preset.name}”?`,
+      confirmLabel: 'Delete',
+      danger: true
+    })
+    if (!ok) return
+  }
   promptPresetStore.deletePreset(selectedPresetId.value)
   toast.success(preset ? `Deleted “${preset.name}”` : 'Preset deleted')
 }
@@ -123,10 +132,10 @@ const selectedPreset = computed(() =>
         type="button"
         class="aui-icon-button relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         :class="open ? 'border-border bg-background text-foreground shadow-sm' : ''"
-        title="Prompt presets"
-        aria-label="Prompt presets"
+        title="Prompt presets (text only)"
+        aria-label="Prompt presets (text only)"
       >
-        <Bookmark class="size-4" />
+        <FileText class="size-4" />
         <span
           v-if="presets.length"
           class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold tabular-nums text-background"
@@ -139,9 +148,10 @@ const selectedPreset = computed(() =>
         type="button"
         class="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         :class="open ? 'border-border bg-background text-foreground' : ''"
-        aria-label="Prompt presets"
+        aria-label="Prompt presets (text only)"
+        title="Prompt presets (text only)"
       >
-        <Bookmark class="h-3.5 w-3.5" />
+        <FileText class="h-3.5 w-3.5" />
         Prompt presets
         <span class="text-[10px] text-muted-foreground">{{ presets.length }}</span>
       </button>
@@ -149,8 +159,8 @@ const selectedPreset = computed(() =>
 
     <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
       <div class="mb-3">
-        <p class="text-sm font-medium">Prompt presets</p>
-        <p class="mt-0.5 text-[11px] text-muted-foreground">
+        <p class="text-base font-semibold">Prompt presets</p>
+        <p class="mt-0.5 text-sm text-muted-foreground">
           Save and reuse positive / negative prompts
         </p>
       </div>

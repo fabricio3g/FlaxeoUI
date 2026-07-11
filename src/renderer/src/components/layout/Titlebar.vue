@@ -8,9 +8,7 @@ import {
   Sun,
   Terminal,
   Video,
-  X,
-  ChevronLeft,
-  ChevronRight
+  X
 } from '@/lib/icons'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -19,8 +17,6 @@ import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { useTheme } from '@/composables/useTheme'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
-import BrandMark from '@/components/BrandMark.vue'
-import Tooltip from '../ui/Tooltip.vue'
 
 const props = defineProps<{
   currentTab: string
@@ -63,18 +59,6 @@ const statusHint = computed(() => {
   }
   if (!backendValid.value) return 'Backend binary is not valid.'
   return config.value.backendMode === 'server' ? 'Server mode active.' : 'CLI mode active.'
-})
-
-const currentViewLabel = computed(() => {
-  const labels: Record<string, string> = {
-    text2image: 'Image',
-    edit: 'Edit',
-    video: 'Video',
-    gallery: 'Gallery',
-    settings: 'Settings',
-    quantization: 'Quantize'
-  }
-  return labels[props.currentTab] || 'Create'
 })
 
 const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
@@ -123,25 +107,7 @@ function iconBtnClasses(active = false): string {
     class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
   >
     <div class="hidden h-full items-center gap-2 px-2 titlebar-no-drag md:flex">
-      <Tooltip v-if="props.collapsed" text="Expand sidebar" position="bottom">
-        <button
-          type="button"
-          class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-          aria-label="Expand sidebar"
-          @click="emit('toggleSidebar')"
-        >
-          <ChevronRight class="h-4 w-4" />
-        </button>
-      </Tooltip>
-      <BrandMark v-if="props.collapsed" size="sm" class="text-foreground" />
-      <span
-        v-if="props.collapsed"
-        class="text-xs font-medium text-muted-foreground leading-none"
-      >
-        {{ currentViewLabel }}
-      </span>
-
-      <div class="group relative ml-1 flex h-8 items-center justify-center titlebar-no-drag">
+      <div class="group relative flex h-8 items-center justify-center titlebar-no-drag">
         <button
           class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
@@ -207,9 +173,8 @@ function iconBtnClasses(active = false): string {
       </button>
     </div>
 
-    <div class="flex min-w-0 flex-1 items-center px-3 text-sm tracking-tight md:hidden">
-      <BrandMark size="sm" class="text-foreground" />
-    </div>
+    <!-- Mobile: empty left drag region (no Flaxeo Image title) -->
+    <div class="min-w-0 flex-1 md:hidden" aria-hidden="true" />
 
     <div class="flex h-full items-center titlebar-no-drag">
       <button

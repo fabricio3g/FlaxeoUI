@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onActivated } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiGet, getOutputUrl, getFileUrl, getApiBase } from '@/services/api'
+import { apiPost, apiGet, getOutputUrl, getApiBase } from '@/services/api'
 import {
   ArrowUp,
   Copy,
@@ -13,12 +13,9 @@ import {
   User,
   Activity,
   ImagePlus,
-  Plus,
-  Upload,
   ChevronLeft,
   ChevronRight,
   Image,
-  Loader2,
   Lock,
   LockOpen,
   SlidersHorizontal,
@@ -28,9 +25,14 @@ import { useToast } from '@/composables/useToast'
 import { isAnyGenerationBusy, toastGenerationError, useGeneration } from '@/composables/useGeneration'
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
+import { useModels } from '@/composables/useModels'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import RecipeLibrary from '@/components/RecipeLibrary.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
+import AdvancedToolPanel, {
+  type AdvancedToolTab
+} from '@/components/AdvancedToolPanel.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
@@ -42,10 +44,67 @@ import { normalizeImageParams } from '@/lib/imageParams'
 import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import { useSetup } from '@/composables/useSetup'
+import { onStarterPrompt } from '@/lib/appEvents'
+import { requestConfirm } from '@/composables/useConfirm'
+import { buildExportFilename, downloadUrlAs } from '@/lib/mediaExport'
 
 const toast = useToast()
 const { markFirstImageDone } = useSetup()
 const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
+const { models } = useModels()
+const { supportsUpscale } = useBackendCapabilities()
+/** When set, queue an upscale job after each successful single (or first) output */
+const queueUpscaleAfter = ref(
+  typeof localStorage !== 'undefined' && localStorage.getItem('flaxeo-queue-upscale-after') === '1'
+)
+
+watch(queueUpscaleAfter, (v) => {
+  try {
+    localStorage.setItem('flaxeo-queue-upscale-after', v ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+})
+
+function enqueueUpscaleForFile(filename: string): void {
+  if (!supportsUpscale.value) {
+    toast.error('Upscale not supported by this backend')
+    return
+  }
+  const upscaleModel = models.value.upscale[0]
+  if (!upscaleModel) {
+    toast.error('No upscale model in models/upscale')
+    return
+  }
+  enqueue({
+    surface: 'upscale',
+    label: `Upscale ${filename}`,
+    prompt: `Upscale ${filename}`,
+    kind: 'json',
+    endpoint: '/api/upscale',
+    jsonBody: {
+      filename,
+      upscaleModel,
+      upscaleRepeats: 1,
+      upscaleTileSize: 128,
+      offloadToCpu: config.value.cpuOffload,
+      diffusionFa: config.value.flashAttention,
+      streamLayers: config.value.streamLayers,
+      maxVram: config.value.maxVram,
+      threads: config.value.threads
+    },
+    onSuccess: (result) => {
+      const out = result.filename || result.filenames?.[0]
+      if (out) {
+        galleryImages.value = [out, ...galleryImages.value]
+        toast.success(`Upscale complete · ${out}`)
+      }
+    },
+    onError: (msg) => {
+      if (msg !== 'Cancelled') toastGenerationError(toast, msg, 'Upscale failed')
+    }
+  })
+}
 
 function payloadToFormParts(payload: GenerationPayload): FormPart[] {
   const parts: FormPart[] = []
@@ -94,16 +153,17 @@ function getPreviewImageUrl(): string {
 }
 
 /**
- * startPreviewPolling() - Start polling for live preview images
+ * startPreviewPolling() - Poll for live preview frames.
+ * Hero stays empty until the first frame arrives (isLivePreview only then).
  */
 function startPreviewPolling(): void {
-  stopPreviewPolling()
-  isLivePreview.value = true
+  stopPreviewPolling({ clearFrame: false })
+  isLivePreview.value = false
   previewEtag = null
   previewPollInterval = setInterval(async () => {
     // Guard: never poll when generation already finished
     if (!isGenerating.value) {
-      stopPreviewPolling()
+      stopPreviewPolling({ clearFrame: true })
       return
     }
     try {
@@ -120,7 +180,8 @@ function startPreviewPolling(): void {
         const newUrl = URL.createObjectURL(blob)
         previewObjectUrl.value = newUrl
         previewImage.value = newUrl
-        if (oldUrl) URL.revokeObjectURL(oldUrl)
+        isLivePreview.value = true
+        if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl)
       }
     } catch {
       // Preview not available yet, silently ignore
@@ -129,19 +190,34 @@ function startPreviewPolling(): void {
 }
 
 /**
- * stopPreviewPolling() - Stop the preview polling interval
+ * stopPreviewPolling() - Stop polling.
+ * clearFrame: drop live blob from the hero (cancel / failed / aborted).
+ * Leave the canvas alone when clearFrame is false (e.g. success already set a final file URL).
  */
-function stopPreviewPolling(): void {
+function stopPreviewPolling(opts?: { clearFrame?: boolean }): void {
+  const clearFrame = opts?.clearFrame !== false
   if (previewPollInterval) {
     clearInterval(previewPollInterval)
     previewPollInterval = null
   }
   previewEtag = null
-  if (previewObjectUrl.value) {
-    URL.revokeObjectURL(previewObjectUrl.value)
+  const blobUrl = previewObjectUrl.value
+  if (blobUrl) {
+    URL.revokeObjectURL(blobUrl)
     previewObjectUrl.value = null
+    if (clearFrame && previewImage.value === blobUrl) {
+      previewImage.value = null
+    }
+  } else if (clearFrame && isLivePreview.value) {
+    // Live flag without blob (shouldn't happen) — still clear sticky preview
+    previewImage.value = null
   }
   isLivePreview.value = false
+}
+
+/** Clear live preview canvas after cancel / failed gen (not after success). */
+function discardLivePreview(): void {
+  stopPreviewPolling({ clearFrame: true })
 }
 
 // File uploads (store actual File objects for proper upload)
@@ -151,12 +227,46 @@ const kontextRefFile = ref<File | null>(null)
 const controlNetFile = ref<File | null>(null)
 const initImageFile = ref<File | null>(null)
 
-// Advanced sections state
-const activeTab = ref<string>('')
+// Advanced tool float (PhotoMaker / ControlNet / Img2Img / Reference)
+const activeTab = ref<AdvancedToolTab | ''>('')
+const advancedToolbarRef = ref<HTMLElement | null>(null)
+const advancedAnchor = ref<{
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+} | null>(null)
 const promptMode = ref<'positive' | 'negative'>('positive')
 const showResolutionMenu = ref(false)
 const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
+
+function updateAdvancedAnchor(): void {
+  const el = advancedToolbarRef.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  advancedAnchor.value = {
+    top: r.top,
+    left: r.left,
+    right: r.right,
+    bottom: r.bottom,
+    width: r.width
+  }
+}
+
+function toggleAdvancedTab(tab: AdvancedToolTab): void {
+  if (activeTab.value === tab) {
+    activeTab.value = ''
+    return
+  }
+  updateAdvancedAnchor()
+  activeTab.value = tab
+}
+
+function closeAdvancedPanel(): void {
+  activeTab.value = ''
+}
 
 const promptModeOptions = [
   { value: 'positive', label: 'Positive' },
@@ -206,7 +316,8 @@ function autoResize(): void {
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
-  if (promptMode.value === 'positive' && e.key === 'Enter' && !e.shiftKey) {
+  // Enter generates from either tab — positive + negative both go in the payload
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleGenerate()
   }
@@ -221,15 +332,20 @@ function usePromptSuggestion(suggestion: string): void {
   requestAnimationFrame(() => promptInput.value?.focus())
 }
 
+/** Power-of-two squares + standard frames (capability labels, not vertical brands) */
 const resolutionPresets = [
+  { label: '512²', width: 512, height: 512 },
+  { label: '768²', width: 768, height: 768 },
+  { label: '1024²', width: 1024, height: 1024 },
+  { label: '1536²', width: 1536, height: 1536 },
+  { label: '2048²', width: 2048, height: 2048 },
+  { label: '1:1', width: 1024, height: 1024 },
   { label: '4:3', width: 1024, height: 768 },
   { label: '3:2', width: 1152, height: 768 },
-  { label: '16:9', width: 1152, height: 648 },
-  { label: '2.35:1', width: 1176, height: 512 },
-  { label: '1:1', width: 1024, height: 1024 },
-  { label: '4:5', width: 1024, height: 1280 },
-  { label: '2:3', width: 1024, height: 1536 },
-  { label: '9:16', width: 768, height: 1365 }
+  { label: '16:9', width: 1344, height: 768 },
+  { label: '9:16', width: 768, height: 1344 },
+  { label: '2:3', width: 832, height: 1216 },
+  { label: '3:4', width: 896, height: 1152 }
 ]
 
 const resolutionLabel = computed(() => {
@@ -273,16 +389,6 @@ function advancedButtonClass(tab: string): string {
   if (activeTab.value === tab || advancedConfigured(tab)) return 'text-foreground'
   return 'text-muted-foreground hover:text-foreground'
 }
-
-const advancedTabLabel = computed(() => {
-  const labels: Record<string, string> = {
-    photomaker: 'PhotoMaker',
-    controlnet: 'ControlNet',
-    img2img: 'Image to Image',
-    kontext: 'Reference image'
-  }
-  return labels[activeTab.value] || 'Advanced settings'
-})
 
 function clearControlNetImage(): void {
   config.value.controlImagePath = ''
@@ -433,8 +539,15 @@ function resolveSeedForGenerate(): number {
 
 /**
  * handleGenerate() - Snapshot settings and enqueue (runs immediately if idle)
+ * opts.seedOverride — force a specific seed (e.g. multi-variant queue)
+ * opts.batchCountOverride — force batch size (variants use 1)
+ * opts.quiet — skip “queued” toast (caller toasts once)
  */
-async function handleGenerate(): Promise<void> {
+async function handleGenerate(opts?: {
+  seedOverride?: number
+  batchCountOverride?: number
+  quiet?: boolean
+}): Promise<void> {
   if (!prompt.value.trim()) return
 
   const model =
@@ -446,15 +559,22 @@ async function handleGenerate(): Promise<void> {
     return
   }
 
-  const batchCount = clampBatchCount(config.value.batchCount)
-  if (batchCount !== config.value.batchCount) {
+  const batchCount = clampBatchCount(
+    opts?.batchCountOverride ?? config.value.batchCount
+  )
+  if (
+    opts?.batchCountOverride == null &&
+    batchCount !== config.value.batchCount
+  ) {
     configStore.updateConfig({ batchCount })
   }
-  const seedForJob = resolveSeedForGenerate()
+  const seedForJob =
+    opts?.seedOverride != null ? opts.seedOverride : resolveSeedForGenerate()
   const snapshot = pickConfigSnapshot({
     ...config.value,
     batchCount,
-    seed: seedForJob
+    seed: seedForJob,
+    seedLocked: opts?.seedOverride != null ? true : config.value.seedLocked
   })
   const promptSnap = prompt.value
   const negSnap = negativePrompt.value
@@ -527,9 +647,14 @@ async function handleGenerate(): Promise<void> {
   const busy = isAnyGenerationBusy()
   error.value = null
 
+  const jobLabel =
+    opts?.seedOverride != null
+      ? `${promptSnap.slice(0, 32)} · s${seedForJob}`
+      : promptSnap
+
   enqueue({
     surface: 'text2image',
-    label: promptSnap,
+    label: jobLabel,
     prompt: promptSnap,
     negativePrompt: negSnap,
     seed: seedForJob,
@@ -552,10 +677,16 @@ async function handleGenerate(): Promise<void> {
             ? [result.filename]
             : []
       if (names.length > 0) {
+        // Swap to final output first, then stop polling without wiping the canvas
+        const blobUrl = previewObjectUrl.value
         galleryImages.value = [...names, ...galleryImages.value]
         previewImage.value = getOutputUrl(names[0])
         currentImageFilename.value = names[0]
         isLivePreview.value = false
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl)
+          previewObjectUrl.value = null
+        }
         lastBatchSize.value = names.length
         showBatchGrid.value = names.length > 1
         toast.success(
@@ -575,7 +706,13 @@ async function handleGenerate(): Promise<void> {
             configSnapshot: snapshot
           })
         }
+        // Optional linear step: queue upscale for the primary output
+        if (queueUpscaleAfter.value && names[0]) {
+          enqueueUpscaleForFile(names[0])
+          toast.info('Upscale queued after generate')
+        }
       } else if (result.message === 'Cancelled') {
+        discardLivePreview()
         addHistoryEntry({
           surface: 'text2image',
           status: 'cancelled',
@@ -583,9 +720,13 @@ async function handleGenerate(): Promise<void> {
           seed: seedForJob,
           configSnapshot: snapshot
         })
+      } else {
+        // No output files — drop live frames
+        discardLivePreview()
       }
     },
     onError: (msg) => {
+      discardLivePreview()
       if (msg === 'Cancelled') {
         toast.warning('Generation cancelled')
         addHistoryEntry({
@@ -609,14 +750,33 @@ async function handleGenerate(): Promise<void> {
       })
     },
     onSettled: () => {
-      stopPreviewPolling()
+      // Stop poller; only clear canvas if still on a live blob (success already swapped)
+      stopPreviewPolling({ clearFrame: isLivePreview.value || !!previewObjectUrl.value })
       progress.stop()
     }
   })
 
-  if (busy) {
+  if (busy && !opts?.quiet) {
     toast.info(`Queued · ${pendingCount.value} waiting`)
   }
+}
+
+/** Enqueue N single-image jobs with different random seeds (production variants). */
+async function queueSeedVariants(count = 4): Promise<void> {
+  if (!prompt.value.trim()) {
+    toast.error('Write a positive prompt first')
+    return
+  }
+  const n = Math.min(8, Math.max(2, Math.round(count)))
+  for (let i = 0; i < n; i++) {
+    const seed = Math.floor(Math.random() * 2_147_483_647)
+    await handleGenerate({
+      seedOverride: seed,
+      batchCountOverride: 1,
+      quiet: true
+    })
+  }
+  toast.info(`Queued ${n} seed variants`)
 }
 
 /**
@@ -626,7 +786,7 @@ async function handleCancel(): Promise<void> {
   await cancelCurrent()
   toast.warning('Cancelling current job…')
   progress.stop()
-  stopPreviewPolling()
+  discardLivePreview()
 }
 
 /**
@@ -645,6 +805,20 @@ function openGalleryImageFullscreen(filename: string): void {
   showImageViewer.value = true
 }
 
+async function savePreviewImage(): Promise<void> {
+  if (!previewImage.value || isLivePreview.value) return
+  const name = buildExportFilename({
+    originalName: currentImageFilename.value || 'image.png'
+  })
+  try {
+    await downloadUrlAs(previewImage.value, name)
+    toast.success('Download started')
+  } catch (e) {
+    console.error(e)
+    toast.error('Could not save image')
+  }
+}
+
 function openBatchGrid(): void {
   if (galleryImages.value.length > 1) {
     lastBatchSize.value = Math.max(lastBatchSize.value, Math.min(galleryImages.value.length, 16))
@@ -653,12 +827,19 @@ function openBatchGrid(): void {
 }
 
 /**
- * deletePreview() - Delete the current preview image
+ * deletePreview() - Delete the current preview image (custom confirm UI)
  */
 async function deletePreview(): Promise<void> {
   if (!currentImageFilename.value || isLivePreview.value) return
 
   const filenameToDelete = currentImageFilename.value
+  const ok = await requestConfirm({
+    title: 'Delete image',
+    message: `Delete “${filenameToDelete}”? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    danger: true
+  })
+  if (!ok) return
 
   try {
     const response = await fetch(`${getApiBase()}/api/delete`, {
@@ -727,7 +908,7 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowLeft') navigateImage(-1)
   if (e.key === 'ArrowRight') navigateImage(1)
   if (e.key === 'Delete' && previewImage.value && !isGenerating.value && !isLivePreview.value) {
-    if (confirm('Delete current image?')) deletePreview()
+    void deletePreview()
   }
 }
 
@@ -752,6 +933,46 @@ async function checkServerStatus(): Promise<void> {
   }
 }
 
+/** Apply sample / re-run prompts from session or live events (keep-alive safe). */
+function applyRestoredPromptsFromSession(opts?: { preferToast?: boolean }): void {
+  const restoredPrompt = sessionStorage.getItem('text2imagePrompt')
+  if (restoredPrompt != null) {
+    sessionStorage.removeItem('text2imagePrompt')
+    prompt.value = restoredPrompt
+    const fromOnboarding = sessionStorage.getItem('flaxeo-onboarding-sample') === '1'
+    if (fromOnboarding) {
+      sessionStorage.removeItem('flaxeo-onboarding-sample')
+      toast.info('Sample prompt ready — press Generate when your model is selected')
+    } else if (opts?.preferToast) {
+      toast.info('Prompt restored')
+    }
+    requestAnimationFrame(() => promptInput.value?.focus())
+  }
+  const restoredNegative = sessionStorage.getItem('text2imageNegativePrompt')
+  if (restoredNegative != null) {
+    sessionStorage.removeItem('text2imageNegativePrompt')
+    negativePrompt.value = restoredNegative
+  }
+}
+
+function applyStarterPromptLive(detail: { prompt: string; fromOnboarding?: boolean }): void {
+  prompt.value = detail.prompt
+  try {
+    sessionStorage.removeItem('text2imagePrompt')
+    if (detail.fromOnboarding) {
+      sessionStorage.removeItem('flaxeo-onboarding-sample')
+    }
+  } catch {
+    /* ignore */
+  }
+  if (detail.fromOnboarding) {
+    toast.info('Sample prompt ready — press Generate when your model is selected')
+  }
+  requestAnimationFrame(() => promptInput.value?.focus())
+}
+
+let unsubStarterPrompt: (() => void) | null = null
+
 onMounted(async () => {
   isMobile.value = window.innerWidth < 768
   const handleResize = () => {
@@ -764,6 +985,7 @@ onMounted(async () => {
 
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleResolutionMenuClick)
+  unsubStarterPrompt = onStarterPrompt(applyStarterPromptLive)
 
   // Check for params from Gallery
   const paramsImage = sessionStorage.getItem('text2imageParams')
@@ -775,34 +997,25 @@ onMounted(async () => {
     }, 500)
   }
 
-  // Prompt restored via "Reuse all settings" or onboarding sample CTA
-  const restoredPrompt = sessionStorage.getItem('text2imagePrompt')
-  if (restoredPrompt != null) {
-    sessionStorage.removeItem('text2imagePrompt')
-    prompt.value = restoredPrompt
-    const fromOnboarding = sessionStorage.getItem('flaxeo-onboarding-sample') === '1'
-    if (fromOnboarding) {
-      sessionStorage.removeItem('flaxeo-onboarding-sample')
-      toast.info('Sample prompt ready — press Generate when your model is selected')
-    }
-    requestAnimationFrame(() => promptInput.value?.focus())
-  }
-  const restoredNegative = sessionStorage.getItem('text2imageNegativePrompt')
-  if (restoredNegative != null) {
-    sessionStorage.removeItem('text2imageNegativePrompt')
-    negativePrompt.value = restoredNegative
-  }
+  applyRestoredPromptsFromSession()
 
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
     window.removeEventListener('keydown', handleKeydown)
     document.removeEventListener('click', handleResolutionMenuClick)
+    unsubStarterPrompt?.()
+    unsubStarterPrompt = null
     stopPreviewPolling()
     if (previewObjectUrl.value) {
       URL.revokeObjectURL(previewObjectUrl.value)
       previewObjectUrl.value = null
     }
   })
+})
+
+// keep-alive: re-apply session prompts when returning to Image
+onActivated(() => {
+  applyRestoredPromptsFromSession()
 })
 </script>
 
@@ -892,13 +1105,15 @@ onMounted(async () => {
               alt="Generated image"
             />
           </button>
+          <!-- Empty hero until a live frame or final image exists (no spinner/0:00 in canvas) -->
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
-            <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
+            <div class="flex max-w-2xl flex-col items-center px-6 text-center">
               <BrandMark size="xl" class="text-foreground" />
-              <h1 class="content-item mt-4 text-4xl font-light tracking-[-0.035em]">
-                What will you create?
-              </h1>
-              <div class="mt-5 flex flex-wrap justify-center gap-2" aria-label="Prompt ideas">
+              <div
+                v-if="!isGenerating"
+                class="mt-5 flex flex-wrap justify-center gap-2"
+                aria-label="Prompt ideas"
+              >
                 <button
                   v-for="(suggestion, index) in promptSuggestions"
                   :key="suggestion.label"
@@ -910,21 +1125,6 @@ onMounted(async () => {
                   {{ suggestion.label }}
                 </button>
               </div>
-            </div>
-            <div
-              v-else
-              class="fade-in flex flex-col items-center gap-2 text-center"
-            >
-              <Loader2 class="size-5 animate-spin text-muted-foreground" />
-              <p class="text-xs font-medium text-muted-foreground">
-                {{
-                  isLivePreview
-                    ? 'Live preview'
-                    : progress.hasSteps
-                      ? 'Generating'
-                      : progress.phaseLabel || 'Loading model'
-                }}
-              </p>
             </div>
           </div>
           <div
@@ -959,13 +1159,15 @@ onMounted(async () => {
             >
               <Trash2 class="size-4" />
             </button>
-            <a
-              :href="previewImage"
-              :download="currentImageFilename || 'image.png'"
+            <button
+              type="button"
               class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Download image"
-              ><Download class="size-4"
-            /></a>
+              aria-label="Save image"
+              @click="savePreviewImage"
+            >
+              <Download class="size-4" />
+            </button>
           </div>
         </div>
 
@@ -1029,6 +1231,7 @@ onMounted(async () => {
     <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
       <div class="mx-auto mb-2 flex w-full max-w-4xl justify-end px-1">
         <div
+          ref="advancedToolbarRef"
           class="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-background/80 p-1 shadow-sm backdrop-blur"
         >
           <button
@@ -1037,7 +1240,8 @@ onMounted(async () => {
             :class="advancedButtonClass('photomaker')"
             title="PhotoMaker"
             aria-label="Open PhotoMaker settings"
-            @click="activeTab = activeTab === 'photomaker' ? '' : 'photomaker'"
+            :aria-expanded="activeTab === 'photomaker'"
+            @click="toggleAdvancedTab('photomaker')"
           >
             <User class="size-4" />
           </button>
@@ -1047,7 +1251,8 @@ onMounted(async () => {
             :class="advancedButtonClass('controlnet')"
             title="ControlNet"
             aria-label="Open ControlNet settings"
-            @click="activeTab = activeTab === 'controlnet' ? '' : 'controlnet'"
+            :aria-expanded="activeTab === 'controlnet'"
+            @click="toggleAdvancedTab('controlnet')"
           >
             <Activity class="size-4" />
           </button>
@@ -1057,7 +1262,8 @@ onMounted(async () => {
             :class="advancedButtonClass('img2img')"
             title="Image to Image"
             aria-label="Open Image to Image settings"
-            @click="activeTab = activeTab === 'img2img' ? '' : 'img2img'"
+            :aria-expanded="activeTab === 'img2img'"
+            @click="toggleAdvancedTab('img2img')"
           >
             <Image class="size-4" />
           </button>
@@ -1067,35 +1273,23 @@ onMounted(async () => {
             :class="advancedButtonClass('kontext')"
             title="Reference (Flux)"
             aria-label="Open Reference (Flux) settings"
-            @click="activeTab = activeTab === 'kontext' ? '' : 'kontext'"
+            :aria-expanded="activeTab === 'kontext'"
+            @click="toggleAdvancedTab('kontext')"
           >
             <ImagePlus class="size-4" />
           </button>
-          <RecipeLibrary
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            surface="text2image"
-            compact
-            class="shrink-0"
-          />
-          <PromptPresetControls
-            v-model:prompt="prompt"
-            v-model:negative-prompt="negativePrompt"
-            compact
-            class="shrink-0"
-          />
         </div>
       </div>
       <div
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Prompt mode -->
-        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
+        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-sm md:px-4">
           <div role="tablist" aria-label="Prompt mode">
             <SegmentedControl
               :model-value="promptMode"
               :options="promptModeOptions"
-              size="sm"
+              size="md"
               aria-label="Prompt mode"
               @update:model-value="setPromptMode"
             />
@@ -1128,7 +1322,7 @@ onMounted(async () => {
                   ? 'Describe the image you want to generate...'
                   : 'Describe what should stay out of the image...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-[15px] leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5 md:text-[17px] md:leading-7"
               :style="{
                 minHeight: isMobile ? '72px' : '88px',
                 maxHeight: isMobile ? '160px' : '220px'
@@ -1138,7 +1332,7 @@ onMounted(async () => {
             ></textarea>
             <span
               v-if="!activePrompt || activePrompt.trim().length === 0"
-              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-[15px] leading-6 md:py-3.5"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
               aria-hidden="true"
             >{{ promptMode === 'positive' ? 'Describe the image you want to generate...' : 'Describe what should stay out of the image...' }}</span>
             <span
@@ -1268,23 +1462,23 @@ onMounted(async () => {
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Generation settings</p>
-                  <p class="mt-0.5 text-[11px] text-muted-foreground">
-                    Sampling and seed controls
+                  <p class="mt-0.5 text-xs text-muted-foreground">
+                    Sampling, batch, and seed variants
                   </p>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-xs font-medium text-muted-foreground">
                     Steps
                     <input
                       v-model.number="config.steps"
                       type="number"
                       min="1"
                       max="150"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-xs font-medium text-muted-foreground">
                     CFG
                     <input
                       v-model.number="config.cfgScale"
@@ -1292,10 +1486,10 @@ onMounted(async () => {
                       min="0"
                       max="30"
                       step="0.5"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-xs font-medium text-muted-foreground">
                     Batch
                     <input
                       v-model.number="config.batchCount"
@@ -1303,7 +1497,7 @@ onMounted(async () => {
                       min="1"
                       max="16"
                       title="Number of images per job (-b)"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                       @change="
                         configStore.updateConfig({
                           batchCount: clampBatchCount(config.batchCount)
@@ -1312,6 +1506,33 @@ onMounted(async () => {
                     />
                   </label>
                 </div>
+
+                <button
+                  type="button"
+                  class="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-border/70 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+                  :disabled="!prompt.trim()"
+                  title="Enqueue 4 jobs with different random seeds"
+                  @click="queueSeedVariants(4)"
+                >
+                  Queue 4 seed variants
+                </button>
+
+                <label
+                  v-if="supportsUpscale && models.upscale.length"
+                  class="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-foreground"
+                >
+                  <input
+                    v-model="queueUpscaleAfter"
+                    type="checkbox"
+                    class="mt-0.5 rounded border-border"
+                  />
+                  <span>
+                    Queue upscale after success
+                    <span class="mt-0.5 block text-xs text-muted-foreground">
+                      Uses first model in models/upscale
+                    </span>
+                  </span>
+                </label>
 
                 <div class="mt-3">
                   <div class="mb-1 flex items-center justify-between gap-2">
@@ -1408,7 +1629,7 @@ onMounted(async () => {
               <button
                 type="button"
                 @click="handleGenerate"
-                :disabled="promptMode !== 'positive' || !prompt.trim()"
+                :disabled="!prompt.trim()"
                 class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
                 :title="isGenerating ? 'Add to queue' : 'Generate'"
                 :aria-label="isGenerating ? 'Add to queue' : 'Generate image'"
@@ -1422,227 +1643,18 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Advanced tool modal (PhotoMaker / ControlNet / Img2Img / Kontext) -->
-    <Teleport to="body">
-      <div
-        v-if="activeTab"
-        class="aui-dialog-backdrop fade-in animate-in fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm duration-200 motion-reduce:animate-none"
-        @click.self="activeTab = ''"
-      >
-        <div
-          class="aui-dialog-surface fade-in slide-in-from-bottom-2 zoom-in-95 animate-in fill-mode-both relative max-h-[calc(100vh-2rem)] w-[28rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[24px] border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_2px_4px_rgb(0_0_0/0.06),0_24px_64px_rgb(0_0_0/0.18)] backdrop-blur-xl duration-200 motion-reduce:animate-none"
-          role="dialog"
-          aria-modal="true"
-          @click.stop
-        >
-          <header class="flex items-start justify-between px-5 pb-3 pt-5">
-            <div>
-              <h2 class="text-base font-semibold tracking-[-0.015em]">{{ advancedTabLabel }}</h2>
-              <p class="mt-1 text-xs text-muted-foreground">Configure this generation tool.</p>
-            </div>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :aria-label="`Close ${advancedTabLabel}`"
-              :title="`Close ${advancedTabLabel}`"
-              @click="activeTab = ''"
-            >
-              <X class="h-4 w-4" />
-            </button>
-          </header>
-          <div class="space-y-4 px-5 pb-5 pt-2">
-            <div v-if="activeTab === 'photomaker'" class="space-y-3">
-              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                >ID images, up to 4</span
-              >
-              <div
-                class="aui-media-strip flex flex-wrap gap-2 rounded-[18px] border border-border/60 bg-muted/25 p-2"
-              >
-                <div
-                  v-for="(img, idx) in config.photoMakerImages"
-                  :key="idx"
-                  class="group relative size-20 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-colors duration-150 hover:border-foreground/30"
-                >
-                  <img :src="getFileUrl(img)" class="h-full w-full object-cover" />
-                  <button
-                    @click="removePMImage(idx)"
-                    class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                    title="Remove image"
-                  >
-                    <X class="h-3 w-3" />
-                  </button>
-                </div>
-                <label
-                  v-if="config.photoMakerImages.length < 4"
-                  class="flex size-20 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 text-muted-foreground transition-all duration-150 hover:border-foreground/30 hover:bg-background hover:text-foreground"
-                  title="Add ID image"
-                >
-                  <Plus class="h-5 w-5" />
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    class="hidden"
-                    @change="handlePMUpload"
-                  />
-                </label>
-              </div>
-              <div>
-                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                  >Style Strength ({{ config.photoMakerStyleStrength }})</label
-                >
-                <input
-                  v-model.number="config.photoMakerStyleStrength"
-                  type="range"
-                  min="0"
-                  max="100"
-                  class="w-full accent-primary"
-                />
-              </div>
-            </div>
-            <div v-if="activeTab === 'controlnet'" class="space-y-3">
-              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                >Control image</span
-              >
-              <div
-                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
-              >
-                <img
-                  v-if="config.controlImagePath"
-                  :src="getFileUrl(config.controlImagePath)"
-                  class="h-full w-full object-cover"
-                />
-                <label
-                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
-                >
-                  <Upload v-if="!config.controlImagePath" class="h-5 w-5" />
-                  <span v-if="!config.controlImagePath" class="mt-1 text-[10px] font-semibold"
-                    >Upload</span
-                  >
-                  <input type="file" accept="image/*" class="hidden" @change="handleCNUpload" />
-                </label>
-                <button
-                  v-if="config.controlImagePath"
-                  @click.stop="clearControlNetImage"
-                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Remove control image"
-                >
-                  <X class="h-3 w-3" />
-                </button>
-              </div>
-              <div>
-                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                  >Strength ({{ config.controlNetStrength }})</label
-                >
-                <input
-                  v-model.number="config.controlNetStrength"
-                  type="range"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  class="w-full accent-primary"
-                />
-              </div>
-              <label class="flex items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5 text-xs">
-                <input v-model="config.applyCanny" type="checkbox" class="rounded border-border" />
-                Apply Canny Preprocessor
-              </label>
-            </div>
-            <div v-if="activeTab === 'img2img'" class="space-y-3">
-              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                >Initial image</span
-              >
-              <div
-                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
-              >
-                <img
-                  v-if="config.initImagePath"
-                  :src="getFileUrl(config.initImagePath)"
-                  class="h-full w-full object-cover"
-                />
-                <label
-                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
-                >
-                  <Upload v-if="!config.initImagePath" class="h-5 w-5" />
-                  <span v-if="!config.initImagePath" class="mt-1 text-[10px] font-semibold"
-                    >Upload</span
-                  >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    @change="handleInitImageUpload"
-                  />
-                </label>
-                <button
-                  v-if="config.initImagePath"
-                  @click.stop="clearInitImage"
-                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Remove init image"
-                >
-                  <X class="h-3 w-3" />
-                </button>
-              </div>
-              <div>
-                <label class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                  >Denoising Strength ({{ config.img2imgStrength }})</label
-                >
-                <input
-                  v-model.number="config.img2imgStrength"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  class="w-full accent-primary"
-                />
-                <div class="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                  <span>Original</span><span>Generated</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="activeTab === 'kontext'" class="space-y-3">
-              <span class="aui-label mb-2 block text-xs font-medium text-muted-foreground"
-                >Reference image</span
-              >
-              <div
-                class="aui-media-strip group relative size-20 overflow-hidden rounded-xl border border-border bg-muted/25 shadow-sm transition-colors duration-150 hover:border-foreground/30"
-              >
-                <img
-                  v-if="config.kontextRefImage"
-                  :src="getFileUrl(config.kontextRefImage)"
-                  class="h-full w-full object-cover"
-                />
-                <label
-                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-muted-foreground"
-                >
-                  <Upload v-if="!config.kontextRefImage" class="h-5 w-5" />
-                  <span v-if="!config.kontextRefImage" class="mt-1 text-[10px] font-semibold"
-                    >Upload</span
-                  >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    @change="handleKontextUpload"
-                  />
-                </label>
-                <button
-                  v-if="config.kontextRefImage"
-                  @click.stop="clearKontextImage"
-                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Remove reference image"
-                >
-                  <X class="h-3 w-3" />
-                </button>
-              </div>
-              <p class="text-[11px] leading-4 text-muted-foreground">
-                Use this for context-aware editing or reference-guided generation with consistent
-                styles.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AdvancedToolPanel
+      :tab="activeTab"
+      :anchor="advancedAnchor || undefined"
+      @close="closeAdvancedPanel"
+      @pm-upload="handlePMUpload"
+      @pm-remove="removePMImage"
+      @cn-upload="handleCNUpload"
+      @cn-clear="clearControlNetImage"
+      @init-upload="handleInitImageUpload"
+      @init-clear="clearInitImage"
+      @ref-upload="handleKontextUpload"
+      @ref-clear="clearKontextImage"
+    />
   </div>
 </template>

@@ -14,6 +14,7 @@ export const HELP_SECTIONS = [
   'Getting started',
   'Studio basics',
   'Power tools',
+  'Workflows',
   'Models & hardware',
   'Troubleshoot',
   'Community'
@@ -141,6 +142,142 @@ Built-ins are starting points; change anything after apply.
 |--|----------------|---------|
 | Stores | Positive / negative text | Full config snapshot + prompts |
 | Best for | Reusing wording | Reusing a whole look |
+
+## Built-in families
+
+Search in Recipes by tag:
+
+- **surface** — base color, roughness look, normal style, tileable
+- **object** / **icon** — hero props, solid-bg icons
+- **wide** / **tall** / **illustration** / **interface** — frames and mocks
+- **mood** / **batch** — multi-seed cohesive sets
+
+Map-style recipes are **looks** for iteration, not authored PBR channel bakes.
+`
+  },
+  {
+    id: 'surfaces-maps',
+    title: 'Surfaces & map looks',
+    section: 'Workflows',
+    keywords: [
+      'surface',
+      'tile',
+      'seamless',
+      'albedo',
+      'roughness',
+      'normal',
+      'material',
+      'texture',
+      '1024'
+    ],
+    body: `# Surfaces & map looks
+
+Use **Recipes** tagged \`surface\` for material-style stills.
+
+## Suggested loop
+
+1. Apply **Surface · tileable** or **Surface · base color** (usually 1024×1024).
+2. Generate; lock seed if you like the structure.
+3. Optionally **Upscale** from Gallery for 2K handoff.
+4. Open the gallery folder and drop files into your project tree.
+
+## Map-style recipes
+
+| Recipe | Intent |
+|--------|--------|
+| Base color | Flat-lit color, even lighting |
+| Roughness look | Grayscale map *style* |
+| Normal style | Technical purple/blue *look* |
+| Tileable | Edge-friendly repeating prompt |
+
+These are **prompted looks** for concepts and basing. True tangent-space normals and graph-authored maps belong in a DCC or specialist tool.
+
+## Tips
+
+- Prefer square power-of-two sizes (512 / 1024 / 2048 via resolution menu).
+- Batch or queue several seeds, then re-run winners from **History**.
+- Img2Img can refine a surface without losing overall layout.
+`
+  },
+  {
+    id: 'frames-mockups',
+    title: 'Frames & mockups',
+    section: 'Workflows',
+    keywords: [
+      'hero',
+      'banner',
+      'story',
+      'mock',
+      'interface',
+      'empty',
+      'illustration',
+      'wide',
+      'tall'
+    ],
+    body: `# Frames & mockups
+
+Recipes for presentation frames and comps — not a separate app mode.
+
+## Common picks
+
+| Recipe | Frame |
+|--------|--------|
+| Wide · hero banner | ~16:9 covers and headers |
+| Tall · story frame | ~9:16 full-bleed |
+| Square · social | 1:1 thumbs |
+| Illustration · empty state | Soft art with space |
+| Interface · mock screen | Abstract UI illustration |
+| Object · hero on ground | Single product/prop |
+| Icon · solid background | Keyable solid bg |
+
+## Loop
+
+1. Apply a frame recipe.
+2. Edit the prompt subject; keep size/steps from the recipe.
+3. Use **batch** or **Mood · multi-seed set** for a small set.
+4. History → **Re-run** the winner with a locked seed.
+
+**Interface · mock screen** is illustration for comps, not production UI widgets.
+`
+  },
+  {
+    id: 'batch-queue-workflow',
+    title: 'Batch & queue',
+    section: 'Workflows',
+    keywords: ['batch', 'queue', 'variants', 'overnight', 'seed', 'production'],
+    body: `# Batch & queue
+
+## Batch
+
+Increase **batch count** in generation settings (or apply **Mood · multi-seed set**) to produce several images in one job when the backend supports multi-output.
+
+## Queue
+
+While a job runs, **Generate** adds the next job to the queue:
+
+- Reorder waiting jobs
+- Pause the queue
+- Cancel only the current run
+
+Use this for multi-look nights: tileable surface → base color → object hero, each as its own queued job.
+
+## History
+
+**History** (command strip) stores recent jobs. **Re-run** restores settings and prompts so you can refine winners without retyping.
+
+## Variants & upscale
+
+- Generation settings → **Queue 4 seed variants** enqueues four jobs with different seeds.
+- Optional **Queue upscale after success** runs an upscale job when generation finishes (first model in \`models/upscale\`).
+- Gallery: scale icon queues upscale; **…** opens upscale options.
+
+## Viewer tools
+
+Fullscreen image viewer:
+
+- **2×2 / 3×3** — tile preview to check seams
+- **Gray** — grayscale inspection for map-style stills
+- **Copy image** / **Save** — clipboard and download
 `
   },
   {

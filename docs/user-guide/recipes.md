@@ -29,3 +29,14 @@ See also [community.md](./community.md) and `docs/schemas/recipe.schema.json`.
 |--|----------------|---------|
 | Stores | Positive / negative text | Full config snapshot + prompts |
 | Best for | Reusing wording | Reusing a whole look |
+
+## Built-in families
+
+Search in Recipes by tag:
+
+- **surface** — base color, roughness look, normal style, tileable
+- **object** / **icon** — hero props, solid-bg icons
+- **wide** / **tall** / **illustration** / **interface** — frames and mocks
+- **mood** / **batch** — multi-seed cohesive sets
+
+Map-style recipes are **looks** for iteration, not authored PBR channel bakes.

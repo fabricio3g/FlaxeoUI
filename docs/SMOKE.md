@@ -44,6 +44,15 @@ Run before tagging a release. Goal: cold install feels trustworthy.
 - [ ] Text2Image **Recipes**: apply built-in; save current; export/import JSON
 - [ ] Queue panel **?** opens Help · Queue
 
+## Polish (0.7.1)
+
+- [ ] **Try sample** / **Generate sample** fills Image prompt (even if already on Image)
+- [ ] Finish setup closes wizard (including `npm run dev`)
+- [ ] **History** float from command strip: scroll, remove, re-run, clear
+- [ ] Gallery history icon opens the same float panel (no strip)
+- [ ] Recipes vs Prompt presets: different icons; only in composer (not duplicated in quick tools)
+- [ ] Recipes list readable (larger type)
+
 ## Polish
 
 - [ ] Icon buttons: no sticky border on click

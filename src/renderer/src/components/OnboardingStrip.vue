@@ -60,8 +60,8 @@ function onItemClick(id: string): void {
     <button
       type="button"
       class="aui-icon-button inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      aria-label="Dismiss for this session"
-      title="Dismiss for this session"
+      aria-label="Dismiss getting started"
+      title="Dismiss (won't show again)"
       @click="emit('dismiss')"
     >
       <X class="size-3.5" />

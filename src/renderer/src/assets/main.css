@@ -306,6 +306,49 @@
   transform-origin: var(--reka-popper-transform-origin, center);
 }
 
+/**
+ * Scrollable modal headers: no hard border under the title.
+ * Soft gradient so content fades as it scrolls beneath the chrome.
+ *
+ * Usage:
+ *   <header class="aui-scroll-header …">
+ *     …title…
+ *     <div class="aui-scroll-header__fade" aria-hidden="true" />
+ *   </header>
+ *
+ * On popover surfaces: add class `aui-scroll-header--popover`
+ * Compact floats: add `aui-scroll-header--compact` (shorter fade)
+ */
+.aui-scroll-header {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  --aui-header-fade-from: var(--background);
+}
+
+.aui-scroll-header--popover {
+  --aui-header-fade-from: var(--popover);
+}
+
+.aui-scroll-header__fade {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 1.5rem;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    var(--aui-header-fade-from) 0%,
+    color-mix(in srgb, var(--aui-header-fade-from) 55%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.aui-scroll-header--compact .aui-scroll-header__fade {
+  height: 1rem;
+}
+
 /* Icon chrome: no sticky mouse focus ring / border on the glyph */
 .aui-icon-button {
   -webkit-app-region: no-drag;
