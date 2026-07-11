@@ -679,7 +679,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-[90rem] flex-col">
         <div
           ref="containerRef"
           class="group/canvas relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
@@ -860,7 +860,7 @@ onUnmounted(() => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-3 w-[min(100%,22rem)] self-center"
+          class="mt-2 self-center"
           loading-text="Loading model"
           :fallback-label="editMode === 'ref' ? 'Ref edit' : editMode === 'img2img' ? 'Img2Img' : 'Inpaint'"
         />

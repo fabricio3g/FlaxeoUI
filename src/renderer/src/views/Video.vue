@@ -216,13 +216,6 @@ function selectGeneratedVideo(filename: string): void {
   generatedVideo.value = getOutputUrl(filename)
 }
 
-function formatVideoEta(secs: number): string {
-  if (!Number.isFinite(secs) || secs <= 0) return '…'
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 /**
  * handleGenerate() - Generate video
  */
@@ -399,7 +392,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-[90rem] flex-col">
         <div
           class="relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-background/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(0_0_0/0.03)]"
           :class="
@@ -414,7 +407,7 @@ onUnmounted(() => {
             controls
             autoplay
             loop
-            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both h-full max-h-full max-w-full rounded-[18px] object-contain shadow-[0_8px_32px_rgb(0_0_0/0.12)] duration-200"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both h-full max-h-full w-full max-w-full rounded-2xl object-contain duration-200"
           ></video>
 
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
@@ -427,40 +420,20 @@ onUnmounted(() => {
                 Describe a scene or add a reference frame to direct the motion.
               </p>
             </div>
-            <div
-              v-else
-              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 text-center duration-200"
-            >
-              <Loader2 class="size-6 animate-spin text-muted-foreground" />
-              <div>
-                <p class="text-sm font-medium text-foreground">
-                  {{ progress.hasSteps ? 'Creating video' : 'Loading model' }}
-                </p>
-                <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-                  <template v-if="progress.hasSteps">
-                    {{ progress.label || 'Sampling…' }}
-                    · {{ progress.current }}/{{ progress.total }}
-                    <template v-if="progress.etaSeconds > 0">
-                      · ETA {{ formatVideoEta(progress.etaSeconds) }}
-                    </template>
-                    <template v-if="progress.itPerSec > 0">
-                      · {{ progress.itPerSec.toFixed(2) }} it/s
-                    </template>
-                  </template>
-                  <template v-else>
-                    Loading weights and text encoder — this can take a minute
-                  </template>
-                </p>
-              </div>
+            <div v-else class="fade-in flex flex-col items-center gap-2 text-center">
+              <Loader2 class="size-5 animate-spin text-muted-foreground" />
+              <p class="text-xs font-medium text-muted-foreground">
+                {{ progress.hasSteps ? 'Generating' : 'Loading model' }}
+              </p>
             </div>
           </div>
         </div>
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="mt-3 w-[min(100%,22rem)] self-center"
+          class="mt-2 self-center"
           loading-text="Loading model"
-          fallback-label="Video"
+          fallback-label="Generating"
         />
 
         <div v-if="generatedVideos.length > 0" class="mt-3 w-full shrink-0">

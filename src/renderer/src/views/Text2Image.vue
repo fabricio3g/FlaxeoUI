@@ -820,7 +820,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-[90rem] flex-col">
         <div
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
@@ -865,23 +865,21 @@ onMounted(async () => {
           <button
             v-else-if="previewImage"
             type="button"
-            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center rounded-[24px] bg-background p-2 duration-200 focus:outline-none md:p-4"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center p-1 duration-200 focus:outline-none md:p-2"
             title="Open image fullscreen"
             aria-label="Open generated image fullscreen"
             @click="showImageViewer = true"
           >
             <img
               :src="previewImage"
-              class="max-h-full max-w-full rounded-[18px] object-contain"
+              class="h-full max-h-full w-full max-w-full rounded-2xl object-contain"
               alt="Generated image"
             />
           </button>
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
-              <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
+            <div v-if="!isGenerating" class="flex max-w-2xl flex-col items-center px-6 text-center">
               <BrandMark size="xl" class="text-foreground" />
-              <h1
-                class="content-item mt-4 text-4xl font-light tracking-[-0.035em]"
-              >
+              <h1 class="content-item mt-4 text-4xl font-light tracking-[-0.035em]">
                 What will you create?
               </h1>
               <div class="mt-5 flex flex-wrap justify-center gap-2" aria-label="Prompt ideas">
@@ -899,47 +897,27 @@ onMounted(async () => {
             </div>
             <div
               v-else
-              class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex flex-col items-center gap-3 px-6 text-center duration-200"
+              class="fade-in flex flex-col items-center gap-2 text-center"
             >
-              <Loader2 class="size-6 animate-spin text-muted-foreground" />
-              <div>
-                <p class="text-sm font-medium text-foreground">
-                  {{
-                    isLivePreview
-                      ? 'Live preview'
-                      : progress.hasSteps
-                        ? 'Creating image'
-                        : 'Loading model'
-                  }}
-                </p>
-                <p class="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
-                  {{
-                    progress.hasSteps
-                      ? progress.label || 'Sampling…'
-                      : 'Loading weights and text encoder — this can take a minute'
-                  }}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div
-            v-if="isGenerating && previewImage && !isLivePreview"
-            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/40"
-          >
-            <div
-              class="aui-progress-chip fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3.5 py-2 text-sm duration-200"
-            >
-              <Loader2 class="size-3.5 animate-spin text-muted-foreground" />
-              <span class="text-xs font-medium text-foreground">Creating image</span>
+              <Loader2 class="size-5 animate-spin text-muted-foreground" />
+              <p class="text-xs font-medium text-muted-foreground">
+                {{
+                  isLivePreview
+                    ? 'Live preview'
+                    : progress.hasSteps
+                      ? 'Generating'
+                      : 'Loading model'
+                }}
+              </p>
             </div>
           </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
-            class="pointer-events-none absolute inset-0 flex items-center justify-between px-4"
+            class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-3"
           >
             <button
               @click="navigateImage(-1)"
-              class="aui-icon-button pointer-events-auto inline-flex size-10 items-center justify-center rounded-full border border-border/50 bg-background/75 text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-all duration-150 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground transition-all duration-150 hover:bg-background focus-visible:outline-none"
               :class="{ 'opacity-0 cursor-default': isFirstImage }"
               :disabled="isFirstImage"
             >
@@ -947,7 +925,7 @@ onMounted(async () => {
             </button>
             <button
               @click="navigateImage(1)"
-              class="aui-icon-button pointer-events-auto inline-flex size-10 items-center justify-center rounded-full border border-border/50 bg-background/75 text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-all duration-150 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground transition-all duration-150 hover:bg-background focus-visible:outline-none"
               :class="{ 'opacity-0 cursor-default': isLastImage }"
               :disabled="isLastImage"
             >
@@ -956,7 +934,7 @@ onMounted(async () => {
           </div>
           <div
             v-if="previewImage && !isLivePreview"
-            class="absolute right-3 top-3 z-10 flex gap-1 rounded-full border border-border/60 bg-background/80 p-1 opacity-0 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+            class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-full border border-border/60 bg-background/85 p-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 md:right-3 md:top-3"
           >
             <button
               @click="deletePreview"
@@ -977,9 +955,9 @@ onMounted(async () => {
 
         <GenerationProgressPill
           v-if="isGenerating"
-          class="my-3 w-[min(100%,22rem)] self-center"
+          class="my-2 self-center"
           loading-text="Loading model"
-          fallback-label="Sampling"
+          fallback-label="Generating"
           :live-preview="isLivePreview"
         />
 
