@@ -163,7 +163,15 @@ const activePrompt = computed({
   }
 })
 
+const STARTER_PROMPT =
+  'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
+
 const promptSuggestions = [
+  {
+    label: 'Starter',
+    prompt: STARTER_PROMPT,
+    starter: true
+  },
   {
     label: 'Editorial portrait',
     prompt:
@@ -172,11 +180,6 @@ const promptSuggestions = [
   {
     label: 'Product concept',
     prompt: 'Premium product concept on a sculptural pedestal, studio lighting, clean art direction'
-  },
-  {
-    label: 'Cinematic landscape',
-    prompt:
-      'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
   },
   {
     label: 'Abstract poster',
@@ -426,6 +429,16 @@ function resolveSeedForGenerate(): number {
 
 async function handleGenerate(): Promise<void> {
   if (!prompt.value.trim()) return
+
+  const model =
+    config.value.loadMode === 'standard'
+      ? config.value.standardModel
+      : config.value.diffusionModel
+  if (!model) {
+    toast.error('No model selected — open Model setup or the Model Hub')
+    return
+  }
+
   if (isAnyGenerationBusy()) {
     toastGenerationError(toast, 'Another generation is already running')
     return
@@ -789,11 +802,17 @@ onMounted(async () => {
     }, 500)
   }
 
-  // Prompt restored via "Reuse all settings" without full image re-parse
+  // Prompt restored via "Reuse all settings" or onboarding sample CTA
   const restoredPrompt = sessionStorage.getItem('text2imagePrompt')
   if (restoredPrompt != null) {
     sessionStorage.removeItem('text2imagePrompt')
     prompt.value = restoredPrompt
+    const fromOnboarding = sessionStorage.getItem('flaxeo-onboarding-sample') === '1'
+    if (fromOnboarding) {
+      sessionStorage.removeItem('flaxeo-onboarding-sample')
+      toast.info('Sample prompt ready — press Generate when your model is selected')
+    }
+    requestAnimationFrame(() => promptInput.value?.focus())
   }
   const restoredNegative = sessionStorage.getItem('text2imageNegativePrompt')
   if (restoredNegative != null) {

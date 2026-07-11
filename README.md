@@ -31,6 +31,15 @@
 
 Tested against recent `master-*` release tags of stable-diffusion.cpp (see Settings → Backend).
 
+## Getting started
+
+1. Run the app (`npm run dev` or a release install).
+2. Complete the **setup wizard**: install a backend → download a starter pack (GPU-recommended).
+3. On finish, use **Generate sample** or follow the in-app checklist: Backend · Models · First image.
+4. Optional: enable **Low VRAM** in setup if you are on a smaller GPU.
+
+Skipped the wizard? A quiet **Getting started** strip stays until the first successful image (dismissible).
+
 ## Install & run
 
 ```bash

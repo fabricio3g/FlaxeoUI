@@ -12,6 +12,7 @@ import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { initializeApi } from './services/api'
 import { useSetup } from './composables/useSetup'
 import SetupWizard from './components/SetupWizard.vue'
+import OnboardingStrip from './components/OnboardingStrip.vue'
 import { useConfigStore } from './stores/config'
 import SegmentedControl from './components/ui/SegmentedControl.vue'
 import Select from './components/ui/Select.vue'
@@ -22,6 +23,10 @@ import { useBackendCapabilities } from './composables/useBackendCapabilities'
 import { onOpenLogs } from './lib/appEvents'
 import Settings from './views/Settings.vue'
 
+const STARTER_PROMPT =
+  'Cinematic mountain landscape at dawn, low clouds, atmospheric depth, detailed composition'
+const STRIP_DISMISS_KEY = 'flaxeo-onboarding-strip-dismissed'
+
 const route = useRoute()
 const router = useRouter()
 const configStore = useConfigStore()
@@ -30,7 +35,14 @@ const { sdServerRunning, backendValid, fetchRuntimeStatus } = useRuntimeStatus()
 const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
 const { models, fetchModels } = useModels()
 const { fetchCapabilities } = useBackendCapabilities()
-const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
+const {
+  isSetupNeeded,
+  checklistComplete,
+  loadState,
+  skipForNow,
+  completeSetup,
+  reopenSetup
+} = useSetup()
 
 const showMobileConfig = ref(false)
 type WorkspaceConfigPanel = 'model' | 'generation' | 'lora' | 'embedding'
@@ -38,6 +50,13 @@ const activeConfigPanel = ref<WorkspaceConfigPanel | null>(null)
 const showFloatingLogs = ref(false)
 const showSettings = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
+const stripDismissed = ref(
+  typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STRIP_DISMISS_KEY) === '1'
+)
+
+const showOnboardingStrip = computed(
+  () => !isSetupNeeded.value && !checklistComplete.value && !stripDismissed.value
+)
 
 function toggleSidebar(): void {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -134,6 +153,54 @@ function handleBackendMode(value: string): void {
   }
 }
 
+function dismissOnboardingStrip(): void {
+  stripDismissed.value = true
+  try {
+    sessionStorage.setItem(STRIP_DISMISS_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+function queueStarterPrompt(): void {
+  try {
+    sessionStorage.setItem('text2imagePrompt', STARTER_PROMPT)
+    sessionStorage.setItem('flaxeo-onboarding-sample', '1')
+  } catch {
+    /* ignore */
+  }
+  showSettings.value = false
+  closeConfigPanel()
+  router.push({ name: 'Text2Image' })
+}
+
+function onSetupDone(payload?: { action?: 'sample' | 'hub' | 'done' }): void {
+  completeSetup()
+  const action = payload?.action || 'done'
+  if (action === 'sample') {
+    queueStarterPrompt()
+    return
+  }
+  if (action === 'hub') {
+    sessionStorage.setItem('flaxeo-open-model-hub', '1')
+    openConfigPanel('model')
+    return
+  }
+}
+
+function onStripFixBackend(): void {
+  reopenSetup()
+}
+
+function onStripFixModels(): void {
+  sessionStorage.setItem('flaxeo-open-model-hub', '1')
+  openConfigPanel('model')
+}
+
+function onStripFirstImage(): void {
+  queueStarterPrompt()
+}
+
 function handleGlobalKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
   if (showSettings.value) closeSettings()
@@ -189,6 +256,14 @@ onUnmounted(() => {
         @toggle-mobile-config="showMobileConfig = !showMobileConfig"
         @toggle-logs="showFloatingLogs = !showFloatingLogs"
         @open-setup="reopenSetup"
+      />
+
+      <OnboardingStrip
+        v-if="showOnboardingStrip"
+        @dismiss="dismissOnboardingStrip"
+        @fix-backend="onStripFixBackend"
+        @fix-models="onStripFixModels"
+        @first-image="onStripFirstImage"
       />
 
       <div class="relative flex min-h-0 flex-1 overflow-hidden">
@@ -373,6 +448,6 @@ onUnmounted(() => {
 
     <FloatingLogPanel v-model="showFloatingLogs" />
 
-    <SetupWizard v-if="isSetupNeeded" @done="completeSetup" @skip="skipForNow" />
+    <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="skipForNow" />
   </div>
 </template>

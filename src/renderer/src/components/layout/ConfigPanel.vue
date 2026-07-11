@@ -415,6 +415,14 @@ onMounted(() => {
   fetchModels()
   startRuntimeStatusPolling()
   fetchCapabilities().catch(() => undefined)
+  try {
+    if (sessionStorage.getItem('flaxeo-open-model-hub') === '1') {
+      sessionStorage.removeItem('flaxeo-open-model-hub')
+      showModelHub.value = true
+    }
+  } catch {
+    /* ignore */
+  }
 })
 
 onUnmounted(() => {

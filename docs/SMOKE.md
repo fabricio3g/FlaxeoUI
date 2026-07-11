@@ -8,13 +8,17 @@ Run before tagging a release. Goal: cold install feels trustworthy.
 - [ ] Build: `npm run typecheck && npm test && npm run lint:ci`
 - [ ] App: `npm run dev` or packaged installer
 
-## First run
+## First run / onboarding
 
 - [ ] Setup wizard opens when needed
 - [ ] Install / select backend (sd-cli present, Settings shows valid)
-- [ ] Download or confirm a Model Hub pack; required files show **On disk**
-- [ ] Finish step shows checklist (backend / models / first image)
-- [ ] Generate once in Text2Image with default pack settings
+- [ ] Model step shows a GPU-based pack recommendation (or safe SDXL default)
+- [ ] Optional **Low VRAM** checkbox applies hardware profile
+- [ ] Download or confirm a starter pack; required files show **On disk** in Hub
+- [ ] Finish step shows checklist + **Generate sample** / Start generating / Open Model Hub
+- [ ] **Generate sample** lands on Text2Image with a starter prompt
+- [ ] Skip path: onboarding strip appears until first image; dismiss works for session
+- [ ] First successful T2I completes checklist (first image ✓)
 
 ## Generation spine
 

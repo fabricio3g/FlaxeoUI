@@ -18,7 +18,7 @@ import { useConfigStore } from '@/stores/config'
 import { useBackend } from '@/composables/useBackend'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { useSetup } from '@/composables/useSetup'
-import { apiPost } from '@/services/api'
+import { apiGet, apiPost } from '@/services/api'
 import {
   hubModels,
   STARTER_PACK_IDS,
@@ -32,7 +32,7 @@ import type { Release, ReleaseAsset } from '@/composables/useBackend'
 type Step = 'welcome' | 'runtime' | 'model' | 'finish'
 
 const emit = defineEmits<{
-  done: []
+  done: [payload?: { action?: 'sample' | 'hub' | 'done' }]
   skip: []
 }>()
 
@@ -43,6 +43,8 @@ const { checklist } = useSetup()
 
 const step = ref<Step>('welcome')
 const selectedPackId = ref<string>('flux1-dev')
+const packRecommendReason = ref('')
+const optimizeLowVram = ref(false)
 const runtimePoll = ref<number | null>(null)
 const runtimeDownloading = ref(false)
 const runtimeError = ref('')
@@ -181,6 +183,9 @@ async function downloadFile(file: HubFile): Promise<void> {
 async function startModelDownload(): Promise<void> {
   modelDownloading.value = true
   configStore.applyPreset(selectedPack.value.presetId)
+  if (optimizeLowVram.value) {
+    configStore.applyLowVramProfile()
+  }
   for (const file of selectedPack.value.files) {
     if (!modelDownloading.value) return
     await downloadFile(file)
@@ -193,18 +198,49 @@ function cancelModelDownload(): void {
   modelDownloading.value = false
 }
 
-async function finish(): Promise<void> {
-  emit('done')
+async function recommendPackFromDetect(): Promise<void> {
+  try {
+    const data = await apiGet<{
+      platform?: string
+      variant?: string | null
+      note?: string | null
+    }>('/api/backend/detect')
+    const note = `${data.variant || ''} ${data.note || ''}`.toLowerCase()
+    const hasNvidia = /cuda|nvidia/.test(note)
+    // Smaller pack for non-CUDA; FLUX when NVIDIA is advertised
+    if (hasNvidia) {
+      selectedPackId.value = 'flux1-dev'
+      packRecommendReason.value = 'Recommended for NVIDIA / CUDA — best still-image quality starter'
+    } else {
+      selectedPackId.value = 'sdxl'
+      packRecommendReason.value =
+        'Recommended for your GPU — smallest starter pack (works on most cards)'
+      optimizeLowVram.value = true
+    }
+  } catch {
+    selectedPackId.value = 'sdxl'
+    packRecommendReason.value = 'Defaulting to SDXL — smallest reliable starter pack'
+    optimizeLowVram.value = true
+  }
+}
+
+function finish(action: 'sample' | 'hub' | 'done' = 'done'): void {
+  if (optimizeLowVram.value) {
+    configStore.applyLowVramProfile()
+  }
+  emit('done', { action })
 }
 
 function skip(): void {
   emit('skip')
 }
 
-function next(): void {
+async function next(): Promise<void> {
   if (step.value === 'welcome') step.value = 'runtime'
-  else if (step.value === 'runtime') step.value = 'model'
-  else if (step.value === 'model') step.value = 'finish'
+  else if (step.value === 'runtime') {
+    step.value = 'model'
+    await recommendPackFromDetect()
+  } else if (step.value === 'model') step.value = 'finish'
 }
 
 function back(): void {
@@ -218,14 +254,16 @@ onMounted(async () => {
   await loadReleases()
   if (backendValid.value) {
     step.value = 'model'
+    await recommendPackFromDetect()
   }
 })
 
-watch(backendValid, (valid) => {
+watch(backendValid, async (valid) => {
   if (valid && step.value === 'runtime' && runtimeDownloading.value) {
     stopRuntimePoll()
     runtimeDownloading.value = false
     step.value = 'model'
+    await recommendPackFromDetect()
   }
 })
 
@@ -477,7 +515,18 @@ watch(selectedRelease, (release) => {
               <p class="mt-1 text-sm text-muted-foreground">
                 Pick one pack to download now. You can always get more from the Model Hub later.
               </p>
+              <p
+                v-if="packRecommendReason"
+                class="mt-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground"
+              >
+                {{ packRecommendReason }}
+              </p>
             </div>
+
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input v-model="optimizeLowVram" type="checkbox" class="rounded" />
+              Optimize for Low VRAM (offload, stream layers, flash attention)
+            </label>
 
             <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
               <button
@@ -620,17 +669,24 @@ watch(selectedRelease, (release) => {
               <button
                 type="button"
                 class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                @click="finish"
+                @click="finish('sample')"
               >
-                Start generating
+                Generate sample
                 <ArrowRight class="h-4 w-4" />
               </button>
               <button
                 type="button"
                 class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                @click="skip"
+                @click="finish('done')"
               >
-                Open Model Hub instead
+                Start generating
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                @click="finish('hub')"
+              >
+                Open Model Hub
               </button>
             </div>
           </div>

@@ -363,6 +363,10 @@
   backdrop-filter: none;
 }
 
+.aui-onboarding-strip {
+  box-shadow: none;
+}
+
 .flaxeo-composer {
   overflow: visible;
   border: 0;
