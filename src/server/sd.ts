@@ -98,6 +98,92 @@ export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): 
   addHardwareArgsPure(args, body, prompt)
 }
 
+/** Collect LoRA base names from prompt tokens and body.loras (no extension). */
+export function collectLoraNames(body: JsonObject, prompt = ''): string[] {
+  const names = new Set<string>()
+  for (const match of prompt.matchAll(/<lora:(?:\|high_noise\|)?([^:>]+):/gi)) {
+    const name = match[1]?.trim()
+    if (name) names.add(name)
+  }
+  if (Array.isArray(body.loras)) {
+    for (const entry of body.loras) {
+      if (!entry || typeof entry !== 'object') continue
+      const raw = String((entry as { path?: string }).path || '')
+      const base = path.basename(raw).replace(/\.(gguf|safetensors|pt)$/i, '')
+      if (base) names.add(base)
+    }
+  }
+  return [...names]
+}
+
+/**
+ * Ensure each requested LoRA exists under models/loras (case-sensitive on Linux).
+ * Throws a clear Error so the UI does not surface a vague write EPIPE.
+ */
+export function assertLoraFilesPresent(ctx: AppContext, body: JsonObject, prompt = ''): void {
+  const names = collectLoraNames(body, prompt)
+  if (!names.length) return
+
+  const loraDir = path.resolve(modelDirectory(ctx, 'loras'))
+  if (!fs.existsSync(loraDir)) {
+    throw new Error(
+      `LoRA directory missing: ${loraDir}. On Linux AppImage put LoRAs under the app data models/loras folder (open Models from the sidebar).`
+    )
+  }
+
+  let onDisk: string[] = []
+  try {
+    onDisk = fs
+      .readdirSync(loraDir, { withFileTypes: true })
+      .filter((e) => e.isFile())
+      .map((e) => e.name)
+  } catch (error) {
+    throw new Error(
+      `Cannot read LoRA directory ${loraDir}: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+
+  const basenames = new Set(onDisk.map((name) => name.replace(/\.(gguf|safetensors|pt)$/i, '')))
+
+  const missing = names.filter((name) => !basenames.has(name))
+  if (!missing.length) return
+
+  // Linux-friendly: hint if only case differs
+  const lowerMap = new Map([...basenames].map((b) => [b.toLowerCase(), b] as const))
+  const caseHints = missing
+    .map((m) => {
+      const alt = lowerMap.get(m.toLowerCase())
+      return alt && alt !== m ? `"${m}" (found as "${alt}" — Linux is case-sensitive)` : null
+    })
+    .filter(Boolean)
+
+  const detail = caseHints.length
+    ? caseHints.join('; ')
+    : `Missing: ${missing.join(', ')}. Files in ${loraDir}: ${onDisk.slice(0, 12).join(', ') || '(empty)'}`
+
+  throw new Error(
+    `LoRA file not found under ${loraDir}. ${detail}. Place .safetensors/.gguf there and re-select the LoRA.`
+  )
+}
+
+/** Ensure sd-cli / sd-server is executable (Linux/AppImage extracts sometimes drop +x). */
+export function ensureBinaryExecutable(filePath: string): void {
+  if (process.platform === 'win32') return
+  try {
+    fs.accessSync(filePath, fs.constants.X_OK)
+  } catch {
+    try {
+      fs.chmodSync(filePath, 0o755)
+    } catch (error) {
+      console.warn(
+        '[Backend] Could not chmod binary:',
+        filePath,
+        error instanceof Error ? error.message : error
+      )
+    }
+  }
+}
+
 export function addPromptModelExtras(
   ctx: AppContext,
   args: string[],
@@ -106,7 +192,11 @@ export function addPromptModelExtras(
 ): void {
   const embeddingsDir = modelDirectory(ctx, 'embeddings')
   if (fs.existsSync(embeddingsDir)) args.push('--embd-dir', embeddingsDir)
-  if (prompt.includes('<lora:')) args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
+  // Prompt tokens and/or explicit loras list both need the model dir (absolute for Linux)
+  const hasLoraList = Array.isArray(body.loras) && body.loras.length > 0
+  if (prompt.includes('<lora:') || hasLoraList) {
+    args.push('--lora-model-dir', path.resolve(modelDirectory(ctx, 'loras')))
+  }
   pushArg(args, '--type', body.quantizationType)
   pushArg(args, '--tensor-type-rules', body.tensorTypeRules)
 }

@@ -86,6 +86,24 @@ export function humanizeCliError(raw: unknown): HumanizedError {
     }
   }
 
+  // Child process died mid-run; often LoRA load / OOM. EPIPE is a Node pipe symptom.
+  if (/EPIPE|write EPIPE|broken pipe/i.test(text)) {
+    return {
+      title: 'Backend process died',
+      detail:
+        'sd-cli closed while generating (often while loading a LoRA or running out of memory).',
+      hint: 'Check LoRA matches the base model, try LoRA apply mode “Immediately” or “Auto”, move the file into models/loras, or enable Low VRAM. Open Logs for the last sd-cli lines.'
+    }
+  }
+
+  if (/lora|LoRA/i.test(text) && /fail|error|not found|missing|crash|assert/i.test(text)) {
+    return {
+      title: 'LoRA load failed',
+      detail: 'A LoRA could not be applied to the current model.',
+      hint: 'Use a LoRA trained for this checkpoint family, ensure the file is under models/loras, and try apply mode Auto/Immediately if At runtime crashes.'
+    }
+  }
+
   // Strip huge stack dumps / JSON wrappers for display
   const short = text
     .replace(/\\n/g, '\n')

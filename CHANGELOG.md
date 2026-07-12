@@ -2,6 +2,14 @@
 
 All notable changes to Flaxeo Image are documented in this file.
 
+## 0.7.6 — 2026-07-12
+
+### LoRA / CLI reliability
+
+- Preflight check that LoRA files exist under `models/loras` (case-sensitive on Linux) with clear errors instead of vague `write EPIPE`
+- Pass absolute `--lora-model-dir`; ensure `sd-cli` is executable on Linux before spawn
+- Ignore console EPIPE when logging after a dead CLI process; humanize EPIPE / LoRA load failures in the UI
+
 ## 0.7.5 — 2026-07-12
 
 ### Linux packaging (AppImage / deb)

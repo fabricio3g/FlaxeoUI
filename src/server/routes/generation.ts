@@ -31,6 +31,8 @@ import {
   addModelArgs,
   addOptionalArgs,
   addPromptModelExtras,
+  assertLoraFilesPresent,
+  ensureBinaryExecutable,
   getSdCliPath,
   pushArg,
   pushModelArg
@@ -135,7 +137,9 @@ async function runCli(
     phaseLabel: phaseLabel(phase)
   }
 
-  ctx.state.cliProcess = spawnLoggedProcess(ctx, getSdCliPath(ctx), args, label, {
+  const cliPath = getSdCliPath(ctx)
+  ensureBinaryExecutable(cliPath)
+  ctx.state.cliProcess = spawnLoggedProcess(ctx, cliPath, args, label, {
     cwd: activeBackend
   })
 
@@ -425,6 +429,7 @@ function buildImageArgs(
   const batchCount = parseInt(String(body.batchCount || body.batch_count || 1), 10)
   if (batchCount > 1) args.push('-b', String(batchCount))
   addHardwareArgs(args, body, prompt)
+  assertLoraFilesPresent(ctx, body, prompt)
   addPromptModelExtras(ctx, args, body, prompt)
 
   // Multi-ref images for Kontext / Qwen Image Edit (`-r` can be repeated)
@@ -658,6 +663,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       addGenerationArgs(args, body, outputPath, { width: 1024, height: 1024, cfg: 7, multiple: 64 })
       addOptionalArgs(args, body)
       addHardwareArgs(args, body, String(body.prompt || ''))
+      assertLoraFilesPresent(ctx, body, String(body.prompt || ''))
       addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
       args.push('-v')
       const tempFiles = [fileFromUpload(req, 'initImage'), maskPath]
@@ -786,6 +792,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
       addOptionalArgs(args, body)
       addHardwareArgs(args, body, String(body.prompt || ''))
+      assertLoraFilesPresent(ctx, body, String(body.prompt || ''))
       addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
       args.push('-v')
       const tempFiles = [

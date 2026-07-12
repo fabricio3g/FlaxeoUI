@@ -229,15 +229,29 @@ export function spawnLoggedProcess(
   appendLog(ctx, `${header}\n`)
 
   const child = spawn(command, args, options)
+
+  // Avoid uncaught "Error: write EPIPE" when Electron/console pipe is closed
+  // (common after child crash during LoRA load / OOM). Still keep server logs.
+  const writeConsole = (stream: NodeJS.WriteStream, msg: string): void => {
+    try {
+      if (!stream.destroyed && stream.writable) stream.write(msg)
+    } catch {
+      /* ignore EPIPE / closed stream */
+    }
+  }
+
   child.stdout?.on('data', (data) => {
     const msg = data.toString()
-    process.stdout.write(msg)
+    writeConsole(process.stdout, msg)
     appendLog(ctx, msg)
   })
   child.stderr?.on('data', (data) => {
     const msg = data.toString()
-    process.stderr.write(msg)
+    writeConsole(process.stderr, msg)
     appendLog(ctx, msg)
+  })
+  child.on('error', (error) => {
+    appendLog(ctx, `\n[${label}] spawn error: ${errorMessage(error)}\n`)
   })
   child.on('close', (code) => {
     const ts = new Date().toISOString().split('T')[1].split('.')[0]

@@ -43,4 +43,15 @@ describe('humanizeCliError', () => {
     )
     assert.equal(result.title, 'Out of memory')
   })
+
+  it('maps write EPIPE as backend death (often LoRA/OOM)', () => {
+    const result = humanizeCliError('Error: write EPIPE')
+    assert.equal(result.title, 'Backend process died')
+    assert.match(result.hint || '', /LoRA/i)
+  })
+
+  it('maps explicit LoRA failure text', () => {
+    const result = humanizeCliError('failed to load lora anima.safetensors')
+    assert.equal(result.title, 'LoRA load failed')
+  })
 })
