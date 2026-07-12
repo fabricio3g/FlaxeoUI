@@ -376,10 +376,7 @@ function openDirectory(directory: string): void {
   void shell.openPath(directory).then((errorMessage) => {
     if (errorMessage) {
       console.error('[Main] shell.openPath failed:', errorMessage)
-      dialog.showErrorBox(
-        'Could not open folder',
-        `Path:\n${directory}\n\n${errorMessage}`
-      )
+      dialog.showErrorBox('Could not open folder', `Path:\n${directory}\n\n${errorMessage}`)
     }
   })
 }

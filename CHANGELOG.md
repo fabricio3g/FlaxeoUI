@@ -5,6 +5,7 @@ All notable changes to Flaxeo Image are documented in this file.
 ## 0.7.4 — 2026-07-11
 
 ### Linux packaging
+
 - Packaged Linux (AppImage) uses **writable** `userData/data` for models, output, temp, and backend downloads (resources mount is read-only)
 - Opening Models/Gallery/Custom folders no longer crashes the main process on mkdir failure
 - Windows packaged paths unchanged (`resources/`)

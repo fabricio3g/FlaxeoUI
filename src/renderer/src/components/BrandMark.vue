@@ -13,9 +13,7 @@ const props = withDefaults(
   }
 )
 
-const showAmbient = computed(
-  () => props.ambient ?? (props.size === 'lg' || props.size === 'xl')
-)
+const showAmbient = computed(() => props.ambient ?? (props.size === 'lg' || props.size === 'xl'))
 
 /**
  * Square field around the wordmark.
