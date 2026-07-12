@@ -4,7 +4,7 @@
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** — concepts, surface-style stills, presentation frames, edit, and video with zero cloud and minimal friction (Electron + Vue 3 + Node).
+**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** 
 
 ![Flaxeo Image Screenshot](screenshot/screenshot.png)
 
@@ -97,7 +97,7 @@ UI workspaces → Express routes → sd.ts arg builders → sd-cli / sd-server
 
 UI for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
 
-Sky image adapted from Wikimedia Commons: [Field, corn, Liechtenstein, Mountains, Alps, Vaduz, sky, clouds, landscape](https://commons.wikimedia.org/wiki/File:Field,_corn,_Liechtenstein,_Mountains,_Alps,_Vaduz,_sky,_clouds,_landscape.jpg), public domain (`PD-self`) by Wikimedia Commons user Paranoid.
+
 
 ## License
 
