@@ -1,0 +1,8 @@
+# Normalize text files to LF in the repo (matches .editorconfig + Prettier)
+* text=auto eol=lf
+
+# Explicit binary types
+*.{png,jpg,jpeg,gif,webp,ico,woff,woff2,ttf,eot} binary
+*.{exe,dll,so,dylib,node} binary
+*.{zip,7z,gz,tgz,bz2} binary
+*.{pdf,mp4,webm} binary

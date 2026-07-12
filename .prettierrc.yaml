@@ -2,4 +2,5 @@ singleQuote: true
 semi: false
 printWidth: 100
 trailingComma: none
-endOfLine: auto
+# Force LF so Windows devs and Linux CI agree (eslint-config-prettier)
+endOfLine: lf
