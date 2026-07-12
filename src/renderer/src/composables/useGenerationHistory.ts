@@ -25,6 +25,10 @@ const MAX_ENTRIES = 50
 
 const entries = ref<GenerationHistoryEntry[]>(loadEntries())
 
+function cloneSnapshot(value?: Record<string, unknown>): Record<string, unknown> | undefined {
+  return value ? JSON.parse(JSON.stringify(value)) : undefined
+}
+
 function loadEntries(): GenerationHistoryEntry[] {
   if (typeof localStorage === 'undefined') return []
   try {
@@ -71,7 +75,7 @@ export function useGenerationHistory() {
       filename: partial.filename,
       error: partial.error,
       durationMs: partial.durationMs,
-      configSnapshot: partial.configSnapshot
+      configSnapshot: cloneSnapshot(partial.configSnapshot)
     }
     entries.value = [entry, ...entries.value].slice(0, MAX_ENTRIES)
     persist()

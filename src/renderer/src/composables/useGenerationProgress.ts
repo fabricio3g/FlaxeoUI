@@ -12,6 +12,9 @@ export interface ProgressSnapshot {
   phaseLabel: string
   isActive: boolean
   hasSteps: boolean
+  stageCurrent: number
+  stageTotal: number
+  stageLabel: string
 }
 
 const current = ref(0)
@@ -24,6 +27,9 @@ const phase = ref('starting')
 const phaseLabel = ref('Starting')
 const isActive = ref(false)
 const hasSteps = ref(false)
+const stageCurrent = ref(0)
+const stageTotal = ref(0)
+const stageLabel = ref('')
 
 let eventSource: EventSource | null = null
 let startedAtMs = 0
@@ -87,6 +93,9 @@ function applyPayload(data: Record<string, unknown>): void {
   if (typeof data.phaseLabel === 'string' && data.phaseLabel) {
     phaseLabel.value = data.phaseLabel
   }
+  if (typeof data.stageCurrent === 'number') stageCurrent.value = data.stageCurrent
+  if (typeof data.stageTotal === 'number') stageTotal.value = data.stageTotal
+  if (typeof data.stageLabel === 'string') stageLabel.value = data.stageLabel
   if (typeof data.startedAt === 'number' && data.startedAt > 0) {
     startedAtMs = data.startedAt
     ensureTick()
@@ -124,6 +133,9 @@ function reset(): void {
   phaseLabel.value = 'Starting'
   emaStepMs = 0
   hasSteps.value = false
+  stageCurrent.value = 0
+  stageTotal.value = 0
+  stageLabel.value = ''
   startedAtMs = 0
 }
 
@@ -224,6 +236,9 @@ export function useGenerationProgress() {
     phaseLabel,
     isActive,
     hasSteps,
+    stageCurrent,
+    stageTotal,
+    stageLabel,
     percent,
     start,
     stop

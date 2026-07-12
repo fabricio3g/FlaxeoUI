@@ -154,6 +154,7 @@ export const API_ENDPOINTS = {
 
   // Generation
   GENERATE_CLI: '/api/generate-cli',
+  GENERATE_REGIONAL: '/api/generate-regional',
   GENERATE_SERVER: '/api/generate',
   CANCEL_CLI: '/api/cancel-cli',
   CANCEL: '/api/cancel',
