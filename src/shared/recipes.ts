@@ -69,7 +69,7 @@ export function normalizeRecipe(raw: unknown, opts?: { forceId?: string }): Flax
 
   const configSnapshot =
     o.configSnapshot && typeof o.configSnapshot === 'object' && !Array.isArray(o.configSnapshot)
-      ? { ...(o.configSnapshot as Record<string, unknown>) }
+      ? (JSON.parse(JSON.stringify(o.configSnapshot)) as Record<string, unknown>)
       : null
   if (!configSnapshot) return null
 

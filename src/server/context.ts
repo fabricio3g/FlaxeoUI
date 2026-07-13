@@ -117,6 +117,10 @@ export function createContext(): AppContext {
     logBus: new EventEmitter(),
     sdProcess: null,
     cliProcess: null,
+    cliPipelineActive: false,
+    cliPipelineOwner: null,
+    cliCancelRequested: false,
+    cancelRegionalUpload: null,
     server: null,
     networkStatus: {
       local: { enabled: true as const, url: `http://127.0.0.1:${port}` },

@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { ImageGenerationParams, ImageParamsReuseMode } from '@/lib/imageParams'
+import {
+  normalizeRegionalPromptRegions,
+  type RegionalPromptRegion
+} from '../../../shared/regionalPrompting'
 
 /**
  * GenerationConfig - All parameters for image generation
@@ -131,6 +135,10 @@ export interface GenerationConfig {
   initImagePath: string
   img2imgStrength: number
 
+  // Regional prompting (sequential inpaint)
+  regionalPromptingEnabled: boolean
+  regionalPromptRegions: RegionalPromptRegion[]
+
   // Video mode
   videoMode: boolean
 }
@@ -237,6 +245,8 @@ const defaultConfig: GenerationConfig = {
   kontextRefImage: '',
   initImagePath: '',
   img2imgStrength: 0.4,
+  regionalPromptingEnabled: false,
+  regionalPromptRegions: [],
   videoMode: false
 }
 
@@ -680,7 +690,12 @@ function cloneConfig(value: GenerationConfig): GenerationConfig {
 }
 
 function normalizeConfig(value: Partial<GenerationConfig>): GenerationConfig {
-  return { ...cloneConfig(defaultConfig), ...value }
+  return {
+    ...cloneConfig(defaultConfig),
+    ...value,
+    regionalPromptingEnabled: value.regionalPromptingEnabled === true,
+    regionalPromptRegions: normalizeRegionalPromptRegions(value.regionalPromptRegions)
+  }
 }
 
 function createPresetId(): string {
@@ -832,6 +847,10 @@ export const useConfigStore = defineStore('config', () => {
     if (Array.isArray(snapshot.loras)) {
       next.loras = snapshot.loras.map((l) => ({ ...l }))
     }
+    next.regionalPromptingEnabled = snapshot.regionalPromptingEnabled === true
+    next.regionalPromptRegions = next.regionalPromptingEnabled
+      ? normalizeRegionalPromptRegions(snapshot.regionalPromptRegions)
+      : []
     config.value = normalizeConfig({ ...config.value, ...next })
   }
 
@@ -850,6 +869,8 @@ export const useConfigStore = defineStore('config', () => {
     }
 
     const next: Partial<GenerationConfig> = {}
+    next.regionalPromptingEnabled = false
+    next.regionalPromptRegions = []
     if (params.seed != null && Number.isFinite(params.seed)) next.seed = params.seed
     if (params.steps != null && Number.isFinite(params.steps)) next.steps = params.steps
     const cfg = params.cfgScale ?? params.cfg_scale

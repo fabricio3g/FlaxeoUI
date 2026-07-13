@@ -54,6 +54,7 @@ export function useBackendCapabilities() {
   const supportsDiffusionFa = computed(() => hasFlag('--diffusion-fa'))
   const supportsFlowShift = computed(() => hasFlag('--flow-shift'))
   const supportsFps = computed(() => hasFlag('--fps'))
+  const supportsInpaint = computed(() => hasFlag('--mask'))
 
   async function fetchCapabilities(force = false): Promise<BackendCapabilities> {
     if (isRemoteBrowser()) return capabilities.value
@@ -100,6 +101,7 @@ export function useBackendCapabilities() {
     supportsDiffusionFa,
     supportsFlowShift,
     supportsFps,
+    supportsInpaint,
     fetchCapabilities
   }
 }

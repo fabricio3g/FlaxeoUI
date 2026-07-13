@@ -30,11 +30,15 @@ const {
   itPerSec,
   etaSeconds,
   elapsedSeconds,
+  stageCurrent,
+  stageTotal,
+  stageLabel,
   percent
 } = useGenerationProgress()
 const { current: currentJob, pendingCount } = useJobQueue()
 
 const statusText = computed(() => {
+  if (stageLabel.value) return stageLabel.value
   if (props.livePreview) return 'Live preview'
   if (hasSteps.value) return props.fallbackLabel
   if (phase.value && phase.value !== 'starting' && phaseLabel.value) {
@@ -95,6 +99,7 @@ const barWidth = computed(() => {
           class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs tabular-nums leading-4 text-muted-foreground"
         >
           <span v-if="hasSteps && total > 0">{{ current }}/{{ total }}</span>
+          <span v-if="stageTotal > 1">Stage {{ stageCurrent }}/{{ stageTotal }}</span>
           <span v-if="speedText">{{ speedText }}</span>
           <span>{{ elapsedText }}</span>
           <span v-if="etaText">ETA {{ etaText }}</span>
