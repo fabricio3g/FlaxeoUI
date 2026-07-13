@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { getApiBase } from '@/services/api'
+import { getApiBase, getDesktopApiToken } from '@/services/api'
 
 export interface ProgressSnapshot {
   current: number
@@ -142,10 +142,13 @@ function start(): void {
   isActive.value = true
   startedAtMs = Date.now()
   ensureTick()
-  const url = `${getApiBase()}/api/generation/progress`
+  const query = new URLSearchParams()
+  const desktopToken = getDesktopApiToken()
+  if (desktopToken) query.set('desktopToken', desktopToken)
+  const url = `${getApiBase()}/api/generation/progress${query.size ? `?${query}` : ''}`
 
   const connect = (): void => {
-    eventSource = new EventSource(url)
+    eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.addEventListener('hello', (e) => {
       try {

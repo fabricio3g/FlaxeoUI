@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, onActivated } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { apiPost, apiGet, getOutputUrl, getApiBase } from '@/services/api'
+import { apiPost, apiGet, authenticatedFetch, getOutputUrl, getApiBase } from '@/services/api'
 import {
   ArrowUp,
   Copy,
@@ -46,6 +46,7 @@ import { normalizeImageParams } from '@/lib/imageParams'
 import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import { useSetup } from '@/composables/useSetup'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 import { onStarterPrompt } from '@/lib/appEvents'
 import { requestConfirm } from '@/composables/useConfirm'
 import { buildExportFilename, downloadUrlAs } from '@/lib/mediaExport'
@@ -55,6 +56,7 @@ const { markFirstImageDone } = useSetup()
 const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
 const { models } = useModels()
 const { supportsUpscale } = useBackendCapabilities()
+const { isRemote } = useRemoteSession()
 /** When set, queue an upscale job after each successful single (or first) output */
 const queueUpscaleAfter = ref(
   typeof localStorage !== 'undefined' && localStorage.getItem('flaxeo-queue-upscale-after') === '1'
@@ -171,7 +173,7 @@ function startPreviewPolling(): void {
     try {
       const headers: HeadersInit = {}
       if (previewEtag) headers['If-None-Match'] = previewEtag
-      const response = await fetch(getPreviewImageUrl(), { headers })
+      const response = await authenticatedFetch(getPreviewImageUrl(), { headers })
       if (response.status === 304) return
       if (!response.ok) return
       const nextEtag = response.headers.get('ETag')
@@ -414,19 +416,9 @@ function handlePMUpload(event: Event) {
     for (let i = 0; i < input.files.length; i++) {
       if (config.value.photoMakerImages.length < 4) {
         const file = input.files[i]
-        // Check if we have electron path (Desktop app)
-        // @ts-ignore
-        const filePath = file.path
-
-        // If filePath exists and doesn't look like a filename only (web often gives just filename), use it
-        if (filePath && (filePath.includes('/') || filePath.includes('\\'))) {
-          config.value.photoMakerImages.push(filePath)
-        } else {
-          // Web/Mobile fallback: Use Blob URL for preview and store File for upload
-          const blobUrl = URL.createObjectURL(file)
-          config.value.photoMakerImages.push(blobUrl)
-          pmFileMap.set(blobUrl, file)
-        }
+        const blobUrl = URL.createObjectURL(file)
+        config.value.photoMakerImages.push(blobUrl)
+        pmFileMap.set(blobUrl, file)
       }
     }
   }
@@ -821,7 +813,7 @@ function openBatchGrid(): void {
  * deletePreview() - Delete the current preview image (custom confirm UI)
  */
 async function deletePreview(): Promise<void> {
-  if (!currentImageFilename.value || isLivePreview.value) return
+  if (!currentImageFilename.value || isLivePreview.value || isRemote) return
 
   const filenameToDelete = currentImageFilename.value
   const ok = await requestConfirm({
@@ -833,16 +825,9 @@ async function deletePreview(): Promise<void> {
   if (!ok) return
 
   try {
-    const response = await fetch(`${getApiBase()}/api/delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: filenameToDelete })
+    const data = await apiPost<{ filename?: string }>('/api/delete', {
+      filename: filenameToDelete
     })
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ message: 'Delete failed' }))
-      throw new Error(err.message || 'Delete failed')
-    }
-    const data = await response.json()
 
     const deletedFilename = data.filename || filenameToDelete
     const idx = galleryImages.value.indexOf(deletedFilename)
@@ -898,7 +883,13 @@ function handleKeydown(e: KeyboardEvent) {
   if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return
   if (e.key === 'ArrowLeft') navigateImage(-1)
   if (e.key === 'ArrowRight') navigateImage(1)
-  if (e.key === 'Delete' && previewImage.value && !isGenerating.value && !isLivePreview.value) {
+  if (
+    e.key === 'Delete' &&
+    !isRemote &&
+    previewImage.value &&
+    !isGenerating.value &&
+    !isLivePreview.value
+  ) {
     void deletePreview()
   }
 }
@@ -916,7 +907,9 @@ function handleResolutionMenuClick(e: MouseEvent): void {
  */
 async function checkServerStatus(): Promise<void> {
   try {
-    const response = await apiGet<{ running: boolean }>('/api/status')
+    const response = await apiGet<{ running: boolean }>(
+      isRemote ? '/api/remote/status' : '/api/status'
+    )
     // Server is online if we get a response (sd-server is running)
     serverOnline.value = response?.running === true
   } catch {
@@ -1137,6 +1130,7 @@ onActivated(() => {
             class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-full border border-border/60 bg-background/85 p-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 md:right-3 md:top-3"
           >
             <button
+              v-if="!isRemote"
               @click="deletePreview"
               class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               title="Delete image"

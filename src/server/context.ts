@@ -88,7 +88,7 @@ function loadStoragePaths(dataPath: string): ResolvedStoragePaths {
 export function createContext(): AppContext {
   const args = process.argv.slice(2)
   const port = parseInt(getArg(args, '--port', '3000'), 10)
-  const host = getArg(args, '--host', '0.0.0.0')
+  const host = '127.0.0.1'
   const resourcesPath = process.env.FLAXEO_RESOURCES_PATH || process.cwd()
   // Writable root (Linux AppImage: userData/data). Falls back to resources/cwd.
   const dataPath = process.env.FLAXEO_DATA_PATH || resourcesPath
@@ -119,19 +119,17 @@ export function createContext(): AppContext {
     cliProcess: null,
     server: null,
     networkStatus: {
-      local: { enabled: args.includes('--local'), url: null },
-      ngrok: { enabled: false, url: null, error: null },
-      cloudflare: { enabled: false, url: null, error: null }
+      local: { enabled: true as const, url: `http://127.0.0.1:${port}` },
+      lan: { enabled: false, url: null }
     },
     downloads: {},
-    ngrokListener: null,
-    cloudflareTunnel: null,
     progress: null,
     progressBus: new EventEmitter(),
     previewImageBuffer: null,
     previewTempFile: null,
     previewEtag: null,
-    convertOutputPath: null
+    convertOutputPath: null,
+    lanWebReady: false
   }
 
   return {
@@ -140,7 +138,6 @@ export function createContext(): AppContext {
     port,
     paths,
     state,
-    hasFlag: (name) => args.includes(name),
     getActiveBackendPath: () =>
       state.backendConfig.activeVersion === 'custom'
         ? paths.customDir

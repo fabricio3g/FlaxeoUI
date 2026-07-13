@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { apiGet, apiPost, getApiBase } from '@/services/api'
+import { apiGet, apiPost, getApiBase, getDesktopApiToken } from '@/services/api'
 
 const logs = ref<string[]>([])
 const total = ref(0)
@@ -18,7 +18,10 @@ function openStream(): void {
   if (eventSource) return
 
   isStreaming.value = true
-  eventSource = new EventSource(`${getApiBase()}/api/logs/stream?since=${total.value}`)
+  const desktopToken = getDesktopApiToken()
+  const query = new URLSearchParams({ since: String(total.value) })
+  if (desktopToken) query.set('desktopToken', desktopToken)
+  eventSource = new EventSource(`${getApiBase()}/api/logs/stream?${query}`)
 
   eventSource.addEventListener('hello', (event) => {
     try {

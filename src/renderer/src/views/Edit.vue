@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, onActivated, computed, nextTick, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { getOutputUrl } from '@/services/api'
+import { authenticatedFetch, getOutputUrl } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
@@ -298,7 +298,7 @@ function loadImage(src: string): void {
 
 async function useOutputImage(filename: string): Promise<void> {
   const url = getOutputUrl(filename)
-  const response = await fetch(url)
+  const response = await authenticatedFetch(url)
   const blob = await response.blob()
   baseImageFile.value = new File([blob], filename, { type: blob.type || 'image/png' })
   currentEditFilename.value = filename
@@ -637,7 +637,7 @@ function consumeGalleryHandoff(): void {
 
   sessionStorage.removeItem('editImage')
   // Create a fetch to get the file for upload
-  fetch(editImage)
+  authenticatedFetch(editImage)
     .then((res) => res.blob())
     .then((blob) => {
       baseImageFile.value = new File([blob], 'image.png', { type: 'image/png' })

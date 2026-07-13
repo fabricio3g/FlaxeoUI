@@ -2,6 +2,16 @@
 
 All notable changes to Flaxeo Image are documented in this file.
 
+## Unreleased
+
+### Security
+
+- Removed the built-in Ngrok and Cloudflare tunnel integrations and their binary dependencies.
+- Bind the desktop API to localhost only; optional LAN access uses a selected private interface, one-time QR pairing, expiring sessions, permission profiles, and either recommended HTTPS or temporary generation-only HTTP.
+- Restrict generation, upscale, model, and file-serving paths to configured storage roots with canonical path checks.
+- Updated Electron, Electron Builder, Multer, tar, and Vite to patched releases; multipart uploads now have explicit resource limits.
+- Added a configurable models root while preserving per-category folder overrides, and fixed nested/custom LoRA validation.
+
 ## 0.7.6 — 2026-07-12
 
 ### LoRA / CLI reliability

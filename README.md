@@ -23,13 +23,12 @@
 ## Disclaimer
 
 - Installers may be flagged as untrusted until they are code-signed.
-- **Local network share** is the supported way to reach the UI from other devices on the same LAN.
-- **Ngrok / Cloudflare** tunnels are experimental (token/binary required; may fail on some networks).
+- The server binds to localhost by default. Secure LAN sharing is an explicit, authenticated HTTPS option in Settings.
 - Developed primarily on Windows; Linux builds (AppImage / deb) are produced in CI.
 
 ## Prerequisites
 
-- **Node.js** 20+ (tested with v22 / v23)
+- **Node.js** 22.12+ (required by Electron 41)
 - A **stable-diffusion.cpp** build (`sd-cli` + `sd-server`) — download from the app Settings, or place binaries under `backend/custom/`
 
 Tested against recent `master-*` release tags of stable-diffusion.cpp (see Settings → Backend).
@@ -57,6 +56,16 @@ npm run dev
 ```bash
 npm start
 ```
+
+### Local network access
+
+The desktop API listens only on `127.0.0.1` by default. In **Settings → Network**, enable local network sharing, choose a private Wi-Fi or Ethernet address, select a permission profile, and pair another device with the displayed QR code.
+
+**Secure HTTPS** is recommended. Export and install the Flaxeo local CA certificate on the client device before opening the shared address, then verify the certificate fingerprint shown in Settings. Never bypass a browser certificate warning. **Quick HTTP** is an unencrypted, generation-only option for trusted home networks; it expires after 15 minutes and is disabled after restart.
+
+LAN sharing binds only to the selected RFC1918 address, never every network interface. Permission profiles separately grant generation, read-only gallery, or safe runtime and log controls. Backend installation, storage, downloads, certificates, and security settings always remain desktop-only. Disabling sharing immediately closes the listener and revokes paired sessions.
+
+For HTTPS, transfer only the exported public `.crt` file. Never transfer the private key from Flaxeo's application-data directory. Settings lists paired browsers with their IP address and last activity, and supports individual or global revocation.
 
 ### API server only (no Electron)
 

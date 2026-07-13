@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { apiGet, apiPost, getApiBase, getOutputUrl } from '@/services/api'
+import { apiGet, apiPost, getOutputUrl } from '@/services/api'
 import {
   Brush,
   Trash2,
@@ -34,6 +34,7 @@ import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import { isAnyGenerationBusy, toastGenerationError } from '@/composables/useGeneration'
 import { useJobQueue } from '@/composables/useJobQueue'
 import type { ImageGenerationParams } from '@/lib/imageParams'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 
 const router = useRouter()
 const toast = useToast()
@@ -42,6 +43,8 @@ const { models, fetchModels } = useModels()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
 const { supportsUpscale, fetchCapabilities } = useBackendCapabilities()
 const { enqueue, pendingCount } = useJobQueue()
+const { isRemote } = useRemoteSession()
+const isElectron = Boolean(window.electronAPI)
 
 // Gallery state
 const images = ref<string[]>([])
@@ -113,6 +116,7 @@ async function fetchGallery(): Promise<void> {
     if (currentPage.value > totalPages.value) currentPage.value = Math.max(totalPages.value, 1)
   } catch (e) {
     console.error('Failed to fetch gallery:', e)
+    toast.error(e instanceof Error ? e.message : 'Gallery unavailable')
     images.value = []
   } finally {
     isLoading.value = false
@@ -145,7 +149,7 @@ function handleViewMode(value: string): void {
 }
 
 async function deleteImage(): Promise<void> {
-  if (!selectedImage.value) return
+  if (!selectedImage.value || isRemote) return
 
   const ok = await requestConfirm({
     title: 'Delete image',
@@ -156,16 +160,9 @@ async function deleteImage(): Promise<void> {
   if (!ok) return
 
   try {
-    const response = await fetch(`${getApiBase()}/api/delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: selectedImage.value })
+    const data = await apiPost<{ filename: string }>('/api/delete', {
+      filename: selectedImage.value
     })
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ message: 'Delete failed' }))
-      throw new Error(err.message || 'Delete failed')
-    }
-    const data = await response.json()
     images.value = images.value.filter((img) => img !== data.filename)
     toast.success('Image deleted')
     selectedImage.value = null
@@ -400,7 +397,7 @@ function handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'ArrowLeft') navigateImage('prev')
     else if (e.key === 'ArrowRight') navigateImage('next')
     else if (e.key === 'Escape') selectedImage.value = null
-    else if (e.key === 'Delete') deleteImage()
+    else if (e.key === 'Delete' && !isRemote) deleteImage()
   }
 }
 
@@ -513,6 +510,7 @@ onUnmounted(() => {
             <Download class="size-4" />
           </button>
           <button
+            v-if="!isRemote"
             type="button"
             @click="deleteSelectedImage"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-destructive/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
@@ -641,6 +639,7 @@ onUnmounted(() => {
           </button>
 
           <button
+            v-if="isElectron"
             type="button"
             @click="openGalleryFolder"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"

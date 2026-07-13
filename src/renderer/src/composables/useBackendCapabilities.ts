@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { apiGet } from '@/services/api'
+import { apiGet, isRemoteBrowser } from '@/services/api'
 
 export interface BackendCapabilities {
   probed: boolean
@@ -56,6 +56,7 @@ export function useBackendCapabilities() {
   const supportsFps = computed(() => hasFlag('--fps'))
 
   async function fetchCapabilities(force = false): Promise<BackendCapabilities> {
+    if (isRemoteBrowser()) return capabilities.value
     if (isProbing.value) return capabilities.value
     if (capabilities.value.probed && !force) return capabilities.value
 

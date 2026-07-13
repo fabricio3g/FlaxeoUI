@@ -52,6 +52,7 @@ export function useSetup() {
    * - Never force the full wizard just because first-run flags are unset
    */
   const isSetupNeeded = computed(() => {
+    if (!window.electronAPI) return false
     if (!stateLoaded.value) return false
     if (forceSetup.value) return true
     if (setupComplete.value || skipped.value) return false

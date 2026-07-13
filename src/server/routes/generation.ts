@@ -12,6 +12,9 @@ import {
   parseStepLine,
   removeDir,
   removeFile,
+  resolveInputDirectory,
+  resolveInputFile,
+  resolveOutputFile,
   spawnLoggedProcess,
   waitForProcess
 } from '../utils'
@@ -52,8 +55,18 @@ interface UploadRequest extends Request {
   file?: Express.Multer.File
 }
 
+const UPLOAD_LIMITS = {
+  fileSize: 50 * 1024 * 1024,
+  files: 16,
+  fields: 200,
+  parts: 220,
+  fieldNameSize: 100,
+  fieldSize: 1024 * 1024
+}
+
 function uploadMiddleware(ctx: AppContext) {
   return multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (req: UploadRequest, file, cb) => {
         if (file.fieldname === 'kontextRefImage') {
@@ -271,11 +284,6 @@ function filesFromUpload(req: UploadRequest, field: string): string[] {
   return files.map((file) => file.path).filter(Boolean)
 }
 
-function resolveOutputFile(ctx: AppContext, filePath?: string): string | null {
-  if (!filePath) return null
-  return fs.existsSync(filePath) ? filePath : path.join(ctx.paths.outputDir, filePath)
-}
-
 function removeTemporaryFiles(
   dirs: Array<string | null> = [],
   files: Array<string | null | undefined> = []
@@ -380,11 +388,14 @@ function sendCliFailure(res: Response, error: unknown, fallback = 'CLI operation
 }
 
 function parseJsonArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value
+  if (Array.isArray(value))
+    return value.filter((item): item is string => typeof item === 'string' && !!item.trim())
   if (typeof value !== 'string') return []
   try {
     const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && !!item.trim())
+      : []
   } catch {
     return []
   }
@@ -399,12 +410,11 @@ function copyPhotoMakerGallery(
   const localImages = parseJsonArray(body.photoMakerImages)
   const galleryImages = parseJsonArray(body.pmGalleryImages)
   const allImages = [
-    ...localImages,
-    ...galleryImages.map((file) => path.join(ctx.paths.outputDir, file))
-  ]
+    ...localImages.map((file) => resolveInputFile(ctx, file)),
+    ...galleryImages.map((file) => resolveOutputFile(ctx, file))
+  ].filter(Boolean) as string[]
 
   for (const imgPath of allImages) {
-    if (!fs.existsSync(imgPath)) continue
     if (!pmImagesDir) {
       pmImagesDir = path.join(ctx.paths.tempDir, `pm_${Date.now()}`)
       fs.mkdirSync(pmImagesDir, { recursive: true })
@@ -442,8 +452,8 @@ function buildImageArgs(
 
   const allRefPaths = [...refUploads, ...refFromBody]
   for (const refPath of allRefPaths) {
-    const resolved = resolveOutputFile(ctx, refPath)
-    if (resolved && fs.existsSync(resolved)) args.push('-r', resolved)
+    const resolved = resolveInputFile(ctx, refPath)
+    if (resolved) args.push('-r', resolved)
   }
 
   if (asBool(body.increaseRefIndex)) args.push('--increase-ref-index')
@@ -451,8 +461,8 @@ function buildImageArgs(
 
   const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
   if (initImage) {
-    const resolved = resolveOutputFile(ctx, initImage)
-    if (resolved && fs.existsSync(resolved)) args.push('-i', resolved)
+    const resolved = resolveInputFile(ctx, initImage)
+    if (resolved) args.push('-i', resolved)
     pushArg(args, '--strength', body.img2imgStrength ?? body.strength)
   }
 
@@ -480,7 +490,8 @@ function buildImageArgs(
     if (pmImagesDir && fs.existsSync(pmImagesDir) && fs.readdirSync(pmImagesDir).length > 0)
       args.push('--pm-id-images-dir', pmImagesDir)
     pushArg(args, '--pm-style-strength', body.pmStyleStrength)
-    pushArg(args, '--pm-id-embed-path', body.pmIdEmbedsPath)
+    const pmIdEmbedsPath = resolveInputFile(ctx, body.pmIdEmbedsPath)
+    if (pmIdEmbedsPath) args.push('--pm-id-embed-path', pmIdEmbedsPath)
   }
 
   const controlNet = modelPath(ctx, 'controlnet', firstString(body.controlNet))
@@ -490,8 +501,8 @@ function buildImageArgs(
       fileFromUpload(req, 'controlNetImage') ||
       firstString(body.controlImagePath, body.controlNetImageGallery, body.controlImage)
     if (controlImage) {
-      const resolved = resolveOutputFile(ctx, controlImage)
-      if (resolved && fs.existsSync(resolved)) args.push('--control-image', resolved)
+      const resolved = resolveInputFile(ctx, controlImage)
+      if (resolved) args.push('--control-image', resolved)
     }
     pushArg(args, '--control-strength', body.controlStrength)
     if (asBool(body.applyCanny)) args.push('--canny')
@@ -628,6 +639,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   })
 
   const inpaintUpload = multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, ctx.paths.tempDir),
       filename: (_req, file, cb) => cb(null, `${file.fieldname}_${Date.now()}.png`)
@@ -644,9 +656,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
       const body = req.body || {}
       const initImg =
-        fileFromUpload(req, 'initImage') || resolveOutputFile(ctx, firstString(body.initImagePath))
-      if (!initImg || !fs.existsSync(initImg))
-        return res.status(400).json({ message: 'Init image required' })
+        fileFromUpload(req, 'initImage') || resolveInputFile(ctx, firstString(body.initImagePath))
+      if (!initImg) return res.status(400).json({ message: 'Init image required' })
 
       const filename = `inpaint_${Date.now()}.png`
       const outputPath = path.join(ctx.paths.outputDir, filename)
@@ -680,6 +691,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   )
 
   const videoUpload = multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, ctx.paths.tempDir),
       filename: (_req, _file, cb) => cb(null, `video_init_${Date.now()}.png`)
@@ -747,21 +759,22 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       const initImg =
         fileFromUpload(req, 'initImage') ||
         fileFromUpload(req, 'reference_image') ||
-        resolveOutputFile(ctx, firstString(body.initImagePath))
-      if (initImg && fs.existsSync(initImg)) args.push('-i', initImg)
+        resolveInputFile(ctx, firstString(body.initImagePath))
+      if (initImg) args.push('-i', initImg)
 
       // FLF2V end frame
       const endImg =
         fileFromUpload(req, 'endImage') ||
         fileFromUpload(req, 'end_img') ||
-        resolveOutputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
-      if (endImg && fs.existsSync(endImg)) args.push('--end-img', endImg)
+        resolveInputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
+      if (endImg) args.push('--end-img', endImg)
 
       // VACE control video: directory of frames in lexicographic order
-      const controlVideo = firstString(body.controlVideo, body.control_video, body.controlVideoPath)
-      if (controlVideo && fs.existsSync(controlVideo)) {
-        args.push('--control-video', controlVideo)
-      }
+      const controlVideo = resolveInputDirectory(
+        ctx,
+        firstString(body.controlVideo, body.control_video, body.controlVideoPath)
+      )
+      if (controlVideo) args.push('--control-video', controlVideo)
 
       addGenerationArgs(args, body, outputPath, { width: 832, height: 480, cfg: 6.0, multiple: 16 })
       args.push('--video-frames', String(body.videoFrames || body.video_frames || 33))
@@ -821,8 +834,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
 
     const sourcePath = resolveOutputFile(ctx, sourceFilename)
-    if (!sourcePath || !fs.existsSync(sourcePath))
-      return res.status(400).json({ message: 'Source image not found' })
+    if (!sourcePath) return res.status(400).json({ message: 'Source image not found' })
 
     const upscaleModelName = firstString(body.upscaleModel, body.upscale_model)
     const upscaleModel = modelPath(ctx, 'upscale', upscaleModelName)
@@ -880,9 +892,9 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       return res.status(400).json({ success: false, error: 'Invalid model filename' })
 
     const sourceDirectory = modelDirectory(ctx, String(sourceType))
-    const sourcePath = path.join(sourceDirectory, safeSourceModel)
+    const sourcePath = modelPath(ctx, String(sourceType), safeSourceModel)
     const outputPath = path.join(sourceDirectory, safeOutputName)
-    if (!fs.existsSync(sourcePath))
+    if (!sourcePath)
       return res.status(400).json({ success: false, error: 'Source model not found' })
     if (fs.existsSync(outputPath))
       return res.status(400).json({ success: false, error: 'Output file already exists' })

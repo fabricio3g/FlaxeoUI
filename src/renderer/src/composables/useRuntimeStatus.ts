@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { apiGet } from '@/services/api'
+import { apiGet, isRemoteBrowser } from '@/services/api'
 
 const sdServerRunning = ref(false)
 const backendVersion = ref('Loading...')
@@ -22,6 +22,16 @@ interface RuntimeStatusResponse {
 async function fetchRuntimeStatus(): Promise<void> {
   isRuntimeStatusLoading.value = true
   try {
+    if (isRemoteBrowser()) {
+      const remoteData = await apiGet<RuntimeStatusResponse & BackendConfigResponse>(
+        '/api/remote/status'
+      )
+      backendVersion.value = remoteData.activeVersion || 'Installed'
+      backendValid.value = remoteData.activeBackendValid === true
+      sdServerRunning.value = remoteData.running === true
+      logs.value = []
+      return
+    }
     const configData = await apiGet<BackendConfigResponse>('/api/backend/config')
     backendVersion.value = configData.activeVersion || 'Not set'
     backendValid.value = configData.activeBackendValid || false

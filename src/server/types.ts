@@ -47,9 +47,8 @@ export interface Paths {
 }
 
 export interface NetworkStatus {
-  local: { enabled: boolean; url: string | null }
-  ngrok: { enabled: boolean; url: string | null; error: string | null }
-  cloudflare: { enabled: boolean; url: string | null; error: string | null }
+  local: { enabled: true; url: string }
+  lan: { enabled: boolean; url: string | null }
 }
 
 export interface DownloadTask {
@@ -75,9 +74,6 @@ export interface RuntimeState {
   server: Server | null
   networkStatus: NetworkStatus
   downloads: Record<string, DownloadTask>
-  /** Opaque ngrok listener handle from @ngrok/ngrok */
-  ngrokListener: { url: () => string; close: () => Promise<void> } | null
-  cloudflareTunnel: ChildProcess | null
   progress: ProgressInfo | null
   progressBus: EventEmitter
   previewImageBuffer: Buffer | null
@@ -85,6 +81,7 @@ export interface RuntimeState {
   /** Weak ETag for /api/preview-image 304 responses */
   previewEtag: string | null
   convertOutputPath: string | null
+  lanWebReady: boolean
 }
 
 export interface AppContext {
@@ -95,5 +92,4 @@ export interface AppContext {
   state: RuntimeState
   getActiveBackendPath: () => string
   saveBackendConfig: () => void
-  hasFlag: (name: string) => boolean
 }

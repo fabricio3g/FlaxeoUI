@@ -9,12 +9,7 @@ esbuild
     platform: 'node',
     target: 'node18',
     outfile: 'out/server/index.js',
-    external: [
-      // Only externalize native modules that can't be bundled
-      'electron',
-      '@ngrok/ngrok',
-      'cloudflared'
-    ],
+    external: ['electron'],
     format: 'cjs',
     sourcemap: false,
     minify: true

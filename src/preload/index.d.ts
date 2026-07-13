@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
+import type { LanSharingOptions, LanSharingStatus } from '../shared/lan'
 
 /**
  * Custom Electron API type definitions
@@ -19,6 +20,12 @@ interface CustomElectronAPI {
   chooseStorageDirectory: (id: StorageDirectoryId) => Promise<StorageSettings | null>
   resetStorageDirectory: (id: StorageDirectoryId) => Promise<StorageSettings>
   openStorageDirectory: (id: StorageDirectoryId) => Promise<void>
+  getLanSharingStatus: () => Promise<LanSharingStatus>
+  setLanSharing: (enabled: boolean, options: LanSharingOptions) => Promise<LanSharingStatus>
+  rotateLanPairingCode: () => Promise<LanSharingStatus>
+  revokeLanSessions: () => Promise<LanSharingStatus>
+  revokeLanSession: (deviceId: string) => Promise<LanSharingStatus>
+  exportLanCaCertificate: () => Promise<boolean>
 
   // Settings
   getInitState: () => Promise<{
@@ -27,11 +34,11 @@ interface CustomElectronAPI {
     skipped: boolean
     port: number
     isDev: boolean
+    desktopApiToken: string
   }>
   setFirstRunComplete: () => Promise<boolean>
   reopenSetup: () => Promise<boolean>
   setSetupSkipped: () => Promise<boolean>
-  toggleLocalNetwork: (enabled: boolean) => Promise<void>
 }
 
 declare global {
