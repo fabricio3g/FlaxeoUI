@@ -46,7 +46,7 @@ describe('renderer snapshot manifests', () => {
     }
 
     const snapshot = validateRendererSnapshot(root, { expectedBuildId: 'test-build-1' })
-    assert.equal(snapshot.root, fs.realpathSync(root))
+    assert.equal(snapshot.root, fs.realpathSync.native(root))
     assert.equal(
       readRendererSnapshotAsset(snapshot, '/').toString(),
       fs.readFileSync(path.join(root, 'index.html'), 'utf8')

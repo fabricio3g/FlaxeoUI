@@ -27,20 +27,23 @@ describe('resolveStoredPath', () => {
   const roots = [outputDir, tempDir, modelDir]
 
   it('accepts output filenames and output URLs', () => {
-    assert.equal(resolveStoredPath('image one.png', outputDir, roots), fs.realpathSync(outputFile))
+    assert.equal(
+      resolveStoredPath('image one.png', outputDir, roots),
+      fs.realpathSync.native(outputFile)
+    )
     assert.equal(
       resolveStoredPath('/output/image%20one.png', outputDir, roots),
-      fs.realpathSync(outputFile)
+      fs.realpathSync.native(outputFile)
     )
     assert.equal(
       resolveStoredPath('http://localhost:3000/output/image%20one.png?cache=1', outputDir, roots),
-      fs.realpathSync(outputFile)
+      fs.realpathSync.native(outputFile)
     )
   })
 
   it('accepts absolute files only inside approved roots', () => {
-    assert.equal(resolveStoredPath(tempFile, outputDir, roots), fs.realpathSync(tempFile))
-    assert.equal(resolveStoredPath(modelFile, outputDir, roots), fs.realpathSync(modelFile))
+    assert.equal(resolveStoredPath(tempFile, outputDir, roots), fs.realpathSync.native(tempFile))
+    assert.equal(resolveStoredPath(modelFile, outputDir, roots), fs.realpathSync.native(modelFile))
     assert.equal(resolveStoredPath(outsideFile, outputDir, roots), null)
   })
 
@@ -57,7 +60,7 @@ describe('resolveStoredPath', () => {
   it('uses separate file and directory policies', () => {
     assert.equal(
       resolveStoredPath('frames', outputDir, roots, 'directory'),
-      fs.realpathSync(path.join(outputDir, 'frames'))
+      fs.realpathSync.native(path.join(outputDir, 'frames'))
     )
     assert.equal(resolveStoredPath('image one.png', outputDir, roots, 'directory'), null)
     assert.equal(resolveStoredPath(tempFile, outputDir, [outputDir]), null)
