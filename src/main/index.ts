@@ -1,7 +1,20 @@
-import { app, shell, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  type IpcMainInvokeEvent,
+  type OpenDialogOptions
+} from 'electron'
 import { dirname, isAbsolute, join } from 'path'
 import { fork, ChildProcess } from 'child_process'
+import http from 'http'
+import os from 'os'
+import { createPrivateKey, randomBytes, X509Certificate } from 'crypto'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { generate } from 'selfsigned'
 import icon from '../../resources/icon.png?asset'
 import * as fs from 'fs'
 import {
@@ -13,6 +26,17 @@ import {
   type StorageOverrides,
   type StorageSettings
 } from '../shared/storage'
+import { resolveModelStorage } from '../shared/storagePaths'
+import {
+  isLanAccessLevel,
+  isLanTransport,
+  isPrivateIpv4,
+  type LanAccessLevel,
+  type LanInterface,
+  type LanSharingOptions,
+  type LanSharingStatus,
+  type LanTransport
+} from '../shared/lan'
 
 // Fix Linux SUID sandbox helper issue (chrome-sandbox permissions)
 // This is a no-op on Windows/macOS, so it stays cross-platform safe
@@ -24,25 +48,67 @@ let mainWindow: BrowserWindow | null = null
 let serverProcess: ChildProcess | null = null
 let serverPort = 3000
 let activeStoragePaths: ResolvedStoragePaths | null = null
+const serverControlToken = randomBytes(32).toString('hex')
+const desktopApiToken = randomBytes(32).toString('hex')
+let lanTransition: Promise<void> = Promise.resolve()
+
+function queueLanTransition<T>(operation: () => Promise<T>): Promise<T> {
+  const result = lanTransition.then(operation, operation)
+  lanTransition = result.then(
+    () => undefined,
+    () => undefined
+  )
+  return result
+}
+
+function isTrustedRendererUrl(candidate: string): boolean {
+  try {
+    if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+      return new URL(candidate).origin === new URL(process.env.ELECTRON_RENDERER_URL).origin
+    }
+    const expected = pathToFileURL(join(__dirname, '../renderer/index.html')).toString()
+    return candidate.split('#')[0] === expected
+  } catch {
+    return false
+  }
+}
+
+function assertTrustedIpc(event: IpcMainInvokeEvent): void {
+  if (!event.senderFrame || !isTrustedRendererUrl(event.senderFrame.url))
+    throw new Error('Untrusted renderer')
+}
+
+interface LanPreferences {
+  enabled: boolean
+  address?: string
+  transport: LanTransport
+  accessLevel: LanAccessLevel
+}
 
 interface AppState {
   firstRun: boolean
   setupComplete: boolean
   skipped: boolean
   storage: StorageOverrides
+  lan: LanPreferences
 }
 
 const defaultAppState: AppState = {
   firstRun: true,
   setupComplete: false,
   skipped: false,
-  storage: {}
+  storage: {},
+  lan: { enabled: false, transport: 'https', accessLevel: 'generation' }
 }
 
 function sanitizeStorageOverrides(value: unknown): StorageOverrides {
   if (!value || typeof value !== 'object') return {}
 
   const candidate = value as StorageOverrides
+  const modelsRootDir =
+    typeof candidate.modelsRootDir === 'string' && isAbsolute(candidate.modelsRootDir)
+      ? candidate.modelsRootDir
+      : undefined
   const outputDir =
     typeof candidate.outputDir === 'string' && isAbsolute(candidate.outputDir)
       ? candidate.outputDir
@@ -61,6 +127,7 @@ function sanitizeStorageOverrides(value: unknown): StorageOverrides {
   }
 
   return {
+    ...(modelsRootDir ? { modelsRootDir } : {}),
     ...(outputDir ? { outputDir } : {}),
     ...(tempDir ? { tempDir } : {}),
     ...(Object.keys(modelDirs).length ? { modelDirs } : {})
@@ -90,7 +157,15 @@ function readAppState(): AppState {
           ? parsed.setupComplete
           : defaultAppState.setupComplete,
       skipped: typeof parsed.skipped === 'boolean' ? parsed.skipped : defaultAppState.skipped,
-      storage: sanitizeStorageOverrides(parsed.storage)
+      storage: sanitizeStorageOverrides(parsed.storage),
+      lan: {
+        enabled: parsed.lan?.enabled === true,
+        ...(typeof parsed.lan?.address === 'string' ? { address: parsed.lan.address } : {}),
+        transport: isLanTransport(parsed.lan?.transport) ? parsed.lan.transport : 'https',
+        accessLevel: isLanAccessLevel(parsed.lan?.accessLevel)
+          ? parsed.lan.accessLevel
+          : 'generation'
+      }
     }
   } catch (e) {
     console.error('[Main] Failed to read app state:', e)
@@ -98,15 +173,251 @@ function readAppState(): AppState {
   }
 }
 
+function getLanInterfaces(): LanInterface[] {
+  return Object.entries(os.networkInterfaces())
+    .flatMap(([name, entries]) =>
+      (entries || [])
+        .filter(
+          (entry) => entry.family === 'IPv4' && !entry.internal && isPrivateIpv4(entry.address)
+        )
+        .map((entry) => ({ name, address: entry.address }))
+    )
+    .sort((a, b) => a.name.localeCompare(b.name) || a.address.localeCompare(b.address))
+}
+
+interface LanCertificate {
+  keyPath: string
+  certPath: string
+  caCertPath: string
+  fingerprint: string
+}
+
+async function ensureLanCertificate(address: string): Promise<LanCertificate> {
+  const securityDir = join(app.getPath('userData'), 'lan-security')
+  const suffix = address.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const caKeyPath = join(securityDir, 'flaxeo-local-ca.key.pem')
+  const caCertPath = join(securityDir, 'flaxeo-local-ca.cert.pem')
+  const keyPath = join(securityDir, `lan-v2-${suffix}.key.pem`)
+  const certPath = join(securityDir, `lan-v2-${suffix}.cert.pem`)
+  fs.mkdirSync(securityDir, { recursive: true, mode: 0o700 })
+
+  let regenerateAuthority = !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)
+  if (!regenerateAuthority) {
+    try {
+      const authority = new X509Certificate(fs.readFileSync(caCertPath))
+      regenerateAuthority =
+        !authority.ca ||
+        Date.parse(authority.validTo) <= Date.now() + 24 * 60 * 60 * 1000 ||
+        !authority.checkPrivateKey(createPrivateKey(fs.readFileSync(caKeyPath)))
+    } catch {
+      regenerateAuthority = true
+    }
+  }
+
+  if (regenerateAuthority) {
+    const authority = await generate([{ name: 'commonName', value: 'Flaxeo Image Local CA' }], {
+      keyType: 'ec',
+      curve: 'P-256',
+      algorithm: 'sha256',
+      notAfterDate: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000),
+      extensions: [
+        { name: 'basicConstraints', cA: true, critical: true },
+        { name: 'keyUsage', keyCertSign: true, cRLSign: true, critical: true }
+      ]
+    })
+    fs.writeFileSync(caKeyPath, authority.private, { mode: 0o600 })
+    fs.writeFileSync(caCertPath, authority.cert, { mode: 0o644 })
+  }
+
+  let regenerate = regenerateAuthority || !fs.existsSync(keyPath) || !fs.existsSync(certPath)
+  if (!regenerate) {
+    try {
+      const certificate = new X509Certificate(fs.readFileSync(certPath))
+      const authority = new X509Certificate(fs.readFileSync(caCertPath))
+      regenerate =
+        Date.parse(certificate.validTo) <= Date.now() + 24 * 60 * 60 * 1000 ||
+        certificate.checkIP(address) !== address ||
+        !certificate.verify(authority.publicKey) ||
+        !certificate.checkPrivateKey(createPrivateKey(fs.readFileSync(keyPath)))
+    } catch {
+      regenerate = true
+    }
+  }
+
+  if (regenerate) {
+    const generated = await generate([{ name: 'commonName', value: address }], {
+      keyType: 'ec',
+      curve: 'P-256',
+      algorithm: 'sha256',
+      notAfterDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      ca: {
+        key: fs.readFileSync(caKeyPath, 'utf8'),
+        cert: fs.readFileSync(caCertPath, 'utf8')
+      },
+      extensions: [
+        { name: 'basicConstraints', cA: false },
+        { name: 'keyUsage', digitalSignature: true, keyAgreement: true },
+        { name: 'extKeyUsage', serverAuth: true },
+        { name: 'subjectAltName', altNames: [{ type: 7, ip: address }] }
+      ]
+    })
+    fs.writeFileSync(keyPath, generated.private, { mode: 0o600 })
+    fs.writeFileSync(certPath, generated.cert, { mode: 0o644 })
+  }
+
+  try {
+    fs.chmodSync(keyPath, 0o600)
+    fs.chmodSync(caKeyPath, 0o600)
+  } catch {
+    // Windows ACLs are used instead of POSIX modes.
+  }
+  const certificate = new X509Certificate(fs.readFileSync(certPath))
+  return { keyPath, certPath, caCertPath, fingerprint: certificate.fingerprint256 }
+}
+
+function requestServerControl<T>(pathName: string, body?: Record<string, unknown>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : ''
+    const request = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: pathName,
+        method: body ? 'POST' : 'GET',
+        headers: {
+          Authorization: `Bearer ${serverControlToken}`,
+          ...(body
+            ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
+            : {})
+        },
+        timeout: 5000
+      },
+      (response) => {
+        let text = ''
+        response.on('data', (chunk) => (text += chunk))
+        response.on('end', () => {
+          if (!response.statusCode || response.statusCode >= 400)
+            return reject(new Error(text || `Server control failed (${response.statusCode})`))
+          try {
+            resolve(JSON.parse(text) as T)
+          } catch (error) {
+            reject(error)
+          }
+        })
+      }
+    )
+    request.on('timeout', () => request.destroy(new Error('Server control timed out')))
+    request.on('error', reject)
+    if (data) request.write(data)
+    request.end()
+  })
+}
+
+async function getLanSharingStatus(): Promise<LanSharingStatus> {
+  const interfaces = getLanInterfaces()
+  try {
+    const status =
+      await requestServerControl<Omit<LanSharingStatus, 'interfaces'>>('/api/internal/lan')
+    return { ...status, interfaces }
+  } catch (error) {
+    const preferences = readAppState().lan
+    return {
+      enabled: false,
+      transport: preferences.transport,
+      accessLevel: preferences.accessLevel,
+      selectedAddress: preferences.address || interfaces[0]?.address || null,
+      interfaces,
+      url: null,
+      pairingCode: null,
+      pairingExpiresAt: null,
+      certificateFingerprint: null,
+      sessionCount: 0,
+      devices: [],
+      error: error instanceof Error ? error.message : String(error)
+    }
+  }
+}
+
+async function setLanSharing(
+  enabled: boolean,
+  options: LanSharingOptions
+): Promise<LanSharingStatus> {
+  const state = readAppState()
+  const interfaces = getLanInterfaces()
+  const address = options.address || state.lan.address || interfaces[0]?.address
+  const transport = isLanTransport(options.transport) ? options.transport : 'https'
+  const requestedAccessLevel = isLanAccessLevel(options.accessLevel)
+    ? options.accessLevel
+    : 'generation'
+  const accessLevel = transport === 'http' ? 'generation' : requestedAccessLevel
+  if (enabled && (!address || !interfaces.some((item) => item.address === address))) {
+    throw new Error('Select an available private Wi-Fi or Ethernet address.')
+  }
+
+  let body: Record<string, unknown> = { enabled: false, transport, accessLevel }
+  if (enabled && address) {
+    body = {
+      enabled: true,
+      address,
+      transport,
+      accessLevel
+    }
+    if (transport === 'https') {
+      const certificate = await ensureLanCertificate(address)
+      body.keyPath = certificate.keyPath
+      body.certPath = certificate.certPath
+    }
+  }
+  await requestServerControl('/api/internal/lan', body)
+  // Quick HTTP sharing is deliberately one-session-only and never auto-starts after restart.
+  writeAppState({
+    ...state,
+    lan: {
+      enabled: enabled && transport === 'https',
+      ...(address ? { address } : {}),
+      transport,
+      accessLevel
+    }
+  })
+  return getLanSharingStatus()
+}
+
+async function lanStartupEnvironment(): Promise<NodeJS.ProcessEnv> {
+  const preferences = readAppState().lan
+  const available = getLanInterfaces()
+  const address = preferences.address || available[0]?.address
+  if (!preferences.enabled || !address || !available.some((item) => item.address === address)) {
+    return { FLAXEO_LAN_ENABLED: '0' }
+  }
+  const certificate = await ensureLanCertificate(address)
+  return {
+    FLAXEO_LAN_ENABLED: '1',
+    FLAXEO_LAN_ADDRESS: address,
+    FLAXEO_LAN_TRANSPORT: preferences.transport,
+    FLAXEO_LAN_ACCESS_LEVEL: preferences.accessLevel,
+    FLAXEO_LAN_KEY_PATH: certificate.keyPath,
+    FLAXEO_LAN_CERT_PATH: certificate.certPath
+  }
+}
+
 /**
  * writeAppState() - Persists app state to disk
  */
 function writeAppState(state: AppState): void {
+  const statePath = getStateFilePath()
+  const temporaryPath = `${statePath}.tmp`
   try {
-    const statePath = getStateFilePath()
-    fs.writeFileSync(statePath, JSON.stringify(state, null, 2))
+    fs.mkdirSync(dirname(statePath), { recursive: true })
+    fs.writeFileSync(temporaryPath, JSON.stringify(state, null, 2))
+    fs.renameSync(temporaryPath, statePath)
   } catch (e) {
+    try {
+      fs.rmSync(temporaryPath, { force: true })
+    } catch {
+      // Preserve the original persistence error.
+    }
     console.error('[Main] Failed to write app state:', e)
+    throw e
   }
 }
 
@@ -129,10 +440,7 @@ function getWritableDataRoot(): string {
 
 function resolveStoragePaths(overrides: StorageOverrides): ResolvedStoragePaths {
   const dataRoot = getWritableDataRoot()
-  const modelsRootDir = join(dataRoot, 'models')
-  const modelDirs = Object.fromEntries(
-    MODEL_DIRECTORY_KEYS.map((key) => [key, overrides.modelDirs?.[key] || join(modelsRootDir, key)])
-  ) as ResolvedStoragePaths['modelDirs']
+  const { modelsRootDir, modelDirs } = resolveModelStorage(join(dataRoot, 'models'), overrides)
 
   return {
     modelsRootDir,
@@ -143,7 +451,13 @@ function resolveStoragePaths(overrides: StorageOverrides): ResolvedStoragePaths 
 }
 
 function storagePathsEqual(a: ResolvedStoragePaths | null, b: ResolvedStoragePaths): boolean {
-  if (!a || a.outputDir !== b.outputDir || a.tempDir !== b.tempDir) return false
+  if (
+    !a ||
+    a.modelsRootDir !== b.modelsRootDir ||
+    a.outputDir !== b.outputDir ||
+    a.tempDir !== b.tempDir
+  )
+    return false
   return MODEL_DIRECTORY_KEYS.every((key) => a.modelDirs[key] === b.modelDirs[key])
 }
 
@@ -158,6 +472,7 @@ function getStorageSettings(): StorageSettings {
 }
 
 function storageDirectory(settings: ResolvedStoragePaths, id: StorageDirectoryId): string {
+  if (id === 'modelsRoot') return settings.modelsRootDir
   if (id === 'output') return settings.outputDir
   if (id === 'temp') return settings.tempDir
   return settings.modelDirs[id]
@@ -167,7 +482,10 @@ function updateStorageOverride(id: StorageDirectoryId, directory?: string): Stor
   const state = readAppState()
   const storage = sanitizeStorageOverrides(state.storage)
 
-  if (id === 'output') {
+  if (id === 'modelsRoot') {
+    if (directory) storage.modelsRootDir = directory
+    else delete storage.modelsRootDir
+  } else if (id === 'output') {
     if (directory) storage.outputDir = directory
     else delete storage.outputDir
   } else if (id === 'temp') {
@@ -189,7 +507,8 @@ function updateStorageOverride(id: StorageDirectoryId, directory?: string): Stor
  * startServer() - Spawns the Express server process
  * The server handles all sd-cli interactions via API
  */
-function startServer(): Promise<number> {
+async function startServer(): Promise<number> {
+  const lanEnvironment = await lanStartupEnvironment()
   return new Promise((resolve, reject) => {
     // In dev mode: __dirname is flaxeo-vue/out/main, so go up to flaxeo-vue root
     // In production: server.js is in resourcesPath
@@ -232,7 +551,10 @@ function startServer(): Promise<number> {
       // Read-only bundle (icons, empty scaffold); writable data may differ on Linux
       FLAXEO_RESOURCES_PATH: is.dev ? join(__dirname, '../..') : process.resourcesPath,
       FLAXEO_DATA_PATH: dataRoot,
-      FLAXEO_STORAGE_PATHS: JSON.stringify(storagePaths)
+      FLAXEO_STORAGE_PATHS: JSON.stringify(storagePaths),
+      FLAXEO_CONTROL_TOKEN: serverControlToken,
+      FLAXEO_DESKTOP_TOKEN: desktopApiToken,
+      ...lanEnvironment
     }
 
     // Use fork() which is designed for Node.js processes
@@ -338,6 +660,9 @@ function createWindow(): void {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isTrustedRendererUrl(url)) event.preventDefault()
+  })
 
   // HMR for renderer base on electron-vite cli
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -403,18 +728,67 @@ ipcMain.on('open-custom-folder', () => {
 /**
  * IPC Handlers - Settings & Server Info
  */
-ipcMain.handle('get-init-state', () => {
+ipcMain.handle('get-init-state', (event) => {
+  assertTrustedIpc(event)
   const state = readAppState()
   return {
     firstRun: state.firstRun,
     setupComplete: state.setupComplete,
     skipped: state.skipped,
     port: serverPort,
-    isDev: is.dev
+    isDev: is.dev,
+    desktopApiToken
   }
 })
 
 ipcMain.handle('get-server-port', () => serverPort)
+
+ipcMain.handle('get-lan-sharing-status', (event) => {
+  assertTrustedIpc(event)
+  return getLanSharingStatus()
+})
+
+ipcMain.handle('set-lan-sharing', (event, enabled: boolean, options: LanSharingOptions) => {
+  assertTrustedIpc(event)
+  return queueLanTransition(() => setLanSharing(enabled, options))
+})
+
+ipcMain.handle('rotate-lan-pairing-code', async (event) => {
+  assertTrustedIpc(event)
+  await requestServerControl('/api/internal/lan/rotate', {})
+  return getLanSharingStatus()
+})
+
+ipcMain.handle('revoke-lan-sessions', async (event) => {
+  assertTrustedIpc(event)
+  await requestServerControl('/api/internal/lan/revoke', {})
+  return getLanSharingStatus()
+})
+
+ipcMain.handle('revoke-lan-session', async (event, deviceId: string) => {
+  assertTrustedIpc(event)
+  await requestServerControl('/api/internal/lan/revoke', { deviceId })
+  return getLanSharingStatus()
+})
+
+ipcMain.handle('export-lan-ca-certificate', async (event) => {
+  assertTrustedIpc(event)
+  const status = await getLanSharingStatus()
+  const address = status.selectedAddress || status.interfaces[0]?.address
+  if (!address) throw new Error('No private LAN interface is available.')
+  const certificate = await ensureLanCertificate(address)
+  const options = {
+    title: 'Export Flaxeo trusted certificate',
+    defaultPath: 'flaxeo-local-ca.crt',
+    filters: [{ name: 'Certificate', extensions: ['crt', 'pem'] }]
+  }
+  const result = mainWindow
+    ? await dialog.showSaveDialog(mainWindow, options)
+    : await dialog.showSaveDialog(options)
+  if (result.canceled || !result.filePath) return false
+  fs.copyFileSync(certificate.caCertPath, result.filePath)
+  return true
+})
 
 ipcMain.handle('get-storage-settings', () => getStorageSettings())
 
@@ -433,6 +807,20 @@ ipcMain.handle('choose-storage-directory', async (_event, id: string) => {
 
   try {
     fs.mkdirSync(directory, { recursive: true })
+    const resolved = fs.realpathSync.native(directory)
+    if (
+      dirname(resolved) === resolved ||
+      resolved === fs.realpathSync.native(app.getPath('home'))
+    ) {
+      throw new Error('Choose a dedicated subfolder, not a filesystem or home-directory root.')
+    }
+    if (!is.dev && resolved === fs.realpathSync.native(process.resourcesPath)) {
+      throw new Error('The application installation folder cannot be used for storage.')
+    }
+    const probe = join(resolved, `.flaxeo-write-test-${process.pid}-${Date.now()}`)
+    fs.writeFileSync(probe, 'test', { flag: 'wx' })
+    fs.rmSync(probe, { force: true })
+    return updateStorageOverride(id, resolved)
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e)
     console.error('[Main] Failed to create storage directory:', directory, e)
@@ -442,7 +830,6 @@ ipcMain.handle('choose-storage-directory', async (_event, id: string) => {
     )
     return null
   }
-  return updateStorageOverride(id, directory)
 })
 
 ipcMain.handle('reset-storage-directory', (_event, id: string) => {
@@ -471,10 +858,6 @@ ipcMain.handle('set-setup-skipped', () => {
   const state = readAppState()
   writeAppState({ ...state, skipped: true })
   return true
-})
-
-ipcMain.handle('toggle-local-network', (_event, enabled: boolean) => {
-  console.log('[Main] Toggle local network:', enabled)
 })
 
 /**

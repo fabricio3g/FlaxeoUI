@@ -19,9 +19,10 @@ export const MODEL_DIRECTORY_KEYS = [
 ] as const
 
 export type ModelDirectoryKey = (typeof MODEL_DIRECTORY_KEYS)[number]
-export type StorageDirectoryId = 'output' | 'temp' | ModelDirectoryKey
+export type StorageDirectoryId = 'modelsRoot' | 'output' | 'temp' | ModelDirectoryKey
 
 export interface StorageOverrides {
+  modelsRootDir?: string
   outputDir?: string
   tempDir?: string
   modelDirs?: Partial<Record<ModelDirectoryKey, string>>
@@ -44,5 +45,7 @@ export function isModelDirectoryKey(value: string): value is ModelDirectoryKey {
 }
 
 export function isStorageDirectoryId(value: string): value is StorageDirectoryId {
-  return value === 'output' || value === 'temp' || isModelDirectoryKey(value)
+  return (
+    value === 'modelsRoot' || value === 'output' || value === 'temp' || isModelDirectoryKey(value)
+  )
 }

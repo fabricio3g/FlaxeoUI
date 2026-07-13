@@ -8,6 +8,7 @@
   ],
   "exclude": ["src/**/*.test.ts"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "baseUrl": ".",
     "paths": {

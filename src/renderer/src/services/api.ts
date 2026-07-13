@@ -5,13 +5,15 @@
 
 // Dynamic port - will be set from Electron IPC on app init
 let serverPort = 3000
+let desktopApiToken = ''
 
 /**
  * Initialize the API with the actual server port
  * Called from App.vue after getting port from Electron IPC
  */
-export function initializeApi(port: number): void {
+export function initializeApi(port: number, token = ''): void {
   serverPort = port
+  desktopApiToken = token
   console.log('[API] Initialized with port:', port)
 }
 
@@ -19,9 +21,20 @@ export function initializeApi(port: number): void {
  * Get the current API base URL
  */
 export function getApiBase(): string {
-  // In Electron, window.location.hostname is file:// or empty, use localhost
-  const hostname = window.location.hostname || 'localhost'
-  return `http://${hostname}:${serverPort}`
+  if (!window.electronAPI && /^https?:$/.test(window.location.protocol))
+    return window.location.origin
+  return `http://localhost:${serverPort}`
+}
+
+export function getDesktopApiToken(): string {
+  return desktopApiToken
+}
+
+export function isRemoteBrowser(): boolean {
+  if (window.electronAPI) return false
+  if (window.location.protocol === 'file:') return false
+  const hostname = window.location.hostname.toLowerCase()
+  return hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '::1'
 }
 
 // Legacy export for compatibility (uses getter)
@@ -52,8 +65,18 @@ export function getFileUrl(path: string): string {
  * @param options - Fetch options
  * @returns Parsed JSON response
  */
-function errorFromResponseBody(text: string, status: number): Error {
-  if (!text) return new Error(`Request failed: ${status}`)
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+function errorFromResponseBody(text: string, status: number): ApiError {
+  if (!text) return new ApiError(`Request failed: ${status}`, status)
   try {
     const parsed = JSON.parse(text) as {
       message?: string
@@ -62,22 +85,41 @@ function errorFromResponseBody(text: string, status: number): Error {
       detail?: string
       hint?: string
     }
-    if (parsed.message) return new Error(parsed.message)
+    if (parsed.message) return new ApiError(parsed.message, status)
     if (parsed.title && parsed.detail) {
       const hint = parsed.hint ? ` ${parsed.hint}` : ''
-      return new Error(`${parsed.title}: ${parsed.detail}${hint}`)
+      return new ApiError(`${parsed.title}: ${parsed.detail}${hint}`, status)
     }
-    if (parsed.error) return new Error(String(parsed.error))
+    if (parsed.error) return new ApiError(String(parsed.error), status)
   } catch {
     // plain text body
   }
-  return new Error(text)
+  return new ApiError(text, status)
+}
+
+function notifyAuthenticationRequired(status: number): void {
+  if (status === 401 && !window.electronAPI) window.dispatchEvent(new Event('flaxeo-auth-required'))
+}
+
+export async function authenticatedFetch(
+  input: string | URL,
+  options: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(options.headers)
+  const target = new URL(String(input), window.location.href)
+  const backendOrigin = new URL(getApiBase()).origin
+  if (desktopApiToken && target.origin === backendOrigin)
+    headers.set('X-Flaxeo-Desktop-Token', desktopApiToken)
+  const response = await fetch(input, { credentials: 'include', ...options, headers })
+  notifyAuthenticationRequired(response.status)
+  return response
 }
 
 export async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${getApiBase()}${endpoint}`, {
+  const response = await authenticatedFetch(`${getApiBase()}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(desktopApiToken ? { 'X-Flaxeo-Desktop-Token': desktopApiToken } : {}),
       ...options.headers
     },
     ...options
@@ -120,7 +162,7 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
  * @returns Parsed JSON response
  */
 export async function apiPostForm<T>(endpoint: string, formData: FormData): Promise<T> {
-  const response = await fetch(`${getApiBase()}${endpoint}`, {
+  const response = await authenticatedFetch(`${getApiBase()}${endpoint}`, {
     method: 'POST',
     body: formData
   })
@@ -154,6 +196,7 @@ export const API_ENDPOINTS = {
 
   // Generation
   GENERATE_CLI: '/api/generate-cli',
+  GENERATE_REGIONAL: '/api/generate-regional',
   GENERATE_SERVER: '/api/generate',
   CANCEL_CLI: '/api/cancel-cli',
   CANCEL: '/api/cancel',
@@ -184,7 +227,5 @@ export const API_ENDPOINTS = {
   UPSCALE: '/api/upscale',
 
   // Network
-  NETWORK_STATUS: '/api/network/status',
-  NETWORK_NGROK: '/api/network/ngrok',
-  NETWORK_CLOUDFLARE: '/api/network/cloudflare'
+  NETWORK_STATUS: '/api/network/status'
 } as const

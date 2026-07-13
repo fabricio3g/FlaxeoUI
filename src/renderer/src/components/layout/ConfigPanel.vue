@@ -34,6 +34,7 @@ import ModelHubModal from '@/components/ModelHubModal.vue'
 import { useServerControls } from '@/composables/useServerControls'
 import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import { useToast } from '@/composables/useToast'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 import { cachePresets, findCachePresetId } from '@/lib/cachePresets'
 
 const configStore = useConfigStore()
@@ -79,6 +80,7 @@ const {
   fetchCapabilities
 } = useBackendCapabilities()
 const toast = useToast()
+const { isRemote, canControl } = useRemoteSession()
 const showModelHub = ref(false)
 
 function applyLowVram(): void {
@@ -428,7 +430,7 @@ onMounted(() => {
   startRuntimeStatusPolling()
   fetchCapabilities().catch(() => undefined)
   try {
-    if (sessionStorage.getItem('flaxeo-open-model-hub') === '1') {
+    if (!isRemote && sessionStorage.getItem('flaxeo-open-model-hub') === '1') {
       sessionStorage.removeItem('flaxeo-open-model-hub')
       showModelHub.value = true
     }
@@ -540,7 +542,7 @@ onUnmounted(() => {
             size="sm"
             @update:model-value="handleBackendMode"
           />
-          <div v-if="config.backendMode === 'server'" class="flex gap-2">
+          <div v-if="config.backendMode === 'server' && canControl" class="flex gap-2">
             <button
               @click="startServer"
               :disabled="sdServerRunning || isBooting || !backendValid"
@@ -992,7 +994,7 @@ onUnmounted(() => {
             />
 
             <!-- Server Controls (only in server mode) -->
-            <div v-if="config.backendMode === 'server'" class="flex gap-2">
+            <div v-if="config.backendMode === 'server' && canControl" class="flex gap-2">
               <button
                 @click="startServer"
                 :disabled="sdServerRunning || isBooting || !backendValid"
@@ -1087,6 +1089,7 @@ onUnmounted(() => {
           <div class="flex items-baseline justify-between gap-2">
             <h3 class="text-sm font-medium text-foreground">Models</h3>
             <button
+              v-if="!isRemote"
               type="button"
               class="text-xs font-medium text-primary transition-colors hover:underline"
               @click="showModelHub = true"
@@ -2322,7 +2325,10 @@ onUnmounted(() => {
         </section>
 
         <!-- LOGS (for server mode) -->
-        <section v-if="props.focus === 'all' && config.backendMode === 'server'" class="pt-3">
+        <section
+          v-if="props.focus === 'all' && config.backendMode === 'server' && canControl"
+          class="pt-3"
+        >
           <h3 class="mb-2 text-sm font-medium text-foreground">Logs</h3>
           <div
             class="h-32 overflow-y-auto rounded-xl border border-border/70 bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-foreground"

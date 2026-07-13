@@ -44,6 +44,21 @@ describe('recipes', () => {
     assert.equal(parsed!.configSnapshot.width, builtins[0].configSnapshot.width)
   })
 
+  it('deep-clones regional prompt snapshots', () => {
+    const regions = [{ id: 'region-1', x: 0, y: 0, width: 0.5, height: 1, prompt: 'cat' }]
+    const recipe = normalizeRecipe({
+      name: 'Regional',
+      surface: 'text2image',
+      tags: [],
+      configSnapshot: { regionalPromptingEnabled: true, regionalPromptRegions: regions }
+    })
+
+    assert.ok(recipe)
+    regions[0].prompt = 'changed'
+    const saved = recipe.configSnapshot.regionalPromptRegions as typeof regions
+    assert.equal(saved[0].prompt, 'cat')
+  })
+
   it('parseRecipeJson handles bad input', () => {
     assert.equal(parseRecipeJson('{'), null)
     assert.equal(parseRecipeJson('[]'), null)

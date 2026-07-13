@@ -1,6 +1,7 @@
 /**
  * Gallery / viewer export helpers (clipboard + download naming).
  */
+import { authenticatedFetch } from '@/services/api'
 
 /** Safe filename segment from prompt or basename */
 export function slugFromPrompt(text: string, max = 40): string {
@@ -60,7 +61,7 @@ export async function downloadUrlAs(url: string, filename: string): Promise<void
     return
   }
 
-  const response = await fetch(url)
+  const response = await authenticatedFetch(url)
   if (!response.ok) {
     throw new Error(`Failed to download image (${response.status})`)
   }
@@ -79,7 +80,7 @@ export async function copyImageUrlToClipboard(url: string): Promise<void> {
   if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
     throw new Error('Clipboard images are not supported in this environment')
   }
-  const response = await fetch(url)
+  const response = await authenticatedFetch(url)
   if (!response.ok) throw new Error('Failed to load image for clipboard')
   let blob = await response.blob()
   // Clipboard often wants image/png

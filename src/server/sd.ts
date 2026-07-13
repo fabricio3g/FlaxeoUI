@@ -8,6 +8,7 @@ import {
   addOptionalArgs as addOptionalArgsPure,
   pushArg as pushArgPure
 } from '../shared/sdArgHelpers'
+import { listLoraFiles, loraLookupNames, normalizeLoraName } from '../shared/loraFiles'
 
 export function getSdCliPath(ctx: AppContext): string {
   return getBackendBinaryPath(ctx, 'sd-cli')
@@ -102,22 +103,21 @@ export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): 
 export function collectLoraNames(body: JsonObject, prompt = ''): string[] {
   const names = new Set<string>()
   for (const match of prompt.matchAll(/<lora:(?:\|high_noise\|)?([^:>]+):/gi)) {
-    const name = match[1]?.trim()
+    const name = normalizeLoraName(match[1] || '')
     if (name) names.add(name)
   }
   if (Array.isArray(body.loras)) {
     for (const entry of body.loras) {
       if (!entry || typeof entry !== 'object') continue
-      const raw = String((entry as { path?: string }).path || '')
-      const base = path.basename(raw).replace(/\.(gguf|safetensors|pt)$/i, '')
-      if (base) names.add(base)
+      const name = normalizeLoraName(String((entry as { path?: string }).path || ''))
+      if (name) names.add(name)
     }
   }
   return [...names]
 }
 
 /**
- * Ensure each requested LoRA exists under models/loras (case-sensitive on Linux).
+ * Ensure each requested LoRA exists under the configured LoRA directory.
  * Throws a clear Error so the UI does not surface a vague write EPIPE.
  */
 export function assertLoraFilesPresent(ctx: AppContext, body: JsonObject, prompt = ''): void {
@@ -127,23 +127,20 @@ export function assertLoraFilesPresent(ctx: AppContext, body: JsonObject, prompt
   const loraDir = path.resolve(modelDirectory(ctx, 'loras'))
   if (!fs.existsSync(loraDir)) {
     throw new Error(
-      `LoRA directory missing: ${loraDir}. On Linux AppImage put LoRAs under the app data models/loras folder (open Models from the sidebar).`
+      `LoRA directory missing: ${loraDir}. Choose or create the LoRA folder in Settings > Storage.`
     )
   }
 
   let onDisk: string[] = []
   try {
-    onDisk = fs
-      .readdirSync(loraDir, { withFileTypes: true })
-      .filter((e) => e.isFile())
-      .map((e) => e.name)
+    onDisk = listLoraFiles(loraDir)
   } catch (error) {
     throw new Error(
       `Cannot read LoRA directory ${loraDir}: ${error instanceof Error ? error.message : String(error)}`
     )
   }
 
-  const basenames = new Set(onDisk.map((name) => name.replace(/\.(gguf|safetensors|pt)$/i, '')))
+  const basenames = loraLookupNames(onDisk)
 
   const missing = names.filter((name) => !basenames.has(name))
   if (!missing.length) return
@@ -162,7 +159,7 @@ export function assertLoraFilesPresent(ctx: AppContext, body: JsonObject, prompt
     : `Missing: ${missing.join(', ')}. Files in ${loraDir}: ${onDisk.slice(0, 12).join(', ') || '(empty)'}`
 
   throw new Error(
-    `LoRA file not found under ${loraDir}. ${detail}. Place .safetensors/.gguf there and re-select the LoRA.`
+    `LoRA file not found under ${loraDir}. ${detail}. Add the file to the configured LoRA folder and re-select it.`
   )
 }
 

@@ -27,15 +27,20 @@ for (const dir of dirsToProcess) {
 // This ensures they are present in the build even if missing locally
 const modelSubdirs = [
   'diffusion',
+  'uncond_diffusion',
   'vae',
+  'audio_vae',
   'llm',
+  'llm_vision',
   't5xxl',
+  'embeddings_connectors',
   'clip',
   'clip_vision',
   'loras',
   'controlnet',
   'photomaker',
   'upscale',
+  'hires_upscalers',
   'taesd',
   'embeddings'
 ]

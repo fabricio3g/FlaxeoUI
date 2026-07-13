@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
+import type { LanSharingOptions, LanSharingStatus } from '../shared/lan'
 
 /**
  * Custom Electron API exposed to the renderer process
@@ -27,6 +28,16 @@ const api = {
     ipcRenderer.invoke('reset-storage-directory', id),
   openStorageDirectory: (id: StorageDirectoryId): Promise<void> =>
     ipcRenderer.invoke('open-storage-directory', id),
+  getLanSharingStatus: (): Promise<LanSharingStatus> =>
+    ipcRenderer.invoke('get-lan-sharing-status'),
+  setLanSharing: (enabled: boolean, options: LanSharingOptions): Promise<LanSharingStatus> =>
+    ipcRenderer.invoke('set-lan-sharing', enabled, options),
+  rotateLanPairingCode: (): Promise<LanSharingStatus> =>
+    ipcRenderer.invoke('rotate-lan-pairing-code'),
+  revokeLanSessions: (): Promise<LanSharingStatus> => ipcRenderer.invoke('revoke-lan-sessions'),
+  revokeLanSession: (deviceId: string): Promise<LanSharingStatus> =>
+    ipcRenderer.invoke('revoke-lan-session', deviceId),
+  exportLanCaCertificate: (): Promise<boolean> => ipcRenderer.invoke('export-lan-ca-certificate'),
 
   /**
    * Settings & State
@@ -37,12 +48,11 @@ const api = {
     skipped: boolean
     port: number
     isDev: boolean
+    desktopApiToken: string
   }> => ipcRenderer.invoke('get-init-state'),
   setFirstRunComplete: (): Promise<boolean> => ipcRenderer.invoke('set-first-run-complete'),
   reopenSetup: (): Promise<boolean> => ipcRenderer.invoke('reopen-setup'),
-  setSetupSkipped: (): Promise<boolean> => ipcRenderer.invoke('set-setup-skipped'),
-  toggleLocalNetwork: (enabled: boolean): Promise<void> =>
-    ipcRenderer.invoke('toggle-local-network', enabled)
+  setSetupSkipped: (): Promise<boolean> => ipcRenderer.invoke('set-setup-skipped')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to renderer

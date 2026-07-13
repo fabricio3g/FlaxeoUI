@@ -2,13 +2,21 @@ import fs from 'fs'
 import path from 'path'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { appendLog, errorMessage, modelDirectory, spawnLoggedProcess } from '../utils'
+import {
+  appendLog,
+  errorMessage,
+  firstString,
+  modelDirectory,
+  modelPath,
+  spawnLoggedProcess
+} from '../utils'
 import { MODEL_DIRECTORY_KEYS } from '../../shared/storage'
 import {
   addHardwareArgs,
   addModelArgs,
   addOptionalArgs,
   addPromptModelExtras,
+  getSdCliPath,
   getSdServerPath,
   pushArg
 } from '../sd'
@@ -156,10 +164,10 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     addPromptModelExtras(ctx, args, body)
     if (body.vaeTileSize && Number(body.vaeTileSize) > 0)
       pushArg(args, '--vae-tile-size', body.vaeTileSize)
-    if (body.controlNet)
-      pushArg(args, '--control-net', path.join(modelDirectory(ctx, 'controlnet'), body.controlNet))
-    if (body.photoMaker)
-      pushArg(args, '--photo-maker', path.join(modelDirectory(ctx, 'photomaker'), body.photoMaker))
+    const controlNet = modelPath(ctx, 'controlnet', firstString(body.controlNet))
+    if (controlNet) args.push('--control-net', controlNet)
+    const photoMaker = modelPath(ctx, 'photomaker', firstString(body.photoMaker))
+    if (photoMaker) args.push('--photo-maker', photoMaker)
     pushArg(args, '--steps', body.defaultSteps)
     pushArg(args, '--cfg-scale', body.defaultCfg)
 
@@ -194,6 +202,14 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
       logs: all.slice(-STATUS_LOG_TAIL),
       logTotal: all.length,
       logTail: STATUS_LOG_TAIL
+    })
+  })
+
+  app.get('/api/remote/status', (_req, res) => {
+    res.json({
+      running: !!ctx.state.sdProcess,
+      activeVersion: ctx.state.backendConfig.activeVersion,
+      activeBackendValid: fs.existsSync(getSdCliPath(ctx))
     })
   })
 

@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue'
 import { apiPost } from '@/services/api'
 import { requestOpenLogs } from '@/lib/appEvents'
 import type { useToast } from '@/composables/useToast'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 
 export type GenerationSurface = 'text2image' | 'edit' | 'video' | 'upscale'
 
@@ -57,13 +58,19 @@ export function toastGenerationError(
   fallback = 'Generation failed'
 ): void {
   const message = err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
-  toast.error(message, {
-    duration: 8000,
-    action: {
-      label: 'Open logs',
-      onClick: () => requestOpenLogs()
-    }
-  })
+  const { canControl } = useRemoteSession()
+  toast.error(
+    message,
+    canControl.value
+      ? {
+          duration: 8000,
+          action: {
+            label: 'Open logs',
+            onClick: () => requestOpenLogs()
+          }
+        }
+      : { duration: 8000 }
+  )
 }
 
 /**

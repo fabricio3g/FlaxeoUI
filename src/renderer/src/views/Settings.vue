@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, type Component } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, type Component } from 'vue'
+import { renderSVG } from 'uqr'
 import { apiGet, apiPost } from '@/services/api'
 import {
   Activity,
@@ -22,15 +23,19 @@ import {
   type StorageDirectoryId,
   type StorageSettings
 } from '../../../shared/storage'
+import type { LanAccessLevel, LanSharingStatus, LanTransport } from '../../../shared/lan'
+import { setRemoteAccessLevel, useRemoteSession } from '@/composables/useRemoteSession'
 
 const { reopenSetup } = useSetup()
 const { themePreference, setTheme } = useTheme()
 const { fetchCapabilities } = useBackendCapabilities()
+const { isRemote, accessLevel } = useRemoteSession()
 
 type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
 
-const activeCategory = ref<SettingsCategory>('backend')
-const settingsCategories: Array<{
+const desktopSettingsAvailable = Boolean(window.electronAPI)
+const activeCategory = ref<SettingsCategory>(desktopSettingsAvailable ? 'backend' : 'appearance')
+const allSettingsCategories: Array<{
   id: SettingsCategory
   label: string
   description: string
@@ -51,7 +56,7 @@ const settingsCategories: Array<{
   {
     id: 'network',
     label: 'Network',
-    description: 'Control local and public access to the server.',
+    description: 'Control encrypted and authenticated access from your local network.',
     icon: Activity
   },
   {
@@ -67,9 +72,14 @@ const settingsCategories: Array<{
     icon: Sun
   }
 ]
+const settingsCategories = computed(() =>
+  desktopSettingsAvailable
+    ? allSettingsCategories
+    : allSettingsCategories.filter((category) => category.id === 'appearance')
+)
 
 const activeCategoryDetails = computed(
-  () => settingsCategories.find((category) => category.id === activeCategory.value)!
+  () => settingsCategories.value.find((category) => category.id === activeCategory.value)!
 )
 
 const themeOptions: Array<{
@@ -87,23 +97,23 @@ const storageLocations = [
 ] as const
 
 const modelLocations = [
-  { id: 'diffusion', label: 'Diffusion' },
+  { id: 'diffusion', label: 'Diffusion (including high-noise)' },
   { id: 'uncond_diffusion', label: 'Unconditional diffusion' },
   { id: 'vae', label: 'VAE' },
   { id: 'audio_vae', label: 'Audio VAE' },
   { id: 'llm', label: 'LLM' },
   { id: 'llm_vision', label: 'Vision LLM' },
   { id: 't5xxl', label: 'T5-XXL' },
-  { id: 'embeddings_connectors', label: 'Embedding connectors' },
-  { id: 'clip', label: 'CLIP' },
+  { id: 'embeddings_connectors', label: 'Embedding connector models' },
+  { id: 'clip', label: 'CLIP encoders (CLIP-L / CLIP-G)' },
   { id: 'clip_vision', label: 'CLIP Vision' },
-  { id: 'loras', label: 'LoRA' },
+  { id: 'loras', label: 'LoRAs' },
   { id: 'controlnet', label: 'ControlNet' },
   { id: 'photomaker', label: 'PhotoMaker' },
-  { id: 'upscale', label: 'Upscalers' },
+  { id: 'upscale', label: 'Image upscalers' },
   { id: 'hires_upscalers', label: 'Hi-res upscalers' },
   { id: 'taesd', label: 'TAESD' },
-  { id: 'embeddings', label: 'Embeddings' }
+  { id: 'embeddings', label: 'Textual embeddings' }
 ] as const
 
 const storageSettings = ref<StorageSettings | null>(null)
@@ -155,15 +165,20 @@ const downloadStatus = ref('')
 const serverOnline = ref(false)
 
 // Network state
-const localNetworkEnabled = ref(false)
-const localNetworkUrl = ref('')
-const ngrokEnabled = ref(false)
-const ngrokUrl = ref('')
-const ngrokToken = ref('')
-const ngrokError = ref('')
-const cloudflareEnabled = ref(false)
-const cloudflareUrl = ref('')
-const cloudflareError = ref('')
+const lanStatus = ref<LanSharingStatus | null>(null)
+const lanAddress = ref('')
+const lanTransport = ref<LanTransport>('https')
+const lanAccessLevel = ref<LanAccessLevel>('generation')
+const lanBusy = ref(false)
+const lanError = ref('')
+const lanPairingUrl = computed(() => {
+  const status = lanStatus.value
+  if (!status?.url || !status.pairingCode) return ''
+  return `${status.url}/#pair=${encodeURIComponent(status.pairingCode)}`
+})
+const lanQrSvg = computed(() =>
+  lanPairingUrl.value ? renderSVG(lanPairingUrl.value, { ecc: 'M', border: 2 }) : ''
+)
 
 // Get variants for selected release
 const selectedReleaseAssets = computed(() => {
@@ -257,23 +272,109 @@ async function checkServerStatus(): Promise<void> {
   }
 }
 
-/**
- * fetchNetworkStatus() - Get network sharing status
- */
-async function fetchNetworkStatus(): Promise<void> {
+async function refreshLanStatus(): Promise<void> {
+  if (!window.electronAPI?.getLanSharingStatus) return
   try {
-    const data = await apiGet<any>('/api/network/status')
-    localNetworkEnabled.value = data.local?.enabled || false
-    localNetworkUrl.value = data.local?.url || ''
-    ngrokEnabled.value = data.ngrok?.enabled || false
-    ngrokUrl.value = data.ngrok?.url || ''
-    ngrokError.value = data.ngrok?.error || ngrokError.value
-    cloudflareEnabled.value = data.cloudflare?.enabled || false
-    cloudflareUrl.value = data.cloudflare?.url || ''
-    cloudflareError.value = data.cloudflare?.error || ''
-  } catch (e) {
-    console.log('Network status not available')
+    lanError.value = ''
+    lanStatus.value = await window.electronAPI.getLanSharingStatus()
+    lanAddress.value =
+      lanStatus.value.selectedAddress || lanStatus.value.interfaces[0]?.address || ''
+    lanTransport.value = lanStatus.value.transport
+    lanAccessLevel.value = lanStatus.value.accessLevel
+    if (lanStatus.value.error) lanError.value = lanStatus.value.error
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to load LAN sharing status.'
   }
+}
+
+async function setLanSharing(enabled: boolean): Promise<void> {
+  if (!window.electronAPI?.setLanSharing) return
+  try {
+    lanBusy.value = true
+    lanError.value = ''
+    lanStatus.value = await window.electronAPI.setLanSharing(enabled, {
+      address: lanAddress.value || undefined,
+      transport: lanTransport.value,
+      accessLevel: lanAccessLevel.value
+    })
+    lanTransport.value = lanStatus.value.transport
+    lanAccessLevel.value = lanStatus.value.accessLevel
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to change LAN sharing.'
+    await refreshLanStatus()
+  } finally {
+    lanBusy.value = false
+  }
+}
+
+async function applyLanAddress(): Promise<void> {
+  if (lanStatus.value?.enabled) await setLanSharing(true)
+}
+
+async function rotateLanPairingCode(): Promise<void> {
+  try {
+    lanBusy.value = true
+    lanStatus.value = await window.electronAPI.rotateLanPairingCode()
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to rotate pairing code.'
+  } finally {
+    lanBusy.value = false
+  }
+}
+
+async function revokeLanSessions(): Promise<void> {
+  try {
+    lanBusy.value = true
+    lanStatus.value = await window.electronAPI.revokeLanSessions()
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to revoke paired devices.'
+  } finally {
+    lanBusy.value = false
+  }
+}
+
+async function revokeLanSession(deviceId: string): Promise<void> {
+  try {
+    lanBusy.value = true
+    lanStatus.value = await window.electronAPI.revokeLanSession(deviceId)
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to revoke paired device.'
+  } finally {
+    lanBusy.value = false
+  }
+}
+
+async function exportLanCaCertificate(): Promise<void> {
+  try {
+    lanError.value = ''
+    await window.electronAPI.exportLanCaCertificate()
+  } catch (error) {
+    lanError.value = error instanceof Error ? error.message : 'Failed to export certificate.'
+  }
+}
+
+function pairedDeviceLabel(userAgent: string): string {
+  const browser = /Edg\//.test(userAgent)
+    ? 'Edge'
+    : /Firefox\//.test(userAgent)
+      ? 'Firefox'
+      : /Chrome\//.test(userAgent)
+        ? 'Chrome'
+        : /Safari\//.test(userAgent)
+          ? 'Safari'
+          : 'Browser'
+  const platform = /Android/.test(userAgent)
+    ? 'Android'
+    : /iPhone|iPad/.test(userAgent)
+      ? 'iPhone / iPad'
+      : /Windows/.test(userAgent)
+        ? 'Windows'
+        : /Macintosh/.test(userAgent)
+          ? 'macOS'
+          : /Linux/.test(userAgent)
+            ? 'Linux'
+            : 'unknown device'
+  return `${browser} on ${platform}`
 }
 
 /**
@@ -322,40 +423,6 @@ async function setActiveVersion(version: string): Promise<void> {
 }
 
 /**
- * toggleNgrok() - Toggle ngrok tunnel
- */
-async function toggleNgrok(): Promise<void> {
-  try {
-    ngrokError.value = ''
-    const newState = !ngrokEnabled.value
-    await apiPost('/api/network/ngrok', {
-      enabled: newState,
-      token: ngrokToken.value || undefined
-    })
-    await fetchNetworkStatus()
-  } catch (e: any) {
-    ngrokError.value = e.message || 'Failed to toggle ngrok'
-    console.error('Failed to toggle ngrok:', e)
-  }
-}
-
-/**
- * toggleCloudflare() - Toggle cloudflare tunnel
- */
-async function toggleCloudflare(): Promise<void> {
-  try {
-    cloudflareError.value = ''
-    const newState = !cloudflareEnabled.value
-    await apiPost('/api/network/cloudflare', { enabled: newState })
-    await fetchNetworkStatus()
-  } catch (e: any) {
-    cloudflareError.value = e.message || 'Failed to toggle Cloudflare tunnel'
-    console.error('Failed to toggle cloudflare:', e)
-    await fetchNetworkStatus()
-  }
-}
-
-/**
  * openCustomFolder() - Open the custom backend folder
  */
 function openCustomFolder(): void {
@@ -373,9 +440,25 @@ async function copyUrl(url: string): Promise<void> {
   }
 }
 
+async function disconnectRemoteSession(): Promise<void> {
+  try {
+    await apiPost('/api/auth/logout', {})
+  } finally {
+    setRemoteAccessLevel(null)
+    window.location.reload()
+  }
+}
+
+const remoteAccessDescription = computed(() => {
+  if (accessLevel.value === 'control') return 'Generation, gallery, runtime, and log controls'
+  if (accessLevel.value === 'gallery') return 'Generation and read-only gallery access'
+  return 'Generation and model selection only'
+})
+
 function storagePath(id: StorageDirectoryId): string {
   const settings = storageSettings.value
   if (!settings) return ''
+  if (id === 'modelsRoot') return settings.modelsRootDir
   if (id === 'output') return settings.outputDir
   if (id === 'temp') return settings.tempDir
   return settings.modelDirs[id]
@@ -384,6 +467,7 @@ function storagePath(id: StorageDirectoryId): string {
 function storageIsCustom(id: StorageDirectoryId): boolean {
   const overrides = storageSettings.value?.overrides
   if (!overrides) return false
+  if (id === 'modelsRoot') return !!overrides.modelsRootDir
   if (id === 'output') return !!overrides.outputDir
   if (id === 'temp') return !!overrides.tempDir
   return isModelDirectoryKey(id) && !!overrides.modelDirs?.[id]
@@ -439,13 +523,20 @@ async function openStorageDirectory(id: StorageDirectoryId): Promise<void> {
 }
 
 onMounted(async () => {
+  if (!desktopSettingsAvailable) return
   await loadStorageSettings()
   await checkServerStatus()
   await fetchConfig()
   await fetchReleases()
   await detectSystem()
-  await fetchNetworkStatus()
+  await refreshLanStatus()
 })
+
+const lanStatusTimer = window.setInterval(() => {
+  if (lanStatus.value?.enabled) void refreshLanStatus()
+}, 5000)
+
+onUnmounted(() => window.clearInterval(lanStatusTimer))
 </script>
 
 <template>
@@ -677,146 +768,230 @@ onMounted(async () => {
             <div class="px-4 py-4">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-medium">Local network</p>
+                  <p class="text-xs font-medium">Localhost</p>
                   <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Access from other devices by starting with the
-                    <code
-                      class="rounded border border-border bg-muted/40 px-1 py-0.5 text-[10px] text-foreground"
-                      >--local</code
-                    >
-                    flag.
+                    Used internally by the desktop app. It remains private to this computer.
                   </p>
                 </div>
                 <span
-                  class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium"
-                  :class="localNetworkEnabled ? 'text-foreground' : 'text-muted-foreground'"
+                  class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium text-foreground"
                 >
-                  <span
-                    class="size-1.5 rounded-full"
-                    :class="localNetworkEnabled ? 'bg-foreground' : 'bg-muted-foreground/50'"
-                  ></span>
-                  {{ localNetworkEnabled ? 'Active' : 'Disabled' }}
+                  <span class="size-1.5 rounded-full bg-foreground"></span>
+                  Always on
                 </span>
               </div>
-              <button
-                v-if="localNetworkUrl && localNetworkEnabled"
-                type="button"
-                @click="copyUrl(localNetworkUrl)"
-                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <span class="truncate">{{ localNetworkUrl }}</span>
-                <Copy class="size-3.5 shrink-0" />
-              </button>
-            </div>
-
-            <div
-              class="border-t border-border/70 bg-muted/20 px-4 py-3 text-[11px] leading-4 text-muted-foreground"
-            >
-              <strong class="font-medium text-foreground">Remote access:</strong>
-              Local network share is the supported default. Public tunnels (Ngrok / Cloudflare) are
-              experimental — they need working credentials/binaries and may fail on some networks.
             </div>
 
             <div class="border-t border-border/70 px-4 py-4">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-medium">
-                    Ngrok tunnel
-                    <span class="text-[10px] font-normal text-muted-foreground">experimental</span>
-                  </p>
+                  <p class="text-xs font-medium">Local network sharing</p>
                   <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Requires an auth token. If the toggle fails, check the error below and your
-                    NGROK_AUTHTOKEN.
-                    <a
-                      href="https://dashboard.ngrok.com/get-started/your-authtoken"
-                      target="_blank"
-                      class="text-foreground underline decoration-border underline-offset-2 transition-colors duration-200 hover:decoration-foreground"
-                      >Get auth token</a
+                    Share the generation interface with paired devices on one private network
+                    adapter.
+                  </p>
+                </div>
+                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    :checked="lanStatus?.enabled"
+                    :disabled="lanBusy || !lanStatus?.interfaces.length"
+                    @change="setLanSharing(!lanStatus?.enabled)"
+                    class="peer sr-only"
+                    aria-label="Toggle local network sharing"
+                  />
+                  <span
+                    class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-disabled:opacity-40 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
+                  ></span>
+                </label>
+              </div>
+
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <label class="block text-[11px] font-medium text-muted-foreground">
+                  Connection mode
+                  <select
+                    v-model="lanTransport"
+                    :disabled="lanBusy"
+                    @change="applyLanAddress"
+                    class="aui-field mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  >
+                    <option value="https">Secure HTTPS</option>
+                    <option value="http">Quick HTTP</option>
+                  </select>
+                </label>
+                <label class="block text-[11px] font-medium text-muted-foreground">
+                  Paired device access
+                  <select
+                    v-model="lanAccessLevel"
+                    :disabled="lanBusy || lanTransport === 'http'"
+                    @change="applyLanAddress"
+                    class="aui-field mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  >
+                    <option value="generation">Generation only</option>
+                    <option value="gallery">Generation + gallery</option>
+                    <option value="control">Full safe remote control</option>
+                  </select>
+                </label>
+              </div>
+
+              <div
+                v-if="lanTransport === 'http'"
+                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:text-amber-300"
+              >
+                Quick HTTP is not encrypted, allows generation only, expires after 15 minutes, and
+                is disabled after restart. Use it only on a trusted home network.
+              </div>
+              <div
+                v-else-if="lanAccessLevel === 'control'"
+                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:text-amber-300"
+              >
+                Full remote control includes safe runtime and log controls. Backend installation,
+                storage, certificates, downloads, and security settings always remain desktop-only.
+              </div>
+
+              <label class="mt-4 block text-[11px] font-medium text-muted-foreground">
+                Network adapter
+                <select
+                  v-model="lanAddress"
+                  :disabled="lanBusy"
+                  @change="applyLanAddress"
+                  class="aui-field mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                >
+                  <option
+                    v-for="item in lanStatus?.interfaces || []"
+                    :key="item.address"
+                    :value="item.address"
+                  >
+                    {{ item.name }} — {{ item.address }}
+                  </option>
+                </select>
+              </label>
+
+              <div
+                v-if="lanError"
+                class="mt-3 rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              >
+                {{ lanError }}
+              </div>
+
+              <template v-if="lanStatus?.enabled && lanPairingUrl">
+                <div class="mt-4 grid gap-4 sm:grid-cols-[164px_1fr]">
+                  <div
+                    class="overflow-hidden rounded-md border border-border bg-white p-2 [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
+                    v-html="lanQrSvg"
+                  ></div>
+                  <div class="min-w-0 text-[11px] leading-4 text-muted-foreground">
+                    <p class="font-medium text-foreground">Scan to pair</p>
+                    <p v-if="lanStatus.transport === 'https'" class="mt-1">
+                      Install and trust the Flaxeo certificate before pairing. Never bypass a
+                      browser certificate warning.
+                    </p>
+                    <p v-else class="mt-1">
+                      Quick sharing is unencrypted and intended only for a trusted home network.
+                    </p>
+                    <button
+                      type="button"
+                      @click="copyUrl(lanPairingUrl)"
+                      class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 font-mono text-[10px] hover:bg-muted/40"
                     >
+                      <span class="truncate">{{ lanStatus.url }}</span>
+                      <Copy class="size-3.5 shrink-0" />
+                    </button>
+                    <p class="mt-2 font-mono text-foreground">Code: {{ lanStatus.pairingCode }}</p>
+                    <p v-if="lanStatus.pairingExpiresAt" class="mt-1">
+                      Expires {{ new Date(lanStatus.pairingExpiresAt).toLocaleTimeString() }}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  v-if="lanStatus.transport === 'https'"
+                  class="mt-4 rounded-md bg-muted/30 p-3 text-[10px] leading-4 text-muted-foreground"
+                >
+                  <p class="font-medium text-foreground">Certificate SHA-256 fingerprint</p>
+                  <p class="mt-1 break-all font-mono">{{ lanStatus.certificateFingerprint }}</p>
+                  <p class="mt-2">
+                    Export and install the Flaxeo local CA certificate as trusted on the client
+                    device, then reopen this address. Do not continue through a certificate warning.
+                  </p>
+                  <button
+                    type="button"
+                    @click="exportLanCaCertificate"
+                    class="mt-2 font-medium text-foreground hover:opacity-65"
+                  >
+                    Export trusted certificate
+                  </button>
+                </div>
+
+                <div class="mt-3 flex flex-wrap items-center gap-4 text-xs">
+                  <button
+                    type="button"
+                    :disabled="lanBusy"
+                    @click="rotateLanPairingCode"
+                    class="font-medium text-foreground hover:opacity-65 disabled:opacity-40"
+                  >
+                    Rotate QR
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="lanBusy"
+                    @click="revokeLanSessions"
+                    class="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  >
+                    Revoke {{ lanStatus.sessionCount }} paired session{{
+                      lanStatus.sessionCount === 1 ? '' : 's'
+                    }}
+                  </button>
+                </div>
+
+                <div class="mt-5 border-t border-border/70 pt-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <p class="text-xs font-medium">Paired devices</p>
+                    <button
+                      type="button"
+                      :disabled="lanBusy"
+                      class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      @click="refreshLanStatus"
+                    >
+                      <RefreshCw class="size-3" />
+                      Refresh
+                    </button>
+                  </div>
+                  <div
+                    v-if="lanStatus.devices?.length"
+                    class="mt-2 divide-y divide-border/70 rounded-md border border-border/70"
+                  >
+                    <div
+                      v-for="device in lanStatus.devices || []"
+                      :key="device.id"
+                      class="flex items-start justify-between gap-3 px-3 py-2.5"
+                    >
+                      <div class="min-w-0 text-[10px] leading-4 text-muted-foreground">
+                        <p
+                          class="truncate text-xs font-medium text-foreground"
+                          :title="device.userAgent"
+                        >
+                          {{ pairedDeviceLabel(device.userAgent) }}
+                        </p>
+                        <p>{{ device.address }}</p>
+                        <p>Access: {{ device.accessLevel }}</p>
+                        <p>Last active {{ new Date(device.lastSeenAt).toLocaleString() }}</p>
+                      </div>
+                      <button
+                        type="button"
+                        :disabled="lanBusy"
+                        @click="revokeLanSession(device.id)"
+                        class="shrink-0 text-xs text-muted-foreground hover:text-destructive disabled:opacity-40"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                  <p v-else class="mt-2 text-xs leading-5 text-muted-foreground">
+                    No paired browser sessions are currently active.
                   </p>
                 </div>
-                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    :checked="ngrokEnabled"
-                    @change="toggleNgrok"
-                    class="peer sr-only"
-                    aria-label="Toggle Ngrok tunnel"
-                  />
-                  <span
-                    class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
-                  ></span>
-                </label>
-              </div>
-
-              <input
-                v-if="!ngrokEnabled"
-                v-model="ngrokToken"
-                type="password"
-                placeholder="Ngrok auth token (optional if set in environment)"
-                class="aui-field mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-              />
-
-              <div
-                v-if="ngrokError"
-                class="aui-alert mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs text-destructive"
-              >
-                {{ ngrokError }}
-              </div>
-
-              <button
-                v-if="ngrokUrl"
-                type="button"
-                @click="copyUrl(ngrokUrl)"
-                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <span class="truncate">{{ ngrokUrl }}</span>
-                <Copy class="size-3.5 shrink-0" />
-              </button>
-            </div>
-
-            <div class="border-t border-border/70 px-4 py-4">
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <p class="text-xs font-medium">
-                    Cloudflare tunnel
-                    <span class="text-[10px] font-normal text-muted-foreground">experimental</span>
-                  </p>
-                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Quick tunnel via cloudflared (best-effort). Prefer local network share for LAN
-                    use.
-                  </p>
-                </div>
-                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    :checked="cloudflareEnabled"
-                    @change="toggleCloudflare"
-                    class="peer sr-only"
-                    aria-label="Toggle Cloudflare tunnel"
-                  />
-                  <span
-                    class="h-5 w-9 rounded-md border border-border bg-muted transition-colors duration-200 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-sm after:border after:border-border after:bg-background after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:bg-foreground peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/30"
-                  ></span>
-                </label>
-              </div>
-
-              <div
-                v-if="cloudflareError"
-                class="aui-alert mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs text-destructive"
-              >
-                {{ cloudflareError }}
-              </div>
-
-              <button
-                v-if="cloudflareUrl"
-                type="button"
-                @click="copyUrl(cloudflareUrl)"
-                class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <span class="truncate">{{ cloudflareUrl }}</span>
-                <Copy class="size-3.5 shrink-0" />
-              </button>
+              </template>
             </div>
           </section>
 
@@ -903,10 +1078,55 @@ onMounted(async () => {
               <div class="rounded-lg border border-border/70 bg-card p-4">
                 <h3 class="text-sm font-medium">Model directories</h3>
                 <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                  Each model type can use an independent folder.
+                  Change the root for all default model folders, then override individual types if
+                  needed. Existing files are not moved.
                 </p>
 
-                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="mt-4 rounded-md border border-border/70 bg-muted/20 p-3">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium">Models root</p>
+                    <span
+                      v-if="storageIsCustom('modelsRoot')"
+                      class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                      >Custom</span
+                    >
+                  </div>
+                  <p
+                    class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                    :title="storagePath('modelsRoot')"
+                  >
+                    {{ storagePath('modelsRoot') }}
+                  </p>
+                  <div class="mt-2 flex items-center gap-3 text-xs">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 font-medium text-foreground hover:opacity-65 disabled:opacity-40"
+                      :disabled="storageBusy === 'modelsRoot'"
+                      @click="chooseStorageDirectory('modelsRoot')"
+                    >
+                      <Loader2 v-if="storageBusy === 'modelsRoot'" class="size-3 animate-spin" />
+                      Change root
+                    </button>
+                    <button
+                      type="button"
+                      class="text-muted-foreground hover:text-foreground"
+                      @click="openStorageDirectory('modelsRoot')"
+                    >
+                      Open
+                    </button>
+                    <button
+                      v-if="storageIsCustom('modelsRoot')"
+                      type="button"
+                      class="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      :disabled="storageBusy === 'modelsRoot'"
+                      @click="resetStorageDirectory('modelsRoot')"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
                   <div v-for="location in modelLocations" :key="location.id" class="min-w-0">
                     <div class="flex items-center gap-2">
                       <p class="text-sm font-medium">{{ location.label }}</p>
@@ -1015,6 +1235,26 @@ onMounted(async () => {
                   <Check v-if="themePreference === option.value" class="size-3" />
                 </span>
               </button>
+            </div>
+
+            <div v-if="isRemote" class="mt-8 max-w-sm border-t border-border/70 pt-5">
+              <h3 class="text-sm font-medium">Paired remote session</h3>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                {{ remoteAccessDescription }}. Host storage, downloads, installation, certificates,
+                and security settings remain desktop-only.
+              </p>
+              <div class="mt-3 flex items-center gap-3 text-xs">
+                <span class="rounded-md bg-muted px-2 py-1 font-medium capitalize text-foreground">
+                  {{ accessLevel || 'generation' }} access
+                </span>
+                <button
+                  type="button"
+                  class="font-medium text-muted-foreground hover:text-foreground"
+                  @click="disconnectRemoteSession"
+                >
+                  Disconnect this device
+                </button>
+              </div>
             </div>
           </section>
 

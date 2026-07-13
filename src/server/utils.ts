@@ -7,6 +7,9 @@ import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import type { AppContext } from './types'
 import { isModelDirectoryKey } from '../shared/storage'
+import { resolveStoredPath } from '../shared/pathSecurity'
+
+export { resolveStoredPath } from '../shared/pathSecurity'
 
 export function asBool(value: unknown): boolean {
   return value === true || value === 'true' || value === '1' || value === 1
@@ -60,8 +63,10 @@ export function modelDirectory(ctx: AppContext, subdir: string): string {
 }
 
 export function modelPath(ctx: AppContext, subdir: string, file?: string): string | undefined {
-  if (!file) return undefined
-  return path.join(modelDirectory(ctx, subdir), file)
+  if (!file || path.isAbsolute(file)) return undefined
+  return (
+    resolveStoredPath(file, modelDirectory(ctx, subdir), [modelDirectory(ctx, subdir)]) || undefined
+  )
 }
 
 export function roundTo(value: unknown, fallback: number, multiple: number): number {
@@ -70,13 +75,28 @@ export function roundTo(value: unknown, fallback: number, multiple: number): num
 }
 
 export function safeOutputPath(ctx: AppContext, filename: string): string | null {
-  const resolved = path.resolve(ctx.paths.outputDir, filename)
-  return isPathInside(ctx.paths.outputDir, resolved) ? resolved : null
+  return resolveStoredPath(filename, ctx.paths.outputDir, [ctx.paths.outputDir])
 }
 
-export function isPathInside(root: string, candidate: string): boolean {
-  const relative = path.relative(path.resolve(root), path.resolve(candidate))
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+export function resolveInputFile(ctx: AppContext, value: unknown): string | null {
+  return resolveStoredPath(value, ctx.paths.outputDir, [
+    ctx.paths.outputDir,
+    ctx.paths.tempDir,
+    ...Object.values(ctx.paths.modelDirs)
+  ])
+}
+
+export function resolveOutputFile(ctx: AppContext, value: unknown): string | null {
+  return resolveStoredPath(value, ctx.paths.outputDir, [ctx.paths.outputDir])
+}
+
+export function resolveInputDirectory(ctx: AppContext, value: unknown): string | null {
+  return resolveStoredPath(
+    value,
+    ctx.paths.outputDir,
+    [ctx.paths.outputDir, ctx.paths.tempDir, ...Object.values(ctx.paths.modelDirs)],
+    'directory'
+  )
 }
 
 export function getLocalIP(): string {
@@ -89,16 +109,16 @@ export function getLocalIP(): string {
   return 'localhost'
 }
 
-export function findAvailablePort(startPort: number): Promise<number> {
+export function findAvailablePort(startPort: number, host = '127.0.0.1'): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = net.createServer()
-    server.listen(startPort, '0.0.0.0', () => {
+    server.listen(startPort, host, () => {
       const address = server.address()
       const port = typeof address === 'object' && address ? address.port : startPort
       server.close(() => resolve(port))
     })
     server.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE') resolve(findAvailablePort(startPort + 1))
+      if (error.code === 'EADDRINUSE') resolve(findAvailablePort(startPort + 1, host))
       else reject(error)
     })
   })

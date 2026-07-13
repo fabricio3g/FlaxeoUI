@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
-import { getOutputUrl } from '@/services/api'
+import { authenticatedFetch, getOutputUrl } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
@@ -198,7 +198,7 @@ function handleEndImageUpload(event: Event): void {
 
 async function loadReferenceFromUrl(url: string): Promise<void> {
   try {
-    const response = await fetch(url)
+    const response = await authenticatedFetch(url)
     const blob = await response.blob()
     const name = url.split('/').pop()?.split('?')[0] || 'reference.png'
     referenceFile.value = new File([blob], name, { type: blob.type || 'image/png' })

@@ -15,6 +15,7 @@ import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { useTheme } from '@/composables/useTheme'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 
@@ -46,6 +47,7 @@ const {
   stopRuntimeStatusPolling
 } = useRuntimeStatus()
 const { isDark, toggleTheme } = useTheme()
+const { canControl } = useRemoteSession()
 
 const statusDotClass = computed(() => {
   if (runtimeState.value === 'online') return 'bg-emerald-500'
@@ -162,6 +164,7 @@ function iconBtnClasses(active = false): string {
     </div>
 
     <div
+      v-if="isElectron"
       class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 titlebar-no-drag md:flex"
     >
       <button
@@ -199,6 +202,7 @@ function iconBtnClasses(active = false): string {
       </button>
 
       <button
+        v-if="isElectron"
         @click="showDownloadManager = !showDownloadManager"
         class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:hidden"
         type="button"
@@ -211,6 +215,7 @@ function iconBtnClasses(active = false): string {
       </button>
 
       <button
+        v-if="canControl"
         @click="emit('toggleLogs')"
         class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
         type="button"
@@ -230,7 +235,7 @@ function iconBtnClasses(active = false): string {
         Setup
       </button>
 
-      <Tooltip text="Downloads" position="bottom">
+      <Tooltip v-if="isElectron" text="Downloads" position="bottom">
         <button
           @click="showDownloadManager = !showDownloadManager"
           class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:inline-flex"
@@ -243,7 +248,7 @@ function iconBtnClasses(active = false): string {
         </button>
       </Tooltip>
 
-      <Tooltip text="Server Logs" position="bottom">
+      <Tooltip v-if="canControl" text="Server Logs" position="bottom">
         <button
           @click="emit('toggleLogs')"
           class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"

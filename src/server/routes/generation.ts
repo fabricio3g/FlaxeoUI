@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import multer from 'multer'
-import type { Express, Request, Response } from 'express'
+import type { Express, NextFunction, Request, Response } from 'express'
 import type { AppContext, JsonObject } from '../types'
 import {
   asBool,
@@ -12,6 +12,9 @@ import {
   parseStepLine,
   removeDir,
   removeFile,
+  resolveInputDirectory,
+  resolveInputFile,
+  resolveOutputFile,
   spawnLoggedProcess,
   waitForProcess
 } from '../utils'
@@ -23,6 +26,10 @@ import {
   type GenerationPhase
 } from '../../shared/generationPhases'
 import type { ParsedStep } from '../utils'
+import {
+  composeRegionalPrompt,
+  normalizeRegionalPromptRegions
+} from '../../shared/regionalPrompting'
 import { invalidateModelsCache } from '../modelsCache'
 import type { ProgressPhase } from '../types'
 import {
@@ -50,10 +57,21 @@ interface UploadRequest extends Request {
   kontextRefDir?: string
   files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>
   file?: Express.Multer.File
+  regionalPipelineOwner?: symbol
+}
+
+const UPLOAD_LIMITS = {
+  fileSize: 50 * 1024 * 1024,
+  files: 16,
+  fields: 200,
+  parts: 220,
+  fieldNameSize: 100,
+  fieldSize: 1024 * 1024
 }
 
 function uploadMiddleware(ctx: AppContext) {
   return multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (req: UploadRequest, file, cb) => {
         if (file.fieldname === 'kontextRefImage') {
@@ -65,7 +83,11 @@ function uploadMiddleware(ctx: AppContext) {
           return
         }
 
-        if (file.fieldname === 'controlNetImage' || file.fieldname === 'initImage') {
+        if (
+          file.fieldname === 'controlNetImage' ||
+          file.fieldname === 'initImage' ||
+          file.fieldname === 'regionMasks'
+        ) {
           cb(null, ctx.paths.tempDir)
           return
         }
@@ -83,7 +105,8 @@ function uploadMiddleware(ctx: AppContext) {
     { name: 'pmImages', maxCount: 4 },
     { name: 'kontextRefImage', maxCount: 8 },
     { name: 'controlNetImage', maxCount: 1 },
-    { name: 'initImage', maxCount: 1 }
+    { name: 'initImage', maxCount: 1 },
+    { name: 'regionMasks', maxCount: 4 }
   ])
 }
 
@@ -100,7 +123,7 @@ function sendCliBusy(res: Response): void {
 
 /** Returns false if a response was already sent (busy). */
 function ensureCliIdle(ctx: AppContext, res: Response): boolean {
-  if (ctx.state.cliProcess) {
+  if (ctx.state.cliProcess || ctx.state.cliPipelineActive) {
     sendCliBusy(res)
     return false
   }
@@ -110,11 +133,13 @@ function ensureCliIdle(ctx: AppContext, res: Response): boolean {
 async function runCli(
   ctx: AppContext,
   args: string[],
-  label: string
+  label: string,
+  stage?: { current: number; total: number; label: string }
 ): Promise<{ cancelled: boolean }> {
   if (ctx.state.cliProcess) {
     throw new Error('GENERATION_BUSY: Another generation is already running')
   }
+  if (ctx.state.cliCancelRequested) return { cancelled: true }
 
   const activeBackend = ctx.getActiveBackendPath()
   const startedAt = Date.now()
@@ -124,7 +149,10 @@ async function runCli(
     label,
     startedAt,
     phase,
-    phaseLabel: phaseLabel(phase)
+    phaseLabel: phaseLabel(phase),
+    stageCurrent: stage?.current,
+    stageTotal: stage?.total,
+    stageLabel: stage?.label
   })
   ctx.state.progress = {
     current: 0,
@@ -134,7 +162,10 @@ async function runCli(
     startedAt,
     updatedAt: startedAt,
     phase: phase as ProgressPhase,
-    phaseLabel: phaseLabel(phase)
+    phaseLabel: phaseLabel(phase),
+    stageCurrent: stage?.current,
+    stageTotal: stage?.total,
+    stageLabel: stage?.label
   }
 
   const cliPath = getSdCliPath(ctx)
@@ -150,7 +181,7 @@ async function runCli(
       const nextPhase = advancePhase(phase, detectPhaseFromLine(line))
       if (nextPhase !== phase) {
         phase = nextPhase
-        emitPhase(ctx, phase, label, startedAt)
+        emitPhase(ctx, phase, label, startedAt, stage)
       }
       const parsed = parseStepLine(line)
       if (parsed) {
@@ -158,7 +189,7 @@ async function runCli(
         if (phase !== 'sampling' && phase !== 'decoding' && phase !== 'saving') {
           phase = 'sampling'
         }
-        updateProgress(ctx, parsed, label, startedAt, phase)
+        updateProgress(ctx, parsed, label, startedAt, phase, stage)
       }
     }
   }
@@ -191,7 +222,8 @@ function emitPhase(
   ctx: AppContext,
   phase: GenerationPhase,
   label: string,
-  startedAt: number
+  startedAt: number,
+  stage?: { current: number; total: number; label: string }
 ): void {
   const prev = ctx.state.progress
   const p = {
@@ -202,7 +234,10 @@ function emitPhase(
     startedAt,
     updatedAt: Date.now(),
     phase: phase as ProgressPhase,
-    phaseLabel: phaseLabel(phase)
+    phaseLabel: phaseLabel(phase),
+    stageCurrent: stage?.current,
+    stageTotal: stage?.total,
+    stageLabel: stage?.label
   }
   ctx.state.progress = p
   ctx.state.progressBus.emit('progress', p)
@@ -213,7 +248,8 @@ function updateProgress(
   parsed: ParsedStep,
   label: string,
   startedAt: number,
-  phase: GenerationPhase = 'sampling'
+  phase: GenerationPhase = 'sampling',
+  stage?: { current: number; total: number; label: string }
 ): void {
   const p = {
     current: parsed.current,
@@ -223,7 +259,10 @@ function updateProgress(
     startedAt,
     updatedAt: Date.now(),
     phase: phase as ProgressPhase,
-    phaseLabel: phaseLabel(phase)
+    phaseLabel: phaseLabel(phase),
+    stageCurrent: stage?.current,
+    stageTotal: stage?.total,
+    stageLabel: stage?.label
   }
   ctx.state.progress = p
   ctx.state.progressBus.emit('progress', p)
@@ -271,11 +310,14 @@ function filesFromUpload(req: UploadRequest, field: string): string[] {
   return files.map((file) => file.path).filter(Boolean)
 }
 
-function resolveOutputFile(ctx: AppContext, filePath?: string): string | null {
-  if (!filePath) return null
-  return fs.existsSync(filePath) ? filePath : path.join(ctx.paths.outputDir, filePath)
+function allUploadedFiles(req: UploadRequest): string[] {
+  if (!req.files) return req.file?.path ? [req.file.path] : []
+  if (Array.isArray(req.files)) return req.files.map((file) => file.path).filter(Boolean)
+  return Object.values(req.files)
+    .flat()
+    .map((file) => file.path)
+    .filter(Boolean)
 }
-
 function removeTemporaryFiles(
   dirs: Array<string | null> = [],
   files: Array<string | null | undefined> = []
@@ -380,11 +422,14 @@ function sendCliFailure(res: Response, error: unknown, fallback = 'CLI operation
 }
 
 function parseJsonArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value
+  if (Array.isArray(value))
+    return value.filter((item): item is string => typeof item === 'string' && !!item.trim())
   if (typeof value !== 'string') return []
   try {
     const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && !!item.trim())
+      : []
   } catch {
     return []
   }
@@ -399,12 +444,11 @@ function copyPhotoMakerGallery(
   const localImages = parseJsonArray(body.photoMakerImages)
   const galleryImages = parseJsonArray(body.pmGalleryImages)
   const allImages = [
-    ...localImages,
-    ...galleryImages.map((file) => path.join(ctx.paths.outputDir, file))
-  ]
+    ...localImages.map((file) => resolveInputFile(ctx, file)),
+    ...galleryImages.map((file) => resolveOutputFile(ctx, file))
+  ].filter(Boolean) as string[]
 
   for (const imgPath of allImages) {
-    if (!fs.existsSync(imgPath)) continue
     if (!pmImagesDir) {
       pmImagesDir = path.join(ctx.paths.tempDir, `pm_${Date.now()}`)
       fs.mkdirSync(pmImagesDir, { recursive: true })
@@ -442,8 +486,8 @@ function buildImageArgs(
 
   const allRefPaths = [...refUploads, ...refFromBody]
   for (const refPath of allRefPaths) {
-    const resolved = resolveOutputFile(ctx, refPath)
-    if (resolved && fs.existsSync(resolved)) args.push('-r', resolved)
+    const resolved = resolveInputFile(ctx, refPath)
+    if (resolved) args.push('-r', resolved)
   }
 
   if (asBool(body.increaseRefIndex)) args.push('--increase-ref-index')
@@ -451,8 +495,8 @@ function buildImageArgs(
 
   const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
   if (initImage) {
-    const resolved = resolveOutputFile(ctx, initImage)
-    if (resolved && fs.existsSync(resolved)) args.push('-i', resolved)
+    const resolved = resolveInputFile(ctx, initImage)
+    if (resolved) args.push('-i', resolved)
     pushArg(args, '--strength', body.img2imgStrength ?? body.strength)
   }
 
@@ -480,7 +524,8 @@ function buildImageArgs(
     if (pmImagesDir && fs.existsSync(pmImagesDir) && fs.readdirSync(pmImagesDir).length > 0)
       args.push('--pm-id-images-dir', pmImagesDir)
     pushArg(args, '--pm-style-strength', body.pmStyleStrength)
-    pushArg(args, '--pm-id-embed-path', body.pmIdEmbedsPath)
+    const pmIdEmbedsPath = resolveInputFile(ctx, body.pmIdEmbedsPath)
+    if (pmIdEmbedsPath) args.push('--pm-id-embed-path', pmIdEmbedsPath)
   }
 
   const controlNet = modelPath(ctx, 'controlnet', firstString(body.controlNet))
@@ -490,8 +535,8 @@ function buildImageArgs(
       fileFromUpload(req, 'controlNetImage') ||
       firstString(body.controlImagePath, body.controlNetImageGallery, body.controlImage)
     if (controlImage) {
-      const resolved = resolveOutputFile(ctx, controlImage)
-      if (resolved && fs.existsSync(resolved)) args.push('--control-image', resolved)
+      const resolved = resolveInputFile(ctx, controlImage)
+      if (resolved) args.push('--control-image', resolved)
     }
     pushArg(args, '--control-strength', body.controlStrength)
     if (asBool(body.applyCanny)) args.push('--canny')
@@ -509,9 +554,44 @@ function buildImageArgs(
   }
 }
 
+function buildInpaintArgs(
+  ctx: AppContext,
+  body: JsonObject,
+  initImage: string,
+  maskPath: string | null,
+  outputPath: string
+): string[] {
+  const args: string[] = []
+  const prompt = String(body.prompt || '')
+  addModelArgs(ctx, args, body)
+  args.push('-i', initImage)
+  if (maskPath) args.push('--mask', maskPath)
+  const parsedStrength = parseFloat(String(body.strength))
+  const strength = Number.isFinite(parsedStrength) ? Math.min(1, Math.max(0, parsedStrength)) : 0.75
+  args.push('--strength', String(strength))
+  addGenerationArgs(args, body, outputPath, { width: 1024, height: 1024, cfg: 7, multiple: 64 })
+  addOptionalArgs(args, body)
+  addHardwareArgs(args, body, prompt)
+  assertLoraFilesPresent(ctx, body, prompt)
+  addPromptModelExtras(ctx, args, body, prompt)
+  args.push('-v')
+  return args
+}
+
+function publishCompletedPreview(ctx: AppContext, imagePath: string): void {
+  try {
+    const buffer = fs.readFileSync(imagePath)
+    ctx.state.previewImageBuffer = buffer
+    ctx.state.previewEtag = `"${buffer.length}-${Date.now()}"`
+  } catch {
+    // The final response still reports a missing stage output if this file is unavailable.
+  }
+}
+
 export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/generate-cli', uploadMiddleware(ctx), async (req: UploadRequest, res) => {
     if (!ensureCliIdle(ctx, res)) return
+    ctx.state.cliCancelRequested = false
 
     const body = req.body || {}
     const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
@@ -569,7 +649,178 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     }
   })
 
+  const regionalUpload = uploadMiddleware(ctx)
+  const reserveRegionalPipeline = (req: UploadRequest, res: Response, next: NextFunction): void => {
+    if (!ensureCliIdle(ctx, res)) return
+    const owner = Symbol('regional-pipeline')
+    req.regionalPipelineOwner = owner
+    ctx.state.cliPipelineActive = true
+    ctx.state.cliPipelineOwner = owner
+    ctx.state.cliCancelRequested = false
+    const uploadTimeout = setTimeout(() => {
+      ctx.state.cliCancelRequested = true
+      ctx.state.cancelRegionalUpload?.()
+    }, 120_000)
+    ctx.state.cancelRegionalUpload = () => {
+      if (ctx.state.cliPipelineOwner !== owner) return
+      if (!req.destroyed) req.destroy(new Error('Regional upload cancelled'))
+    }
+    regionalUpload(req, res, (error?: unknown) => {
+      clearTimeout(uploadTimeout)
+      const ownsPipeline = ctx.state.cliPipelineOwner === owner
+      if (ownsPipeline) ctx.state.cancelRegionalUpload = null
+      if (error) {
+        if (ownsPipeline) {
+          ctx.state.cliPipelineActive = false
+          ctx.state.cliPipelineOwner = null
+          ctx.state.cliCancelRequested = false
+        }
+        removeTemporaryFiles(
+          [req.pmImagesDir || null, req.kontextRefDir || null],
+          allUploadedFiles(req)
+        )
+        if (!res.headersSent && !res.writableEnded && !req.destroyed) {
+          res.status(400).json({ message: errorMessage(error) || 'Regional upload failed' })
+        }
+        return
+      }
+      if (!ownsPipeline) {
+        removeTemporaryFiles(
+          [req.pmImagesDir || null, req.kontextRefDir || null],
+          allUploadedFiles(req)
+        )
+        if (!res.headersSent && !res.writableEnded) sendCliBusy(res)
+        return
+      }
+      next()
+    })
+  }
+
+  app.post('/api/generate-regional', reserveRegionalPipeline, async (req: UploadRequest, res) => {
+    const uploadedFiles = allUploadedFiles(req)
+    const cleanupDirs: Array<string | null> = [req.pmImagesDir || null, req.kontextRefDir || null]
+    let workDir: string | null = null
+    let finalOutputPath: string | null = null
+    let stopWatching: (() => void) | null = null
+    let succeeded = false
+
+    try {
+      if (ctx.state.cliCancelRequested) {
+        res.json({ message: 'Cancelled' })
+        return
+      }
+
+      const body = (req.body || {}) as JsonObject
+      const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
+      if (!diffusionModel) {
+        res.status(400).json({ message: 'No model selected.', error: 'MODEL_REQUIRED' })
+        return
+      }
+
+      let rawRegions: unknown = body.regions
+      if (typeof rawRegions === 'string') {
+        try {
+          rawRegions = JSON.parse(rawRegions)
+        } catch {
+          rawRegions = null
+        }
+      }
+      const regions = normalizeRegionalPromptRegions(rawRegions)
+      if (!regions.length || regions.some((region) => !region.prompt)) {
+        res
+          .status(400)
+          .json({ message: 'Every regional prompt needs a valid region and description.' })
+        return
+      }
+
+      const maskPaths = filesFromUpload(req, 'regionMasks')
+      if (maskPaths.length !== regions.length || maskPaths.some((mask) => !fs.existsSync(mask))) {
+        res.status(400).json({ message: 'One mask image is required for each regional prompt.' })
+        return
+      }
+
+      body.batchCount = 1
+      body.strength = 0.75
+      workDir = fs.mkdtempSync(path.join(ctx.paths.tempDir, 'regional-'))
+      const baseOutput = path.join(workDir, 'base.png')
+      const baseBuild = buildImageArgs(ctx, body, req, baseOutput)
+      cleanupDirs.push(...baseBuild.cleanupDirs)
+
+      ctx.state.previewImageBuffer = null
+      if (ctx.state.previewTempFile) stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
+
+      const stageTotal = regions.length + 1
+      const baseResult = await runCli(ctx, baseBuild.args, 'REGIONAL-BASE', {
+        current: 1,
+        total: stageTotal,
+        label: 'Creating base image'
+      })
+      if (baseResult.cancelled || ctx.state.cliCancelRequested) {
+        res.json({ message: 'Cancelled' })
+        return
+      }
+      if (!fs.existsSync(baseOutput)) throw new Error('Base generation failed - no output file')
+      publishCompletedPreview(ctx, baseOutput)
+
+      let previousOutput = baseOutput
+      const stamp = Date.now()
+      const filename = `regional_${stamp}.png`
+      finalOutputPath = path.join(ctx.paths.outputDir, filename)
+
+      for (let index = 0; index < regions.length; index++) {
+        if (ctx.state.cliCancelRequested) {
+          res.json({ message: 'Cancelled' })
+          return
+        }
+        const isFinal = index === regions.length - 1
+        const outputPath = isFinal ? finalOutputPath : path.join(workDir, `region_${index + 1}.png`)
+        const regionBody: JsonObject = {
+          ...body,
+          prompt: composeRegionalPrompt(String(body.prompt || ''), regions[index].prompt),
+          batchCount: 1,
+          strength: 0.75
+        }
+        const args = buildInpaintArgs(ctx, regionBody, previousOutput, maskPaths[index], outputPath)
+        const result = await runCli(ctx, args, `REGIONAL-${index + 1}`, {
+          current: index + 2,
+          total: stageTotal,
+          label: `Applying region ${index + 1}`
+        })
+        if (result.cancelled || ctx.state.cliCancelRequested) {
+          res.json({ message: 'Cancelled' })
+          return
+        }
+        if (!fs.existsSync(outputPath))
+          throw new Error(`Region ${index + 1} failed - no output file`)
+        publishCompletedPreview(ctx, outputPath)
+        previousOutput = outputPath
+      }
+
+      succeeded = true
+      res.json({ message: 'Complete', filenames: [filename], filename })
+    } catch (error: unknown) {
+      sendCliFailure(res, error, 'Regional generation failed')
+    } finally {
+      if (stopWatching) stopWatching()
+      if (ctx.state.previewTempFile) removeFile(ctx.state.previewTempFile)
+      ctx.state.previewTempFile = null
+      ctx.state.previewImageBuffer = null
+      ctx.state.previewEtag = null
+      if (ctx.state.cliPipelineOwner === req.regionalPipelineOwner) {
+        ctx.state.cliPipelineActive = false
+        ctx.state.cliPipelineOwner = null
+        ctx.state.cliCancelRequested = false
+      }
+      if (!succeeded && finalOutputPath) removeFile(finalOutputPath)
+      if (workDir) cleanupDirs.push(workDir)
+      removeTemporaryFiles(cleanupDirs, uploadedFiles)
+    }
+  })
+
   app.post('/api/cancel-cli', (_req, res) => {
+    const pipelineActive = ctx.state.cliPipelineActive
+    ctx.state.cliCancelRequested = true
+    ctx.state.cancelRegionalUpload?.()
     if (ctx.state.cliProcess) {
       ctx.state.cliProcess.kill('SIGTERM')
       ctx.state.previewImageBuffer = null
@@ -581,6 +832,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         removeFile(ctx.state.convertOutputPath)
         ctx.state.convertOutputPath = null
       }
+      res.json({ message: 'Cancelled' })
+    } else if (pipelineActive) {
       res.json({ message: 'Cancelled' })
     } else {
       res.json({ message: 'No CLI process running' })
@@ -628,6 +881,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   })
 
   const inpaintUpload = multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, ctx.paths.tempDir),
       filename: (_req, file, cb) => cb(null, `${file.fieldname}_${Date.now()}.png`)
@@ -641,31 +895,17 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     ]),
     async (req: UploadRequest, res) => {
       if (!ensureCliIdle(ctx, res)) return
+      ctx.state.cliCancelRequested = false
 
       const body = req.body || {}
       const initImg =
-        fileFromUpload(req, 'initImage') || resolveOutputFile(ctx, firstString(body.initImagePath))
-      if (!initImg || !fs.existsSync(initImg))
-        return res.status(400).json({ message: 'Init image required' })
+        fileFromUpload(req, 'initImage') || resolveInputFile(ctx, firstString(body.initImagePath))
+      if (!initImg) return res.status(400).json({ message: 'Init image required' })
 
       const filename = `inpaint_${Date.now()}.png`
       const outputPath = path.join(ctx.paths.outputDir, filename)
-      const args: string[] = []
-      addModelArgs(ctx, args, body)
-      args.push('-i', initImg)
       const maskPath = fileFromUpload(req, 'mask')
-      if (maskPath) args.push('--mask', maskPath)
-      const parsedStrength = parseFloat(String(body.strength))
-      const strength = Number.isFinite(parsedStrength)
-        ? Math.min(1, Math.max(0, parsedStrength))
-        : 0.75
-      args.push('--strength', String(strength))
-      addGenerationArgs(args, body, outputPath, { width: 1024, height: 1024, cfg: 7, multiple: 64 })
-      addOptionalArgs(args, body)
-      addHardwareArgs(args, body, String(body.prompt || ''))
-      assertLoraFilesPresent(ctx, body, String(body.prompt || ''))
-      addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
-      args.push('-v')
+      const args = buildInpaintArgs(ctx, body, initImg, maskPath, outputPath)
       const tempFiles = [fileFromUpload(req, 'initImage'), maskPath]
 
       try {
@@ -680,6 +920,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   )
 
   const videoUpload = multer({
+    limits: UPLOAD_LIMITS,
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, ctx.paths.tempDir),
       filename: (_req, _file, cb) => cb(null, `video_init_${Date.now()}.png`)
@@ -695,6 +936,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     ]),
     async (req: UploadRequest, res) => {
       if (!ensureCliIdle(ctx, res)) return
+      ctx.state.cliCancelRequested = false
 
       const body = req.body || {}
       const filename = `video_${Date.now()}.mp4`
@@ -747,21 +989,22 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       const initImg =
         fileFromUpload(req, 'initImage') ||
         fileFromUpload(req, 'reference_image') ||
-        resolveOutputFile(ctx, firstString(body.initImagePath))
-      if (initImg && fs.existsSync(initImg)) args.push('-i', initImg)
+        resolveInputFile(ctx, firstString(body.initImagePath))
+      if (initImg) args.push('-i', initImg)
 
       // FLF2V end frame
       const endImg =
         fileFromUpload(req, 'endImage') ||
         fileFromUpload(req, 'end_img') ||
-        resolveOutputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
-      if (endImg && fs.existsSync(endImg)) args.push('--end-img', endImg)
+        resolveInputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
+      if (endImg) args.push('--end-img', endImg)
 
       // VACE control video: directory of frames in lexicographic order
-      const controlVideo = firstString(body.controlVideo, body.control_video, body.controlVideoPath)
-      if (controlVideo && fs.existsSync(controlVideo)) {
-        args.push('--control-video', controlVideo)
-      }
+      const controlVideo = resolveInputDirectory(
+        ctx,
+        firstString(body.controlVideo, body.control_video, body.controlVideoPath)
+      )
+      if (controlVideo) args.push('--control-video', controlVideo)
 
       addGenerationArgs(args, body, outputPath, { width: 832, height: 480, cfg: 6.0, multiple: 16 })
       args.push('--video-frames', String(body.videoFrames || body.video_frames || 33))
@@ -815,14 +1058,14 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/upscale', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
+    ctx.state.cliCancelRequested = false
 
     const body = (req.body || {}) as JsonObject
     const sourceFilename = firstString(body.filename, body.source, body.image)
     if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
 
     const sourcePath = resolveOutputFile(ctx, sourceFilename)
-    if (!sourcePath || !fs.existsSync(sourcePath))
-      return res.status(400).json({ message: 'Source image not found' })
+    if (!sourcePath) return res.status(400).json({ message: 'Source image not found' })
 
     const upscaleModelName = firstString(body.upscaleModel, body.upscale_model)
     const upscaleModel = modelPath(ctx, 'upscale', upscaleModelName)
@@ -858,6 +1101,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/convert', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
+    ctx.state.cliCancelRequested = false
 
     const { sourceType, sourceModel, outputFormat, outputName } = req.body || {}
     if (!sourceType || !sourceModel || !outputFormat || !outputName)
@@ -880,9 +1124,9 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       return res.status(400).json({ success: false, error: 'Invalid model filename' })
 
     const sourceDirectory = modelDirectory(ctx, String(sourceType))
-    const sourcePath = path.join(sourceDirectory, safeSourceModel)
+    const sourcePath = modelPath(ctx, String(sourceType), safeSourceModel)
     const outputPath = path.join(sourceDirectory, safeOutputName)
-    if (!fs.existsSync(sourcePath))
+    if (!sourcePath)
       return res.status(400).json({ success: false, error: 'Source model not found' })
     if (fs.existsSync(outputPath))
       return res.status(400).json({ success: false, error: 'Output file already exists' })

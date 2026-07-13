@@ -46,6 +46,7 @@ const emptyModels = (): ModelCategories => ({
 /** Module-level singleton — all callers share one list (avoids N× /api/models on mount). */
 const models = ref<ModelCategories>(emptyModels())
 const isLoading = ref(false)
+const error = ref('')
 const lastFetchedAt = ref(0)
 let inflight: Promise<void> | null = null
 
@@ -77,11 +78,13 @@ export function useModels() {
     const force = options.force === true
     inflight = (async () => {
       try {
+        error.value = ''
         const endpoint = force ? '/api/models?refresh=1' : '/api/models'
         const data = await apiGet<ModelCategories>(endpoint)
         models.value = data
         lastFetchedAt.value = Date.now()
       } catch (e) {
+        error.value = e instanceof Error ? e.message : 'Model list unavailable'
         console.error('Failed to fetch models:', e)
       } finally {
         isLoading.value = false
@@ -95,6 +98,7 @@ export function useModels() {
   return {
     models,
     isLoading,
+    error,
     lastFetchedAt,
     fetchModels
   }
