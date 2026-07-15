@@ -19,7 +19,8 @@ import {
   normalizeImageParams,
   type ImageGenerationParams
 } from '@/lib/imageParams'
-import { buildExportFilename, copyImageUrlToClipboard, downloadUrlAs } from '@/lib/mediaExport'
+import { copyImageUrlToClipboard, downloadOutputAsFormat } from '@/lib/mediaExport'
+import { useOutputPreferences } from '@/composables/useOutputPreferences'
 
 const props = defineProps<{
   src: string
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { defaultSaveFormat } = useOutputPreferences()
 const showInfo = ref(false)
 const metadata = ref<ImageGenerationParams | null>(null)
 const isLoading = ref(false)
@@ -114,20 +116,22 @@ async function copyImagePixels(): Promise<void> {
 }
 
 async function saveImageFile(): Promise<void> {
-  if (!props.src) {
+  if (!props.filename && !props.src) {
     toast.error('No image to save')
     return
   }
-  const name = buildExportFilename({
-    originalName: props.filename,
-    prompt: metadata.value?.prompt,
-    seed: metadata.value?.seed,
-    width: metadata.value?.width,
-    height: metadata.value?.height
-  })
+  const filename =
+    props.filename ||
+    props.src.split('/').pop()?.split('?')[0] ||
+    'image.png'
   try {
-    await downloadUrlAs(props.src, name)
-    toast.success('Download started')
+    await downloadOutputAsFormat(filename, defaultSaveFormat.value, {
+      prompt: metadata.value?.prompt,
+      seed: metadata.value?.seed,
+      width: metadata.value?.width,
+      height: metadata.value?.height
+    })
+    toast.success(`Saved as ${defaultSaveFormat.value.toUpperCase()}`)
   } catch (e) {
     console.error(e)
     toast.error('Could not save image')

@@ -25,63 +25,82 @@ export const helpTopics: HelpTopic[] = [
     id: 'getting-started',
     title: 'Getting started',
     section: 'Getting started',
-    keywords: ['setup', 'wizard', 'first', 'install', 'backend', 'onboarding'],
+    keywords: ['setup', 'wizard', 'first', 'install', 'backend', 'onboarding', 'skip'],
     body: `# Getting started
 
 ## First run
 
 1. Open Flaxeo Image.
 2. Complete the **setup wizard**: install or select an **sd.cpp** backend (\`sd-cli\`).
-3. Download a **starter pack** matched to your GPU (or pick SDXL / Z-Image as a safe default).
+3. **Models (optional now):** download a **starter pack**, or **Skip download** and add models later from the Hub or folders.
 4. Optionally enable **Low VRAM** if you have a smaller GPU.
-5. Finish and press **Generate sample**, or open Image and write your own prompt.
+5. Finish → **Generate sample**, or open Image and write your own prompt.
 
 If you skip the wizard, a quiet **Getting started** strip stays until your first successful image.
+
+## Where models live
+
+- Default: app data → \`models/\` (subfolders like \`diffusion/\`, \`vae/\`, \`loras/\`).
+- Change root or open folders: **Settings → Storage**.
+- Full folder map: Help → **Models & hardware**.
 
 ## Checklist
 
 - **Backend** — \`sd-cli\` present and valid in Settings
-- **Models** — at least one diffusion model (and VAE if required by the pack)
+- **Models** — at least one diffusion model (and VAE / encoders if the pack needs them)
 - **First image** — successful Text2Image run
 
 ## Tips
 
-- Prefer **CLI** mode until you are comfortable; **Server** mode is best for warm simple T2I.
-- Open **Help** anytime from the sidebar for this guide offline.
+- Prefer **CLI** mode until you are comfortable; **Server** is best for warm simple T2I.
+- Open **Help** anytime from the sidebar (works offline).
 `
   },
   {
     id: 'studio-basics',
     title: 'Studio basics',
     section: 'Studio basics',
-    keywords: ['text2image', 'image', 'edit', 'video', 'gallery', 'seed', 'batch'],
+    keywords: ['text2image', 'image', 'edit', 'video', 'gallery', 'seed', 'batch', 'preview'],
     body: `# Studio basics
 
 ## Image (Text2Image)
 
-1. Choose a model in the command strip or Model panel.
-2. Write a **prompt** (and optional negative).
-3. Set size, steps, CFG, sampler as needed (Simple vs Advanced density in config).
-4. Press **Generate**.
+1. Choose a model (command strip or Model panel).
+2. Write a **prompt** (optional negative).
+3. Set size, steps, CFG (composer + gear).
+4. Optional: **Preview** = Proj / TAE / VAE for live frames while generating.
+5. Press **Generate**.
 
-**Seeds:** lock to reproduce; dice for a new random; copy to clipboard.
-**Batch:** increase batch count for multiple images in one job.
+**Seeds:** lock to reproduce; dice for random.  
+**Batch:** multiple images per job.  
+**Queue:** next Generate enqueues while a job runs.
 
-## Queue
-
-While a job runs, Generate **enqueues** the next job instead of blocking. Open **Queue** to reorder, remove waiting jobs, pause, or cancel the current run.
-
-## Gallery
-
-Browse outputs, open fullscreen, **reuse seed** or **reuse all settings**, and **upscale** when an upscale model is available.
+**Advanced tools:** Img2Img (\`-i\`), Reference multi-ref (\`-r\`) — same ref processing presets as Edit → Ref Edit.
 
 ## Edit
 
-Modes: **Inpaint**, **Ref Edit** (multi-reference), **Img2Img**. Upload a base image and follow the mode tips in the panel.
+| Mode | What it does |
+|------|----------------|
+| **Inpaint** | Mask areas to change. Size always follows the source image. |
+| **Img2Img** | Transform whole image with strength. Studio size or match source. |
+| **Ref Edit** | Multi-reference edit (\`-r\`). Studio size or match ref. |
+
+Shared with Image: steps, CFG, seed, **live preview**.  
+On Img2Img / Ref Edit: resolution chip, size policy, optional fit-to-target crop when adding an image.
+
+Models & packs: see **Models & hardware**.
+
+## Gallery
+
+Browse outputs, fullscreen, **reuse seed** or **reuse all settings**, **upscale** when a model is in \`models/upscale\`.
 
 ## Video
 
-Modes: **T2V**, **I2V**, **FLF2V**. Use resolution chips and FPS controls; video models come from Model Hub video packs.
+**T2V**, **I2V**, **FLF2V**. Resolution chips + FPS. Models from Hub video packs.
+
+## Queue
+
+One generation at a time. Open **Queue** to reorder, remove waiting jobs, pause, or cancel.
 `
   },
   {
@@ -300,29 +319,93 @@ This chapter will expand when the feature ships. See the product roadmap in the 
     id: 'models-hardware',
     title: 'Models & hardware',
     section: 'Models & hardware',
-    keywords: ['hub', 'vram', 'quantize', 'server', 'cli', 'cache', 'pack'],
+    keywords: [
+      'hub',
+      'vram',
+      'quantize',
+      'server',
+      'cli',
+      'cache',
+      'pack',
+      'folder',
+      'path',
+      'place',
+      'loras',
+      'gguf',
+      'diffusion',
+      'skip'
+    ],
     body: `# Models & hardware
+
+## Quick start
+
+1. **Easiest:** Model panel → **Hub** → install a starter pack (files land in the right folders).
+2. **Manual:** put weight files under \`models/\` (see below) → **Refresh models** → select diffusion (+ VAE / LLM / LoRAs as needed).
+3. **Generate:** Image workspace → model selected → prompt → **Generate**.
+4. **Edit packs:** Edit → Ref Edit or Img2Img with matching models.
+5. **Video packs:** Video workspace + Hub video packs (Wan, LTX, LingBot, …).
+
+Setup wizard can **skip** the starter download — install from Hub or folders anytime.
+
+## Where files go
+
+Default root: app **data** → \`models/\`  
+Change it in **Settings → Storage → Models root** (and optional per-folder overrides).
+
+| Folder under \`models/\` | Put here | Used for |
+|------------------------|----------|----------|
+| \`diffusion/\` | Main checkpoint / GGUF / DiT | Image, edit, most packs |
+| \`uncond_diffusion/\` | High-noise / second stream | Dual-stream packs |
+| \`vae/\` | VAE / AE | Many modern packs |
+| \`clip/\` | CLIP text encoder | Split / modern stacks |
+| \`t5xxl/\` | T5 encoder | FLUX-style packs |
+| \`embeddings_connectors/\` | Connectors / embeds | Some DiT stacks |
+| \`llm/\` | Language model GGUF | Qwen edit, some DiT |
+| \`llm_vision/\` | Vision LLM | Multimodal edit |
+| \`loras/\` | LoRA files | Strength in Model panel |
+| \`controlnet/\` | ControlNet weights | Advanced tools |
+| \`photomaker/\` | PhotoMaker | Identity |
+| \`upscale/\` | ESRGAN etc. | Gallery / queue upscale |
+| \`hires_upscalers/\` | Hires upscale models | Highres workflows |
+| \`taesd/\` | Tiny AE | Faster live preview (TAE) |
+| \`embeddings/\` | Textual inversion | Prompt embeds |
+| \`clip_vision/\` | CLIP vision | Specialty packs |
+| \`audio_vae/\` | Audio VAE | Audio-capable packs |
+
+**Outputs** and **temp** are separate dirs under Settings → Storage (not inside \`models/\`).
+
+After adding files manually, open the Model panel and **refresh** so Flaxeo sees them.
+
+## How to pick models in the UI
+
+| Load mode | When |
+|-----------|------|
+| **Standard** | Single-file / classic checkpoint workflow |
+| **Split** | Diffusion + separate VAE / encoders / LLM (common for modern packs) |
+
+Select each file from the dropdowns. Hub packs set these for you when you apply a pack.
 
 ## Model Hub
 
-Open the Model panel → Hub for **starter packs** (SDXL, FLUX, Z-Image, Wan, edit packs, …).
+Open the Model panel → **Hub** for starter packs (SDXL, FLUX, Z-Image, Wan, Anima, Qwen edit, …).  
 Packs show **on-disk** status when required files are installed.
 
-## Quantize
-
-**Quantize** converts or quantizes models to GGUF formats supported by sd.cpp.
-
-## Profiles
+## Low VRAM & profiles
 
 - **Low VRAM** — offload, stream layers, max VRAM auto, flash attention where available.
-- **Cache presets** — EasyCache, UCache, and other sd.cpp caching recipes (Advanced).
+- Prefer smaller quants (Q4 / Q5) on small GPUs.
+- **Cache presets** — EasyCache, UCache, and other sd.cpp recipes (Advanced).
 
 ## CLI vs Server
 
 | Mode | Best for |
 |------|----------|
-| **CLI** | Default. All modes (edit, video, batch, uploads). |
-| **Server** | Warm multi-gen for simple T2I. Advanced jobs fall back to CLI with a notice. |
+| **CLI** | Default. Edit, video, batch, uploads — full features. |
+| **Server** | Warm multi-gen for simple Text2Image. Advanced jobs fall back to CLI. |
+
+## Quantize
+
+**Quantize** converts models to GGUF formats supported by sd.cpp.
 
 ## Capabilities
 
@@ -333,7 +416,7 @@ Flaxeo probes \`sd-cli --help\` and soft-gates unsupported controls so the UI ma
     id: 'troubleshoot',
     title: 'Troubleshoot',
     section: 'Troubleshoot',
-    keywords: ['oom', 'error', 'fail', 'cancel', 'stuck', 'logs', 'missing'],
+    keywords: ['oom', 'error', 'fail', 'cancel', 'stuck', 'logs', 'missing', 'folder'],
     body: `# Troubleshoot
 
 ## Out of memory (OOM)
@@ -345,20 +428,32 @@ Flaxeo probes \`sd-cli --help\` and soft-gates unsupported controls so the UI ma
 
 ## Missing model / VAE / encoder
 
-- Open Model Hub and confirm pack files are **On disk**.
-- Select diffusion (and VAE/CLIP/T5 as required) in the Model panel.
-- Error toasts often include **Open logs** for the CLI tail.
+- Open **Model Hub** and confirm pack files are **On disk**.
+- Or place files in the correct folder under **Settings → Storage → Models** (e.g. \`diffusion/\`, \`vae/\`, \`loras/\`) and **Refresh models**.
+- If you **skipped** setup download, install a pack from Hub or add files manually — see **Models & hardware**.
+- Select diffusion (and VAE / CLIP / T5 / LLM as required) in the Model panel.
+- Toasts often include **Open logs** for the CLI tail.
+
+## Wrong folder
+
+Files only show up if they sit in the matching subfolder (e.g. LoRAs in \`models/loras/\`, not the root).
 
 ## Cancel stuck
 
-- Press **Cancel** on the generate control or in the Queue panel.
-- If the UI stays busy, check floating **Logs** and restart the app as a last resort.
+- Press **Cancel** on generate or in the Queue panel.
+- If the UI stays busy, open floating **Logs**, then restart the app as a last resort.
 
 ## Generation failed
 
-1. Read the toast (humanized message when possible).
+1. Read the toast.
 2. Open logs.
 3. Confirm backend path in Settings.
+4. See **Models & hardware**.
+
+## Queue not advancing
+
+- Ensure the queue is not **Paused**.
+- Cancel a hung current job, then Resume.
 `
   },
   {

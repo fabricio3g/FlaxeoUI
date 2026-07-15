@@ -34,7 +34,6 @@ import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import RecipeLibrary from '@/components/RecipeLibrary.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
-import RegionalPromptCanvas from '@/components/RegionalPromptCanvas.vue'
 import AdvancedToolPanel, { type AdvancedToolTab } from '@/components/AdvancedToolPanel.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -50,19 +49,24 @@ import { useSetup } from '@/composables/useSetup'
 import { useRemoteSession } from '@/composables/useRemoteSession'
 import { onStarterPrompt } from '@/lib/appEvents'
 import { requestConfirm } from '@/composables/useConfirm'
-import { buildExportFilename, downloadUrlAs } from '@/lib/mediaExport'
+import { downloadOutputAsFormat } from '@/lib/mediaExport'
 import {
-  normalizeRegionalPromptRegions,
-  normalizedRectToPixels,
-  type RegionalPromptRegion
-} from '../../../shared/regionalPrompting'
+  useOutputPreferences,
+  type ArchiveImageFormat
+} from '@/composables/useOutputPreferences'
 
 const toast = useToast()
 const { markFirstImageDone } = useSetup()
 const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
 const { models } = useModels()
-const { supportsUpscale, supportsInpaint } = useBackendCapabilities()
+const {
+  supportsUpscale,
+  supportsRefImageArgs,
+  refImageCliFlag,
+  fetchCapabilities
+} = useBackendCapabilities()
 const { isRemote } = useRemoteSession()
+const { defaultSaveFormat, autoDownloadGenerated } = useOutputPreferences()
 /** When set, queue an upscale job after each successful single (or first) output */
 const queueUpscaleAfter = ref(
   typeof localStorage !== 'undefined' && localStorage.getItem('flaxeo-queue-upscale-after') === '1'
@@ -150,42 +154,6 @@ const showImageViewer = ref(false)
 /** Last successful batch size — drives multi-tile grid layout */
 const lastBatchSize = ref(1)
 const showBatchGrid = ref(false)
-const previewStageHost = ref<HTMLElement | null>(null)
-const previewStageSize = ref({ width: 0, height: 0 })
-let previewStageObserver: ResizeObserver | null = null
-
-const regionalRegions = computed({
-  get: () => config.value.regionalPromptRegions,
-  set: (regions: RegionalPromptRegion[]) => {
-    config.value.regionalPromptRegions = regions.map((region) => ({ ...region }))
-  }
-})
-
-const regionalStageStyle = computed(() => {
-  const availableWidth = previewStageSize.value.width
-  const availableHeight = previewStageSize.value.height
-  const width = Math.max(64, Number(config.value.width) || 1024)
-  const height = Math.max(64, Number(config.value.height) || 1024)
-  if (!availableWidth || !availableHeight) return { width: '0px', height: '0px' }
-  const scale = Math.min(availableWidth / width, availableHeight / height)
-  return {
-    width: `${Math.max(1, Math.floor(width * scale))}px`,
-    height: `${Math.max(1, Math.floor(height * scale))}px`
-  }
-})
-
-function toggleRegionalPrompting(): void {
-  if (!supportsInpaint.value) {
-    toast.error('Regional prompting requires backend inpainting support')
-    return
-  }
-  config.value.regionalPromptingEnabled = !config.value.regionalPromptingEnabled
-  if (config.value.regionalPromptingEnabled) showBatchGrid.value = false
-}
-
-function clearRegionalPrompts(): void {
-  config.value.regionalPromptRegions = []
-}
 
 interface AdvancedUploadSnapshot {
   kontextRef: File | null
@@ -205,40 +173,6 @@ function appendAdvancedUploads(parts: FormPart[], uploads: AdvancedUploadSnapsho
     parts.push({ name: 'initImage', type: 'file', file: uploads.initImage })
   }
   uploads.photoMaker.forEach((file) => parts.push({ name: 'pmImages', type: 'file', file }))
-}
-
-function canvasToPngFile(canvas: HTMLCanvasElement, filename: string): Promise<File> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error('Could not create regional mask'))
-        return
-      }
-      resolve(new File([blob], filename, { type: 'image/png' }))
-    }, 'image/png')
-  })
-}
-
-async function createRegionalMaskFiles(
-  regions: RegionalPromptRegion[],
-  width: number,
-  height: number
-): Promise<File[]> {
-  const files: File[] = []
-  for (let index = 0; index < regions.length; index++) {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('Canvas masks are not supported on this device')
-    context.fillStyle = '#000'
-    context.fillRect(0, 0, width, height)
-    const rect = normalizedRectToPixels(regions[index], width, height)
-    context.fillStyle = '#fff'
-    context.fillRect(rect.x, rect.y, rect.width, rect.height)
-    files.push(await canvasToPngFile(canvas, `region-${index + 1}.png`))
-  }
-  return files
 }
 
 // Preview polling (only while generating; 304/ETag avoids re-decoding unchanged frames)
@@ -627,7 +561,13 @@ async function handleGenerate(opts?: {
   batchCountOverride?: number
   quiet?: boolean
 }): Promise<void> {
-  if (!prompt.value.trim()) return
+  if (!prompt.value.trim()) {
+    toast.error('Enter a prompt to generate')
+    return
+  }
+
+  // Close advanced tools so they never block the send action
+  if (activeTab.value) closeAdvancedPanel()
 
   const jobConfig = JSON.parse(JSON.stringify(config.value)) as typeof config.value
   const uploads: AdvancedUploadSnapshot = {
@@ -646,30 +586,8 @@ async function handleGenerate(opts?: {
     return
   }
 
-  const regionalEnabled = jobConfig.regionalPromptingEnabled
-  const regions = regionalEnabled
-    ? normalizeRegionalPromptRegions(jobConfig.regionalPromptRegions)
-    : []
-  if (regionalEnabled) {
-    if (!supportsInpaint.value) {
-      toast.error('Regional prompting requires backend inpainting support')
-      return
-    }
-    if (!regions.length) {
-      toast.error('Draw at least one prompt region')
-      return
-    }
-    const incompleteIndex = regions.findIndex((region) => !region.prompt.trim())
-    if (incompleteIndex >= 0) {
-      toast.error(`Add a description for region ${incompleteIndex + 1}`)
-      return
-    }
-  }
-
-  const batchCount = regionalEnabled
-    ? 1
-    : clampBatchCount(opts?.batchCountOverride ?? jobConfig.batchCount)
-  if (!regionalEnabled && opts?.batchCountOverride == null && batchCount !== jobConfig.batchCount) {
+  const batchCount = clampBatchCount(opts?.batchCountOverride ?? jobConfig.batchCount)
+  if (opts?.batchCountOverride == null && batchCount !== jobConfig.batchCount) {
     configStore.updateConfig({ batchCount })
   }
   const seedForJob =
@@ -680,7 +598,6 @@ async function handleGenerate(opts?: {
         : -1
   const snapshot = pickConfigSnapshot({
     ...jobConfig,
-    regionalPromptRegions: regions,
     batchCount,
     seed: seedForJob,
     seedLocked: opts?.seedOverride != null ? true : jobConfig.seedLocked
@@ -698,6 +615,14 @@ async function handleGenerate(opts?: {
     { prompt: promptSnap, negativePrompt: negSnap }
   )
 
+  // Old binaries / Off: never send the unified flag
+  if (!supportsRefImageArgs.value || jobConfig.refImagePreset === 'off') {
+    delete params.refImageArgs
+    delete params.refImageCliFlag
+  } else if (params.refImageArgs && refImageCliFlag.value) {
+    params.refImageCliFlag = refImageCliFlag.value
+  }
+
   let endpoint = '/api/generate-cli'
   let kind: 'json' | 'form' = 'json'
   let jsonBody: Record<string, unknown> | undefined = params as Record<string, unknown>
@@ -705,53 +630,22 @@ async function handleGenerate(opts?: {
 
   const hasPMFiles = uploads.photoMaker.length > 0
   const needsFormData =
-    regionalEnabled ||
-    !!uploads.kontextRef ||
-    !!uploads.controlNet ||
-    !!uploads.initImage ||
-    hasPMFiles
+    !!uploads.kontextRef || !!uploads.controlNet || !!uploads.initImage || hasPMFiles
 
   const wantsServer =
     jobConfig.backendMode === 'server' &&
     serverOnline.value &&
     batchCount === 1 &&
-    !regionalEnabled &&
     !jobConfig.photoMakerImages?.length &&
     !jobConfig.controlImagePath &&
     !jobConfig.initImagePath &&
     !jobConfig.kontextRefImage
 
-  if (
-    jobConfig.backendMode === 'server' &&
-    serverOnline.value &&
-    !wantsServer &&
-    !regionalEnabled
-  ) {
+  if (jobConfig.backendMode === 'server' && serverOnline.value && !wantsServer) {
     toast.info('Using CLI for this job — Server mode is core T2I only')
   }
 
-  if (regionalEnabled) {
-    endpoint = '/api/generate-regional'
-    kind = 'form'
-    formParts = payloadToFormParts(params)
-    formParts.push({ name: 'regions', type: 'text', value: JSON.stringify(regions) })
-    const maskWidth = Math.max(64, Math.round(widthSnap / 64) * 64)
-    const maskHeight = Math.max(64, Math.round(heightSnap / 64) * 64)
-    try {
-      const masks = await createRegionalMaskFiles(regions, maskWidth, maskHeight)
-      masks.forEach((file) => formParts!.push({ name: 'regionMasks', type: 'file', file }))
-    } catch (maskError) {
-      toast.error(
-        maskError instanceof Error ? maskError.message : 'Could not create regional masks'
-      )
-      return
-    }
-    appendAdvancedUploads(formParts, uploads)
-    jsonBody = undefined
-    if (jobConfig.backendMode === 'server' && serverOnline.value) {
-      toast.info('Using CLI for regional prompting')
-    }
-  } else if (wantsServer) {
+  if (wantsServer) {
     endpoint = '/api/generate'
     jsonBody = {
       prompt: params.prompt,
@@ -836,6 +730,7 @@ async function handleGenerate(opts?: {
           enqueueUpscaleForFile(names[0])
           toast.info('Upscale queued after generate')
         }
+        void autoDownloadOutputs(names)
       } else if (result.message === 'Cancelled') {
         discardLivePreview()
         addHistoryEntry({
@@ -930,17 +825,37 @@ function openGalleryImageFullscreen(filename: string): void {
   showImageViewer.value = true
 }
 
-async function savePreviewImage(): Promise<void> {
-  if (!previewImage.value || isLivePreview.value) return
-  const name = buildExportFilename({
-    originalName: currentImageFilename.value || 'image.png'
-  })
+async function savePreviewImage(format?: ArchiveImageFormat): Promise<void> {
+  if (!currentImageFilename.value || isLivePreview.value) return
+  const archiveFormat = format ?? defaultSaveFormat.value
   try {
-    await downloadUrlAs(previewImage.value, name)
-    toast.success('Download started')
+    await downloadOutputAsFormat(currentImageFilename.value, archiveFormat, {
+      prompt: prompt.value,
+      seed: config.value.seed,
+      width: config.value.width,
+      height: config.value.height
+    })
+    toast.success(`Saved as ${archiveFormat.toUpperCase()}`)
   } catch (e) {
     console.error(e)
     toast.error('Could not save image')
+  }
+}
+
+async function autoDownloadOutputs(names: string[]): Promise<void> {
+  if (!autoDownloadGenerated.value || !names.length) return
+  const format = defaultSaveFormat.value
+  let ok = 0
+  for (const filename of names) {
+    try {
+      await downloadOutputAsFormat(filename, format)
+      ok += 1
+    } catch (e) {
+      console.error(e)
+    }
+  }
+  if (ok > 0) {
+    toast.info(ok > 1 ? `Auto-saved ${ok} images as ${format.toUpperCase()}` : `Auto-saved as ${format.toUpperCase()}`)
   }
 }
 
@@ -1029,7 +944,6 @@ function handleKeydown(e: KeyboardEvent) {
     e.key === 'Delete' &&
     !isRemote &&
     previewImage.value &&
-    !config.value.regionalPromptingEnabled &&
     !isGenerating.value &&
     !isLivePreview.value
   ) {
@@ -1107,15 +1021,8 @@ function handleViewportResize(): void {
 onMounted(() => {
   isMobile.value = window.innerWidth < 768
   window.addEventListener('resize', handleViewportResize)
-  previewStageObserver = new ResizeObserver(([entry]) => {
-    if (!entry) return
-    previewStageSize.value = {
-      width: entry.contentRect.width,
-      height: entry.contentRect.height
-    }
-  })
-  if (previewStageHost.value) previewStageObserver.observe(previewStageHost.value)
 
+  void fetchCapabilities()
   // Check if sd-server is running
   void checkServerStatus()
 
@@ -1138,8 +1045,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleViewportResize)
-  previewStageObserver?.disconnect()
-  previewStageObserver = null
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleResolutionMenuClick)
   unsubStarterPrompt?.()
@@ -1189,29 +1094,12 @@ onActivated(() => {
 
       <div class="mx-auto flex h-full min-h-0 w-full max-w-[90rem] flex-col">
         <div
-          ref="previewStageHost"
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
         >
-          <div
-            v-if="config.regionalPromptingEnabled"
-            class="relative shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-muted/25 shadow-sm"
-            :style="regionalStageStyle"
-          >
-            <img
-              v-if="previewImage"
-              :src="previewImage"
-              class="absolute inset-0 h-full w-full object-cover"
-              alt="Regional composition preview"
-            />
-            <div v-else class="absolute inset-0 bg-muted/20" aria-hidden="true" />
-            <RegionalPromptCanvas v-model="regionalRegions" :disabled="isGenerating" />
-          </div>
           <!-- Multi-result batch grid (2+ images) -->
           <div
-            v-else-if="
-              !isGenerating && galleryImages.length > 1 && lastBatchSize > 1 && showBatchGrid
-            "
+            v-if="!isGenerating && galleryImages.length > 1 && lastBatchSize > 1 && showBatchGrid"
             class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both grid h-full w-full gap-2 overflow-y-auto p-2 duration-200 md:p-4"
             :class="
               lastBatchSize >= 4 ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2' : 'grid-cols-2'
@@ -1276,12 +1164,7 @@ onActivated(() => {
             </div>
           </div>
           <div
-            v-if="
-              !config.regionalPromptingEnabled &&
-              previewImage &&
-              galleryImages.length > 1 &&
-              !isGenerating
-            "
+            v-if="previewImage && galleryImages.length > 1 && !isGenerating"
             class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-3"
           >
             <button
@@ -1302,7 +1185,7 @@ onActivated(() => {
             </button>
           </div>
           <div
-            v-if="previewImage && !isLivePreview && !config.regionalPromptingEnabled"
+            v-if="previewImage && !isLivePreview"
             class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-full border border-border/60 bg-background/85 p-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 md:right-3 md:top-3"
           >
             <button
@@ -1313,15 +1196,45 @@ onActivated(() => {
             >
               <Trash2 class="size-4" />
             </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Download image"
-              aria-label="Save image"
-              @click="savePreviewImage"
-            >
-              <Download class="size-4" />
-            </button>
+            <div class="inline-flex items-center">
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                :title="`Save as ${defaultSaveFormat.toUpperCase()} (default)`"
+                aria-label="Save image"
+                @click="savePreviewImage()"
+              >
+                <Download class="size-4" />
+              </button>
+              <Popover>
+                <PopoverTrigger as-child>
+                  <button
+                    type="button"
+                    class="aui-icon-button -ml-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    title="Save format"
+                    aria-label="Choose save format"
+                  >
+                    <span class="text-[10px] leading-none">▾</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent class="w-44 p-1" align="end" side="bottom">
+                  <button
+                    type="button"
+                    class="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent"
+                    @click="savePreviewImage('png')"
+                  >
+                    Save as PNG
+                  </button>
+                  <button
+                    type="button"
+                    class="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent"
+                    @click="savePreviewImage('avif')"
+                  >
+                    Save as AVIF
+                  </button>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
 
@@ -1388,6 +1301,7 @@ onActivated(() => {
       <div class="mx-auto mb-2 flex w-full max-w-4xl justify-end px-1">
         <div
           ref="advancedToolbarRef"
+          data-slot="advanced-toolbar"
           class="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-background/80 p-1 shadow-sm backdrop-blur"
         >
           <button
@@ -1427,53 +1341,12 @@ onActivated(() => {
             type="button"
             class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             :class="advancedButtonClass('kontext')"
-            title="Reference (Flux)"
-            aria-label="Open Reference (Flux) settings"
+            title="Reference (Kontext / Anima edit / Qwen edit)"
+            aria-label="Open Reference settings"
             :aria-expanded="activeTab === 'kontext'"
             @click="toggleAdvancedTab('kontext')"
           >
             <ImagePlus class="size-4" />
-          </button>
-          <span class="mx-0.5 h-4 w-px bg-border" aria-hidden="true"></span>
-          <button
-            type="button"
-            class="aui-icon-button relative inline-flex size-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-40"
-            :class="
-              config.regionalPromptingEnabled
-                ? 'bg-foreground text-background hover:bg-foreground/90'
-                : 'text-muted-foreground hover:text-foreground'
-            "
-            :title="
-              supportsInpaint
-                ? config.regionalPromptingEnabled
-                  ? 'Disable regional prompting'
-                  : 'Enable regional prompting'
-                : 'Regional prompting requires backend inpainting support'
-            "
-            aria-label="Toggle regional prompting"
-            :aria-pressed="config.regionalPromptingEnabled"
-            :disabled="!supportsInpaint"
-            @click="toggleRegionalPrompting"
-          >
-            <Square class="size-4" />
-            <span
-              v-if="config.regionalPromptRegions.length"
-              class="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full border border-background bg-foreground text-[9px] font-semibold text-background"
-              aria-hidden="true"
-            >
-              {{ config.regionalPromptRegions.length }}
-            </span>
-          </button>
-          <button
-            v-if="config.regionalPromptingEnabled && config.regionalPromptRegions.length"
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            title="Clear prompt regions"
-            aria-label="Clear prompt regions"
-            :disabled="isGenerating"
-            @click="clearRegionalPrompts"
-          >
-            <Trash2 class="size-4" />
           </button>
         </div>
       </div>

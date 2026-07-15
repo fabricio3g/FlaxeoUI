@@ -39,6 +39,7 @@ const STATIC_ENDPOINTS = new Map<string, LanEndpointClass>([
   ['GET /api/preview-image', 'generation'],
   ['GET /api/generation/progress', 'generation'],
   ['POST /api/image/params', 'generation'],
+  ['GET /api/export-image', 'generation'],
   ['POST /api/auth/logout', 'generation'],
 
   ['GET /api/gallery', 'gallery'],
@@ -93,7 +94,7 @@ export function classifyLanEndpoint(method: unknown, path: unknown): LanEndpoint
     if (
       (method === 'GET' || method === 'HEAD') &&
       !filename.includes('..') &&
-      /\.(?:png|jpe?g|webp|gif|mp4)$/i.test(filename)
+      /\.(?:png|jpe?g|webp|gif|avif|mp4)$/i.test(filename)
     )
       return 'generation'
     return null

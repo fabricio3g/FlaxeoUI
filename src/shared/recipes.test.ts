@@ -44,19 +44,19 @@ describe('recipes', () => {
     assert.equal(parsed!.configSnapshot.width, builtins[0].configSnapshot.width)
   })
 
-  it('deep-clones regional prompt snapshots', () => {
-    const regions = [{ id: 'region-1', x: 0, y: 0, width: 0.5, height: 1, prompt: 'cat' }]
+  it('deep-clones nested config snapshot fields', () => {
+    const loras = [{ path: 'style.safetensors', multiplier: 0.8 }]
     const recipe = normalizeRecipe({
-      name: 'Regional',
+      name: 'Lora clone',
       surface: 'text2image',
       tags: [],
-      configSnapshot: { regionalPromptingEnabled: true, regionalPromptRegions: regions }
+      configSnapshot: { steps: 20, loras }
     })
 
     assert.ok(recipe)
-    regions[0].prompt = 'changed'
-    const saved = recipe.configSnapshot.regionalPromptRegions as typeof regions
-    assert.equal(saved[0].prompt, 'cat')
+    loras[0].multiplier = 0.1
+    const saved = recipe.configSnapshot.loras as typeof loras
+    assert.equal(saved[0].multiplier, 0.8)
   })
 
   it('parseRecipeJson handles bad input', () => {

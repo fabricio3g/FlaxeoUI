@@ -5,13 +5,14 @@
 
 import type { GenerationConfig } from '@/stores/config'
 import { appendLoraPromptTokens } from '@/lib/promptTokens'
+import { resolveRefImageArgsForConfig } from '../../../shared/refImageArgs'
 
 export type GenerationPayload = Record<string, string | number | boolean | object | undefined>
 
 export interface BuildGenerationPayloadOptions {
   prompt: string
   negativePrompt?: string
-  /** Override width/height (e.g. edit uses image natural size, video uses video dims) */
+  /** Override width/height (e.g. inpaint/img2img use source size; Ref Edit uses config; video uses video dims) */
   width?: number
   height?: number
   /** Extra fields merged last (video frames, high-noise, etc.) */
@@ -75,6 +76,13 @@ export function buildGenerationPayload(
     initImagePath: c.initImagePath || undefined,
     img2imgStrength: c.img2imgStrength,
     kontextRefPath: c.kontextRefImage || undefined,
+    // User-selected ref preset (client strips when binary lacks the flag)
+    refImagePreset: c.refImagePreset || 'auto',
+    refImageArgs:
+      resolveRefImageArgsForConfig(c.refImagePreset || 'auto', {
+        diffusionModel,
+        uncondDiffusionModel: c.uncondDiffusionModel
+      }) || undefined,
 
     diffusionModel,
     diffusion_model: diffusionModel,

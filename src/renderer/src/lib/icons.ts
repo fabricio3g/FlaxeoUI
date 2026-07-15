@@ -46,6 +46,7 @@ import {
   AlertTriangle as StaticAlertTriangle,
   CheckCircle as StaticCheckCircle,
   CheckCircle2 as StaticCheckCircle2,
+  Crop as StaticCrop,
   Eraser as StaticEraser,
   ExternalLink as StaticExternalLink,
   FileCode as StaticFileCode,
@@ -119,6 +120,7 @@ export const ChevronRight = animatedIcon(MotionChevronRight, 'lucide-animated')
 export const ChevronUp = animatedIcon(MotionChevronUp, 'lucide-animated')
 export const CircleHelp = animatedIcon(MotionCircleHelp, 'lucide-animated')
 export const Copy = animatedIcon(MotionCopy, 'lucide-animated')
+export const Crop = fallbackIcon(StaticCrop)
 export const Cpu = animatedIcon(MotionCpu)
 export const Dices = fallbackIcon(StaticDices)
 export const Database = animatedIcon(MotionDatabaseBackup)

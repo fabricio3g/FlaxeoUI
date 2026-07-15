@@ -1,10 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { ImageGenerationParams, ImageParamsReuseMode } from '@/lib/imageParams'
-import {
-  normalizeRegionalPromptRegions,
-  type RegionalPromptRegion
-} from '../../../shared/regionalPrompting'
 
 /**
  * GenerationConfig - All parameters for image generation
@@ -131,13 +127,17 @@ export interface GenerationConfig {
   // Kontext (Flux image editing)
   kontextRefImage: string
 
+  /**
+   * Ref Edit / Image Reference --ref-image-args (sd.cpp PR #1780):
+   * - `auto` — infer from diffusion model (e.g. Anima → cosmos_reference)
+   * - `off` — omit the flag (CLI architecture default, or required on old binaries)
+   * - named preset — force that preset when the binary supports the flag
+   */
+  refImagePreset: string
+
   // Img2Img
   initImagePath: string
   img2imgStrength: number
-
-  // Regional prompting (sequential inpaint)
-  regionalPromptingEnabled: boolean
-  regionalPromptRegions: RegionalPromptRegion[]
 
   // Video mode
   videoMode: boolean
@@ -243,10 +243,9 @@ const defaultConfig: GenerationConfig = {
   photoMakerStyleStrength: 20,
   photoMakerIdEmbedsPath: '',
   kontextRefImage: '',
+  refImagePreset: 'auto',
   initImagePath: '',
   img2imgStrength: 0.4,
-  regionalPromptingEnabled: false,
-  regionalPromptRegions: [],
   videoMode: false
 }
 
@@ -613,6 +612,70 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     })
   },
   {
+    id: 'builtin-anima',
+    name: 'Anima',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 6,
+      guidance: 3.5,
+      steps: 20,
+      width: 1024,
+      height: 1024,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeModel: '',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-lingbot-video',
+    name: 'LingBot Video',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      videoMode: true,
+      cfgScale: 3,
+      guidance: 3.5,
+      steps: 20,
+      width: 832,
+      height: 480,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      llmModel: '',
+      vaeModel: '',
+      flowShift: 3,
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
+    id: 'builtin-minit2i',
+    name: 'MiniT2I',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'split',
+      cfgScale: 6,
+      guidance: 3.5,
+      steps: 100,
+      width: 512,
+      height: 512,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      t5xxlModel: '',
+      flashAttention: true,
+      cpuOffload: true
+    })
+  },
+  {
     id: 'builtin-wan21',
     name: 'Wan2.1 Video',
     builtin: true,
@@ -692,9 +755,7 @@ function cloneConfig(value: GenerationConfig): GenerationConfig {
 function normalizeConfig(value: Partial<GenerationConfig>): GenerationConfig {
   return {
     ...cloneConfig(defaultConfig),
-    ...value,
-    regionalPromptingEnabled: value.regionalPromptingEnabled === true,
-    regionalPromptRegions: normalizeRegionalPromptRegions(value.regionalPromptRegions)
+    ...value
   }
 }
 
@@ -847,10 +908,6 @@ export const useConfigStore = defineStore('config', () => {
     if (Array.isArray(snapshot.loras)) {
       next.loras = snapshot.loras.map((l) => ({ ...l }))
     }
-    next.regionalPromptingEnabled = snapshot.regionalPromptingEnabled === true
-    next.regionalPromptRegions = next.regionalPromptingEnabled
-      ? normalizeRegionalPromptRegions(snapshot.regionalPromptRegions)
-      : []
     config.value = normalizeConfig({ ...config.value, ...next })
   }
 
@@ -869,8 +926,6 @@ export const useConfigStore = defineStore('config', () => {
     }
 
     const next: Partial<GenerationConfig> = {}
-    next.regionalPromptingEnabled = false
-    next.regionalPromptRegions = []
     if (params.seed != null && Number.isFinite(params.seed)) next.seed = params.seed
     if (params.steps != null && Number.isFinite(params.steps)) next.steps = params.steps
     const cfg = params.cfgScale ?? params.cfg_scale

@@ -9,6 +9,9 @@ import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import {
   ArrowUp,
   Brush,
+  ChevronDown,
+  ChevronUp,
+  Crop,
   Eraser,
   Images,
   Loader2,
@@ -25,6 +28,8 @@ import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import RefSizePrompt from '@/components/RefSizePrompt.vue'
+import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
 import {
   isAnyGenerationBusy,
   toastGenerationError,
@@ -33,13 +38,34 @@ import {
 import { useGenerationProgress } from '@/composables/useGenerationProgress'
 import { useJobQueue, type FormPart } from '@/composables/useJobQueue'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
+import { resolutionPresets } from '@/lib/resolutionPresets'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
+import {
+  readImageNaturalSize,
+  useRefEditSizePrefs
+} from '@/composables/useRefEditSizePrefs'
+import {
+  LIVE_PREVIEW_METHOD_OPTIONS,
+  useLivePreview
+} from '@/composables/useLivePreview'
+import {
+  REF_IMAGE_PRESET_OPTIONS,
+  resolveRefImagePreset
+} from '../../../shared/refImageArgs'
 
 const router = useRouter()
 const toast = useToast()
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
+const { supportsRefImageArgs, refImageCliFlag, fetchCapabilities } = useBackendCapabilities()
+const {
+  refEditSizeMode,
+  refSizePromptDisabled,
+  setRefEditSizeMode,
+  setRefSizePromptDisabled
+} = useRefEditSizePrefs()
 
 type EditMode = 'inpaint' | 'ref' | 'img2img'
 
@@ -53,6 +79,19 @@ const progress = useGenerationProgress()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
 const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
 const error = ref<string | null>(null)
+const {
+  previewImage,
+  isLivePreview,
+  startPreviewPolling,
+  stopPreviewPolling,
+  discardLivePreview,
+  setFinalPreview
+} = useLivePreview()
+
+/** Show live/final preview over source/mask while generating or when a result frame is sticky. */
+const showPreviewHero = computed(
+  () => !!previewImage.value && (isLivePreview.value || isGenerating.value)
+)
 
 function payloadToFormParts(payload: GenerationPayload): FormPart[] {
   const parts: FormPart[] = []
@@ -71,6 +110,7 @@ const promptInput = ref<HTMLTextAreaElement | null>(null)
 const isMobile = ref(false)
 const promptMode = ref<'positive' | 'negative'>('positive')
 const editMode = ref<EditMode>('inpaint')
+const showResolutionMenu = ref(false)
 
 const promptModeOptions = [
   { value: 'positive', label: 'Positive' },
@@ -90,7 +130,307 @@ interface RefChip {
   file: File
 }
 const refChips = ref<RefChip[]>([])
+
+/** Ref Edit + Img2Img can choose studio W×H; Inpaint always follows source. */
+const freeSizeMode = computed(
+  () => editMode.value === 'ref' || editMode.value === 'img2img'
+)
+
+const matchSizeLabel = computed(() =>
+  editMode.value === 'img2img' ? 'Match source' : 'Match ref'
+)
+
+/** Effective output label: studio config or following image when match_ref. */
+const generationStripLabel = computed(() => {
+  const sizePart =
+    refEditSizeMode.value === 'match_ref'
+      ? effectiveMatchRefSize.value
+        ? `${effectiveMatchRefSize.value.width}×${effectiveMatchRefSize.value.height} · ${
+            editMode.value === 'img2img' ? 'src' : 'ref'
+          }`
+        : editMode.value === 'img2img'
+          ? 'match source'
+          : 'match ref'
+      : `${config.value.width}×${config.value.height}`
+  return `${config.value.steps} steps · ${sizePart}`
+})
+
+/** Cached natural size of first ref / base for strip + payload when match_ref. */
+const effectiveMatchRefSize = ref<{ width: number; height: number } | null>(null)
+
+async function refreshMatchRefSize(): Promise<void> {
+  // Img2Img: base only. Ref Edit: first ref, then base fallback.
+  const file =
+    editMode.value === 'img2img'
+      ? baseImageFile.value
+      : refChips.value[0]?.file || baseImageFile.value
+  if (!file) {
+    if (imageElement?.naturalWidth && imageElement?.naturalHeight) {
+      effectiveMatchRefSize.value = {
+        width: imageElement.naturalWidth,
+        height: imageElement.naturalHeight
+      }
+      return
+    }
+    effectiveMatchRefSize.value = null
+    return
+  }
+  try {
+    effectiveMatchRefSize.value = await readImageNaturalSize(file)
+  } catch {
+    effectiveMatchRefSize.value = null
+  }
+}
+
+function selectResolution(preset: (typeof resolutionPresets)[number]): void {
+  setRefEditSizeMode('studio')
+  configStore.setDimensions(preset.width, preset.height)
+  showResolutionMenu.value = false
+}
+
+function applyCustomResolution(): void {
+  setRefEditSizeMode('studio')
+  configStore.setDimensions(
+    Math.max(64, Number(config.value.width) || 1024),
+    Math.max(64, Number(config.value.height) || 1024)
+  )
+  showResolutionMenu.value = false
+}
+
+/** Copy natural size from first ref/base into config W×H and switch to studio mode. */
+async function matchRefResolution(): Promise<void> {
+  const file =
+    editMode.value === 'img2img'
+      ? baseImageFile.value
+      : refChips.value[0]?.file || baseImageFile.value
+  try {
+    if (file) {
+      const size = await readImageNaturalSize(file)
+      setRefEditSizeMode('studio')
+      configStore.setDimensions(size.width, size.height)
+      effectiveMatchRefSize.value = size
+      showResolutionMenu.value = false
+      return
+    }
+    if (imageElement?.naturalWidth && imageElement?.naturalHeight) {
+      setRefEditSizeMode('studio')
+      configStore.setDimensions(imageElement.naturalWidth, imageElement.naturalHeight)
+      showResolutionMenu.value = false
+      return
+    }
+    toast.error(
+      editMode.value === 'img2img' ? 'Load a source image first' : 'Add a reference or source image first'
+    )
+  } catch {
+    toast.error('Could not read image dimensions')
+  }
+}
+
+// --- Size prompt + crop editor (Ref Edit + Img2Img) ---
+const sizePrompt = ref<{
+  open: boolean
+  target: 'ref' | 'base'
+  chipId?: string
+  imageWidth: number
+  imageHeight: number
+} | null>(null)
+
+const cropEditor = ref<{
+  open: boolean
+  target: 'ref' | 'base'
+  chipId?: string
+  imageUrl: string
+} | null>(null)
+
+const sizePromptDontAsk = ref(false)
+
+async function maybePromptImageSize(
+  source: { target: 'ref'; chip: RefChip } | { target: 'base'; file: File }
+): Promise<void> {
+  if (!freeSizeMode.value) return
+  if (refEditSizeMode.value === 'match_ref') {
+    await refreshMatchRefSize()
+    return
+  }
+  if (refSizePromptDisabled.value) return
+  try {
+    const file = source.target === 'ref' ? source.chip.file : source.file
+    const size = await readImageNaturalSize(file)
+    if (size.width === config.value.width && size.height === config.value.height) {
+      return
+    }
+    sizePrompt.value = {
+      open: true,
+      target: source.target,
+      chipId: source.target === 'ref' ? source.chip.id : undefined,
+      imageWidth: size.width,
+      imageHeight: size.height
+    }
+  } catch {
+    /* ignore unreadable files */
+  }
+}
+
+/** @deprecated path — ref chips still call maybePromptImageSize via wrapper */
+async function maybePromptRefSize(chip: RefChip): Promise<void> {
+  await maybePromptImageSize({ target: 'ref', chip })
+}
+
+function closeSizePrompt(): void {
+  if (sizePromptDontAsk.value) setRefSizePromptDisabled(true)
+  sizePrompt.value = null
+  sizePromptDontAsk.value = false
+}
+
+function onSizePromptUseImage(): void {
+  if (!sizePrompt.value) return
+  setRefEditSizeMode('studio')
+  configStore.setDimensions(sizePrompt.value.imageWidth, sizePrompt.value.imageHeight)
+  closeSizePrompt()
+}
+
+function onSizePromptKeep(): void {
+  closeSizePrompt()
+}
+
+function onSizePromptFit(): void {
+  if (!sizePrompt.value) return
+  const prompt = sizePrompt.value
+  closeSizePrompt()
+  if (prompt.target === 'base') {
+    openCropEditorBase()
+    return
+  }
+  if (prompt.chipId) openCropEditor(prompt.chipId)
+}
+
+function openCropEditor(chipId: string): void {
+  const chip = refChips.value.find((c) => c.id === chipId)
+  if (!chip) {
+    toast.error('Reference not found')
+    return
+  }
+  cropEditor.value = {
+    open: true,
+    target: 'ref',
+    chipId: chip.id,
+    imageUrl: chip.url
+  }
+  showResolutionMenu.value = false
+}
+
+function openCropEditorFirstRef(): void {
+  const chip = refChips.value[0]
+  if (!chip) {
+    toast.error('Add a reference first')
+    return
+  }
+  openCropEditor(chip.id)
+}
+
+function openCropEditorBase(): void {
+  if (!baseImage.value || !baseImageFile.value) {
+    toast.error('Load a source image first')
+    return
+  }
+  cropEditor.value = {
+    open: true,
+    target: 'base',
+    imageUrl: baseImage.value
+  }
+  showResolutionMenu.value = false
+}
+
+/** Fit button in resolution menu: first ref or base depending on mode. */
+function openCropEditorFromMenu(): void {
+  if (editMode.value === 'img2img') {
+    openCropEditorBase()
+    return
+  }
+  openCropEditorFirstRef()
+}
+
+function onCropCancel(): void {
+  cropEditor.value = null
+}
+
+async function onCropApply(payload: {
+  file: File
+  width: number
+  height: number
+}): Promise<void> {
+  if (!cropEditor.value) return
+  const editor = cropEditor.value
+
+  if (editor.target === 'base') {
+    if (baseImage.value?.startsWith('blob:')) URL.revokeObjectURL(baseImage.value)
+    const url = URL.createObjectURL(payload.file)
+    baseImageFile.value = payload.file
+    currentEditFilename.value = null
+    loadImage(url)
+    setRefEditSizeMode('studio')
+    configStore.setDimensions(payload.width, payload.height)
+    effectiveMatchRefSize.value = { width: payload.width, height: payload.height }
+    cropEditor.value = null
+    toast.success(`Source fitted to ${payload.width}×${payload.height}`)
+    return
+  }
+
+  const chipId = editor.chipId
+  if (!chipId) {
+    cropEditor.value = null
+    return
+  }
+  const idx = refChips.value.findIndex((c) => c.id === chipId)
+  if (idx < 0) {
+    cropEditor.value = null
+    return
+  }
+  const old = refChips.value[idx]
+  URL.revokeObjectURL(old.url)
+  const url = URL.createObjectURL(payload.file)
+  refChips.value[idx] = { id: chipId, url, file: payload.file }
+  setRefEditSizeMode('studio')
+  configStore.setDimensions(payload.width, payload.height)
+  effectiveMatchRefSize.value = { width: payload.width, height: payload.height }
+  cropEditor.value = null
+  toast.success(`Ref fitted to ${payload.width}×${payload.height}`)
+}
+
 const showQwenZeroCondTip = computed(() => config.value.qwenImageZeroCondT)
+
+/** Ref Edit can run from refs alone; other modes need a source image. */
+const canSubmitEdit = computed(() => {
+  if (!prompt.value.trim()) return false
+  if (editMode.value === 'ref') {
+    return refChips.value.length > 0 || !!baseImageFile.value
+  }
+  return !!baseImageFile.value
+})
+
+const suggestedRefPreset = computed(() =>
+  resolveRefImagePreset({
+    diffusionModel:
+      config.value.loadMode === 'standard'
+        ? config.value.standardModel
+        : config.value.diffusionModel,
+    uncondDiffusionModel: config.value.uncondDiffusionModel
+  })
+)
+
+const refImagePresetOptions = computed(() => {
+  const base = REF_IMAGE_PRESET_OPTIONS.map((o) => ({ ...o }))
+  if (suggestedRefPreset.value) {
+    const auto = base.find((o) => o.value === 'auto')
+    if (auto) auto.label = `Auto (${suggestedRefPreset.value})`
+  }
+  if (!supportsRefImageArgs.value) {
+    return base.map((o) =>
+      o.value === 'off' ? { ...o, label: 'Off (no --ref-image-args on this binary)' } : o
+    )
+  }
+  return base
+})
 
 const activePrompt = computed({
   get: () => (promptMode.value === 'positive' ? prompt.value : negativePrompt.value),
@@ -157,39 +497,50 @@ watch(editMode, async (mode) => {
   }
 })
 
-function handleRefUpload(event: Event): void {
+async function handleRefUpload(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const files = input.files
   if (!files?.length) return
+  const added: RefChip[] = []
   for (const file of Array.from(files)) {
-    refChips.value.push({
+    const chip: RefChip = {
       id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       url: URL.createObjectURL(file),
       file
-    })
+    }
+    refChips.value.push(chip)
+    added.push(chip)
   }
   input.value = ''
+  await refreshMatchRefSize()
+  // Prompt only for the first new ref that differs from studio size
+  if (added[0]) await maybePromptRefSize(added[0])
 }
 
 function removeRefChip(id: string): void {
   const chip = refChips.value.find((c) => c.id === id)
   if (chip) URL.revokeObjectURL(chip.url)
   refChips.value = refChips.value.filter((c) => c.id !== id)
+  void refreshMatchRefSize()
 }
 
 function clearRefChips(): void {
   for (const chip of refChips.value) URL.revokeObjectURL(chip.url)
   refChips.value = []
+  effectiveMatchRefSize.value = null
 }
 
 /** Promote current base image into the multi-ref list (Kontext/Qwen workflows). */
 async function addBaseAsRef(): Promise<void> {
   if (!baseImageFile.value) return
-  refChips.value.push({
+  const chip: RefChip = {
     id: `ref-${Date.now()}-base`,
     url: baseImage.value || URL.createObjectURL(baseImageFile.value),
     file: baseImageFile.value
-  })
+  }
+  refChips.value.push(chip)
+  await refreshMatchRefSize()
+  await maybePromptRefSize(chip)
 }
 
 function handleWindowResize(): void {
@@ -308,7 +659,7 @@ async function useOutputImage(filename: string): Promise<void> {
 /**
  * handleImageUpload() - Handle direct image upload
  */
-function handleImageUpload(event: Event): void {
+async function handleImageUpload(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
@@ -317,6 +668,11 @@ function handleImageUpload(event: Event): void {
   currentEditFilename.value = null
   const url = URL.createObjectURL(file)
   loadImage(url)
+  await refreshMatchRefSize()
+  // Size prompt only for Img2Img (Inpaint always follows source; no resolution UI)
+  if (editMode.value === 'img2img') {
+    await maybePromptImageSize({ target: 'base', file })
+  }
 }
 
 function removeBaseImage(): void {
@@ -495,7 +851,10 @@ function getMaskDataUrl(): string | null {
  * handleGenerate() - Snapshot + enqueue edit job
  */
 async function handleGenerate(): Promise<void> {
-  if (!prompt.value.trim()) return
+  if (!prompt.value.trim()) {
+    toast.error('Enter a prompt to generate')
+    return
+  }
 
   if (editMode.value === 'ref') {
     if (!refChips.value.length && !baseImageFile.value) {
@@ -513,33 +872,63 @@ async function handleGenerate(): Promise<void> {
   const promptSnap = prompt.value
   const negSnap = negativePrompt.value
   const seedSnap = config.value.seed
+  // Inpaint: always source natural (mask alignment).
+  // Ref Edit / Img2Img: studio config W×H, or match image when policy is match_ref.
+  let outW = imageElement?.naturalWidth || config.value.width
+  let outH = imageElement?.naturalHeight || config.value.height
+  if (editMode.value === 'ref' || editMode.value === 'img2img') {
+    if (refEditSizeMode.value === 'match_ref') {
+      await refreshMatchRefSize()
+      outW = effectiveMatchRefSize.value?.width || config.value.width
+      outH = effectiveMatchRefSize.value?.height || config.value.height
+    } else {
+      outW = config.value.width
+      outH = config.value.height
+    }
+  }
   const payload = buildGenerationPayload(config.value, {
     prompt: promptSnap,
     negativePrompt: negSnap,
-    width: imageElement?.naturalWidth || config.value.width,
-    height: imageElement?.naturalHeight || config.value.height,
+    width: outW,
+    height: outH,
     extra: {
       strength: inpaintStrength.value,
       img2imgStrength: inpaintStrength.value
     }
   })
 
+  // Old binaries / Off: never send the unified flag (unknown flag fails the run)
+  if (!supportsRefImageArgs.value || config.value.refImagePreset === 'off') {
+    delete payload.refImageArgs
+    delete payload.refImageCliFlag
+  } else if (payload.refImageArgs && refImageCliFlag.value) {
+    payload.refImageCliFlag = refImageCliFlag.value
+  }
+
   let endpoint = '/api/inpaint'
   const formParts = payloadToFormParts(payload)
 
   if (editMode.value === 'inpaint') {
+    const maskDataUrl = getMaskDataUrl()
+    if (!maskDataUrl || maskDataUrl === 'data:,') {
+      error.value = 'Paint a mask on the areas to edit'
+      toast.error(error.value)
+      return
+    }
     formParts.push({ name: 'initImage', type: 'file', file: baseImageFile.value! })
     formParts.push({ name: 'strength', type: 'text', value: String(inpaintStrength.value) })
-    const maskDataUrl = getMaskDataUrl()
-    if (maskDataUrl && maskDataUrl !== 'data:,') {
-      const response = await fetch(maskDataUrl)
-      const blob = await response.blob()
-      formParts.push({
-        name: 'mask',
-        type: 'file',
-        file: new File([blob], 'mask.png', { type: 'image/png' })
-      })
-    }
+    formParts.push({
+      name: 'img2imgStrength',
+      type: 'text',
+      value: String(inpaintStrength.value)
+    })
+    const response = await fetch(maskDataUrl)
+    const blob = await response.blob()
+    formParts.push({
+      name: 'mask',
+      type: 'file',
+      file: new File([blob], 'mask.png', { type: 'image/png' })
+    })
     endpoint = '/api/inpaint'
   } else if (editMode.value === 'img2img') {
     formParts.push({ name: 'initImage', type: 'file', file: baseImageFile.value! })
@@ -565,6 +954,7 @@ async function handleGenerate(): Promise<void> {
 
   const busy = isAnyGenerationBusy()
   error.value = null
+  const livePreviewMethodSnap = config.value.livePreviewMethod
 
   enqueue({
     surface: 'edit',
@@ -576,12 +966,20 @@ async function handleGenerate(): Promise<void> {
     kind: 'form',
     endpoint,
     formParts,
-    onStart: () => progress.start(),
+    onStart: () => {
+      progress.start()
+      if (livePreviewMethodSnap) {
+        startPreviewPolling(() => isGenerating.value)
+      }
+    },
     onSuccess: async (result) => {
       const filename = result.filename || result.filenames?.[0]
       if (filename) {
+        setFinalPreview(getOutputUrl(filename))
         editImages.value = [filename, ...editImages.value.filter((img) => img !== filename)]
         await useOutputImage(filename)
+        // After loading result as base, drop sticky preview so source UI returns
+        stopPreviewPolling({ clearFrame: true })
         toast.success('Edit complete')
         addHistoryEntry({
           surface: 'edit',
@@ -592,9 +990,12 @@ async function handleGenerate(): Promise<void> {
           filename,
           configSnapshot: snapshot
         })
+      } else {
+        discardLivePreview()
       }
     },
     onError: (msg) => {
+      discardLivePreview()
       if (msg === 'Cancelled') {
         toast.warning('Edit cancelled')
         return
@@ -609,7 +1010,13 @@ async function handleGenerate(): Promise<void> {
         configSnapshot: snapshot
       })
     },
-    onSettled: () => progress.stop()
+    onSettled: () => {
+      progress.stop()
+      // Ensure polling stops if still running (success already stopped)
+      if (!isGenerating.value) {
+        stopPreviewPolling({ clearFrame: isLivePreview.value })
+      }
+    }
   })
 
   if (busy) toast.info(`Queued · ${pendingCount.value} waiting`)
@@ -618,6 +1025,7 @@ async function handleGenerate(): Promise<void> {
 async function handleCancel(): Promise<void> {
   await cancelCurrent()
   toast.warning('Cancelling current job…')
+  discardLivePreview()
   progress.stop()
 }
 
@@ -639,10 +1047,15 @@ function consumeGalleryHandoff(): void {
   // Create a fetch to get the file for upload
   authenticatedFetch(editImage)
     .then((res) => res.blob())
-    .then((blob) => {
-      baseImageFile.value = new File([blob], 'image.png', { type: 'image/png' })
+    .then(async (blob) => {
+      const file = new File([blob], 'image.png', { type: 'image/png' })
+      baseImageFile.value = file
       currentEditFilename.value = null
       loadImage(editImage)
+      await refreshMatchRefSize()
+      if (editMode.value === 'img2img') {
+        await maybePromptImageSize({ target: 'base', file })
+      }
     })
     .catch((e) => {
       console.error('Failed to load image from gallery:', e)
@@ -650,9 +1063,38 @@ function consumeGalleryHandoff(): void {
 }
 
 // Check for image from gallery on mount
+// When the binary lacks --ref-image-args, force legacy (off) so we never send the flag.
+watch(
+  supportsRefImageArgs,
+  (ok) => {
+    if (!ok && config.value.refImagePreset !== 'off') {
+      // Keep user choice in memory for when they upgrade; only strip at send time.
+      // Prefer showing Off as effective default when unsupported:
+      if (!config.value.refImagePreset || config.value.refImagePreset === 'auto') {
+        config.value.refImagePreset = 'off'
+      }
+    }
+  },
+  { immediate: true }
+)
+
+function handleResolutionMenuClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement
+  if (!target.closest('.resolution-menu')) showResolutionMenu.value = false
+}
+
+function handleResolutionKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && showResolutionMenu.value) {
+    showResolutionMenu.value = false
+  }
+}
+
 onMounted(() => {
+  void fetchCapabilities()
   handleWindowResize()
   window.addEventListener('resize', handleWindowResize)
+  document.addEventListener('click', handleResolutionMenuClick)
+  window.addEventListener('keydown', handleResolutionKeydown)
   consumeGalleryHandoff()
 })
 
@@ -662,7 +1104,10 @@ onActivated(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
+  document.removeEventListener('click', handleResolutionMenuClick)
+  window.removeEventListener('keydown', handleResolutionKeydown)
   imageResizeObserver?.disconnect()
+  discardLivePreview()
 })
 </script>
 
@@ -704,8 +1149,26 @@ onUnmounted(() => {
           "
           @contextmenu.prevent
         >
+          <!-- Live / sticky generation preview (same endpoint as Text2Image) -->
           <div
-            v-if="!baseImage && !(editMode === 'ref' && refChips.length)"
+            v-if="showPreviewHero && previewImage"
+            class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both absolute inset-0 z-[5] flex h-full w-full items-center justify-center p-1 duration-200 md:p-2"
+          >
+            <img
+              :src="previewImage"
+              class="h-full max-h-full w-full max-w-full rounded-2xl object-contain"
+              :alt="isLivePreview ? 'Live preview' : 'Edit result preview'"
+            />
+            <div
+              v-if="isLivePreview"
+              class="aui-status-badge absolute left-3 top-3 rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur-xl"
+            >
+              Live preview
+            </div>
+          </div>
+
+          <div
+            v-else-if="!baseImage && !(editMode === 'ref' && refChips.length)"
             class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
             <div class="content-item flex max-w-sm flex-col items-center">
@@ -795,8 +1258,9 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Busy overlay only until live frames arrive (matches Text2Image empty-hero style) -->
           <div
-            v-if="isGenerating"
+            v-if="isGenerating && !isLivePreview && !showPreviewHero"
             class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/45 backdrop-blur-[2px]"
           >
             <div
@@ -816,7 +1280,7 @@ onUnmounted(() => {
           </div>
 
           <div
-            v-if="baseImage"
+            v-if="baseImage && !showPreviewHero"
             class="fade-in slide-in-from-top-1 animate-in absolute right-3 top-3 flex items-center gap-0.5 rounded-full border border-border/70 bg-background/85 p-1 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
           >
             <button
@@ -868,6 +1332,7 @@ onUnmounted(() => {
           v-if="isGenerating"
           class="mt-2 self-center"
           loading-text="Loading model"
+          :live-preview="isLivePreview"
           :fallback-label="
             editMode === 'ref' ? 'Ref edit' : editMode === 'img2img' ? 'Img2Img' : 'Inpaint'
           "
@@ -913,7 +1378,7 @@ onUnmounted(() => {
       <div
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
-        <!-- Top inline row: modes + tools -->
+        <!-- Top inline row: modes + tools + live preview (same as Image) -->
         <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-xs md:px-4">
           <SegmentedControl
             :model-value="editMode"
@@ -971,21 +1436,37 @@ onUnmounted(() => {
               />
             </label>
           </div>
-          <label
+          <div
             v-else-if="editMode === 'img2img'"
-            class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+            class="flex shrink-0 items-center gap-1 pl-0.5"
           >
-            <span class="text-muted-foreground">Strength</span>
-            <input
-              v-model.number="inpaintStrength"
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              class="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-muted accent-foreground"
-            />
-            <span class="tabular-nums text-muted-foreground">{{ inpaintStrength.toFixed(2) }}</span>
-          </label>
+            <label
+              class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
+            >
+              <span class="text-muted-foreground">Strength</span>
+              <input
+                v-model.number="inpaintStrength"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                class="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-muted accent-foreground"
+              />
+              <span class="tabular-nums text-muted-foreground">{{
+                inpaintStrength.toFixed(2)
+              }}</span>
+            </label>
+            <button
+              v-if="baseImage"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground"
+              title="Fit source to output size"
+              aria-label="Fit source to output size"
+              @click="openCropEditorBase"
+            >
+              <Crop class="h-3.5 w-3.5" />
+            </button>
+          </div>
           <p
             v-if="showQwenZeroCondTip"
             class="w-full text-[10px] text-muted-foreground md:w-auto"
@@ -993,6 +1474,15 @@ onUnmounted(() => {
           >
             Qwen zero-cond-t is on (Edit 2511)
           </p>
+          <Select
+            v-model="config.livePreviewMethod"
+            label="Preview"
+            size="sm"
+            placeholder="None"
+            aria-label="Live preview"
+            class="ml-auto w-auto shrink-0 rounded-full border-0 bg-transparent shadow-none hover:bg-accent"
+            :options="[...LIVE_PREVIEW_METHOD_OPTIONS]"
+          />
         </div>
 
         <!-- Multi-ref chips (Ref Edit) -->
@@ -1007,6 +1497,15 @@ onUnmounted(() => {
             >
               <img :src="chip.url" class="h-full w-full object-cover" />
             </div>
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Fit to output size"
+              aria-label="Fit reference to output size"
+              @click="openCropEditor(chip.id)"
+            >
+              <Crop class="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               class="aui-icon-button inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -1038,6 +1537,29 @@ onUnmounted(() => {
           >
             Clear refs
           </button>
+          <div
+            class="ml-auto w-[min(100%,14rem)] shrink-0"
+            :title="
+              supportsRefImageArgs
+                ? 'PR #1780: --ref-image-args preset for multi-ref DiT edit'
+                : 'This sd-cli has no --ref-image-args; omit flag (CLI / legacy path)'
+            "
+          >
+            <Select
+              v-model="config.refImagePreset"
+              size="sm"
+              class="w-full"
+              aria-label="Reference processing preset"
+              :disabled="!supportsRefImageArgs"
+              :options="refImagePresetOptions"
+            />
+          </div>
+          <p
+            v-if="!supportsRefImageArgs"
+            class="w-full text-[10px] leading-4 text-muted-foreground"
+          >
+            Reference presets need a post-#1780 sd-cli. Flag omitted; refs still use -r.
+          </p>
         </div>
 
         <!-- Textarea + send/cancel -->
@@ -1081,8 +1603,192 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Quick Controls (Steps, CFG, Seed, Scheduler, Sampler, PromptPresets) below -->
+        <!-- Quick controls: resolution (Ref Edit + Img2Img) + generation settings -->
         <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
+          <div v-if="freeSizeMode" class="relative shrink-0">
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1 rounded-full border border-transparent px-2 font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="
+                showResolutionMenu
+                  ? 'border-border bg-background text-foreground shadow-sm'
+                  : 'hover:border-border hover:bg-background/70'
+              "
+              :aria-expanded="showResolutionMenu"
+              aria-label="Output resolution"
+              :title="
+                editMode === 'img2img'
+                  ? 'Output size for Img2Img (-W / -H)'
+                  : 'Output size for Ref Edit (-W / -H)'
+              "
+              @click.stop="showResolutionMenu = !showResolutionMenu"
+            >
+              <span class="flex h-4 w-5 items-center justify-center" aria-hidden="true">
+                <span
+                  class="block rounded-[2px] border border-current opacity-70"
+                  :class="config.width >= config.height ? 'w-4' : 'h-4'"
+                  :style="{ aspectRatio: `${config.width} / ${config.height}` }"
+                ></span>
+              </span>
+              <span class="tabular-nums">{{ generationStripLabel }}</span>
+              <ChevronUp v-if="showResolutionMenu" class="h-3 w-3" />
+              <ChevronDown v-else class="h-3 w-3" />
+            </button>
+            <div
+              v-if="showResolutionMenu"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-0 z-[100] mb-2 w-64 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150"
+              @click.stop
+            >
+              <div class="mb-2 px-1">
+                <p class="text-[11px] font-medium text-foreground">Output size</p>
+                <p class="text-[10px] text-muted-foreground">
+                  Ref Edit and Img2Img. Inpaint always follows the source (mask alignment).
+                </p>
+              </div>
+              <div class="mb-2 flex rounded-lg border border-border/70 p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
+                  :class="
+                    refEditSizeMode === 'studio'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground'
+                  "
+                  title="Use studio W×H from Image/Edit settings"
+                  @click="setRefEditSizeMode('studio')"
+                >
+                  Studio size
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
+                  :class="
+                    refEditSizeMode === 'match_ref'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground'
+                  "
+                  :title="
+                    editMode === 'img2img'
+                      ? 'Output size follows the source image natural pixels'
+                      : 'Output size follows the first reference’s natural pixels'
+                  "
+                  @click="setRefEditSizeMode('match_ref'); refreshMatchRefSize()"
+                >
+                  {{ matchSizeLabel }}
+                </button>
+              </div>
+              <div
+                v-if="refEditSizeMode === 'match_ref'"
+                class="mb-2 rounded-lg bg-muted/50 px-2 py-1.5 text-[10px] text-muted-foreground"
+              >
+                {{ editMode === 'img2img' ? 'Following source' : 'Following first ref' }}
+                <span v-if="effectiveMatchRefSize" class="font-mono text-foreground">
+                  ({{ effectiveMatchRefSize.width }}×{{ effectiveMatchRefSize.height }})
+                </span>
+                · switch to Studio to pick a frame.
+              </div>
+              <template v-else>
+                <div class="grid grid-cols-2 gap-1">
+                  <button
+                    v-for="preset in resolutionPresets"
+                    :key="preset.label"
+                    type="button"
+                    class="flex h-11 items-center gap-2 rounded-lg px-2 text-left transition-colors duration-150 hover:bg-accent"
+                    :class="
+                      config.width === preset.width && config.height === preset.height
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground'
+                    "
+                    @click="selectResolution(preset)"
+                  >
+                    <span
+                      class="flex h-7 w-8 shrink-0 items-center justify-center"
+                      aria-hidden="true"
+                    >
+                      <span
+                        class="block rounded-[2px] border border-current"
+                        :class="preset.width >= preset.height ? 'w-7' : 'h-7'"
+                        :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
+                      ></span>
+                    </span>
+                    <span class="font-mono text-[10px] tracking-tight"
+                      >{{ preset.width }}×{{ preset.height }}</span
+                    >
+                  </button>
+                </div>
+                <div class="mt-2 border-t border-border/70 pt-2">
+                  <div class="flex items-center gap-1.5">
+                    <input
+                      v-model.number="config.width"
+                      type="number"
+                      min="64"
+                      step="64"
+                      aria-label="Custom width"
+                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    />
+                    <span class="text-muted-foreground">×</span>
+                    <input
+                      v-model.number="config.height"
+                      type="number"
+                      min="64"
+                      step="64"
+                      aria-label="Custom height"
+                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    />
+                    <button
+                      type="button"
+                      class="inline-flex h-8 flex-1 items-center justify-center rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-colors duration-150 hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                      @click="applyCustomResolution"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <div class="mt-2 space-y-1.5 border-t border-border/70 pt-2">
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-full items-center justify-center rounded-md border border-border/70 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                  :title="
+                    editMode === 'img2img'
+                      ? 'Copy source natural size into studio W×H'
+                      : 'Copy first ref natural size into studio W×H'
+                  "
+                  @click="matchRefResolution"
+                >
+                  {{
+                    editMode === 'img2img'
+                      ? 'Use source size as studio'
+                      : 'Use ref size as studio'
+                  }}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-full items-center justify-center rounded-md border border-border/70 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                  :title="
+                    editMode === 'img2img'
+                      ? 'Fit source into the current studio frame'
+                      : 'Fit first reference into the current studio frame'
+                  "
+                  @click="openCropEditorFromMenu"
+                >
+                  {{
+                    editMode === 'img2img'
+                      ? `Fit source to ${config.width}×${config.height}…`
+                      : `Fit first ref to ${config.width}×${config.height}…`
+                  }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <span
+            v-else
+            class="tabular-nums text-muted-foreground"
+            :title="`Steps from generation settings · size follows source image (no resolution selector in Inpaint)`"
+          >
+            {{ config.steps }} steps
+          </span>
+
           <div class="ml-auto flex shrink-0 items-center gap-1">
             <PromptPresetControls
               v-model:prompt="prompt"
@@ -1096,16 +1802,18 @@ onUnmounted(() => {
                 <button
                   type="button"
                   class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  aria-label="Inpaint settings"
-                  title="Inpaint settings"
+                  aria-label="Generation settings"
+                  title="Generation settings"
                 >
                   <SlidersHorizontal class="size-4" />
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
-                  <p class="text-sm font-medium">Inpaint settings</p>
-                  <p class="mt-0.5 text-[11px] text-muted-foreground">Sampling and seed controls</p>
+                  <p class="text-sm font-medium">Generation settings</p>
+                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                    Shared with Image · steps, CFG, seed, sampling
+                  </p>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
@@ -1141,6 +1849,76 @@ onUnmounted(() => {
                     />
                   </label>
                 </div>
+
+                <div
+                  v-if="freeSizeMode"
+                  class="mt-3 space-y-2 border-t border-border/60 pt-3"
+                >
+                  <p class="text-[10px] font-medium text-muted-foreground">
+                    Output size ({{ editMode === 'img2img' ? 'Img2Img' : 'Ref Edit' }})
+                  </p>
+                  <div class="flex rounded-lg border border-border/70 p-0.5 text-[11px]">
+                    <button
+                      type="button"
+                      class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
+                      :class="
+                        refEditSizeMode === 'studio'
+                          ? 'bg-foreground text-background'
+                          : 'text-muted-foreground'
+                      "
+                      @click="setRefEditSizeMode('studio')"
+                    >
+                      Studio
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
+                      :class="
+                        refEditSizeMode === 'match_ref'
+                          ? 'bg-foreground text-background'
+                          : 'text-muted-foreground'
+                      "
+                      @click="setRefEditSizeMode('match_ref'); refreshMatchRefSize()"
+                    >
+                      {{ matchSizeLabel }}
+                    </button>
+                  </div>
+                  <div v-if="refEditSizeMode === 'studio'" class="grid grid-cols-2 gap-2">
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      Width
+                      <input
+                        v-model.number="config.width"
+                        type="number"
+                        min="64"
+                        step="64"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      />
+                    </label>
+                    <label class="text-[10px] font-medium text-muted-foreground">
+                      Height
+                      <input
+                        v-model.number="config.height"
+                        type="number"
+                        min="64"
+                        step="64"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                      />
+                    </label>
+                  </div>
+                  <p v-else class="text-[10px] text-muted-foreground">
+                    Using
+                    {{ editMode === 'img2img' ? 'source' : 'first ref' }} natural size
+                    <span v-if="effectiveMatchRefSize" class="font-mono">
+                      ({{ effectiveMatchRefSize.width }}×{{ effectiveMatchRefSize.height }})
+                    </span>
+                  </p>
+                </div>
+                <p
+                  v-else
+                  class="mt-3 border-t border-border/60 pt-3 text-[10px] text-muted-foreground"
+                >
+                  Output size follows the source image in Inpaint (no resolution selector).
+                </p>
 
                 <div class="mt-3 space-y-2">
                   <label class="block text-[10px] font-medium text-muted-foreground">
@@ -1181,9 +1959,17 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="handleGenerate"
-                :disabled="!prompt.trim() || !baseImage"
+                :disabled="!canSubmitEdit"
                 class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-                :title="isGenerating ? 'Add to queue' : 'Generate'"
+                :title="
+                  !canSubmitEdit
+                    ? editMode === 'ref'
+                      ? 'Add a prompt and at least one reference'
+                      : 'Add a prompt and a source image'
+                    : isGenerating
+                      ? 'Add to queue'
+                      : 'Generate'
+                "
                 :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"
               >
                 <ArrowUp class="size-4 stroke-[2.5]" />
@@ -1193,5 +1979,27 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <RefSizePrompt
+      :open="!!sizePrompt?.open"
+      :image-width="sizePrompt?.imageWidth ?? 0"
+      :image-height="sizePrompt?.imageHeight ?? 0"
+      :target-width="config.width"
+      :target-height="config.height"
+      @use-image-size="onSizePromptUseImage"
+      @keep-output="onSizePromptKeep"
+      @fit-to-target="onSizePromptFit"
+      @dismiss="closeSizePrompt"
+      @update:dont-ask="sizePromptDontAsk = $event"
+    />
+
+    <ImageCropResizeDialog
+      :open="!!cropEditor?.open"
+      :image-url="cropEditor?.imageUrl ?? ''"
+      :initial-width="config.width"
+      :initial-height="config.height"
+      @cancel="onCropCancel"
+      @apply="onCropApply"
+    />
   </div>
 </template>

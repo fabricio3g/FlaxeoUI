@@ -19,7 +19,8 @@ import {
   History
 } from '@/lib/icons'
 import { requestOpenHistory } from '@/lib/appEvents'
-import { buildExportFilename, copyImageUrlToClipboard, downloadUrlAs } from '@/lib/mediaExport'
+import { copyImageUrlToClipboard, downloadOutputAsFormat } from '@/lib/mediaExport'
+import { useOutputPreferences } from '@/composables/useOutputPreferences'
 import { requestConfirm } from '@/composables/useConfirm'
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
@@ -44,6 +45,7 @@ const { addEntry: addHistoryEntry } = useGenerationHistory()
 const { supportsUpscale, fetchCapabilities } = useBackendCapabilities()
 const { enqueue, pendingCount } = useJobQueue()
 const { isRemote } = useRemoteSession()
+const { defaultSaveFormat } = useOutputPreferences()
 const isElectron = Boolean(window.electronAPI)
 
 // Gallery state
@@ -175,12 +177,9 @@ async function deleteImage(): Promise<void> {
 
 async function downloadImage(): Promise<void> {
   if (!selectedImage.value) return
-  const name = buildExportFilename({
-    originalName: selectedImage.value
-  })
   try {
-    await downloadUrlAs(getOutputUrl(selectedImage.value), name)
-    toast.success('Download started')
+    await downloadOutputAsFormat(selectedImage.value, defaultSaveFormat.value)
+    toast.success(`Saved as ${defaultSaveFormat.value.toUpperCase()}`)
   } catch (e) {
     console.error(e)
     toast.error('Could not save image')
@@ -409,7 +408,7 @@ onMounted(async () => {
     const focus = sessionStorage.getItem('galleryFocusFile')
     if (focus) {
       sessionStorage.removeItem('galleryFocusFile')
-      if (images.value.includes(focus) || /\.(png|jpe?g|webp|gif|mp4)$/i.test(focus)) {
+      if (images.value.includes(focus) || /\.(png|jpe?g|webp|gif|avif|mp4)$/i.test(focus)) {
         openImageViewer(focus)
       }
     }

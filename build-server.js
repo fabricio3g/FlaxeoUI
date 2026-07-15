@@ -9,7 +9,8 @@ esbuild
     platform: 'node',
     target: 'node18',
     outfile: 'out/server/index.js',
-    external: ['electron'],
+    // Native / path-sensitive packages must not be bundled (sharp uses createRequire).
+    external: ['electron', 'sharp'],
     format: 'cjs',
     sourcemap: false,
     minify: true

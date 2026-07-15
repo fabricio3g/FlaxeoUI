@@ -23,13 +23,28 @@ import {
   type StorageDirectoryId,
   type StorageSettings
 } from '../../../shared/storage'
-import type { LanAccessLevel, LanSharingStatus, LanTransport } from '../../../shared/lan'
+import {
+  buildLanPairingUrl,
+  type LanAccessLevel,
+  type LanSharingStatus,
+  type LanTransport
+} from '../../../shared/lan'
 import { setRemoteAccessLevel, useRemoteSession } from '@/composables/useRemoteSession'
+import {
+  useOutputPreferences,
+  type ArchiveImageFormat
+} from '@/composables/useOutputPreferences'
 
 const { reopenSetup } = useSetup()
 const { themePreference, setTheme } = useTheme()
 const { fetchCapabilities } = useBackendCapabilities()
 const { isRemote, accessLevel } = useRemoteSession()
+const {
+  defaultSaveFormat,
+  autoDownloadGenerated,
+  setDefaultSaveFormat,
+  setAutoDownloadGenerated
+} = useOutputPreferences()
 
 type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
 
@@ -126,6 +141,7 @@ interface BackendConfig {
   installedVersions: string[]
   activeBackendPath: string
   activeBackendValid: boolean
+  outputImageFormat?: 'png' | 'avif'
 }
 
 interface ReleaseAsset {
@@ -153,8 +169,13 @@ const config = ref<BackendConfig>({
   customBinaryExists: false,
   installedVersions: [],
   activeBackendPath: '',
-  activeBackendValid: false
+  activeBackendValid: false,
+  outputImageFormat: 'png'
 })
+
+const outputImageFormat = ref<'png' | 'avif'>('png')
+const outputFormatBusy = ref(false)
+const outputFormatError = ref('')
 
 const releases = ref<Release[]>([])
 const systemInfo = ref<SystemInfo>({ platform: '', arch: '', note: '' })
@@ -174,7 +195,7 @@ const lanError = ref('')
 const lanPairingUrl = computed(() => {
   const status = lanStatus.value
   if (!status?.url || !status.pairingCode) return ''
-  return `${status.url}/#pair=${encodeURIComponent(status.pairingCode)}`
+  return buildLanPairingUrl(status.url, status.pairingCode)
 })
 const lanQrSvg = computed(() =>
   lanPairingUrl.value ? renderSVG(lanPairingUrl.value, { ecc: 'M', border: 2 }) : ''
@@ -186,6 +207,23 @@ const selectedReleaseAssets = computed(() => {
   return release?.assets || []
 })
 
+async function setStoreImageFormat(format: 'png' | 'avif'): Promise<void> {
+  if (outputFormatBusy.value || outputImageFormat.value === format) return
+  outputFormatBusy.value = true
+  outputFormatError.value = ''
+  const previous = outputImageFormat.value
+  outputImageFormat.value = format
+  try {
+    await apiPost('/api/backend/config', { outputImageFormat: format })
+  } catch (error) {
+    outputImageFormat.value = previous
+    outputFormatError.value =
+      error instanceof Error ? error.message : 'Failed to update store format'
+  } finally {
+    outputFormatBusy.value = false
+  }
+}
+
 /**
  * fetchConfig() - Fetches current backend configuration
  */
@@ -193,6 +231,7 @@ async function fetchConfig(): Promise<void> {
   try {
     const data = await apiGet<BackendConfig>('/api/backend/config')
     config.value = data
+    outputImageFormat.value = data.outputImageFormat === 'avif' ? 'avif' : 'png'
   } catch (e) {
     console.error('Failed to fetch backend config:', e)
   }
@@ -1072,6 +1111,101 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <div class="mt-5 space-y-4 border-t border-border/60 pt-4">
+                  <div>
+                    <p class="text-sm font-medium">Store generations as</p>
+                    <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                      AVIF stages PNG in temp and publishes AVIF only to Image output. PNG keeps
+                      raw outputs (best for reuse-settings from file metadata).
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        class="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors"
+                        :class="
+                          outputImageFormat === 'png'
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-input bg-background text-foreground hover:bg-accent'
+                        "
+                        :disabled="outputFormatBusy"
+                        @click="setStoreImageFormat('png')"
+                      >
+                        PNG
+                      </button>
+                      <button
+                        type="button"
+                        class="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors"
+                        :class="
+                          outputImageFormat === 'avif'
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-input bg-background text-foreground hover:bg-accent'
+                        "
+                        :disabled="outputFormatBusy"
+                        @click="setStoreImageFormat('avif')"
+                      >
+                        AVIF
+                      </button>
+                    </div>
+                    <p v-if="outputFormatError" class="mt-2 text-[11px] text-destructive">
+                      {{ outputFormatError }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="text-sm font-medium">Default save / archive format</p>
+                    <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                      Used by Download and by automatic download. You can still pick PNG or AVIF
+                      per save from the workspace Download menu.
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        class="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors"
+                        :class="
+                          defaultSaveFormat === 'png'
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-input bg-background text-foreground hover:bg-accent'
+                        "
+                        @click="setDefaultSaveFormat('png' as ArchiveImageFormat)"
+                      >
+                        PNG
+                      </button>
+                      <button
+                        type="button"
+                        class="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors"
+                        :class="
+                          defaultSaveFormat === 'avif'
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-input bg-background text-foreground hover:bg-accent'
+                        "
+                        @click="setDefaultSaveFormat('avif' as ArchiveImageFormat)"
+                      >
+                        AVIF
+                      </button>
+                    </div>
+                  </div>
+
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      class="mt-0.5 size-4 rounded border-input accent-foreground"
+                      :checked="autoDownloadGenerated"
+                      @change="
+                        setAutoDownloadGenerated(
+                          ($event.target as HTMLInputElement).checked
+                        )
+                      "
+                    />
+                    <span>
+                      <span class="block text-sm font-medium">Download generated images automatically</span>
+                      <span class="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                        After a successful generation, save outputs with the default archive
+                        format (same as the workspace Download button).
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
 

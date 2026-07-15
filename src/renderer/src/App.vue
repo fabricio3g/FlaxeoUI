@@ -29,6 +29,7 @@ import { setRemoteAccessLevel, useRemoteSession } from './composables/useRemoteS
 import { onOpenLogs, onOpenHistory, requestStarterPrompt } from './lib/appEvents'
 import Settings from './views/Settings.vue'
 import {
+  extractLanPairingCode,
   isLanAccessLevel,
   isLanTransport,
   type LanAccessLevel,
@@ -363,7 +364,8 @@ async function pairRemoteBrowser(code: string): Promise<void> {
     remotePairingBusy.value = true
     remotePairingError.value = ''
     await apiPost('/api/auth/pair', { code: code.trim() })
-    history.replaceState(null, '', `${location.pathname}${location.search}`)
+    // Cookie is set; reload so session state and routes initialize cleanly.
+    location.hash = '#/text2image'
     location.reload()
   } catch (error) {
     remotePairingError.value = error instanceof Error ? error.message : 'Pairing failed.'
@@ -374,11 +376,9 @@ async function pairRemoteBrowser(code: string): Promise<void> {
 
 async function ensureRemoteAuthentication(): Promise<boolean> {
   if (!isRemoteBrowser()) return true
-  const fragment = new URLSearchParams(location.hash.slice(1))
-  const pairingCode = fragment.get('pair')
+  const pairingCode = extractLanPairingCode(location)
   let pairedFromFragment = false
   if (pairingCode) {
-    history.replaceState(null, '', `${location.pathname}${location.search}`)
     try {
       await apiPost('/api/auth/pair', { code: pairingCode })
       pairedFromFragment = true
@@ -398,8 +398,13 @@ async function ensureRemoteAuthentication(): Promise<boolean> {
       : 'generation'
     if (status.paired) {
       setRemoteAccessLevel(remoteOfferedAccess.value)
-      if (pairedFromFragment) await router.replace('/text2image')
-      if (route.name === 'Quantization' || (route.name === 'Gallery' && !canViewGallery.value)) {
+      // Drop the one-time pair query while keeping a real hash route.
+      if (pairedFromFragment || extractLanPairingCode(location)) {
+        await router.replace({ path: '/text2image', query: {} })
+      } else if (
+        route.name === 'Quantization' ||
+        (route.name === 'Gallery' && !canViewGallery.value)
+      ) {
         await router.replace('/text2image')
       }
       remoteAuthBlocked.value = false
@@ -407,6 +412,10 @@ async function ensureRemoteAuthentication(): Promise<boolean> {
     }
   } catch {
     // Show the pairing screen below.
+  }
+  // Failed pair from QR: leave a clean route so the form is usable.
+  if (pairingCode) {
+    await router.replace({ path: '/text2image', query: {} }).catch(() => undefined)
   }
   remoteAuthBlocked.value = true
   setRemoteAccessLevel(null)

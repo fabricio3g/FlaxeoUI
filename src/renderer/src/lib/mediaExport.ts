@@ -1,7 +1,8 @@
 /**
  * Gallery / viewer export helpers (clipboard + download naming).
  */
-import { authenticatedFetch } from '@/services/api'
+import { authenticatedFetch, getApiBase, getOutputUrl } from '@/services/api'
+import type { ArchiveImageFormat } from '@/composables/useOutputPreferences'
 
 /** Safe filename segment from prompt or basename */
 export function slugFromPrompt(text: string, max = 40): string {
@@ -21,9 +22,12 @@ export function buildExportFilename(opts: {
   seed?: number | string
   width?: number
   height?: number
+  /** Force download extension (e.g. archive as PNG/AVIF). */
+  format?: ArchiveImageFormat
 }): string {
-  const ext =
-    opts.originalName && /\.[a-z0-9]+$/i.test(opts.originalName)
+  const ext = opts.format
+    ? `.${opts.format}`
+    : opts.originalName && /\.[a-z0-9]+$/i.test(opts.originalName)
       ? opts.originalName.match(/\.[a-z0-9]+$/i)![0]
       : '.png'
   const base = opts.originalName
@@ -35,6 +39,50 @@ export function buildExportFilename(opts: {
     parts.push(`s${opts.seed}`)
   }
   return `${parts.join('_')}${ext}`.replace(/[^\w.-]+/g, '_')
+}
+
+function exportImageUrl(filename: string, format: ArchiveImageFormat): string {
+  const params = new URLSearchParams({
+    filename,
+    format
+  })
+  return `${getApiBase()}/api/export-image?${params.toString()}`
+}
+
+/**
+ * Download a gallery output file as PNG or AVIF (server converts when needed).
+ * Falls back to direct `/output` fetch when format matches the stored extension.
+ */
+export async function downloadOutputAsFormat(
+  filename: string,
+  format: ArchiveImageFormat,
+  opts?: { prompt?: string; seed?: number | string; width?: number; height?: number }
+): Promise<void> {
+  const safeFilename = filename.replace(/^.*[/\\]/, '')
+  if (!safeFilename) throw new Error('Missing filename')
+
+  const storedExt = pathExt(safeFilename)
+  const wantExt = `.${format}`
+  const downloadName = buildExportFilename({
+    originalName: safeFilename,
+    format,
+    prompt: opts?.prompt,
+    seed: opts?.seed,
+    width: opts?.width,
+    height: opts?.height
+  })
+
+  if (storedExt.toLowerCase() === wantExt) {
+    await downloadUrlAs(getOutputUrl(safeFilename), downloadName)
+    return
+  }
+
+  await downloadUrlAs(exportImageUrl(safeFilename, format), downloadName)
+}
+
+function pathExt(name: string): string {
+  const match = name.match(/\.[a-z0-9]+$/i)
+  return match ? match[0] : ''
 }
 
 function clickDownloadLink(href: string, filename: string): void {

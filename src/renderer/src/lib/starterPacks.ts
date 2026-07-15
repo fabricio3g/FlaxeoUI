@@ -565,6 +565,100 @@ export const hubModels: HubModel[] = [
         url: 'https://huggingface.co/black-forest-labs/FLUX.2-dev/resolve/main/ae.safetensors'
       }
     ]
+  },
+  {
+    id: 'anima',
+    name: 'Anima',
+    description:
+      'Fast T2I with Qwen3-0.6B + Qwen image VAE. For edit: install optional Anima Edit LoRA (AnimeEditV2), open Edit → Ref Edit with a reference image, enable the LoRA at strength ~1. Flaxeo applies cosmos_reference automatically.',
+    presetId: 'builtin-anima',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/anima.md',
+    files: [
+      {
+        label: 'Anima diffusion (preview)',
+        category: 'diffusion',
+        filename: 'anima-preview.safetensors',
+        required: true,
+        url: 'https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files/diffusion_models/anima-preview.safetensors'
+      },
+      {
+        label: 'Qwen3 0.6B Base GGUF Q4_K_M',
+        category: 'llm',
+        filename: 'Qwen3-0.6B-Base.Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/mradermacher/Qwen3-0.6B-Base-GGUF/resolve/main/Qwen3-0.6B-Base.Q4_K_M.gguf'
+      },
+      {
+        label: 'Qwen Image VAE',
+        category: 'vae',
+        filename: 'qwen_image_vae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors'
+      },
+      {
+        // Community Anima Edit LoRA v2 — https://civitai.com/models/2650553/anima-edit?modelVersionId=3089149
+        label: 'Anima Edit LoRA v2 (AnimeEditV2) — optional, for Ref Edit',
+        category: 'loras',
+        filename: 'AnimeEditV2.safetensors',
+        required: false,
+        url: 'https://civitai.com/api/download/models/3089149'
+      }
+    ]
+  },
+  {
+    id: 'lingbot-video',
+    name: 'LingBot Video',
+    description:
+      'LingBot dense 1.3B T2V/I2V with Wan2.1 VAE and Qwen3-VL 4B. Use Video workspace (frames 33/49/81).',
+    presetId: 'builtin-lingbot-video',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/lingbot_video.md',
+    files: [
+      {
+        label: 'LingBot dense 1.3B (diffusion)',
+        category: 'diffusion',
+        filename: 'lingbot-video-dense-1.3b.safetensors',
+        required: true,
+        // Transformer shards are multi-file on HF; users may replace with a single merged weight.
+        url: 'https://huggingface.co/robbyant/lingbot-video-dense-1.3b/resolve/main/transformer/diffusion_pytorch_model.safetensors'
+      },
+      {
+        label: 'Wan2.1 VAE',
+        category: 'vae',
+        filename: 'wan_2.1_vae.safetensors',
+        required: true,
+        url: 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors'
+      },
+      {
+        label: 'Qwen3-VL 4B Instruct GGUF Q4_K_M',
+        category: 'llm',
+        filename: 'Qwen3-VL-4B-Instruct-Q4_K_M.gguf',
+        required: true,
+        url: 'https://huggingface.co/unsloth/Qwen3-VL-4B-Instruct-GGUF/resolve/main/Qwen3-VL-4B-Instruct-Q4_K_M.gguf'
+      }
+    ]
+  },
+  {
+    id: 'minit2i',
+    name: 'MiniT2I',
+    description: 'Compact DiT + flan-t5-large text encoder for lightweight T2I (512², many steps).',
+    presetId: 'builtin-minit2i',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/minit2i.md',
+    files: [
+      {
+        label: 'MiniT2I diffusion (B-16)',
+        category: 'diffusion',
+        filename: 'minit2i_diffusion_pytorch_model.safetensors',
+        required: true,
+        url: 'https://huggingface.co/MiniT2I/MiniT2I/resolve/main/minit2i-b-16/transformer/diffusion_pytorch_model.safetensors'
+      },
+      {
+        label: 'FLAN-T5 Large (T5XXL slot)',
+        category: 't5xxl',
+        filename: 'flan-t5-large.safetensors',
+        required: true,
+        url: 'https://huggingface.co/google/flan-t5-large/resolve/main/model.safetensors'
+      }
+    ]
   }
 ]
 

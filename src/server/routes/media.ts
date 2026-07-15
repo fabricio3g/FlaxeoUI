@@ -4,6 +4,10 @@ import { exec } from 'child_process'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
 import { resolveStoredPath, safeOutputPath } from '../utils'
+import {
+  convertOutputToFormat,
+  normalizeOutputImageFormat
+} from '../outputCompress'
 
 function readPngParams(filePath: string): string | null {
   try {
@@ -177,7 +181,7 @@ function listGallery(ctx: AppContext): string[] {
   if (!fs.existsSync(ctx.paths.outputDir)) return []
   return fs
     .readdirSync(ctx.paths.outputDir)
-    .filter((file) => /\.(png|jpg|jpeg|webp|gif|mp4)$/i.test(file))
+    .filter((file) => /\.(png|jpg|jpeg|webp|gif|avif|mp4)$/i.test(file))
     .sort(
       (a, b) =>
         fs.statSync(path.join(ctx.paths.outputDir, b)).mtime.getTime() -
@@ -279,6 +283,38 @@ export function registerMediaRoutes(app: Express, ctx: AppContext): void {
     const filePath = safeOutputPath(ctx, relativePath)
     if (!filePath) return res.status(403).json({ error: 'Access denied' })
     res.json(parseParams(readPngParams(filePath)))
+  })
+
+  /** On-demand PNG ↔ AVIF export for archive downloads. */
+  app.get('/api/export-image', async (req, res) => {
+    try {
+      const filename = String(req.query.filename || req.query.path || '')
+      if (!filename) return res.status(400).json({ error: 'Filename required' })
+      const filePath = safeOutputPath(ctx, filename)
+      if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' })
+      }
+      const format = normalizeOutputImageFormat(req.query.format)
+      const converted = await convertOutputToFormat(filePath, format)
+      if (!converted) {
+        return res.status(500).json({
+          error: 'EXPORT_FAILED',
+          message: 'Could not convert image for export'
+        })
+      }
+      const stem = path.basename(filename, path.extname(filename))
+      const downloadName = `${stem}${converted.ext}`
+      res.set({
+        'Content-Type': converted.contentType,
+        'Content-Disposition': `attachment; filename="${downloadName}"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      })
+      res.send(converted.buffer)
+    } catch (error: unknown) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
   })
 
   app.get('/api/file', (req, res) => {

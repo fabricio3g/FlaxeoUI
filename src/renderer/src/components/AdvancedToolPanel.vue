@@ -4,6 +4,12 @@ import { storeToRefs } from 'pinia'
 import { Plus, Upload, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { getFileUrl } from '@/services/api'
+import Select from '@/components/ui/Select.vue'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
+import {
+  REF_IMAGE_PRESET_OPTIONS,
+  resolveRefImagePreset
+} from '../../../shared/refImageArgs'
 
 export type AdvancedToolTab = 'photomaker' | 'controlnet' | 'img2img' | 'kontext'
 
@@ -29,6 +35,8 @@ const GAP = 8
 
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
+const { supportsRefImageArgs, fetchCapabilities } = useBackendCapabilities()
+// refImageCliFlag is applied at generate time in Text2Image.vue
 
 const open = computed(() => !!props.tab)
 
@@ -47,10 +55,44 @@ const hint = computed(() => {
     photomaker: 'ID images and style strength',
     controlnet: 'Guide structure with a control image',
     img2img: 'Start from an image and denoise',
-    kontext: 'Flux-style reference image'
+    kontext: 'Reference for Kontext / Anima edit / Qwen edit'
   }
   return map[props.tab] || ''
 })
+
+const suggestedRefPreset = computed(() =>
+  resolveRefImagePreset({
+    diffusionModel:
+      config.value.loadMode === 'standard'
+        ? config.value.standardModel
+        : config.value.diffusionModel,
+    uncondDiffusionModel: config.value.uncondDiffusionModel
+  })
+)
+
+const refImagePresetOptions = computed(() => {
+  const base = REF_IMAGE_PRESET_OPTIONS.map((o) => ({ ...o }))
+  if (suggestedRefPreset.value) {
+    const auto = base.find((o) => o.value === 'auto')
+    if (auto) auto.label = `Auto (${suggestedRefPreset.value})`
+  }
+  if (!supportsRefImageArgs.value) {
+    return base.map((o) =>
+      o.value === 'off' ? { ...o, label: 'Off (no --ref-image-args on this binary)' } : o
+    )
+  }
+  return base
+})
+
+watch(
+  supportsRefImageArgs,
+  (ok) => {
+    if (!ok && (!config.value.refImagePreset || config.value.refImagePreset === 'auto')) {
+      config.value.refImagePreset = 'off'
+    }
+  },
+  { immediate: true }
+)
 
 const panelStyle = computed(() => {
   const a = props.anchor
@@ -95,34 +137,54 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 
+/** Close when clicking outside the panel (do not block Generate / composer). */
+function onPointerDownOutside(e: PointerEvent): void {
+  if (!open.value) return
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  // Keep open for the floating panel and portaled Select / popover content
+  if (target.closest('[data-slot="advanced-tool-panel"]')) return
+  if (target.closest('[data-slot="select-content"]')) return
+  if (target.closest('[data-reka-popper-content-wrapper]')) return
+  // Toolbar buttons that open/switch this panel — handled by parent toggle
+  if (target.closest('[data-slot="advanced-toolbar"]')) return
+  emit('close')
+}
+
+function bindOutsideListeners(bind: boolean): void {
+  if (bind) {
+    window.addEventListener('keydown', onKeydown)
+    // Capture phase so we see the event before it is stopped; does not cover the UI
+    window.addEventListener('pointerdown', onPointerDownOutside, true)
+  } else {
+    window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('pointerdown', onPointerDownOutside, true)
+  }
+}
+
 watch(
   () => props.tab,
   (tab) => {
-    if (tab) window.addEventListener('keydown', onKeydown)
-    else window.removeEventListener('keydown', onKeydown)
+    bindOutsideListeners(!!tab)
   }
 )
 
 onMounted(() => {
-  if (props.tab) window.addEventListener('keydown', onKeydown)
+  void fetchCapabilities()
+  if (props.tab) bindOutsideListeners(true)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
+  bindOutsideListeners(false)
 })
 </script>
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[100] titlebar-no-drag"
-      aria-hidden="true"
-      @pointerdown="emit('close')"
-    />
     <Transition name="float-panel">
       <div
         v-if="open"
+        data-slot="advanced-tool-panel"
         role="dialog"
         :aria-label="title"
         class="aui-float-panel fixed z-[110] flex flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground titlebar-no-drag"
@@ -310,7 +372,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Reference (Kontext) -->
+          <!-- Reference (Kontext / DiT multi-ref) — not classic img2img denoise -->
           <div v-else-if="tab === 'kontext'" class="space-y-3">
             <p class="text-sm font-medium text-foreground">Reference image</p>
             <div class="group relative size-24 overflow-hidden rounded-lg bg-muted/40">
@@ -343,8 +405,31 @@ onUnmounted(() => {
               </button>
             </div>
             <p class="text-sm leading-5 text-muted-foreground">
-              Optional guide for consistent style or subject (Flux Kontext).
+              Guide style/subject (Flux Kontext, Anima edit LoRA, Qwen edit, …). Uses
+              <span class="font-mono text-[11px]">-r</span> — not denoise img2img.
             </p>
+            <div>
+              <p class="mb-1.5 text-sm font-medium text-foreground">Reference processing</p>
+              <Select
+                v-model="config.refImagePreset"
+                size="sm"
+                class="w-full"
+                aria-label="Reference processing preset"
+                :disabled="!supportsRefImageArgs"
+                :options="refImagePresetOptions"
+              />
+              <p
+                v-if="!supportsRefImageArgs"
+                class="mt-1.5 text-[11px] leading-4 text-muted-foreground"
+              >
+                Needs post-#1780 sd-cli for
+                <span class="font-mono">--ref-image-args</span>. Flag omitted; -r still works.
+              </p>
+              <p v-else class="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+                Auto suggests from model (e.g. Anima → cosmos_reference). Off = CLI architecture
+                default (no override).
+              </p>
+            </div>
           </div>
         </div>
 

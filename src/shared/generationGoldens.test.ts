@@ -9,7 +9,8 @@ import {
   addHardwareArgs,
   addOptionalArgs,
   pushArg,
-  pushNumericArg
+  pushNumericArg,
+  resolveInpaintStrength
 } from './sdArgHelpers.ts'
 
 function flagValue(args: string[], flag: string): string | undefined {
@@ -87,8 +88,7 @@ describe('golden: inpaint args', () => {
 
     args.push('-i', '/tmp/init.png')
     args.push('--mask', '/tmp/mask.png')
-    const strength = Math.min(1, Math.max(0, Number(body.strength)))
-    args.push('--strength', String(strength))
+    args.push('--strength', String(resolveInpaintStrength(body)))
     addGenerationArgs(args, body, '/tmp/out/inpaint.png', {
       width: 1024,
       height: 1024,
@@ -105,6 +105,14 @@ describe('golden: inpaint args', () => {
     assert.equal(flagValue(args, '-H'), '512')
     assert.ok(hasFlag(args, '--diffusion-fa'))
     assert.ok(hasFlag(args, '--offload-to-cpu'))
+  })
+
+  it('falls back to img2imgStrength then CLI default 0.75', () => {
+    assert.equal(resolveInpaintStrength({ img2imgStrength: 0.4 }), 0.4)
+    assert.equal(resolveInpaintStrength({ strength: '0.9', img2imgStrength: 0.2 }), 0.9)
+    assert.equal(resolveInpaintStrength({}), 0.75)
+    assert.equal(resolveInpaintStrength({ strength: 1.5 }), 1)
+    assert.equal(resolveInpaintStrength({ strength: -1 }), 0)
   })
 })
 

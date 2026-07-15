@@ -55,6 +55,22 @@ export function useBackendCapabilities() {
   const supportsFlowShift = computed(() => hasFlag('--flow-shift'))
   const supportsFps = computed(() => hasFlag('--fps'))
   const supportsInpaint = computed(() => hasFlag('--mask'))
+  /**
+   * PR #1780 unified ref processing. Master uses --ref-image-args; some mid-builds
+   * advertised --ref-image-mode. Pessimistic until probed so old binaries never see the flag.
+   */
+  const supportsRefImageArgs = computed(() => {
+    if (!capabilities.value.probed) return false
+    return hasFlag('--ref-image-args') || hasFlag('--ref-image-mode')
+  })
+
+  /** CLI flag name this binary expects (when supportsRefImageArgs). */
+  const refImageCliFlag = computed((): '--ref-image-args' | '--ref-image-mode' | null => {
+    if (!capabilities.value.probed) return null
+    if (hasFlag('--ref-image-args')) return '--ref-image-args'
+    if (hasFlag('--ref-image-mode')) return '--ref-image-mode'
+    return null
+  })
 
   async function fetchCapabilities(force = false): Promise<BackendCapabilities> {
     if (isRemoteBrowser()) return capabilities.value
@@ -102,6 +118,8 @@ export function useBackendCapabilities() {
     supportsFlowShift,
     supportsFps,
     supportsInpaint,
+    supportsRefImageArgs,
+    refImageCliFlag,
     fetchCapabilities
   }
 }

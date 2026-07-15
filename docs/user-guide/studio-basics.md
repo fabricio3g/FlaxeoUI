@@ -2,26 +2,39 @@
 
 ## Image (Text2Image)
 
-1. Choose a model in the command strip or Model panel.
-2. Write a **prompt** (and optional negative).
-3. Set size, steps, CFG, sampler as needed (Simple vs Advanced density in config).
-4. Press **Generate**.
+1. Choose a model (command strip or Model panel).
+2. Write a **prompt** (optional negative).
+3. Set size, steps, CFG (composer + gear).
+4. Optional: **Preview** = Proj / TAE / VAE for live frames while generating.
+5. Press **Generate**.
 
-**Seeds:** lock to reproduce; dice for a new random; copy to clipboard.  
-**Batch:** increase batch count for multiple images in one job (uses CLI multi-output naming).
+**Seeds:** lock to reproduce; dice for random.  
+**Batch:** multiple images per job.  
+**Queue:** next Generate enqueues while a job runs.
 
-## Queue
-
-While a job runs, Generate **enqueues** the next job instead of blocking. Open **Queue** to reorder, remove waiting jobs, pause, or cancel the current run. See [queue.md](./queue.md).
-
-## Gallery
-
-Browse outputs, open fullscreen, **reuse seed** or **reuse all settings**, and **upscale** when an upscale model is available.
+**Advanced tools:** Img2Img (`-i`), Reference multi-ref (`-r`) — same ref processing presets as Edit → Ref Edit.
 
 ## Edit
 
-Modes: **Inpaint**, **Ref Edit** (multi-reference), **Img2Img**. Upload a base image and follow the mode tips in the panel.
+| Mode | What it does |
+|------|----------------|
+| **Inpaint** | Mask areas to change. Size always follows the source image. |
+| **Img2Img** | Transform whole image with strength. Studio size or match source. |
+| **Ref Edit** | Multi-reference edit (`-r`). Studio size or match ref. |
+
+Shared with Image: steps, CFG, seed, **live preview**.  
+On Img2Img / Ref Edit: resolution chip, size policy, optional fit-to-target crop when adding an image.
+
+Models & packs: see [Models & hardware](./models-hardware.md).
+
+## Gallery
+
+Browse outputs, fullscreen, **reuse seed** or **reuse all settings**, **upscale** when a model is in `models/upscale`.
 
 ## Video
 
-Modes: **T2V**, **I2V**, **FLF2V**. Use resolution chips and FPS controls; video models come from Model Hub video packs.
+**T2V**, **I2V**, **FLF2V**. Resolution chips + FPS. Models from Hub video packs.
+
+## Queue
+
+One generation at a time. Open **Queue** to reorder, remove waiting jobs, pause, or cancel. See [queue.md](./queue.md).

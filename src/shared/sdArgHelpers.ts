@@ -39,6 +39,20 @@ export function roundTo(value: unknown, fallback: number, multiple: number): num
   return Math.round((Number.isFinite(parsed) ? parsed : fallback) / multiple) * multiple
 }
 
+/**
+ * Resolve denoise strength for inpaint / img2img stages.
+ * Prefers `strength`, then `img2imgStrength`; defaults to sd-cli 0.75.
+ */
+export function resolveInpaintStrength(body: Record<string, unknown>, fallback = 0.75): number {
+  const candidates = [body.strength, body.img2imgStrength]
+  for (const candidate of candidates) {
+    if (candidate === '' || candidate == null) continue
+    const parsed = Number(candidate)
+    if (Number.isFinite(parsed)) return Math.min(1, Math.max(0, parsed))
+  }
+  return fallback
+}
+
 export function addGenerationArgs(
   args: string[],
   body: Record<string, unknown>,

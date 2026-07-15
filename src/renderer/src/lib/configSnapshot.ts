@@ -61,8 +61,7 @@ const SNAPSHOT_KEYS = [
   'predictionType',
   'quantizationType',
   'livePreviewMethod',
-  'regionalPromptingEnabled',
-  'regionalPromptRegions',
+  'refImagePreset',
   'videoMode',
   'qwenImageZeroCondT'
 ] as const satisfies readonly (keyof GenerationConfig)[]
@@ -78,13 +77,7 @@ export function pickConfigSnapshot(config: GenerationConfig): ConfigSnapshot {
     if (value === undefined || value === null || value === '') continue
     if (value === false || value === 0) {
       // keep meaningful zeros / false where defaults differ
-      if (
-        key === 'seed' ||
-        key === 'maxVram' ||
-        key === 'clipSkip' ||
-        key === 'threads' ||
-        key === 'regionalPromptingEnabled'
-      ) {
+      if (key === 'seed' || key === 'maxVram' || key === 'clipSkip' || key === 'threads') {
         ;(snap as Record<string, unknown>)[key] = value
       }
       continue
@@ -94,10 +87,6 @@ export function pickConfigSnapshot(config: GenerationConfig): ConfigSnapshot {
   if (config.loras?.length) {
     snap.loras = config.loras.map((l) => ({ ...l }))
   }
-  snap.regionalPromptingEnabled = config.regionalPromptingEnabled
-  snap.regionalPromptRegions = config.regionalPromptingEnabled
-    ? config.regionalPromptRegions.map((region) => ({ ...region }))
-    : []
   // Always keep seed even when -1 / 0
   snap.seed = config.seed
   snap.steps = config.steps

@@ -50,6 +50,8 @@ const runtimePoll = ref<number | null>(null)
 const runtimeDownloading = ref(false)
 const runtimeError = ref('')
 const modelDownloading = ref(false)
+/** True when user left the model step without downloading a starter pack. */
+const skippedModelDownload = ref(false)
 const modelDownloadStatus = ref<Record<string, string>>({})
 const modelDownloadProgress = ref<Record<string, number>>({})
 const packDownloadPoll = ref<number | null>(null)
@@ -188,6 +190,7 @@ async function downloadFile(file: HubFile): Promise<void> {
 
 async function startModelDownload(): Promise<void> {
   modelDownloading.value = true
+  skippedModelDownload.value = false
   configStore.applyPreset(selectedPack.value.presetId)
   if (optimizeLowVram.value) {
     configStore.applyLowVramProfile()
@@ -202,6 +205,17 @@ async function startModelDownload(): Promise<void> {
 
 function cancelModelDownload(): void {
   modelDownloading.value = false
+}
+
+/** Continue setup without downloading a starter pack (Hub or manual files later). */
+function skipModelDownload(): void {
+  if (modelDownloading.value) return
+  skippedModelDownload.value = true
+  if (optimizeLowVram.value) {
+    configStore.applyLowVramProfile()
+  }
+  // Do not apply pack preset — files may not be on disk yet
+  step.value = 'finish'
 }
 
 async function recommendPackFromDetect(): Promise<void> {
@@ -545,7 +559,8 @@ watch(selectedRelease, (release) => {
               </p>
               <h3 class="mt-1 text-xl font-semibold tracking-tight">Choose a starter model</h3>
               <p class="mt-1 text-sm text-muted-foreground">
-                Pick one pack to download now. You can always get more from the Model Hub later.
+                Pick one pack to download now, or skip and add models later (Hub or your own
+                files).
               </p>
               <p
                 v-if="packRecommendReason"
@@ -636,7 +651,7 @@ watch(selectedRelease, (release) => {
                 </div>
               </div>
 
-              <div class="mt-4 flex gap-2">
+              <div class="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   class="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -655,7 +670,19 @@ watch(selectedRelease, (release) => {
                 >
                   Cancel
                 </button>
+                <button
+                  v-else
+                  type="button"
+                  class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Continue without downloading — install from Hub or place files under models/"
+                  @click="skipModelDownload"
+                >
+                  Skip download
+                </button>
               </div>
+              <p class="mt-2 text-[11px] text-muted-foreground">
+                Skip if you already have weights, or plan to use Model Hub / manual folders later.
+              </p>
             </div>
           </div>
 
@@ -668,7 +695,16 @@ watch(selectedRelease, (release) => {
             </div>
             <div>
               <h3 class="text-2xl font-semibold tracking-tight">You're all set</h3>
-              <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              <p
+                v-if="skippedModelDownload"
+                class="mx-auto mt-2 max-w-md text-sm text-muted-foreground"
+              >
+                You skipped the starter pack download. Add models from the
+                <strong>Model Hub</strong>, or place files under
+                <strong>Settings → Storage → Models</strong>
+                (see Help → Models &amp; hardware for folder layout).
+              </p>
+              <p v-else class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 The <strong>{{ selectedPack.name }}</strong> preset has been applied. You can start
                 generating now or change models anytime from the Model Hub.
               </p>

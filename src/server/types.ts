@@ -74,10 +74,7 @@ export interface RuntimeState {
   logBus: EventEmitter
   sdProcess: ChildProcess | null
   cliProcess: ChildProcess | null
-  cliPipelineActive: boolean
-  cliPipelineOwner: symbol | null
   cliCancelRequested: boolean
-  cancelRegionalUpload: (() => void) | null
   server: Server | null
   networkStatus: NetworkStatus
   downloads: Record<string, DownloadTask>

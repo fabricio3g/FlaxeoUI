@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import multer from 'multer'
-import type { Express, NextFunction, Request, Response } from 'express'
+import type { Express, Request, Response } from 'express'
 import type { AppContext, JsonObject } from '../types'
 import {
   asBool,
@@ -26,10 +26,6 @@ import {
   type GenerationPhase
 } from '../../shared/generationPhases'
 import type { ParsedStep } from '../utils'
-import {
-  composeRegionalPrompt,
-  normalizeRegionalPromptRegions
-} from '../../shared/regionalPrompting'
 import { invalidateModelsCache } from '../modelsCache'
 import type { ProgressPhase } from '../types'
 import {
@@ -44,6 +40,13 @@ import {
   pushArg,
   pushModelArg
 } from '../sd'
+import { resolveInpaintStrength } from '../../shared/sdArgHelpers'
+import {
+  planCliImageOutput,
+  publishCliImageOutputs,
+  type CliImageOutputPlan
+} from '../outputCompress'
+
 
 function pushNumericArgIfPresent(args: string[], flag: string, value: unknown): void {
   if (value === '' || value == null) return
@@ -57,7 +60,6 @@ interface UploadRequest extends Request {
   kontextRefDir?: string
   files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>
   file?: Express.Multer.File
-  regionalPipelineOwner?: symbol
 }
 
 const UPLOAD_LIMITS = {
@@ -83,11 +85,7 @@ function uploadMiddleware(ctx: AppContext) {
           return
         }
 
-        if (
-          file.fieldname === 'controlNetImage' ||
-          file.fieldname === 'initImage' ||
-          file.fieldname === 'regionMasks'
-        ) {
+        if (file.fieldname === 'controlNetImage' || file.fieldname === 'initImage') {
           cb(null, ctx.paths.tempDir)
           return
         }
@@ -105,8 +103,7 @@ function uploadMiddleware(ctx: AppContext) {
     { name: 'pmImages', maxCount: 4 },
     { name: 'kontextRefImage', maxCount: 8 },
     { name: 'controlNetImage', maxCount: 1 },
-    { name: 'initImage', maxCount: 1 },
-    { name: 'regionMasks', maxCount: 4 }
+    { name: 'initImage', maxCount: 1 }
   ])
 }
 
@@ -123,7 +120,7 @@ function sendCliBusy(res: Response): void {
 
 /** Returns false if a response was already sent (busy). */
 function ensureCliIdle(ctx: AppContext, res: Response): boolean {
-  if (ctx.state.cliProcess || ctx.state.cliPipelineActive) {
+  if (ctx.state.cliProcess) {
     sendCliBusy(res)
     return false
   }
@@ -310,14 +307,6 @@ function filesFromUpload(req: UploadRequest, field: string): string[] {
   return files.map((file) => file.path).filter(Boolean)
 }
 
-function allUploadedFiles(req: UploadRequest): string[] {
-  if (!req.files) return req.file?.path ? [req.file.path] : []
-  if (Array.isArray(req.files)) return req.files.map((file) => file.path).filter(Boolean)
-  return Object.values(req.files)
-    .flat()
-    .map((file) => file.path)
-    .filter(Boolean)
-}
 function removeTemporaryFiles(
   dirs: Array<string | null> = [],
   files: Array<string | null | undefined> = []
@@ -396,6 +385,47 @@ function sendCliResult(
 
   if (fs.existsSync(outputPath)) {
     res.json({ message: 'Complete', filenames: [filename], filename })
+    return
+  }
+
+  const human = humanizeCliError(failedMessage)
+  res.status(500).json({
+    message: formatHumanizedError(human),
+    error: failedMessage,
+    title: human.title,
+    detail: human.detail,
+    hint: human.hint
+  })
+}
+
+/** After image CLI success: publish staged PNG→AVIF when configured, then respond. */
+async function sendCliImageResult(
+  ctx: AppContext,
+  res: Response,
+  result: { cancelled: boolean },
+  plan: CliImageOutputPlan,
+  failedMessage: string,
+  batchCount = 1
+): Promise<void> {
+  if (result.cancelled) {
+    if (plan.stageDir) {
+      try {
+        fs.rmSync(plan.stageDir, { recursive: true, force: true })
+      } catch {
+        /* ignore */
+      }
+    }
+    res.json({ message: 'Cancelled' })
+    return
+  }
+
+  const filenames = await publishCliImageOutputs(ctx, plan, batchCount)
+  if (filenames.length > 0) {
+    res.json({
+      message: 'Complete',
+      filenames,
+      filename: filenames[0]
+    })
     return
   }
 
@@ -490,8 +520,24 @@ function buildImageArgs(
     if (resolved) args.push('-r', resolved)
   }
 
-  if (asBool(body.increaseRefIndex)) args.push('--increase-ref-index')
-  if (asBool(body.disableAutoResizeRefImage)) args.push('--disable-auto-resize-ref-image')
+  // Multi-ref DiT edit (PR #1780): --ref-image-args "preset=…,key=value,…"
+  // When the unified flag is present, do not also send deprecated --increase-ref-index /
+  // --disable-auto-resize-ref-image (they are superseded by preset / ref_index_mode / resize keys).
+  if (allRefPaths.length > 0) {
+    const refArgs = firstString(body.refImageArgs, body.ref_image_args)
+    if (refArgs) {
+      const flagName = firstString(body.refImageCliFlag, body.ref_image_cli_flag)
+      const flag =
+        flagName === '--ref-image-mode' || flagName === 'ref-image-mode'
+          ? '--ref-image-mode'
+          : '--ref-image-args'
+      args.push(flag, refArgs)
+    } else {
+      // Legacy binaries only: old standalone toggles
+      if (asBool(body.increaseRefIndex)) args.push('--increase-ref-index')
+      if (asBool(body.disableAutoResizeRefImage)) args.push('--disable-auto-resize-ref-image')
+    }
+  }
 
   const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
   if (initImage) {
@@ -504,18 +550,7 @@ function buildImageArgs(
   if (upscaleModel) args.push('--upscale-model', upscaleModel)
   const taesdModel = modelPath(ctx, 'taesd', firstString(body.taesdModel))
   if (taesdModel) args.push('--taesd', taesdModel)
-  if (body.livePreviewMethod) {
-    const previewPath = path.join(ctx.paths.tempDir, `preview_${Date.now()}.png`)
-    args.push(
-      '--preview',
-      String(body.livePreviewMethod),
-      '--preview-path',
-      previewPath,
-      '--preview-interval',
-      '1'
-    )
-    ctx.state.previewTempFile = previewPath
-  }
+  appendLivePreviewArgs(ctx, args, body)
 
   const pmImagesDir = copyPhotoMakerGallery(ctx, body, req)
   const photoMaker = modelPath(ctx, 'photomaker', firstString(body.photoMaker))
@@ -554,6 +589,15 @@ function buildImageArgs(
   }
 }
 
+/** Shared --preview / --preview-path for generate-cli and inpaint. */
+function appendLivePreviewArgs(ctx: AppContext, args: string[], body: JsonObject): void {
+  const method = firstString(body.livePreviewMethod, body.live_preview_method)
+  if (!method) return
+  const previewPath = path.join(ctx.paths.tempDir, `preview_${Date.now()}.png`)
+  args.push('--preview', method, '--preview-path', previewPath, '--preview-interval', '1')
+  ctx.state.previewTempFile = previewPath
+}
+
 function buildInpaintArgs(
   ctx: AppContext,
   body: JsonObject,
@@ -564,28 +608,19 @@ function buildInpaintArgs(
   const args: string[] = []
   const prompt = String(body.prompt || '')
   addModelArgs(ctx, args, body)
+  // sd-cli: -i init, --mask editable region (white), --strength denoise amount
   args.push('-i', initImage)
   if (maskPath) args.push('--mask', maskPath)
-  const parsedStrength = parseFloat(String(body.strength))
-  const strength = Number.isFinite(parsedStrength) ? Math.min(1, Math.max(0, parsedStrength)) : 0.75
+  const strength = resolveInpaintStrength(body)
   args.push('--strength', String(strength))
   addGenerationArgs(args, body, outputPath, { width: 1024, height: 1024, cfg: 7, multiple: 64 })
   addOptionalArgs(args, body)
   addHardwareArgs(args, body, prompt)
   assertLoraFilesPresent(ctx, body, prompt)
   addPromptModelExtras(ctx, args, body, prompt)
+  appendLivePreviewArgs(ctx, args, body)
   args.push('-v')
   return args
-}
-
-function publishCompletedPreview(ctx: AppContext, imagePath: string): void {
-  try {
-    const buffer = fs.readFileSync(imagePath)
-    ctx.state.previewImageBuffer = buffer
-    ctx.state.previewEtag = `"${buffer.length}-${Date.now()}"`
-  } catch {
-    // The final response still reports a missing stage output if this file is unavailable.
-  }
 }
 
 export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
@@ -610,12 +645,17 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       Math.min(16, parseInt(String(body.batchCount || body.batch_count || 1), 10) || 1)
     )
     const stamp = Date.now()
-    const filename = batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
-    const outputPath = path.join(ctx.paths.outputDir, filename)
+    const pngFilename = batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
+    const imagePlan = planCliImageOutput(ctx, pngFilename)
     // Ensure body carries clamped batch so buildImageArgs emits -b
     body.batchCount = batchCount
-    const { args, cleanupDirs, cleanupFiles } = buildImageArgs(ctx, body, req, outputPath)
-    if (batchCount > 1 && filename.includes('%') && !args.includes('--output-begin-idx')) {
+    const { args, cleanupDirs, cleanupFiles } = buildImageArgs(
+      ctx,
+      body,
+      req,
+      imagePlan.cliOutputPath
+    )
+    if (batchCount > 1 && pngFilename.includes('%') && !args.includes('--output-begin-idx')) {
       args.push('--output-begin-idx', '0')
     }
 
@@ -628,15 +668,22 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
     try {
       const result = await runCli(ctx, args, 'CLI-GEN')
-      sendCliResult(
+      await sendCliImageResult(
+        ctx,
         res,
         result,
-        outputPath,
-        filename,
+        imagePlan,
         'Generation failed - no output file',
         batchCount
       )
     } catch (error: unknown) {
+      if (imagePlan.stageDir) {
+        try {
+          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
+        } catch {
+          /* ignore */
+        }
+      }
       sendCliFailure(res, error, 'CLI generation failed')
     } finally {
       if (stopWatching) stopWatching()
@@ -649,178 +696,8 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     }
   })
 
-  const regionalUpload = uploadMiddleware(ctx)
-  const reserveRegionalPipeline = (req: UploadRequest, res: Response, next: NextFunction): void => {
-    if (!ensureCliIdle(ctx, res)) return
-    const owner = Symbol('regional-pipeline')
-    req.regionalPipelineOwner = owner
-    ctx.state.cliPipelineActive = true
-    ctx.state.cliPipelineOwner = owner
-    ctx.state.cliCancelRequested = false
-    const uploadTimeout = setTimeout(() => {
-      ctx.state.cliCancelRequested = true
-      ctx.state.cancelRegionalUpload?.()
-    }, 120_000)
-    ctx.state.cancelRegionalUpload = () => {
-      if (ctx.state.cliPipelineOwner !== owner) return
-      if (!req.destroyed) req.destroy(new Error('Regional upload cancelled'))
-    }
-    regionalUpload(req, res, (error?: unknown) => {
-      clearTimeout(uploadTimeout)
-      const ownsPipeline = ctx.state.cliPipelineOwner === owner
-      if (ownsPipeline) ctx.state.cancelRegionalUpload = null
-      if (error) {
-        if (ownsPipeline) {
-          ctx.state.cliPipelineActive = false
-          ctx.state.cliPipelineOwner = null
-          ctx.state.cliCancelRequested = false
-        }
-        removeTemporaryFiles(
-          [req.pmImagesDir || null, req.kontextRefDir || null],
-          allUploadedFiles(req)
-        )
-        if (!res.headersSent && !res.writableEnded && !req.destroyed) {
-          res.status(400).json({ message: errorMessage(error) || 'Regional upload failed' })
-        }
-        return
-      }
-      if (!ownsPipeline) {
-        removeTemporaryFiles(
-          [req.pmImagesDir || null, req.kontextRefDir || null],
-          allUploadedFiles(req)
-        )
-        if (!res.headersSent && !res.writableEnded) sendCliBusy(res)
-        return
-      }
-      next()
-    })
-  }
-
-  app.post('/api/generate-regional', reserveRegionalPipeline, async (req: UploadRequest, res) => {
-    const uploadedFiles = allUploadedFiles(req)
-    const cleanupDirs: Array<string | null> = [req.pmImagesDir || null, req.kontextRefDir || null]
-    let workDir: string | null = null
-    let finalOutputPath: string | null = null
-    let stopWatching: (() => void) | null = null
-    let succeeded = false
-
-    try {
-      if (ctx.state.cliCancelRequested) {
-        res.json({ message: 'Cancelled' })
-        return
-      }
-
-      const body = (req.body || {}) as JsonObject
-      const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
-      if (!diffusionModel) {
-        res.status(400).json({ message: 'No model selected.', error: 'MODEL_REQUIRED' })
-        return
-      }
-
-      let rawRegions: unknown = body.regions
-      if (typeof rawRegions === 'string') {
-        try {
-          rawRegions = JSON.parse(rawRegions)
-        } catch {
-          rawRegions = null
-        }
-      }
-      const regions = normalizeRegionalPromptRegions(rawRegions)
-      if (!regions.length || regions.some((region) => !region.prompt)) {
-        res
-          .status(400)
-          .json({ message: 'Every regional prompt needs a valid region and description.' })
-        return
-      }
-
-      const maskPaths = filesFromUpload(req, 'regionMasks')
-      if (maskPaths.length !== regions.length || maskPaths.some((mask) => !fs.existsSync(mask))) {
-        res.status(400).json({ message: 'One mask image is required for each regional prompt.' })
-        return
-      }
-
-      body.batchCount = 1
-      body.strength = 0.75
-      workDir = fs.mkdtempSync(path.join(ctx.paths.tempDir, 'regional-'))
-      const baseOutput = path.join(workDir, 'base.png')
-      const baseBuild = buildImageArgs(ctx, body, req, baseOutput)
-      cleanupDirs.push(...baseBuild.cleanupDirs)
-
-      ctx.state.previewImageBuffer = null
-      if (ctx.state.previewTempFile) stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
-
-      const stageTotal = regions.length + 1
-      const baseResult = await runCli(ctx, baseBuild.args, 'REGIONAL-BASE', {
-        current: 1,
-        total: stageTotal,
-        label: 'Creating base image'
-      })
-      if (baseResult.cancelled || ctx.state.cliCancelRequested) {
-        res.json({ message: 'Cancelled' })
-        return
-      }
-      if (!fs.existsSync(baseOutput)) throw new Error('Base generation failed - no output file')
-      publishCompletedPreview(ctx, baseOutput)
-
-      let previousOutput = baseOutput
-      const stamp = Date.now()
-      const filename = `regional_${stamp}.png`
-      finalOutputPath = path.join(ctx.paths.outputDir, filename)
-
-      for (let index = 0; index < regions.length; index++) {
-        if (ctx.state.cliCancelRequested) {
-          res.json({ message: 'Cancelled' })
-          return
-        }
-        const isFinal = index === regions.length - 1
-        const outputPath = isFinal ? finalOutputPath : path.join(workDir, `region_${index + 1}.png`)
-        const regionBody: JsonObject = {
-          ...body,
-          prompt: composeRegionalPrompt(String(body.prompt || ''), regions[index].prompt),
-          batchCount: 1,
-          strength: 0.75
-        }
-        const args = buildInpaintArgs(ctx, regionBody, previousOutput, maskPaths[index], outputPath)
-        const result = await runCli(ctx, args, `REGIONAL-${index + 1}`, {
-          current: index + 2,
-          total: stageTotal,
-          label: `Applying region ${index + 1}`
-        })
-        if (result.cancelled || ctx.state.cliCancelRequested) {
-          res.json({ message: 'Cancelled' })
-          return
-        }
-        if (!fs.existsSync(outputPath))
-          throw new Error(`Region ${index + 1} failed - no output file`)
-        publishCompletedPreview(ctx, outputPath)
-        previousOutput = outputPath
-      }
-
-      succeeded = true
-      res.json({ message: 'Complete', filenames: [filename], filename })
-    } catch (error: unknown) {
-      sendCliFailure(res, error, 'Regional generation failed')
-    } finally {
-      if (stopWatching) stopWatching()
-      if (ctx.state.previewTempFile) removeFile(ctx.state.previewTempFile)
-      ctx.state.previewTempFile = null
-      ctx.state.previewImageBuffer = null
-      ctx.state.previewEtag = null
-      if (ctx.state.cliPipelineOwner === req.regionalPipelineOwner) {
-        ctx.state.cliPipelineActive = false
-        ctx.state.cliPipelineOwner = null
-        ctx.state.cliCancelRequested = false
-      }
-      if (!succeeded && finalOutputPath) removeFile(finalOutputPath)
-      if (workDir) cleanupDirs.push(workDir)
-      removeTemporaryFiles(cleanupDirs, uploadedFiles)
-    }
-  })
-
   app.post('/api/cancel-cli', (_req, res) => {
-    const pipelineActive = ctx.state.cliPipelineActive
     ctx.state.cliCancelRequested = true
-    ctx.state.cancelRegionalUpload?.()
     if (ctx.state.cliProcess) {
       ctx.state.cliProcess.kill('SIGTERM')
       ctx.state.previewImageBuffer = null
@@ -832,8 +709,6 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         removeFile(ctx.state.convertOutputPath)
         ctx.state.convertOutputPath = null
       }
-      res.json({ message: 'Cancelled' })
-    } else if (pipelineActive) {
       res.json({ message: 'Cancelled' })
     } else {
       res.json({ message: 'No CLI process running' })
@@ -902,18 +777,42 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         fileFromUpload(req, 'initImage') || resolveInputFile(ctx, firstString(body.initImagePath))
       if (!initImg) return res.status(400).json({ message: 'Init image required' })
 
-      const filename = `inpaint_${Date.now()}.png`
-      const outputPath = path.join(ctx.paths.outputDir, filename)
+      const imagePlan = planCliImageOutput(ctx, `inpaint_${Date.now()}.png`)
       const maskPath = fileFromUpload(req, 'mask')
-      const args = buildInpaintArgs(ctx, body, initImg, maskPath, outputPath)
+      ctx.state.previewImageBuffer = null
+      const args = buildInpaintArgs(ctx, body, initImg, maskPath, imagePlan.cliOutputPath)
       const tempFiles = [fileFromUpload(req, 'initImage'), maskPath]
+
+      let stopWatching: (() => void) | null = null
+      if (ctx.state.previewTempFile) {
+        stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
+      }
 
       try {
         const result = await runCli(ctx, args, 'INPAINT')
-        sendCliResult(res, result, outputPath, filename, 'Inpainting failed - no output file')
+        await sendCliImageResult(
+          ctx,
+          res,
+          result,
+          imagePlan,
+          'Inpainting failed - no output file'
+        )
       } catch (error: unknown) {
+        if (imagePlan.stageDir) {
+          try {
+            fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
+          } catch {
+            /* ignore */
+          }
+        }
         sendCliFailure(res, error, 'Inpainting failed')
       } finally {
+        if (stopWatching) stopWatching()
+        if (ctx.state.previewTempFile) {
+          removeFile(ctx.state.previewTempFile)
+          ctx.state.previewTempFile = null
+        }
+        ctx.state.previewImageBuffer = null
         removeTemporaryFiles([], tempFiles)
       }
     }
@@ -1075,10 +974,9 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         error: 'UPSCALE_MODEL_REQUIRED'
       })
 
-    const ext = path.extname(sourcePath) || '.png'
-    const filename = `upscale_${Date.now()}${ext}`
-    const outputPath = path.join(ctx.paths.outputDir, filename)
-    const args: string[] = ['-M', 'upscale', '-i', sourcePath, '-o', outputPath]
+    // CLI upscale writes an image file; always stage as PNG then honor store format.
+    const imagePlan = planCliImageOutput(ctx, `upscale_${Date.now()}.png`)
+    const args: string[] = ['-M', 'upscale', '-i', sourcePath, '-o', imagePlan.cliOutputPath]
     args.push('--upscale-model', upscaleModel)
 
     const repeats = parseInt(String(body.upscaleRepeats ?? body.upscale_repeats ?? 1), 10)
@@ -1093,8 +991,15 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
     try {
       const result = await runCli(ctx, args, 'UPSCALE')
-      sendCliResult(res, result, outputPath, filename, 'Upscale failed - no output file')
+      await sendCliImageResult(ctx, res, result, imagePlan, 'Upscale failed - no output file')
     } catch (error: unknown) {
+      if (imagePlan.stageDir) {
+        try {
+          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
+        } catch {
+          /* ignore */
+        }
+      }
       sendCliFailure(res, error, 'Upscale failed')
     }
   })

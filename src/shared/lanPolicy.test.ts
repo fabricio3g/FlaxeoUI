@@ -56,8 +56,10 @@ describe('LAN endpoint policy', () => {
       ['GET', '/api/preview-image'],
       ['GET', '/api/generation/progress'],
       ['POST', '/api/image/params'],
+      ['GET', '/api/export-image'],
       ['POST', '/api/auth/logout'],
       ['GET', '/output/gen_123.png'],
+      ['GET', '/output/gen_123.avif'],
       ['HEAD', '/output/video_123.mp4'],
       ['GET', '/api/media/123e4567-e89b-12d3-a456-426614174000/content'],
       ['GET', '/api/media/media_01/export']

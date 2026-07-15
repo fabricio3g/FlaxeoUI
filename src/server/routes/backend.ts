@@ -231,6 +231,8 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/backend/config', (_req, res) => {
     const versions = installedVersions(ctx)
     const activeBackend = ctx.getActiveBackendPath()
+    const outputImageFormat =
+      ctx.state.backendConfig.outputImageFormat === 'avif' ? 'avif' : 'png'
     res.json({
       activeVersion: ctx.state.backendConfig.activeVersion,
       customBinaryExists: backendHasBinaries(ctx.paths.customDir),
@@ -238,13 +240,19 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       activeBackendPath: activeBackend,
       activeBackendValid: backendHasBinaries(activeBackend),
       customDir: ctx.paths.customDir,
-      releasesDir: ctx.paths.releasesDir
+      releasesDir: ctx.paths.releasesDir,
+      outputImageFormat
     })
   })
 
   app.post('/api/backend/config', (req, res) => {
     try {
-      ctx.state.backendConfig = { ...ctx.state.backendConfig, ...req.body }
+      const body = (req.body || {}) as Record<string, unknown>
+      const next = { ...ctx.state.backendConfig, ...body }
+      if (body.outputImageFormat !== undefined) {
+        next.outputImageFormat = body.outputImageFormat === 'avif' ? 'avif' : 'png'
+      }
+      ctx.state.backendConfig = next
       ctx.saveBackendConfig()
       res.json({ success: true, config: ctx.state.backendConfig })
     } catch (error: unknown) {
