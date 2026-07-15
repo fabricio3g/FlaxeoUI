@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Plus, Upload, X } from '@/lib/icons'
+import { Crop, Plus, Upload, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { getFileUrl } from '@/services/api'
 import Select from '@/components/ui/Select.vue'
@@ -26,8 +26,10 @@ const emit = defineEmits<{
   'cn-clear': []
   'init-upload': [event: Event]
   'init-clear': []
+  'init-fit': []
   'ref-upload': [event: Event]
   'ref-clear': []
+  'ref-fit': []
 }>()
 
 const PANEL_WIDTH = 340
@@ -323,33 +325,45 @@ onUnmounted(() => {
           <!-- Img2Img -->
           <div v-else-if="tab === 'img2img'" class="space-y-3">
             <p class="text-sm font-medium text-foreground">Initial image</p>
-            <div class="group relative size-24 overflow-hidden rounded-lg bg-muted/40">
-              <img
-                v-if="config.initImagePath"
-                :src="getFileUrl(config.initImagePath)"
-                class="h-full w-full object-cover"
-                alt=""
-              />
-              <label
-                class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Upload v-if="!config.initImagePath" class="size-5" />
-                <span v-if="!config.initImagePath" class="text-sm">Upload</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="emit('init-upload', $event)"
+            <div class="flex items-start gap-2">
+              <div class="group relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted/40">
+                <img
+                  v-if="config.initImagePath"
+                  :src="getFileUrl(config.initImagePath)"
+                  class="h-full w-full object-cover"
+                  alt=""
                 />
-              </label>
+                <label
+                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Upload v-if="!config.initImagePath" class="size-5" />
+                  <span v-if="!config.initImagePath" class="text-sm">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="emit('init-upload', $event)"
+                  />
+                </label>
+                <button
+                  v-if="config.initImagePath"
+                  type="button"
+                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                  title="Remove"
+                  @click.stop="emit('init-clear')"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
               <button
                 v-if="config.initImagePath"
                 type="button"
-                class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                title="Remove"
-                @click.stop="emit('init-clear')"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/70 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                title="Fit image to output size (crop / resize)"
+                @click="emit('init-fit')"
               >
-                <X class="size-3.5" />
+                <Crop class="size-3.5" />
+                Fit to {{ config.width }}×{{ config.height }}
               </button>
             </div>
             <div>
@@ -375,33 +389,45 @@ onUnmounted(() => {
           <!-- Reference (Kontext / DiT multi-ref) — not classic img2img denoise -->
           <div v-else-if="tab === 'kontext'" class="space-y-3">
             <p class="text-sm font-medium text-foreground">Reference image</p>
-            <div class="group relative size-24 overflow-hidden rounded-lg bg-muted/40">
-              <img
-                v-if="config.kontextRefImage"
-                :src="getFileUrl(config.kontextRefImage)"
-                class="h-full w-full object-cover"
-                alt=""
-              />
-              <label
-                class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Upload v-if="!config.kontextRefImage" class="size-5" />
-                <span v-if="!config.kontextRefImage" class="text-sm">Upload</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="emit('ref-upload', $event)"
+            <div class="flex items-start gap-2">
+              <div class="group relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted/40">
+                <img
+                  v-if="config.kontextRefImage"
+                  :src="getFileUrl(config.kontextRefImage)"
+                  class="h-full w-full object-cover"
+                  alt=""
                 />
-              </label>
+                <label
+                  class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Upload v-if="!config.kontextRefImage" class="size-5" />
+                  <span v-if="!config.kontextRefImage" class="text-sm">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="emit('ref-upload', $event)"
+                  />
+                </label>
+                <button
+                  v-if="config.kontextRefImage"
+                  type="button"
+                  class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                  title="Remove"
+                  @click.stop="emit('ref-clear')"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
               <button
                 v-if="config.kontextRefImage"
                 type="button"
-                class="aui-icon-button absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                title="Remove"
-                @click.stop="emit('ref-clear')"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/70 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                title="Fit reference to output size (crop / resize)"
+                @click="emit('ref-fit')"
               >
-                <X class="size-3.5" />
+                <Crop class="size-3.5" />
+                Fit to {{ config.width }}×{{ config.height }}
               </button>
             </div>
             <p class="text-sm leading-5 text-muted-foreground">

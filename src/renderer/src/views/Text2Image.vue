@@ -35,6 +35,7 @@ import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import RecipeLibrary from '@/components/RecipeLibrary.vue'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import AdvancedToolPanel, { type AdvancedToolTab } from '@/components/AdvancedToolPanel.vue'
+import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
@@ -476,6 +477,9 @@ function handleKontextUpload(event: Event) {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     const file = input.files[0]
+    if (config.value.kontextRefImage?.startsWith('blob:')) {
+      URL.revokeObjectURL(config.value.kontextRefImage)
+    }
     kontextRefFile.value = file
     config.value.kontextRefImage = URL.createObjectURL(file)
   }
@@ -485,9 +489,77 @@ function handleInitImageUpload(event: Event) {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     const file = input.files[0]
+    if (config.value.initImagePath?.startsWith('blob:')) {
+      URL.revokeObjectURL(config.value.initImagePath)
+    }
     initImageFile.value = file
     config.value.initImagePath = URL.createObjectURL(file)
   }
+}
+
+/** Fit-to-target editor for Image advanced tools (Img2Img init / Reference). */
+const imageToolCrop = ref<{
+  open: boolean
+  target: 'init' | 'ref'
+  imageUrl: string
+} | null>(null)
+
+function openInitFitEditor(): void {
+  if (!config.value.initImagePath) {
+    toast.error('Upload an initial image first')
+    return
+  }
+  imageToolCrop.value = {
+    open: true,
+    target: 'init',
+    imageUrl: config.value.initImagePath
+  }
+}
+
+function openRefFitEditor(): void {
+  if (!config.value.kontextRefImage) {
+    toast.error('Upload a reference image first')
+    return
+  }
+  imageToolCrop.value = {
+    open: true,
+    target: 'ref',
+    imageUrl: config.value.kontextRefImage
+  }
+}
+
+function onImageToolCropCancel(): void {
+  imageToolCrop.value = null
+}
+
+function onImageToolCropApply(payload: {
+  file: File
+  width: number
+  height: number
+}): void {
+  if (!imageToolCrop.value) return
+  const target = imageToolCrop.value.target
+  const url = URL.createObjectURL(payload.file)
+  if (target === 'init') {
+    if (config.value.initImagePath?.startsWith('blob:')) {
+      URL.revokeObjectURL(config.value.initImagePath)
+    }
+    initImageFile.value = payload.file
+    config.value.initImagePath = url
+  } else {
+    if (config.value.kontextRefImage?.startsWith('blob:')) {
+      URL.revokeObjectURL(config.value.kontextRefImage)
+    }
+    kontextRefFile.value = payload.file
+    config.value.kontextRefImage = url
+  }
+  configStore.setDimensions(payload.width, payload.height)
+  imageToolCrop.value = null
+  toast.success(
+    target === 'init'
+      ? `Init image fitted to ${payload.width}×${payload.height}`
+      : `Reference fitted to ${payload.width}×${payload.height}`
+  )
 }
 
 // Helper to get params from image
@@ -1727,8 +1799,19 @@ onActivated(() => {
       @cn-clear="clearControlNetImage"
       @init-upload="handleInitImageUpload"
       @init-clear="clearInitImage"
+      @init-fit="openInitFitEditor"
       @ref-upload="handleKontextUpload"
       @ref-clear="clearKontextImage"
+      @ref-fit="openRefFitEditor"
+    />
+
+    <ImageCropResizeDialog
+      :open="!!imageToolCrop?.open"
+      :image-url="imageToolCrop?.imageUrl ?? ''"
+      :initial-width="config.width"
+      :initial-height="config.height"
+      @cancel="onImageToolCropCancel"
+      @apply="onImageToolCropApply"
     />
   </div>
 </template>
