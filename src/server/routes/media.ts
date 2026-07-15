@@ -4,10 +4,7 @@ import { exec } from 'child_process'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
 import { resolveStoredPath, safeOutputPath } from '../utils'
-import {
-  convertOutputToFormat,
-  normalizeOutputImageFormat
-} from '../outputCompress'
+import { convertOutputToFormat, normalizeOutputImageFormat } from '../outputCompress'
 
 function readPngParams(filePath: string): string | null {
   try {

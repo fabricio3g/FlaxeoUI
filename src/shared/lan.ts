@@ -84,9 +84,9 @@ export function extractLanPairingCode(locationLike: {
 }): string | null {
   const search = typeof locationLike.search === 'string' ? locationLike.search : ''
   if (search) {
-    const fromSearch = new URLSearchParams(
-      search.startsWith('?') ? search.slice(1) : search
-    ).get('pair')
+    const fromSearch = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get(
+      'pair'
+    )
     if (fromSearch?.trim()) return fromSearch.trim()
   }
 

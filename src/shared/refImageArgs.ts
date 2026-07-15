@@ -80,12 +80,7 @@ export function resolveRefImagePreset(hints: {
     return e as RefImagePreset
   }
 
-  const hay = [
-    hints.packId,
-    hints.presetId,
-    hints.diffusionModel,
-    hints.uncondDiffusionModel
-  ]
+  const hay = [hints.packId, hints.presetId, hints.diffusionModel, hints.uncondDiffusionModel]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()

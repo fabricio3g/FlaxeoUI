@@ -45,15 +45,15 @@ describe('resolveRefImageArgsForConfig', () => {
   })
 
   it('named preset forces args', () => {
-    assert.equal(
-      resolveRefImageArgsForConfig('flux_kontext', anima),
-      'preset=flux_kontext'
-    )
+    assert.equal(resolveRefImageArgsForConfig('flux_kontext', anima), 'preset=flux_kontext')
   })
 
   it('builds CLI args string helpers', () => {
     assert.equal(refImageArgsFromPreset('cosmos_reference'), 'preset=cosmos_reference')
-    assert.equal(resolveRefImageArgs({ diffusionModel: 'models/diffusion/anima.gguf' }), 'preset=cosmos_reference')
+    assert.equal(
+      resolveRefImageArgs({ diffusionModel: 'models/diffusion/anima.gguf' }),
+      'preset=cosmos_reference'
+    )
     assert.equal(resolveRefImageArgs({ diffusionModel: 'sdxl.safetensors' }), '')
     assert.equal(resolveRefImageArgs({ explicitPreset: 'off', diffusionModel: 'anima.gguf' }), '')
   })

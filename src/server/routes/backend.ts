@@ -231,8 +231,7 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/backend/config', (_req, res) => {
     const versions = installedVersions(ctx)
     const activeBackend = ctx.getActiveBackendPath()
-    const outputImageFormat =
-      ctx.state.backendConfig.outputImageFormat === 'avif' ? 'avif' : 'png'
+    const outputImageFormat = ctx.state.backendConfig.outputImageFormat === 'avif' ? 'avif' : 'png'
     res.json({
       activeVersion: ctx.state.backendConfig.activeVersion,
       customBinaryExists: backendHasBinaries(ctx.paths.customDir),

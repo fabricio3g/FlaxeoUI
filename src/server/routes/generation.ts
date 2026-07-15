@@ -47,7 +47,6 @@ import {
   type CliImageOutputPlan
 } from '../outputCompress'
 
-
 function pushNumericArgIfPresent(args: string[], flag: string, value: unknown): void {
   if (value === '' || value == null) return
   const n = Number(value)
@@ -790,13 +789,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
 
       try {
         const result = await runCli(ctx, args, 'INPAINT')
-        await sendCliImageResult(
-          ctx,
-          res,
-          result,
-          imagePlan,
-          'Inpainting failed - no output file'
-        )
+        await sendCliImageResult(ctx, res, result, imagePlan, 'Inpainting failed - no output file')
       } catch (error: unknown) {
         if (imagePlan.stageDir) {
           try {

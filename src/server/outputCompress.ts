@@ -6,10 +6,7 @@
 import fs from 'fs'
 import path from 'path'
 import type { AppContext } from './types'
-import {
-  normalizeOutputImageFormat,
-  type OutputImageFormat
-} from '../shared/outputFormat'
+import { normalizeOutputImageFormat, type OutputImageFormat } from '../shared/outputFormat'
 
 export type { OutputImageFormat }
 export { normalizeOutputImageFormat }
@@ -102,7 +99,6 @@ type SharpFactory = (input?: string | Buffer) => any
  */
 function loadSharp(): SharpFactory | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('sharp') as SharpFactory | { default: SharpFactory }
     return typeof mod === 'function' ? mod : (mod.default ?? null)
   } catch (error) {
