@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { FileText, Search, Trash2 } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
-import Tooltip from '@/components/ui/Tooltip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePromptPresetStore } from '@/stores/promptPresets'
 import { useToast } from '@/composables/useToast'
@@ -128,36 +127,38 @@ const selectedPreset = computed(() =>
 
 <template>
   <Popover v-model:open="open">
-    <Tooltip text="Prompt presets — save and reuse positive/negative prompts" position="top">
-      <PopoverTrigger as-child>
-        <button
-          v-if="compact"
-          type="button"
-          class="aui-icon-button relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :class="open ? 'border-border bg-background text-foreground shadow-sm' : ''"
-          aria-label="Prompt presets"
-        >
-          <FileText class="size-4" />
-          <span
-            v-if="presets.length"
-            class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold tabular-nums text-background"
-          >
-            {{ presets.length > 99 ? '99+' : presets.length }}
-          </span>
-        </button>
-        <button
-          v-else
-          type="button"
-          class="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :class="open ? 'border-border bg-background text-foreground' : ''"
-          aria-label="Prompt presets"
-        >
-          <FileText class="h-3.5 w-3.5" />
+    <!-- Do not wrap PopoverTrigger in Tooltip — breaks as-child click handling -->
+    <PopoverTrigger as-child>
+      <button
+        type="button"
+        class="inline-flex items-center text-muted-foreground transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        :class="
+          compact
+            ? [
+                'aui-icon-button relative size-10 shrink-0 justify-center rounded-full border border-transparent hover:border-border hover:bg-background hover:text-foreground',
+                open ? 'border-border bg-background text-foreground shadow-sm' : ''
+              ]
+            : [
+                'h-9 gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium shadow-sm hover:border-foreground/20 hover:bg-background hover:text-foreground',
+                open ? 'border-border bg-background text-foreground' : ''
+              ]
+        "
+        title="Prompt presets — save and reuse positive/negative prompts"
+        aria-label="Prompt presets"
+      >
+        <FileText :class="compact ? 'size-4' : 'h-3.5 w-3.5'" />
+        <template v-if="!compact">
           Prompt presets
           <span class="text-[10px] text-muted-foreground">{{ presets.length }}</span>
-        </button>
-      </PopoverTrigger>
-    </Tooltip>
+        </template>
+        <span
+          v-else-if="presets.length"
+          class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold tabular-nums text-background"
+        >
+          {{ presets.length > 99 ? '99+' : presets.length }}
+        </span>
+      </button>
+    </PopoverTrigger>
 
     <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
       <div class="mb-3">

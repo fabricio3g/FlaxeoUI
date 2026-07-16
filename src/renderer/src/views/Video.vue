@@ -741,17 +741,16 @@ onUnmounted(() => {
             />
 
             <Popover>
-              <Tooltip text="Video settings — steps, frames, sampler" position="top">
-                <PopoverTrigger as-child>
-                  <button
-                    type="button"
-                    class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                    aria-label="Video generation settings"
-                  >
-                    <SlidersHorizontal class="size-4" />
-                  </button>
-                </PopoverTrigger>
-              </Tooltip>
+              <PopoverTrigger as-child>
+                <button
+                  type="button"
+                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Video settings — steps, frames, sampler"
+                  aria-label="Video generation settings"
+                >
+                  <SlidersHorizontal class="size-4" />
+                </button>
+              </PopoverTrigger>
               <PopoverContent
                 side="top"
                 align="end"

@@ -18,12 +18,14 @@ withDefaults(
 </script>
 
 <template>
+  <!--
+    as-child merges onto the single slotted element (usually a button).
+    Do not wrap in an extra span — that breaks nested PopoverTrigger as-child chains.
+  -->
   <TooltipProvider :delay-duration="delay" :skip-delay-duration="100">
     <TooltipRoot>
       <TooltipTrigger as-child>
-        <span class="inline-flex">
-          <slot />
-        </span>
+        <slot />
       </TooltipTrigger>
       <TooltipPortal>
         <TooltipContent

@@ -1751,17 +1751,16 @@ onActivated(() => {
             />
 
             <Popover>
-              <Tooltip text="Generation settings — steps, CFG, seed, sampler" position="top">
-                <PopoverTrigger as-child>
-                  <button
-                    type="button"
-                    class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                    aria-label="Generation settings"
-                  >
-                    <SlidersHorizontal class="size-4" />
-                  </button>
-                </PopoverTrigger>
-              </Tooltip>
+              <PopoverTrigger as-child>
+                <button
+                  type="button"
+                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  title="Generation settings — steps, CFG, seed, sampler"
+                  aria-label="Generation settings"
+                >
+                  <SlidersHorizontal class="size-4" />
+                </button>
+              </PopoverTrigger>
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Generation settings</p>
