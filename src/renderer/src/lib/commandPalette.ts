@@ -171,7 +171,9 @@ export function filterCommandItems(query: string): CommandItem[] {
   })
 }
 
-export function groupCommandItems(items: CommandItem[]): { group: CommandGroup; items: CommandItem[] }[] {
+export function groupCommandItems(
+  items: CommandItem[]
+): { group: CommandGroup; items: CommandItem[] }[] {
   const order: CommandGroup[] = ['Navigate', 'Settings', 'Actions']
   return order
     .map((group) => ({ group, items: items.filter((i) => i.group === group) }))
