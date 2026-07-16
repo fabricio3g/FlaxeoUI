@@ -18,6 +18,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useRemoteSession } from '@/composables/useRemoteSession'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 
 const props = defineProps<{
   currentTab: string
@@ -180,50 +181,51 @@ function iconBtnClasses(active = false): string {
     <div class="min-w-0 flex-1 md:hidden" aria-hidden="true" />
 
     <div class="flex h-full items-center titlebar-no-drag">
-      <button
-        v-if="showMobileConfig"
-        @click="emit('toggleMobileConfig')"
-        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
-        type="button"
-        title="Settings"
-        aria-label="Open mobile settings"
-      >
-        <SlidersHorizontal class="h-4 w-4" />
-      </button>
+      <Tooltip v-if="showMobileConfig" text="Model & settings" position="bottom">
+        <button
+          @click="emit('toggleMobileConfig')"
+          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+          type="button"
+          aria-label="Open mobile settings"
+        >
+          <SlidersHorizontal class="h-4 w-4" />
+        </button>
+      </Tooltip>
 
       <button
         v-if="props.setupNeeded"
         class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-full bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:hidden"
         type="button"
+        title="Open setup wizard"
         @click="emit('openSetup')"
       >
         <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
         Setup
       </button>
 
-      <button
-        v-if="isElectron"
-        @click="showDownloadManager = !showDownloadManager"
-        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:hidden"
-        type="button"
-        title="Downloads"
-        aria-label="Open download manager"
-        :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
-        :aria-expanded="showDownloadManager"
-      >
-        <Download class="h-4 w-4" />
-      </button>
+      <Tooltip v-if="isElectron" text="Downloads — model & package downloads" position="bottom">
+        <button
+          @click="showDownloadManager = !showDownloadManager"
+          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:hidden"
+          type="button"
+          aria-label="Open download manager"
+          :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
+          :aria-expanded="showDownloadManager"
+        >
+          <Download class="h-4 w-4" />
+        </button>
+      </Tooltip>
 
-      <button
-        v-if="canControl"
-        @click="emit('toggleLogs')"
-        class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
-        type="button"
-        title="Server Logs"
-        aria-label="Open server logs"
-      >
-        <Terminal class="h-4 w-4" />
-      </button>
+      <Tooltip v-if="canControl" text="Terminal — server / generation logs" position="bottom">
+        <button
+          @click="emit('toggleLogs')"
+          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
+          type="button"
+          aria-label="Open server logs"
+        >
+          <Terminal class="h-4 w-4" />
+        </button>
+      </Tooltip>
 
       <button
         v-if="props.setupNeeded"
@@ -235,7 +237,7 @@ function iconBtnClasses(active = false): string {
         Setup
       </button>
 
-      <Tooltip v-if="isElectron" text="Downloads" position="bottom">
+      <Tooltip v-if="isElectron" text="Downloads — model & package downloads" position="bottom">
         <button
           @click="showDownloadManager = !showDownloadManager"
           class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:inline-flex"
@@ -248,7 +250,7 @@ function iconBtnClasses(active = false): string {
         </button>
       </Tooltip>
 
-      <Tooltip v-if="canControl" text="Server Logs" position="bottom">
+      <Tooltip v-if="canControl" text="Terminal — server / generation logs" position="bottom">
         <button
           @click="emit('toggleLogs')"
           class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
@@ -259,7 +261,10 @@ function iconBtnClasses(active = false): string {
         </button>
       </Tooltip>
 
-      <Tooltip :text="isDark ? 'Light mode' : 'Dark mode'" position="bottom">
+      <Tooltip
+        :text="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+        position="bottom"
+      >
         <button
           @click="toggleTheme"
           class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"

@@ -2,13 +2,17 @@
 
 ## Quick start
 
-1. **Easiest:** Model panel → **Hub** → install a starter pack (files land in the right folders).
+1. **Easiest:** open **Model Hub** (titlebar or Config) → search/filter packs → download → apply.
 2. **Manual:** put weight files under `models/` (see below) → **Refresh models** → select diffusion (+ VAE / LLM / LoRAs as needed).
 3. **Generate:** Image workspace → model selected → prompt → **Generate**.
 4. **Edit packs:** Edit → Ref Edit or Img2Img with matching models.
 5. **Video packs:** Video workspace + Hub video packs (Wan, LTX, LingBot, …).
 
 Setup wizard can **skip** the starter download — install from Hub or folders anytime.
+
+## Model Hub
+
+A **curated list** based on the [stable-diffusion.cpp documentation](https://github.com/leejet/stable-diffusion.cpp/tree/master/docs) — not a full marketplace. Browse **pack cards** with search and chips (All / Image / Edit / Video / Installed). Recommended packs appear first. Select a pack for description, VRAM/size, file list, **Download pack** or **Apply configuration**, and the pack’s docs link. Status shows **Installed** or **N/M files on disk**. Downloads go into the correct `models/` folders.
 
 ## Where files go
 
@@ -47,11 +51,6 @@ After adding files manually, open the Model panel and **refresh** so Flaxeo sees
 | **Split** | Diffusion + separate VAE / encoders / LLM (common for modern packs) |
 
 Select each file from the dropdowns (diffusion, VAE, CLIP, T5, LLM, LoRAs). Hub packs set these for you when you apply a pack.
-
-## Model Hub
-
-Open the Model panel → **Hub** for starter packs (SDXL, FLUX, Z-Image, Wan, Anima, Qwen edit, …).  
-Packs show **on-disk** status when required files are installed.
 
 ## Low VRAM & profiles
 

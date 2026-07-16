@@ -204,6 +204,7 @@ onUnmounted(() => {
             type="button"
             class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             :aria-label="`Close ${title}`"
+            :title="`Close ${title}`"
             @click="emit('close')"
           >
             <X class="size-4" />

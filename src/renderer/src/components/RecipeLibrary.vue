@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { Bookmark, Download, Search, Trash2, Upload, Info } from '@/lib/icons'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useRecipeStore } from '@/stores/recipes'
 import { useConfigStore } from '@/stores/config'
@@ -149,18 +150,19 @@ function preview(text?: string, max = 64): string {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="aui-icon-button inline-flex h-8 items-center gap-1.5 rounded-md border border-border/70 bg-background px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        :class="compact ? 'px-1.5' : ''"
-        title="Recipes (full settings)"
-        aria-label="Recipes (full settings)"
-      >
-        <Bookmark class="size-3.5" />
-        <span v-if="!compact">Recipes</span>
-      </button>
-    </PopoverTrigger>
+    <Tooltip text="Recipes — save and apply full generation settings" position="top">
+      <PopoverTrigger as-child>
+        <button
+          type="button"
+          class="aui-icon-button inline-flex h-8 items-center gap-1.5 rounded-md border border-border/70 bg-background px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          :class="compact ? 'size-10 justify-center rounded-full border-transparent px-0 hover:border-border hover:bg-background' : ''"
+          aria-label="Recipes"
+        >
+          <Bookmark class="size-3.5" :class="compact ? 'size-4' : ''" />
+          <span v-if="!compact">Recipes</span>
+        </button>
+      </PopoverTrigger>
+    </Tooltip>
     <PopoverContent class="w-[min(32rem,calc(100vw-1.5rem))] p-0" align="start" :side-offset="6">
       <div class="border-b border-border/70 px-4 py-3">
         <div class="flex items-center justify-between gap-2">

@@ -18,7 +18,7 @@ import {
   X,
   History
 } from '@/lib/icons'
-import { requestOpenHistory } from '@/lib/appEvents'
+import { requestOpenHistory, type HistoryPanelAnchor } from '@/lib/appEvents'
 import { copyImageUrlToClipboard, downloadOutputAsFormat } from '@/lib/mediaExport'
 import { useOutputPreferences } from '@/composables/useOutputPreferences'
 import { requestConfirm } from '@/composables/useConfirm'
@@ -27,6 +27,7 @@ import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfigStore } from '@/stores/config'
 import { useModels } from '@/composables/useModels'
@@ -38,6 +39,24 @@ import type { ImageGenerationParams } from '@/lib/imageParams'
 import { useRemoteSession } from '@/composables/useRemoteSession'
 
 const router = useRouter()
+const galleryHistoryBtnRef = ref<HTMLElement | null>(null)
+
+function openGalleryHistory(): void {
+  const el = galleryHistoryBtnRef.value
+  if (el) {
+    const r = el.getBoundingClientRect()
+    const anchor: HistoryPanelAnchor = {
+      top: r.top,
+      left: r.left,
+      right: r.right,
+      bottom: r.bottom,
+      width: r.width
+    }
+    requestOpenHistory({ anchor })
+    return
+  }
+  requestOpenHistory()
+}
 const toast = useToast()
 const configStore = useConfigStore()
 const { models, fetchModels } = useModels()
@@ -443,81 +462,88 @@ onUnmounted(() => {
     >
       <template #actions>
         <div class="flex items-center gap-1">
-          <button
-            type="button"
-            @click="sendSelectedToText2Image"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Use in Text2Image"
-            aria-label="Use in Text2Image"
-          >
-            <Sparkles class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="sendSelectedToEdit"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Send to Edit"
-            aria-label="Send to Edit"
-          >
-            <Brush class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="sendSelectedToVideo"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Send to Video"
-            aria-label="Send to Video"
-          >
-            <Video class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="queueUpscaleNow"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
-            title="Queue upscale (default model)"
-            aria-label="Queue upscale"
-            :disabled="!supportsUpscale || !models.upscale.length"
-          >
-            <Scale class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="openUpscalePanel"
-            class="inline-flex h-8 items-center rounded-md px-2 text-[11px] font-medium text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
-            title="Upscale options"
-            aria-label="Upscale options"
-            :disabled="!supportsUpscale"
-          >
-            …
-          </button>
-          <button
-            type="button"
-            @click="copyImagePixels"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Copy image"
-            aria-label="Copy image to clipboard"
-          >
-            <Copy class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="downloadImage"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Save image"
-            aria-label="Save image"
-          >
-            <Download class="size-4" />
-          </button>
-          <button
-            v-if="!isRemote"
-            type="button"
-            @click="deleteSelectedImage"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-destructive/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            title="Delete"
-            aria-label="Delete"
-          >
-            <Trash2 class="size-4" />
-          </button>
+          <Tooltip text="Use in Image (Text2Image)" position="bottom">
+            <button
+              type="button"
+              @click="sendSelectedToText2Image"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Use in Text2Image"
+            >
+              <Sparkles class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Send to Edit" position="bottom">
+            <button
+              type="button"
+              @click="sendSelectedToEdit"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Send to Edit"
+            >
+              <Brush class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Send to Video" position="bottom">
+            <button
+              type="button"
+              @click="sendSelectedToVideo"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Send to Video"
+            >
+              <Video class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Queue upscale (default model)" position="bottom">
+            <button
+              type="button"
+              @click="queueUpscaleNow"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
+              aria-label="Queue upscale"
+              :disabled="!supportsUpscale || !models.upscale.length"
+            >
+              <Scale class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Upscale options" position="bottom">
+            <button
+              type="button"
+              @click="openUpscalePanel"
+              class="inline-flex h-8 items-center rounded-md px-2 text-[11px] font-medium text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
+              aria-label="Upscale options"
+              :disabled="!supportsUpscale"
+            >
+              …
+            </button>
+          </Tooltip>
+          <Tooltip text="Copy image to clipboard" position="bottom">
+            <button
+              type="button"
+              @click="copyImagePixels"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Copy image to clipboard"
+            >
+              <Copy class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Save image" position="bottom">
+            <button
+              type="button"
+              @click="downloadImage"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Save image"
+            >
+              <Download class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip v-if="!isRemote" text="Delete from disk" position="bottom">
+            <button
+              type="button"
+              @click="deleteSelectedImage"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-destructive/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label="Delete"
+            >
+              <Trash2 class="size-4" />
+            </button>
+          </Tooltip>
         </div>
       </template>
     </ImageViewer>
@@ -618,34 +644,39 @@ onUnmounted(() => {
         </div>
 
         <div class="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            title="Generation history"
-            aria-label="Generation history"
-            @click="requestOpenHistory()"
-          >
-            <History class="size-4" />
-          </button>
-          <button
-            type="button"
-            @click="fetchGallery"
-            :disabled="isLoading"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            title="Refresh gallery"
-          >
-            <RefreshCw class="size-4" :class="isLoading && 'animate-spin'" />
-          </button>
+          <Tooltip text="Generation history" position="bottom">
+            <button
+              ref="galleryHistoryBtnRef"
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              aria-label="Generation history"
+              @click="openGalleryHistory"
+            >
+              <History class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Reload gallery" position="bottom">
+            <button
+              type="button"
+              @click="fetchGallery"
+              :disabled="isLoading"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              aria-label="Reload gallery"
+            >
+              <RefreshCw class="size-4" :class="isLoading && 'animate-spin'" />
+            </button>
+          </Tooltip>
 
-          <button
-            v-if="isElectron"
-            type="button"
-            @click="openGalleryFolder"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            title="Open gallery folder"
-          >
-            <FolderOpen class="size-4" />
-          </button>
+          <Tooltip v-if="isElectron" text="Open gallery folder" position="bottom">
+            <button
+              type="button"
+              @click="openGalleryFolder"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              aria-label="Open gallery folder"
+            >
+              <FolderOpen class="size-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </header>
@@ -668,7 +699,7 @@ onUnmounted(() => {
       >
         <div class="content-item flex max-w-sm flex-col items-center">
           <BrandMark size="lg" class="text-foreground" />
-          <p class="mt-5 text-xl font-light tracking-[-0.03em]">
+          <p class="mt-5 text-base font-medium tracking-tight text-foreground">
             {{ images.length === 0 ? 'Your gallery is empty' : 'No matches for this filter' }}
           </p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">

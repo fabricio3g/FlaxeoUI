@@ -6,6 +6,8 @@ export interface HubFile {
   required?: boolean
 }
 
+export type HubPackKind = 'image' | 'edit' | 'video' | 'other'
+
 export interface HubModel {
   id: string
   name: string
@@ -13,6 +15,203 @@ export interface HubModel {
   presetId: string
   docsUrl: string
   files: HubFile[]
+  /** Browse category for Model Hub filters */
+  kind?: HubPackKind
+  tags?: string[]
+  /** Short card subtitle */
+  blurb?: string
+  sizeGb?: number
+  minVramGb?: number
+  featured?: boolean
+}
+
+export interface HubPackMeta {
+  kind: HubPackKind
+  tags?: string[]
+  blurb: string
+  sizeGb?: number
+  minVramGb?: number
+  featured?: boolean
+}
+
+/** Card/filter metadata layered onto hub packs (keeps download defs lean). */
+export const HUB_PACK_META: Record<string, HubPackMeta> = {
+  sdxl: {
+    kind: 'image',
+    tags: ['sdxl', 'checkpoint', 'starter'],
+    blurb: 'Classic SDXL checkpoint + VAE. Smallest reliable still pack.',
+    sizeGb: 7,
+    minVramGb: 8,
+    featured: true
+  },
+  sd35: {
+    kind: 'image',
+    tags: ['sd3', 'split'],
+    blurb: 'SD3.5 Large with CLIP + T5 encoders.',
+    sizeGb: 16,
+    minVramGb: 12
+  },
+  'flux1-dev': {
+    kind: 'image',
+    tags: ['flux', 'gguf', 'quality'],
+    blurb: 'High-quality FLUX.1 Dev stills (GGUF + AE).',
+    sizeGb: 24,
+    minVramGb: 12,
+    featured: true
+  },
+  flux2: {
+    kind: 'image',
+    tags: ['flux2', 'llm'],
+    blurb: 'FLUX.2 with Mistral LLM and dedicated AE.',
+    sizeGb: 28,
+    minVramGb: 16
+  },
+  'qwen-image': {
+    kind: 'image',
+    tags: ['qwen', 't2i'],
+    blurb: 'Qwen Image T2I with VL LLM + VAE.',
+    sizeGb: 20,
+    minVramGb: 12
+  },
+  wan21: {
+    kind: 'video',
+    tags: ['wan', 't2v', 'starter'],
+    blurb: 'Wan2.1 short video generation.',
+    sizeGb: 14,
+    minVramGb: 12,
+    featured: true
+  },
+  wan22: {
+    kind: 'video',
+    tags: ['wan', 't2v'],
+    blurb: 'Wan2.2 dual-stream video (high + low noise).',
+    sizeGb: 30,
+    minVramGb: 16
+  },
+  ltx23: {
+    kind: 'video',
+    tags: ['ltx', 'video'],
+    blurb: 'LTX-2.3 video with Gemma LLM and dual VAE.',
+    sizeGb: 40,
+    minVramGb: 16
+  },
+  'flux-kontext': {
+    kind: 'edit',
+    tags: ['flux', 'kontext', 'ref'],
+    blurb: 'FLUX Kontext multi-reference edit.',
+    sizeGb: 22,
+    minVramGb: 12
+  },
+  'qwen-image-edit': {
+    kind: 'edit',
+    tags: ['qwen', 'edit'],
+    blurb: 'Qwen Image Edit with multi-ref instruction.',
+    sizeGb: 20,
+    minVramGb: 12,
+    featured: true
+  },
+  'qwen-image-edit-2511': {
+    kind: 'edit',
+    tags: ['qwen', 'edit', '2511'],
+    blurb: 'Newer Qwen edit (zero-cond-t quality).',
+    sizeGb: 14,
+    minVramGb: 12
+  },
+  'z-image-turbo': {
+    kind: 'image',
+    tags: ['turbo', 'fast'],
+    blurb: 'Fast turbo stills with Qwen3-4B.',
+    sizeGb: 8,
+    minVramGb: 8
+  },
+  chroma: {
+    kind: 'image',
+    tags: ['chroma'],
+    blurb: 'Chroma1-HD DiT + T5 + AE.',
+    sizeGb: 12,
+    minVramGb: 10
+  },
+  krea2: {
+    kind: 'image',
+    tags: ['krea'],
+    blurb: 'Krea-2 base with Qwen3-VL and Wan VAE.',
+    sizeGb: 14,
+    minVramGb: 12
+  },
+  lens: {
+    kind: 'image',
+    tags: ['lens', 'large'],
+    blurb: 'Lens + GPT-OSS-20B (large; prefer offload).',
+    sizeGb: 35,
+    minVramGb: 16
+  },
+  ideogram4: {
+    kind: 'image',
+    tags: ['ideogram'],
+    blurb: 'Ideogram4 dual diffusion + Qwen3-VL.',
+    sizeGb: 30,
+    minVramGb: 16
+  },
+  anima: {
+    kind: 'image',
+    tags: ['anima', 'anime', 'edit-lora'],
+    blurb: 'Fast Anima T2I. Community Edit LoRA (optional) for Ref Edit.',
+    sizeGb: 6,
+    minVramGb: 8,
+    featured: true
+  },
+  'lingbot-video': {
+    kind: 'video',
+    tags: ['lingbot', 't2v'],
+    blurb: 'LingBot dense 1.3B video (Wan VAE).',
+    sizeGb: 12,
+    minVramGb: 12
+  },
+  minit2i: {
+    kind: 'image',
+    tags: ['mini', 'light'],
+    blurb: 'Lightweight MiniT2I DiT + FLAN-T5.',
+    sizeGb: 5,
+    minVramGb: 6
+  }
+}
+
+/** Hub packs with card/filter metadata applied. */
+export function enrichHubModel(model: HubModel): HubModel {
+  const meta = HUB_PACK_META[model.id]
+  if (!meta) return { ...model, kind: model.kind || 'other' }
+  return {
+    ...model,
+    kind: model.kind || meta.kind,
+    tags: model.tags || meta.tags,
+    blurb: model.blurb || meta.blurb,
+    sizeGb: model.sizeGb ?? meta.sizeGb,
+    minVramGb: model.minVramGb ?? meta.minVramGb,
+    featured: model.featured ?? meta.featured
+  }
+}
+
+export type HubFilterKind = 'all' | HubPackKind | 'installed'
+
+export function filterHubModels(
+  packs: HubModel[],
+  opts: { query?: string; filter?: HubFilterKind; isReady?: (m: HubModel) => boolean }
+): HubModel[] {
+  const q = (opts.query || '').trim().toLowerCase()
+  const filter = opts.filter || 'all'
+  return packs.filter((raw) => {
+    const m = enrichHubModel(raw)
+    if (filter === 'installed') {
+      if (!opts.isReady?.(m)) return false
+    } else if (filter !== 'all' && (m.kind || 'other') !== filter) {
+      return false
+    }
+    if (!q) return true
+    const hay = [m.id, m.name, m.description, m.blurb || '', ...(m.tags || [])]
+      .join(' ')
+      .toLowerCase()
+    return hay.includes(q)
+  })
 }
 
 export const hubModels: HubModel[] = [
@@ -570,7 +769,7 @@ export const hubModels: HubModel[] = [
     id: 'anima',
     name: 'Anima',
     description:
-      'Fast T2I with Qwen3-0.6B + Qwen image VAE. For edit: install optional Anima Edit LoRA (AnimeEditV2), open Edit → Ref Edit with a reference image, enable the LoRA at strength ~1. Flaxeo applies cosmos_reference automatically.',
+      'Fast T2I with Qwen3-0.6B + Qwen image VAE. For Ref Edit, a community-made Anima Edit LoRA is optional (not bundled): https://civitai.com/models/2650553/anima-edit — place it under models/loras, enable at strength ~1; Flaxeo applies cosmos_reference automatically.',
     presetId: 'builtin-anima',
     docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/anima.md',
     files: [
@@ -594,14 +793,6 @@ export const hubModels: HubModel[] = [
         filename: 'qwen_image_vae.safetensors',
         required: true,
         url: 'https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors'
-      },
-      {
-        // Community Anima Edit LoRA v2 — https://civitai.com/models/2650553/anima-edit?modelVersionId=3089149
-        label: 'Anima Edit LoRA v2 (AnimeEditV2) — optional, for Ref Edit',
-        category: 'loras',
-        filename: 'AnimeEditV2.safetensors',
-        required: false,
-        url: 'https://civitai.com/api/download/models/3089149'
       }
     ]
   },

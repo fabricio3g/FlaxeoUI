@@ -19,6 +19,7 @@ import {
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import {
   isAnyGenerationBusy,
@@ -418,7 +419,9 @@ onUnmounted(() => {
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
             <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
               <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">What will you move?</h2>
+              <h2 class="mt-5 text-base font-medium tracking-tight text-foreground">
+                What will you move?
+              </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 Describe a scene or add a reference frame to direct the motion.
               </p>
@@ -738,16 +741,17 @@ onUnmounted(() => {
             />
 
             <Popover>
-              <PopoverTrigger as-child>
-                <button
-                  type="button"
-                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  aria-label="Video generation settings"
-                  title="Video generation settings"
-                >
-                  <SlidersHorizontal class="size-4" />
-                </button>
-              </PopoverTrigger>
+              <Tooltip text="Video settings — steps, frames, sampler" position="top">
+                <PopoverTrigger as-child>
+                  <button
+                    type="button"
+                    class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    aria-label="Video generation settings"
+                  >
+                    <SlidersHorizontal class="size-4" />
+                  </button>
+                </PopoverTrigger>
+              </Tooltip>
               <PopoverContent
                 side="top"
                 align="end"
@@ -920,26 +924,30 @@ onUnmounted(() => {
             </Popover>
 
             <div class="flex shrink-0 items-center gap-1.5">
-              <button
-                v-if="isGenerating"
-                type="button"
-                @click="handleCancel"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
-                title="Cancel current job"
-                aria-label="Cancel current job"
+              <Tooltip v-if="isGenerating" text="Cancel current job" position="top">
+                <button
+                  type="button"
+                  @click="handleCancel"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
+                  aria-label="Cancel current job"
+                >
+                  <Square class="size-3.5 fill-current" />
+                </button>
+              </Tooltip>
+              <Tooltip
+                :text="isGenerating ? 'Add to queue' : 'Generate video'"
+                position="top"
               >
-                <Square class="size-3.5 fill-current" />
-              </button>
-              <button
-                type="button"
-                @click="handleGenerate"
-                :disabled="!prompt.trim()"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-                :title="isGenerating ? 'Add to queue' : 'Generate video'"
-                :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"
-              >
-                <ArrowUp class="size-4 stroke-[2.5]" />
-              </button>
+                <button
+                  type="button"
+                  @click="handleGenerate"
+                  :disabled="!prompt.trim()"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"
+                >
+                  <ArrowUp class="size-4 stroke-[2.5]" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

@@ -40,6 +40,7 @@ import ImageViewer from '@/components/ImageViewer.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
@@ -150,8 +151,13 @@ const galleryImages = ref<string[]>([])
 const error = ref<string | null>(null)
 const serverOnline = ref(false)
 const currentImageFilename = ref<string | null>(null)
+/** Idle stage selection (filename); independent of live blob URLs */
+const selectedFilename = ref<string | null>(null)
 const isLivePreview = ref(false)
 const showImageViewer = ref(false)
+/** Fullscreen modal — separate from stage so browsing never steals live preview */
+const viewerSrc = ref<string | null>(null)
+const viewerFilename = ref<string | null>(null)
 /** Last successful batch size — drives multi-tile grid layout */
 const lastBatchSize = ref(1)
 const showBatchGrid = ref(false)
@@ -189,16 +195,17 @@ function getPreviewImageUrl(): string {
 
 /**
  * startPreviewPolling() - Poll for live preview frames.
- * Hero stays empty until the first frame arrives (isLivePreview only then).
+ * Keeps the previous final on stage until the first live blob arrives (no empty flash).
  */
 function startPreviewPolling(): void {
   stopPreviewPolling({ clearFrame: false })
+  // Do not clear isLivePreview/previewImage here — leave last final until first frame
   isLivePreview.value = false
   previewEtag = null
   previewPollInterval = setInterval(async () => {
     // Guard: never poll when generation already finished
     if (!isGenerating.value) {
-      stopPreviewPolling({ clearFrame: true })
+      stopPreviewPolling({ clearFrame: false })
       return
     }
     try {
@@ -773,6 +780,7 @@ async function handleGenerate(opts?: {
         galleryImages.value = [...names, ...galleryImages.value]
         previewImage.value = getOutputUrl(names[0])
         currentImageFilename.value = names[0]
+        selectedFilename.value = names[0]
         isLivePreview.value = false
         if (blobUrl) {
           URL.revokeObjectURL(blobUrl)
@@ -882,19 +890,93 @@ async function handleCancel(): Promise<void> {
 }
 
 /**
- * selectGalleryImage() - Select an image from history
+ * selectGalleryImage() - Put a finished session image on the stage (idle only).
  */
 function selectGalleryImage(filename: string): void {
+  // Never steal the stage while generating (use modal instead)
+  if (isGenerating.value) return
   previewImage.value = getOutputUrl(filename)
   currentImageFilename.value = filename
+  selectedFilename.value = filename
   isLivePreview.value = false
   // Single-select from strip exits batch grid overview
   showBatchGrid.value = false
 }
 
-function openGalleryImageFullscreen(filename: string): void {
-  selectGalleryImage(filename)
+/** Open fullscreen modal without changing the stage (used while generating). */
+function openViewerModal(filename: string): void {
+  viewerFilename.value = filename
+  viewerSrc.value = getOutputUrl(filename)
   showImageViewer.value = true
+}
+
+/**
+ * Strip / grid click: idle → stage; generating → modal only (never interrupt live).
+ */
+function onSessionThumbClick(filename: string): void {
+  if (isGenerating.value) {
+    openViewerModal(filename)
+    return
+  }
+  selectGalleryImage(filename)
+}
+
+function openGalleryImageFullscreen(filename: string): void {
+  if (isGenerating.value) {
+    openViewerModal(filename)
+    return
+  }
+  selectGalleryImage(filename)
+  openViewerModal(filename)
+}
+
+function openStageFullscreen(): void {
+  if (!previewImage.value) return
+  if (isLivePreview.value) {
+    // Show whatever is on stage (live blob) without requiring a finished filename
+    viewerSrc.value = previewImage.value
+    viewerFilename.value = currentImageFilename.value || selectedFilename.value || 'Live preview'
+    showImageViewer.value = true
+    return
+  }
+  if (currentImageFilename.value || selectedFilename.value) {
+    openViewerModal(currentImageFilename.value || selectedFilename.value!)
+  }
+}
+
+function closeImageViewer(): void {
+  showImageViewer.value = false
+  viewerSrc.value = null
+  viewerFilename.value = null
+}
+
+/**
+ * clearSessionScreen() - Blank the studio session UI (does not delete disk files).
+ */
+async function clearSessionScreen(): Promise<void> {
+  if (isGenerating.value) {
+    toast.info('Wait for generation to finish before clearing the screen')
+    return
+  }
+  if (galleryImages.value.length >= 3) {
+    const ok = await requestConfirm({
+      title: 'Clear screen',
+      message:
+        'Clear this session from the workspace? Images stay in Gallery and on disk.',
+      confirmLabel: 'Clear screen',
+      danger: false
+    })
+    if (!ok) return
+  }
+  galleryImages.value = []
+  selectedFilename.value = null
+  currentImageFilename.value = null
+  previewImage.value = null
+  showBatchGrid.value = false
+  lastBatchSize.value = 1
+  discardLivePreview()
+  closeImageViewer()
+  toast.success('Screen cleared')
 }
 
 async function savePreviewImage(format?: ArchiveImageFormat): Promise<void> {
@@ -969,6 +1051,7 @@ async function deletePreview(): Promise<void> {
     } else {
       previewImage.value = null
       currentImageFilename.value = null
+      selectedFilename.value = null
     }
     toast.success('Image deleted')
   } catch (e) {
@@ -979,21 +1062,40 @@ async function deletePreview(): Promise<void> {
 }
 
 // Navigation
+const stageNavFilename = computed(
+  () => selectedFilename.value || currentImageFilename.value || null
+)
+
 const isFirstImage = computed(() => {
-  if (!previewImage.value || galleryImages.value.length === 0) return true
-  const currentFile = previewImage.value.split('/').pop() || ''
+  const currentFile = stageNavFilename.value
+  if (!currentFile || galleryImages.value.length === 0) return true
   return galleryImages.value.indexOf(currentFile) <= 0
 })
 
 const isLastImage = computed(() => {
-  if (!previewImage.value || galleryImages.value.length === 0) return true
-  const currentFile = previewImage.value.split('/').pop() || ''
+  const currentFile = stageNavFilename.value
+  if (!currentFile || galleryImages.value.length === 0) return true
   return galleryImages.value.indexOf(currentFile) >= galleryImages.value.length - 1
 })
 
-function navigateImage(direction: number) {
-  if (!previewImage.value) return
-  const currentFile = previewImage.value.split('/').pop() || ''
+function navigateImage(direction: number): void {
+  // Modal open: walk session list in the viewer only (never steal live stage)
+  if (showImageViewer.value && viewerFilename.value) {
+    const idx = galleryImages.value.indexOf(viewerFilename.value)
+    if (idx === -1) return
+    const newIdx = idx + direction
+    if (newIdx >= 0 && newIdx < galleryImages.value.length) {
+      const name = galleryImages.value[newIdx]
+      viewerFilename.value = name
+      viewerSrc.value = getOutputUrl(name)
+      if (!isGenerating.value) selectGalleryImage(name)
+    }
+    return
+  }
+
+  if (isGenerating.value) return
+  const currentFile = stageNavFilename.value
+  if (!currentFile) return
   const idx = galleryImages.value.indexOf(currentFile)
   if (idx === -1) return
 
@@ -1139,11 +1241,11 @@ onActivated(() => {
     class="workspace-view flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
   >
     <ImageViewer
-      v-if="showImageViewer && previewImage"
-      :src="previewImage"
-      :filename="currentImageFilename || 'Generated image'"
+      v-if="showImageViewer && viewerSrc"
+      :src="viewerSrc"
+      :filename="viewerFilename || 'Generated image'"
       alt="Generated image"
-      @close="showImageViewer = false"
+      @close="closeImageViewer"
       @prev="navigateImage(-1)"
       @next="navigateImage(1)"
     />
@@ -1183,12 +1285,12 @@ onActivated(() => {
               type="button"
               class="aui-icon-button group relative aspect-square overflow-hidden rounded-2xl border border-border/60 bg-muted/20 transition-all hover:border-foreground/25 focus:outline-none"
               :class="
-                currentImageFilename === img
+                selectedFilename === img || currentImageFilename === img
                   ? 'ring-2 ring-foreground/40'
                   : 'opacity-90 hover:opacity-100'
               "
               :title="img"
-              @click="selectGalleryImage(img)"
+              @click="onSessionThumbClick(img)"
               @dblclick="openGalleryImageFullscreen(img)"
             >
               <img
@@ -1205,7 +1307,7 @@ onActivated(() => {
             class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both flex h-full w-full cursor-zoom-in items-center justify-center p-1 duration-200 focus:outline-none md:p-2"
             title="Open image fullscreen"
             aria-label="Open generated image fullscreen"
-            @click="showImageViewer = true"
+            @click="openStageFullscreen"
           >
             <img
               :src="previewImage"
@@ -1213,7 +1315,7 @@ onActivated(() => {
               alt="Generated image"
             />
           </button>
-          <!-- Empty hero until a live frame or final image exists (no spinner/0:00 in canvas) -->
+          <!-- Empty hero until a live frame or final image exists -->
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
             <div class="flex max-w-2xl flex-col items-center px-6 text-center">
               <BrandMark size="xl" class="text-foreground" />
@@ -1235,55 +1337,73 @@ onActivated(() => {
               </div>
             </div>
           </div>
+          <!-- Live badge (quiet) -->
+          <div
+            v-if="isLivePreview"
+            class="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur-xl"
+          >
+            Live
+          </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
             class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-3"
           >
-            <button
-              @click="navigateImage(-1)"
-              class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground transition-all duration-150 hover:bg-background focus-visible:outline-none"
-              :class="{ 'opacity-0 cursor-default': isFirstImage }"
-              :disabled="isFirstImage"
-            >
-              <ChevronLeft class="size-5" />
-            </button>
-            <button
-              @click="navigateImage(1)"
-              class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground transition-all duration-150 hover:bg-background focus-visible:outline-none"
-              :class="{ 'opacity-0 cursor-default': isLastImage }"
-              :disabled="isLastImage"
-            >
-              <ChevronRight class="size-5" />
-            </button>
-          </div>
-          <div
-            v-if="previewImage && !isLivePreview"
-            class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-full border border-border/60 bg-background/85 p-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 md:right-3 md:top-3"
-          >
-            <button
-              v-if="!isRemote"
-              @click="deletePreview"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Delete image"
-            >
-              <Trash2 class="size-4" />
-            </button>
-            <div class="inline-flex items-center">
+            <Tooltip text="Previous image" position="right">
               <button
                 type="button"
-                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :title="`Save as ${defaultSaveFormat.toUpperCase()} (default)`"
-                aria-label="Save image"
-                @click="savePreviewImage()"
+                @click="navigateImage(-1)"
+                class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/50 bg-background/70 text-foreground/80 opacity-70 transition-all duration-150 hover:bg-background hover:opacity-100 focus-visible:outline-none"
+                :class="{ 'opacity-0 cursor-default': isFirstImage }"
+                :disabled="isFirstImage"
+                aria-label="Previous image"
               >
-                <Download class="size-4" />
+                <ChevronLeft class="size-5" />
               </button>
+            </Tooltip>
+            <Tooltip text="Next image" position="left">
+              <button
+                type="button"
+                @click="navigateImage(1)"
+                class="aui-icon-button pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-border/50 bg-background/70 text-foreground/80 opacity-70 transition-all duration-150 hover:bg-background hover:opacity-100 focus-visible:outline-none"
+                :class="{ 'opacity-0 cursor-default': isLastImage }"
+                :disabled="isLastImage"
+                aria-label="Next image"
+              >
+                <ChevronRight class="size-5" />
+              </button>
+            </Tooltip>
+          </div>
+          <div
+            v-if="previewImage && !isLivePreview && !isGenerating"
+            class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-full border border-border/60 bg-background/85 p-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 md:right-3 md:top-3"
+          >
+            <Tooltip v-if="!isRemote" text="Delete image from disk" position="bottom">
+              <button
+                type="button"
+                @click="deletePreview"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Delete image"
+              >
+                <Trash2 class="size-4" />
+              </button>
+            </Tooltip>
+            <div class="inline-flex items-center">
+              <Tooltip :text="`Save as ${defaultSaveFormat.toUpperCase()}`" position="bottom">
+                <button
+                  type="button"
+                  class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  aria-label="Save image"
+                  @click="savePreviewImage()"
+                >
+                  <Download class="size-4" />
+                </button>
+              </Tooltip>
               <Popover>
                 <PopoverTrigger as-child>
                   <button
                     type="button"
                     class="aui-icon-button -ml-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                    title="Save format"
+                    title="Choose save format"
                     aria-label="Choose save format"
                   >
                     <span class="text-[10px] leading-none">▾</span>
@@ -1318,37 +1438,65 @@ onActivated(() => {
           :live-preview="isLivePreview"
         />
 
-        <div v-if="galleryImages.length > 0" class="mt-4 w-full shrink-0">
-          <div
-            v-if="galleryImages.length > 1"
-            class="mx-auto mb-1.5 flex max-w-4xl items-center justify-end px-1"
-          >
-            <button
-              type="button"
-              class="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              @click="showBatchGrid ? (showBatchGrid = false) : openBatchGrid()"
-            >
-              {{ showBatchGrid ? 'Single view' : 'Grid view' }}
-            </button>
+        <div v-if="galleryImages.length > 0" class="mt-3 w-full shrink-0">
+          <div class="mx-auto mb-1.5 flex max-w-4xl items-center gap-2 px-1">
+            <span class="text-[11px] text-muted-foreground">
+              Session · {{ galleryImages.length }}
+            </span>
+            <div class="ml-auto flex items-center gap-2">
+              <button
+                v-if="galleryImages.length > 1"
+                type="button"
+                class="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                @click="showBatchGrid ? (showBatchGrid = false) : openBatchGrid()"
+              >
+                {{ showBatchGrid ? 'Single' : 'Grid' }}
+              </button>
+              <button
+                type="button"
+                class="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                :disabled="isGenerating"
+                :title="
+                  isGenerating
+                    ? 'Wait for generation to finish'
+                    : 'Clear this session from the workspace (keeps Gallery files)'
+                "
+                @click="clearSessionScreen"
+              >
+                Clear
+              </button>
+            </div>
           </div>
           <div
-            class="aui-media-strip relative mx-auto max-w-4xl rounded-2xl bg-background/70 p-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.03)] backdrop-blur"
+            class="aui-media-strip relative mx-auto max-w-4xl rounded-2xl border border-border/50 bg-background/60 p-1.5 backdrop-blur"
           >
             <div
               ref="carouselRef"
               class="no-scrollbar flex snap-x gap-1.5 overflow-x-auto scroll-smooth p-0.5"
-              :aria-label="`Recent generations, ${galleryImages.length}`"
+              :aria-label="`Session generations, ${galleryImages.length}`"
             >
               <button
                 v-for="img in galleryImages"
                 :key="img"
-                @click="selectGalleryImage(img)"
+                type="button"
+                @click="onSessionThumbClick(img)"
                 class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl opacity-70 transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
                 :class="
-                  previewImage === getOutputUrl(img) ? 'opacity-100 ring-1 ring-foreground/30' : ''
+                  !isGenerating &&
+                  (selectedFilename === img || currentImageFilename === img)
+                    ? 'opacity-100 ring-1 ring-foreground/30'
+                    : showImageViewer && viewerFilename === img
+                      ? 'opacity-100 ring-1 ring-foreground/20'
+                      : ''
                 "
-                :title="img"
-                :aria-label="`Select generation ${img}`"
+                :title="
+                  isGenerating ? `View ${img} (opens viewer)` : `Show ${img}`
+                "
+                :aria-label="
+                  isGenerating
+                    ? `Open generation ${img} in viewer`
+                    : `Select generation ${img}`
+                "
               >
                 <img
                   :src="getOutputUrl(img)"
@@ -1376,50 +1524,57 @@ onActivated(() => {
           data-slot="advanced-toolbar"
           class="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-background/80 p-1 shadow-sm backdrop-blur"
         >
-          <button
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="advancedButtonClass('photomaker')"
-            title="PhotoMaker"
-            aria-label="Open PhotoMaker settings"
-            :aria-expanded="activeTab === 'photomaker'"
-            @click="toggleAdvancedTab('photomaker')"
+          <Tooltip text="PhotoMaker — identity / style from reference faces" position="top">
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="advancedButtonClass('photomaker')"
+              aria-label="Open PhotoMaker settings"
+              :aria-expanded="activeTab === 'photomaker'"
+              @click="toggleAdvancedTab('photomaker')"
+            >
+              <User class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="ControlNet — guide structure with a control image" position="top">
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="advancedButtonClass('controlnet')"
+              aria-label="Open ControlNet settings"
+              :aria-expanded="activeTab === 'controlnet'"
+              @click="toggleAdvancedTab('controlnet')"
+            >
+              <Activity class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Image to image — denoise from an init image" position="top">
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="advancedButtonClass('img2img')"
+              aria-label="Open Image to Image settings"
+              :aria-expanded="activeTab === 'img2img'"
+              @click="toggleAdvancedTab('img2img')"
+            >
+              <Image class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip
+            text="Reference — multi-ref for Kontext / Anima / Qwen edit (-r)"
+            position="top"
           >
-            <User class="size-4" />
-          </button>
-          <button
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="advancedButtonClass('controlnet')"
-            title="ControlNet"
-            aria-label="Open ControlNet settings"
-            :aria-expanded="activeTab === 'controlnet'"
-            @click="toggleAdvancedTab('controlnet')"
-          >
-            <Activity class="size-4" />
-          </button>
-          <button
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="advancedButtonClass('img2img')"
-            title="Image to Image"
-            aria-label="Open Image to Image settings"
-            :aria-expanded="activeTab === 'img2img'"
-            @click="toggleAdvancedTab('img2img')"
-          >
-            <Image class="size-4" />
-          </button>
-          <button
-            type="button"
-            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="advancedButtonClass('kontext')"
-            title="Reference (Kontext / Anima edit / Qwen edit)"
-            aria-label="Open Reference settings"
-            :aria-expanded="activeTab === 'kontext'"
-            @click="toggleAdvancedTab('kontext')"
-          >
-            <ImagePlus class="size-4" />
-          </button>
+            <button
+              type="button"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="advancedButtonClass('kontext')"
+              aria-label="Open Reference settings"
+              :aria-expanded="activeTab === 'kontext'"
+              @click="toggleAdvancedTab('kontext')"
+            >
+              <ImagePlus class="size-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
       <div
@@ -1596,16 +1751,17 @@ onActivated(() => {
             />
 
             <Popover>
-              <PopoverTrigger as-child>
-                <button
-                  type="button"
-                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  aria-label="Generation settings"
-                  title="Generation settings"
-                >
-                  <SlidersHorizontal class="size-4" />
-                </button>
-              </PopoverTrigger>
+              <Tooltip text="Generation settings — steps, CFG, seed, sampler" position="top">
+                <PopoverTrigger as-child>
+                  <button
+                    type="button"
+                    class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    aria-label="Generation settings"
+                  >
+                    <SlidersHorizontal class="size-4" />
+                  </button>
+                </PopoverTrigger>
+              </Tooltip>
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Generation settings</p>
@@ -1685,32 +1841,45 @@ onActivated(() => {
                   <div class="mb-1 flex items-center justify-between gap-2">
                     <span class="text-[10px] font-medium text-muted-foreground">Seed</span>
                     <div class="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        :title="config.seedLocked ? 'Unlock seed (random next gen)' : 'Lock seed'"
-                        :aria-pressed="config.seedLocked"
-                        @click="toggleSeedLock"
+                      <Tooltip
+                        :text="
+                          config.seedLocked
+                            ? 'Unlock seed (random next gen)'
+                            : 'Lock seed for reproducibility'
+                        "
+                        position="top"
                       >
-                        <Lock v-if="config.seedLocked" class="size-3.5" />
-                        <LockOpen v-else class="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Randomize seed"
-                        @click="randomizeSeed"
-                      >
-                        <Dices class="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Copy seed"
-                        @click="copySeed"
-                      >
-                        <Copy class="size-3.5" />
-                      </button>
+                        <button
+                          type="button"
+                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          :aria-label="config.seedLocked ? 'Unlock seed' : 'Lock seed'"
+                          :aria-pressed="config.seedLocked"
+                          @click="toggleSeedLock"
+                        >
+                          <Lock v-if="config.seedLocked" class="size-3.5" />
+                          <LockOpen v-else class="size-3.5" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip text="Randomize seed" position="top">
+                        <button
+                          type="button"
+                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-label="Randomize seed"
+                          @click="randomizeSeed"
+                        >
+                          <Dices class="size-3.5" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip text="Copy seed" position="top">
+                        <button
+                          type="button"
+                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-label="Copy seed"
+                          @click="copySeed"
+                        >
+                          <Copy class="size-3.5" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                   <input
@@ -1763,26 +1932,30 @@ onActivated(() => {
             </Popover>
 
             <div class="flex shrink-0 items-center gap-1.5">
-              <button
-                v-if="isGenerating"
-                type="button"
-                @click="handleCancel"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
-                title="Cancel current job"
-                aria-label="Cancel current job"
+              <Tooltip v-if="isGenerating" text="Cancel current job" position="top">
+                <button
+                  type="button"
+                  @click="handleCancel"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
+                  aria-label="Cancel current job"
+                >
+                  <Square class="size-3.5 fill-current" />
+                </button>
+              </Tooltip>
+              <Tooltip
+                :text="isGenerating ? 'Add to queue' : 'Generate image'"
+                position="top"
               >
-                <Square class="size-3.5 fill-current" />
-              </button>
-              <button
-                type="button"
-                @click="handleGenerate"
-                :disabled="!prompt.trim()"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-                :title="isGenerating ? 'Add to queue' : 'Generate'"
-                :aria-label="isGenerating ? 'Add to queue' : 'Generate image'"
-              >
-                <ArrowUp class="size-4 stroke-[2.5]" />
-              </button>
+                <button
+                  type="button"
+                  @click="handleGenerate"
+                  :disabled="!prompt.trim()"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  :aria-label="isGenerating ? 'Add to queue' : 'Generate image'"
+                >
+                  <ArrowUp class="size-4 stroke-[2.5]" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

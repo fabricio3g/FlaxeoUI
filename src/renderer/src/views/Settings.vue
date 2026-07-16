@@ -48,8 +48,23 @@ const {
 
 type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
 
+const props = defineProps<{
+  /** Deep-link from command palette (null = default category) */
+  initialCategory?: SettingsCategory | null
+}>()
+
 const desktopSettingsAvailable = Boolean(window.electronAPI)
 const activeCategory = ref<SettingsCategory>(desktopSettingsAvailable ? 'backend' : 'appearance')
+
+watch(
+  () => props.initialCategory,
+  (cat) => {
+    if (cat) activeCategory.value = cat
+    else if (desktopSettingsAvailable) activeCategory.value = 'backend'
+    else activeCategory.value = 'appearance'
+  },
+  { immediate: true }
+)
 const allSettingsCategories: Array<{
   id: SettingsCategory
   label: string

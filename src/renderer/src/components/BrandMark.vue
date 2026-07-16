@@ -31,15 +31,28 @@ const squares = [
   { s: '0.5rem', x: '42%', y: '6%', d: '1s' },
   { s: '0.65rem', x: '58%', y: '94%', d: '1.55s' }
 ] as const
+
+/** Shared type ramp: same weights/tracking everywhere; only font-size changes. */
+const sizeClass = computed(() => {
+  switch (props.size) {
+    case 'sm':
+      return 'brand-mark--sm'
+    case 'lg':
+      return 'brand-mark--lg'
+    case 'xl':
+      return 'brand-mark--xl'
+    default:
+      return 'brand-mark--md'
+  }
+})
 </script>
 
 <template>
   <span
-    class="brand-mark relative inline-flex select-none items-baseline justify-center gap-2 tracking-tight"
-    :class="showAmbient && 'brand-mark--ambient'"
+    class="brand-mark relative inline-flex select-none items-baseline justify-center text-foreground"
+    :class="[sizeClass, showAmbient && 'brand-mark--ambient']"
     aria-label="Flaxeo Image"
   >
-    <!-- Ambient squares: same stacking context, under text (not -z which paints under page) -->
     <span
       v-if="showAmbient"
       class="brand-mark__field pointer-events-none absolute inset-0 z-0 overflow-visible"
@@ -59,43 +72,59 @@ const squares = [
       />
     </span>
 
-    <!-- Flaxeo: hard / heavy -->
-    <span
-      class="brand-mark__word relative z-10"
-      :class="[
-        'font-black tracking-tighter text-foreground',
-        size === 'sm' ? 'text-sm' : '',
-        size === 'md' ? 'text-base' : '',
-        size === 'lg' ? 'text-4xl tracking-[-0.05em]' : '',
-        size === 'xl' ? 'text-5xl tracking-[-0.055em] md:text-6xl' : ''
-      ]"
-      >Flaxeo</span
-    >
-    <!-- Image: slim / light -->
-    <span
-      class="brand-mark__word relative z-10"
-      :class="[
-        'font-extralight tracking-wide text-foreground/85',
-        size === 'sm' ? 'text-sm tracking-wider' : '',
-        size === 'md' ? 'text-base tracking-wider' : '',
-        size === 'lg' ? 'text-4xl tracking-[0.06em]' : '',
-        size === 'xl' ? 'text-5xl tracking-[0.08em] md:text-6xl' : ''
-      ]"
-      >Image</span
-    >
+    <!-- Flaxeo: hard / heavy — same style at every size -->
+    <span class="brand-mark__flaxeo relative z-10">Flaxeo</span>
+    <!-- Image: slim / light — same style at every size -->
+    <span class="brand-mark__image relative z-10">Image</span>
   </span>
 </template>
 
 <style scoped>
-/* Give ambient squares room around the wordmark */
-.brand-mark--ambient {
-  padding: 2.75rem 3.5rem;
-  isolation: isolate;
+/* Shared wordmark system (sidebar sm + hero lg/xl) */
+.brand-mark {
+  gap: 0.4em; /* proportional to font-size so spacing matches at every size */
+  line-height: 1;
 }
 
-.brand-mark--ambient.brand-mark {
-  /* ensure box is large enough for the field */
-  min-width: 12rem;
+.brand-mark__flaxeo {
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: inherit;
+}
+
+.brand-mark__image {
+  font-weight: 200;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, currentColor 85%, transparent);
+}
+
+.brand-mark--sm {
+  font-size: 0.875rem; /* 14px — sidebar */
+}
+
+.brand-mark--md {
+  font-size: 1rem;
+}
+
+.brand-mark--lg {
+  font-size: 2.25rem; /* 36px — empty states */
+}
+
+.brand-mark--xl {
+  font-size: 3rem; /* 48px — Image hero */
+}
+
+@media (min-width: 768px) {
+  .brand-mark--xl {
+    font-size: 3.75rem; /* 60px */
+  }
+}
+
+/* Ambient squares: same padding scale for lg/xl heroes */
+.brand-mark--ambient {
+  padding: 0.75em 1em;
+  isolation: isolate;
+  min-width: 8em;
 }
 
 .brand-mark__square {

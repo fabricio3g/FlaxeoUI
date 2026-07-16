@@ -26,6 +26,7 @@ import { useRouter } from 'vue-router'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import RefSizePrompt from '@/components/RefSizePrompt.vue'
@@ -1173,7 +1174,7 @@ onUnmounted(() => {
           >
             <div class="content-item flex max-w-sm flex-col items-center">
               <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-xl font-light tracking-[-0.03em]">
+              <h2 class="mt-5 text-base font-medium tracking-tight text-foreground">
                 {{
                   editMode === 'ref'
                     ? 'Add reference images'
@@ -1283,37 +1284,45 @@ onUnmounted(() => {
             v-if="baseImage && !showPreviewHero"
             class="fade-in slide-in-from-top-1 animate-in absolute right-3 top-3 flex items-center gap-0.5 rounded-full border border-border/70 bg-background/85 p-1 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl duration-200"
           >
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Remove source image"
-              @click="removeBaseImage"
-            >
-              <X class="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Clear mask"
-              @click="clearMask"
-            >
-              <Trash2 class="h-3.5 w-3.5" />
-            </button>
-            <label
-              class="aui-icon-button inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
-              title="Replace image"
-            >
-              <Upload class="h-3.5 w-3.5" />
-              <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
-            </label>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              title="Select from gallery"
-              @click="goToGallery"
-            >
-              <Images class="h-3.5 w-3.5" />
-            </button>
+            <Tooltip text="Remove source image" position="bottom">
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Remove source image"
+                @click="removeBaseImage"
+              >
+                <X class="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+            <Tooltip text="Clear mask" position="bottom">
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Clear mask"
+                @click="clearMask"
+              >
+                <Trash2 class="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+            <Tooltip text="Replace image" position="bottom">
+              <label
+                class="aui-icon-button inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+                aria-label="Replace image"
+              >
+                <Upload class="h-3.5 w-3.5" />
+                <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
+              </label>
+            </Tooltip>
+            <Tooltip text="Select from gallery" position="bottom">
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Select from gallery"
+                @click="goToGallery"
+              >
+                <Images class="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
             <span class="mx-0.5 h-4 w-px bg-border" aria-hidden="true"></span>
             <span class="px-1 text-[11px] tabular-nums text-muted-foreground"
               >{{ Math.round(zoom * 100) }}%</span
@@ -1395,21 +1404,26 @@ onUnmounted(() => {
             @update:model-value="setPromptMode"
           />
           <div v-if="editMode === 'inpaint'" class="flex shrink-0 items-center gap-1 pl-0.5">
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="
-                maskMode === 'erase'
-                  ? 'border-foreground bg-foreground text-background shadow-sm'
-                  : ''
-              "
-              :aria-pressed="maskMode === 'erase'"
-              :title="maskMode === 'erase' ? 'Switch to mask paint' : 'Switch to mask erase'"
-              @click="maskMode = maskMode === 'paint' ? 'erase' : 'paint'"
+            <Tooltip
+              :text="maskMode === 'erase' ? 'Switch to mask paint' : 'Switch to mask erase'"
+              position="top"
             >
-              <Eraser v-if="maskMode === 'erase'" class="h-3.5 w-3.5" />
-              <Brush v-else class="h-3.5 w-3.5" />
-            </button>
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                :class="
+                  maskMode === 'erase'
+                    ? 'border-foreground bg-foreground text-background shadow-sm'
+                    : ''
+                "
+                :aria-pressed="maskMode === 'erase'"
+                :aria-label="maskMode === 'erase' ? 'Switch to mask paint' : 'Switch to mask erase'"
+                @click="maskMode = maskMode === 'paint' ? 'erase' : 'paint'"
+              >
+                <Eraser v-if="maskMode === 'erase'" class="h-3.5 w-3.5" />
+                <Brush v-else class="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
             <label
               class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
             >
@@ -1456,16 +1470,16 @@ onUnmounted(() => {
                 inpaintStrength.toFixed(2)
               }}</span>
             </label>
-            <button
-              v-if="baseImage"
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground"
-              title="Fit source to output size"
-              aria-label="Fit source to output size"
-              @click="openCropEditorBase"
-            >
-              <Crop class="h-3.5 w-3.5" />
-            </button>
+            <Tooltip v-if="baseImage" text="Fit source to output size" position="top">
+              <button
+                type="button"
+                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground"
+                aria-label="Fit source to output size"
+                @click="openCropEditorBase"
+              >
+                <Crop class="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
           </div>
           <p
             v-if="showQwenZeroCondTip"
@@ -1798,16 +1812,17 @@ onUnmounted(() => {
             />
 
             <Popover>
-              <PopoverTrigger as-child>
-                <button
-                  type="button"
-                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  aria-label="Generation settings"
-                  title="Generation settings"
-                >
-                  <SlidersHorizontal class="size-4" />
-                </button>
-              </PopoverTrigger>
+              <Tooltip text="Generation settings — steps, CFG, seed, sampler" position="top">
+                <PopoverTrigger as-child>
+                  <button
+                    type="button"
+                    class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    aria-label="Generation settings"
+                  >
+                    <SlidersHorizontal class="size-4" />
+                  </button>
+                </PopoverTrigger>
+              </Tooltip>
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Generation settings</p>
@@ -1946,34 +1961,38 @@ onUnmounted(() => {
             </Popover>
 
             <div class="flex shrink-0 items-center gap-1.5">
-              <button
-                v-if="isGenerating"
-                type="button"
-                @click="handleCancel"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
-                title="Cancel current job"
-                aria-label="Cancel current job"
-              >
-                <Square class="size-3.5 fill-current" />
-              </button>
-              <button
-                type="button"
-                @click="handleGenerate"
-                :disabled="!canSubmitEdit"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-                :title="
+              <Tooltip v-if="isGenerating" text="Cancel current job" position="top">
+                <button
+                  type="button"
+                  @click="handleCancel"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-muted active:scale-95 focus-visible:outline-none"
+                  aria-label="Cancel current job"
+                >
+                  <Square class="size-3.5 fill-current" />
+                </button>
+              </Tooltip>
+              <Tooltip
+                :text="
                   !canSubmitEdit
                     ? editMode === 'ref'
                       ? 'Add a prompt and at least one reference'
                       : 'Add a prompt and a source image'
                     : isGenerating
                       ? 'Add to queue'
-                      : 'Generate'
+                      : 'Generate edit'
                 "
+                position="top"
+              >
+              <button
+                type="button"
+                @click="handleGenerate"
+                :disabled="!canSubmitEdit"
+                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
                 :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"
               >
                 <ArrowUp class="size-4 stroke-[2.5]" />
               </button>
+              </Tooltip>
             </div>
           </div>
         </div>

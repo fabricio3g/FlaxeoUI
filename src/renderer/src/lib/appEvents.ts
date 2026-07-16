@@ -39,14 +39,30 @@ export function onStarterPrompt(handler: (detail: StarterPromptDetail) => void):
   return () => window.removeEventListener(FLAXEO_STARTER_PROMPT, listener)
 }
 
-export function requestOpenHistory(): void {
-  if (typeof window === 'undefined') return
-  window.dispatchEvent(new CustomEvent(FLAXEO_OPEN_HISTORY))
+export interface HistoryPanelAnchor {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
 }
 
-export function onOpenHistory(handler: () => void): () => void {
+export interface OpenHistoryDetail {
+  /** Position panel below this rect (e.g. Gallery toolbar button). */
+  anchor?: HistoryPanelAnchor | null
+}
+
+export function requestOpenHistory(detail?: OpenHistoryDetail): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(FLAXEO_OPEN_HISTORY, { detail: detail ?? {} }))
+}
+
+export function onOpenHistory(handler: (detail: OpenHistoryDetail) => void): () => void {
   if (typeof window === 'undefined') return () => undefined
-  const listener = (): void => handler()
+  const listener = (event: Event): void => {
+    const ce = event as CustomEvent<OpenHistoryDetail>
+    handler(ce.detail ?? {})
+  }
   window.addEventListener(FLAXEO_OPEN_HISTORY, listener)
   return () => window.removeEventListener(FLAXEO_OPEN_HISTORY, listener)
 }

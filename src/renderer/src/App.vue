@@ -21,6 +21,7 @@ import { useGenerationHistory } from './composables/useGenerationHistory'
 import { useConfigStore } from './stores/config'
 import SegmentedControl from './components/ui/SegmentedControl.vue'
 import Select from './components/ui/Select.vue'
+import Tooltip from './components/ui/Tooltip.vue'
 import { useRuntimeStatus } from './composables/useRuntimeStatus'
 import { useServerControls } from './composables/useServerControls'
 import { useModels } from './composables/useModels'
@@ -28,6 +29,8 @@ import { useBackendCapabilities } from './composables/useBackendCapabilities'
 import { setRemoteAccessLevel, useRemoteSession } from './composables/useRemoteSession'
 import { onOpenLogs, onOpenHistory, requestStarterPrompt } from './lib/appEvents'
 import Settings from './views/Settings.vue'
+import CommandPalette from './components/CommandPalette.vue'
+import type { CommandItem } from './lib/commandPalette'
 import {
   extractLanPairingCode,
   isLanAccessLevel,
@@ -63,6 +66,11 @@ type WorkspaceConfigPanel = 'model' | 'generation' | 'lora' | 'embedding'
 const activeConfigPanel = ref<WorkspaceConfigPanel | null>(null)
 const showFloatingLogs = ref(false)
 const showSettings = ref(false)
+const showCommandPalette = ref(false)
+/** Deep-link into Settings category from command palette */
+const settingsInitialCategory = ref<
+  'backend' | 'installation' | 'network' | 'storage' | 'appearance' | null
+>(null)
 const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
 const stripDismissed = ref(
   typeof localStorage !== 'undefined' && localStorage.getItem(STRIP_DISMISS_KEY) === '1'
@@ -151,17 +159,27 @@ function toggleHistoryPanel(): void {
   }
 }
 
-function openHistoryPanel(): void {
+function openHistoryPanel(anchor?: {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+} | null): void {
   showQueuePanel.value = false
-  updateHistoryAnchor()
-  // Fallback anchor if button not in DOM (e.g. Gallery page)
+  if (anchor) {
+    historyAnchor.value = anchor
+  } else {
+    updateHistoryAnchor()
+  }
+  // Fallback if no command-strip History button (e.g. Gallery) and no anchor passed
   if (!historyAnchor.value && typeof window !== 'undefined') {
     historyAnchor.value = {
       top: 48,
-      left: 16,
-      right: 120,
-      bottom: 80,
-      width: 100
+      left: Math.max(8, window.innerWidth - 380),
+      right: window.innerWidth - 16,
+      bottom: 96,
+      width: 120
     }
   }
   showHistoryPanel.value = true
@@ -194,12 +212,6 @@ const backendModeOptions = [
   { value: 'server', label: 'Server' }
 ]
 
-const serverModeHint = computed(() => {
-  if (config.value.backendMode !== 'server') return ''
-  if (!sdServerRunning.value) return 'Server offline — start it to use warm multi-gen'
-  return 'Server: core T2I only (warm). Edit, video, batch, and uploads use CLI.'
-})
-
 const currentTab = computed(() => {
   const name = route.name as string
   return name?.toLowerCase() || 'text2image'
@@ -225,8 +237,7 @@ const routeMap: Record<string, string> = {
 function navigateToTab(tab: string): void {
   if (tab === 'gallery' && !canViewGallery.value) return
   if (tab === 'settings') {
-    closeConfigPanel()
-    showSettings.value = true
+    openSettingsCategory(null)
     return
   }
 
@@ -247,6 +258,44 @@ function closeConfigPanel(): void {
 
 function closeSettings(): void {
   showSettings.value = false
+  settingsInitialCategory.value = null
+}
+
+function openCommandPalette(): void {
+  showCommandPalette.value = true
+}
+
+function closeCommandPalette(): void {
+  showCommandPalette.value = false
+}
+
+function openSettingsCategory(
+  category?: 'backend' | 'installation' | 'network' | 'storage' | 'appearance' | null
+): void {
+  closeConfigPanel()
+  settingsInitialCategory.value = category ?? null
+  showSettings.value = true
+}
+
+function runCommand(item: CommandItem): void {
+  const { action } = item
+  if (action.type === 'tab') {
+    navigateToTab(action.tab)
+  } else if (action.type === 'settings') {
+    openSettingsCategory(
+      (action.category as
+        | 'backend'
+        | 'installation'
+        | 'network'
+        | 'storage'
+        | 'appearance'
+        | undefined) ?? null
+    )
+  } else if (action.type === 'folder') {
+    if (action.which === 'models') window.electronAPI?.openModelsFolder()
+    else window.electronAPI?.openGalleryFolder()
+  }
+  closeCommandPalette()
 }
 
 function selectModel(value: string): void {
@@ -327,8 +376,16 @@ function onStripFirstImage(): void {
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
+  // Command palette: Ctrl/Cmd+K
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    if (showCommandPalette.value) closeCommandPalette()
+    else openCommandPalette()
+    return
+  }
   if (event.key !== 'Escape') return
-  if (showHistoryPanel.value) showHistoryPanel.value = false
+  if (showCommandPalette.value) closeCommandPalette()
+  else if (showHistoryPanel.value) showHistoryPanel.value = false
   else if (showQueuePanel.value) showQueuePanel.value = false
   else if (showSettings.value) closeSettings()
   else if (configPanelVisible.value) closeConfigPanel()
@@ -454,8 +511,8 @@ onMounted(async () => {
   unsubscribeOpenLogs = onOpenLogs(() => {
     if (canControl.value) showFloatingLogs.value = true
   })
-  unsubscribeOpenHistory = onOpenHistory(() => {
-    openHistoryPanel()
+  unsubscribeOpenHistory = onOpenHistory((detail) => {
+    openHistoryPanel(detail.anchor ?? null)
   })
 })
 
@@ -524,6 +581,7 @@ onUnmounted(() => {
         :collapsed="sidebarCollapsed"
         @navigate="navigateToTab"
         @toggle-collapse="toggleSidebar"
+        @open-search="openCommandPalette"
       />
 
       <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
@@ -569,13 +627,6 @@ onUnmounted(() => {
               >
                 {{ modelsError }}
               </span>
-              <span
-                v-if="serverModeHint"
-                class="hidden max-w-[14rem] truncate text-[10px] text-muted-foreground lg:inline"
-                :title="serverModeHint"
-              >
-                {{ sdServerRunning ? 'Warm T2I' : 'Server offline' }}
-              </span>
               <Select
                 :model-value="activeModelValue"
                 :options="modelOptions"
@@ -585,112 +636,131 @@ onUnmounted(() => {
                 class="min-w-[11rem] border-0 bg-transparent shadow-none hover:bg-accent md:min-w-[12rem]"
                 @update:model-value="selectModel"
               />
-              <button
-                ref="queueBtnRef"
-                type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-                :class="showQueuePanel || queueBadge ? 'bg-accent/80 text-foreground' : ''"
-                :aria-expanded="showQueuePanel"
-                title="Job queue"
-                @click="toggleQueuePanel"
-              >
-                <span>Queue</span>
-                <span
-                  v-if="queueBadge"
-                  class="inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-medium text-background"
+              <Tooltip text="Job queue — reorder, pause, or cancel runs" position="bottom">
+                <button
+                  ref="queueBtnRef"
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+                  :class="showQueuePanel || queueBadge ? 'bg-accent/80 text-foreground' : ''"
+                  :aria-expanded="showQueuePanel"
+                  aria-label="Job queue"
+                  @click="toggleQueuePanel"
                 >
-                  {{ queueBadge }}
-                </span>
-              </button>
-              <button
-                ref="historyBtnRef"
-                type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-                :class="showHistoryPanel || historyCount ? 'bg-accent/80 text-foreground' : ''"
-                :aria-expanded="showHistoryPanel"
-                title="Generation history"
-                @click="toggleHistoryPanel"
-              >
-                <History class="h-3.5 w-3.5" />
-                <span>History</span>
-                <span
-                  v-if="historyCount"
-                  class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground"
+                  <span>Queue</span>
+                  <span
+                    v-if="queueBadge"
+                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-medium text-background"
+                  >
+                    {{ queueBadge }}
+                  </span>
+                </button>
+              </Tooltip>
+              <Tooltip text="Generation history for this session" position="bottom">
+                <button
+                  ref="historyBtnRef"
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+                  :class="showHistoryPanel || historyCount ? 'bg-accent/80 text-foreground' : ''"
+                  :aria-expanded="showHistoryPanel"
+                  aria-label="Generation history"
+                  @click="toggleHistoryPanel"
                 >
-                  {{ historyCount > 99 ? '99+' : historyCount }}
-                </span>
-              </button>
-              <button
-                type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                :aria-expanded="activeConfigPanel === 'generation'"
-                @click="openConfigPanel('generation')"
-              >
-                <SlidersHorizontal class="h-3.5 w-3.5" />
-                <span>Generation</span>
-              </button>
-              <button
-                type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                :class="
-                  activeConfigPanel === 'lora' || config.loras.length ? 'text-foreground' : ''
-                "
-                :aria-expanded="activeConfigPanel === 'lora'"
-                @click="openConfigPanel('lora')"
-              >
-                <span>LoRA</span>
-                <span v-if="config.loras.length" class="font-mono text-[10px]">
-                  {{ config.loras.length }}
-                </span>
-              </button>
-              <button
-                type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                :class="
-                  activeConfigPanel === 'embedding' || config.embeddings.length
-                    ? 'text-foreground'
-                    : ''
-                "
-                :aria-expanded="activeConfigPanel === 'embedding'"
-                @click="openConfigPanel('embedding')"
-              >
-                <span>Embedding</span>
-                <span v-if="config.embeddings.length" class="font-mono text-[10px]">
-                  {{ config.embeddings.length }}
-                </span>
-              </button>
+                  <History class="h-3.5 w-3.5" />
+                  <span>History</span>
+                  <span
+                    v-if="historyCount"
+                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground"
+                  >
+                    {{ historyCount > 99 ? '99+' : historyCount }}
+                  </span>
+                </button>
+              </Tooltip>
+              <Tooltip text="Open generation settings panel" position="bottom">
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  :aria-expanded="activeConfigPanel === 'generation'"
+                  aria-label="Generation settings panel"
+                  @click="openConfigPanel('generation')"
+                >
+                  <SlidersHorizontal class="h-3.5 w-3.5" />
+                  <span>Generation</span>
+                </button>
+              </Tooltip>
+              <Tooltip text="Manage LoRA weights" position="bottom">
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  :class="
+                    activeConfigPanel === 'lora' || config.loras.length ? 'text-foreground' : ''
+                  "
+                  :aria-expanded="activeConfigPanel === 'lora'"
+                  aria-label="LoRA panel"
+                  @click="openConfigPanel('lora')"
+                >
+                  <span>LoRA</span>
+                  <span v-if="config.loras.length" class="font-mono text-[10px]">
+                    {{ config.loras.length }}
+                  </span>
+                </button>
+              </Tooltip>
+              <Tooltip text="Manage embeddings / textual inversion" position="bottom">
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  :class="
+                    activeConfigPanel === 'embedding' || config.embeddings.length
+                      ? 'text-foreground'
+                      : ''
+                  "
+                  :aria-expanded="activeConfigPanel === 'embedding'"
+                  aria-label="Embeddings panel"
+                  @click="openConfigPanel('embedding')"
+                >
+                  <span>Embedding</span>
+                  <span v-if="config.embeddings.length" class="font-mono text-[10px]">
+                    {{ config.embeddings.length }}
+                  </span>
+                </button>
+              </Tooltip>
               <div
                 v-if="config.backendMode === 'server' && canControl"
                 class="aui-status-badge inline-flex items-center gap-0.5 rounded-lg bg-muted/70 p-0.5"
               >
-                <button
-                  type="button"
-                  :disabled="sdServerRunning || isBooting || !backendValid"
-                  class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                  :class="
-                    sdServerRunning || isBooting || !backendValid
-                      ? 'text-muted-foreground'
-                      : 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                  "
-                  @click="startServer"
-                >
-                  <Play class="h-3 w-3" />
-                  {{ isBooting ? 'Booting' : 'Start' }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="!sdServerRunning || isBooting"
-                  class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                  :class="
-                    sdServerRunning
-                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                      : 'text-muted-foreground'
-                  "
-                  @click="stopServer"
-                >
-                  <Square class="h-3 w-3" />
-                  Stop
-                </button>
+                <Tooltip text="Start sd-server (warm Text2Image)" position="bottom">
+                  <button
+                    type="button"
+                    :disabled="sdServerRunning || isBooting || !backendValid"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                    :class="
+                      sdServerRunning || isBooting || !backendValid
+                        ? 'text-muted-foreground'
+                        : 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                    "
+                    aria-label="Start sd-server"
+                    @click="startServer"
+                  >
+                    <Play class="h-3 w-3" />
+                    {{ isBooting ? 'Booting' : 'Start' }}
+                  </button>
+                </Tooltip>
+                <Tooltip text="Stop sd-server" position="bottom">
+                  <button
+                    type="button"
+                    :disabled="!sdServerRunning || isBooting"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                    :class="
+                      sdServerRunning
+                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                        : 'text-muted-foreground'
+                    "
+                    aria-label="Stop sd-server"
+                    @click="stopServer"
+                  >
+                    <Square class="h-3 w-3" />
+                    Stop
+                  </button>
+                </Tooltip>
               </div>
             </div>
 
@@ -744,12 +814,18 @@ onUnmounted(() => {
                       >
                         <X class="size-4" />
                       </button>
-                      <Settings />
+                      <Settings :initial-category="settingsInitialCategory" />
                     </div>
                   </Transition>
                 </div>
               </Transition>
             </Teleport>
+
+            <CommandPalette
+              :open="showCommandPalette"
+              @close="closeCommandPalette"
+              @select="runCommand"
+            />
 
             <main
               class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"

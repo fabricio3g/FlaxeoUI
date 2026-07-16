@@ -71,6 +71,8 @@ If you skip the wizard, a quiet **Getting started** strip stays until your first
 4. Optional: **Preview** = Proj / TAE / VAE for live frames while generating.
 5. Press **Generate**.
 
+**Session strip** under the stage lists this session’s images. While generating, the stage stays on live preview — click a past thumb to open the **fullscreen viewer** (does not interrupt the run). **Clear** blanks the workspace but keeps files in Gallery. **Delete** removes the current file from disk.
+
 **Seeds:** lock to reproduce; dice for random.  
 **Batch:** multiple images per job.  
 **Queue:** next Generate enqueues while a job runs.
@@ -387,8 +389,7 @@ Select each file from the dropdowns. Hub packs set these for you when you apply 
 
 ## Model Hub
 
-Open the Model panel → **Hub** for starter packs (SDXL, FLUX, Z-Image, Wan, Anima, Qwen edit, …).  
-Packs show **on-disk** status when required files are installed.
+Open **Model Hub** from the titlebar or Config → Models. It is a **curated list** of packs based on [stable-diffusion.cpp documentation](https://github.com/leejet/stable-diffusion.cpp/tree/master/docs) — not a full marketplace. Browse **pack cards** with search and filters (Image / Edit / Video / Installed). Select a pack to download files, apply configuration, or open the pack’s docs. Status shows **Installed** or **N/M files on disk**.
 
 ## Low VRAM & profiles
 

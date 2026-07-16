@@ -32,19 +32,27 @@ const list = computed(() => entries.value.slice(0, 40))
 const panelStyle = computed(() => {
   const a = props.anchor
   if (!a || typeof window === 'undefined') {
-    return { top: '5.5rem', left: '1rem' }
+    return { top: '5.5rem', right: '1rem', left: 'auto' }
   }
   const width = Math.min(PANEL_WIDTH, window.innerWidth - 16)
+  // Prefer aligning under the trigger; clamp so the panel stays on-screen
   let left = a.left
   if (left + width > window.innerWidth - 8) {
     left = Math.max(8, a.right - width)
   }
   left = Math.max(8, left)
-  const top = Math.min(a.bottom + GAP, window.innerHeight - 120)
+
+  const preferredTop = a.bottom + GAP
+  const maxTop = Math.max(8, window.innerHeight - 160)
+  // Drop below the button when possible; if near the bottom edge, still prefer below
+  // but keep a minimum viewport gap so content remains usable
+  const top = Math.min(preferredTop, maxTop)
+
   return {
     top: `${top}px`,
     left: `${left}px`,
-    width: `${width}px`
+    width: `${width}px`,
+    maxHeight: `${Math.max(180, window.innerHeight - top - 16)}px`
   }
 })
 

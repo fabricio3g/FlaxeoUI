@@ -11,7 +11,8 @@ import {
   Database,
   ChevronLeft,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Search
 } from '@/lib/icons'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -30,7 +31,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   navigate: [tab: string]
   toggleCollapse: []
+  openSearch: []
 }>()
+
+const isMac =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || '')
+const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
 const navItems: NavItem[] = [
   { id: 'text2image', label: 'Image', icon: ImageIcon },
@@ -60,7 +66,7 @@ function openGalleryFolder(): void {
 
 <template>
   <aside
-    class="flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200"
+    class="flex h-full shrink-0 flex-col border-r-0 bg-sidebar transition-[width] duration-200"
     :class="collapsed ? 'w-14 items-center px-2 py-2' : 'w-52 items-stretch px-3 py-3'"
   >
     <!-- Brand (expanded) + collapse/expand — size-8 control -->
@@ -72,7 +78,7 @@ function openGalleryFolder(): void {
         v-if="!collapsed"
         size="sm"
         :ambient="false"
-        class="min-w-0 truncate text-foreground"
+        class="min-w-0 shrink text-foreground"
       />
       <Tooltip :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" position="right">
         <button
@@ -85,6 +91,34 @@ function openGalleryFolder(): void {
           <ChevronLeft v-else class="size-4" />
         </button>
       </Tooltip>
+    </div>
+
+    <!-- Search / jump -->
+    <div class="mb-2 w-full" :class="collapsed ? 'flex justify-center' : ''">
+      <Tooltip v-if="collapsed" :text="`Search (${searchShortcutLabel})`" position="right">
+        <button
+          type="button"
+          class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+          aria-label="Search"
+          @click="emit('openSearch')"
+        >
+          <Search class="size-4" />
+        </button>
+      </Tooltip>
+      <button
+        v-else
+        type="button"
+        class="aui-icon-button inline-flex h-8 w-full items-center gap-2 rounded-md border border-transparent bg-sidebar-accent/60 px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+        aria-label="Search"
+        @click="emit('openSearch')"
+      >
+        <Search class="size-4 shrink-0" />
+        <span class="min-w-0 flex-1 truncate text-left">Search</span>
+        <kbd
+          class="shrink-0 rounded border border-border/60 bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+          >{{ searchShortcutLabel }}</kbd
+        >
+      </button>
     </div>
 
     <!-- Same gap as expanded; collapsed icons match collapse button (size-8) -->

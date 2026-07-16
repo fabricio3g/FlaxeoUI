@@ -8,6 +8,8 @@
 4. Optional: **Preview** = Proj / TAE / VAE for live frames while generating.
 5. Press **Generate**.
 
+**Session strip** under the stage lists this session’s images. While generating, the stage stays on live preview — click a past thumb to open it in the **fullscreen viewer** (does not interrupt the run). **Clear** blanks the workspace strip/stage but keeps files in Gallery. **Delete** removes the current file from disk.
+
 **Seeds:** lock to reproduce; dice for random.  
 **Batch:** multiple images per job.  
 **Queue:** next Generate enqueues while a job runs.
