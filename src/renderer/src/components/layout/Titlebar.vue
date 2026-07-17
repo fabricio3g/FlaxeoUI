@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-  Download,
-  Moon,
-  Minus,
-  Square,
-  SlidersHorizontal,
-  Sun,
-  Terminal,
-  X
-} from '@/lib/icons'
+import { Download, Moon, Minus, Square, SlidersHorizontal, Sun, Terminal, X } from '@/lib/icons'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from '@/stores/config'
@@ -310,9 +301,7 @@ function handleClose(): void {
           class="aui-icon-button relative mr-0.5 inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-1.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
           type="button"
           :aria-label="
-            activeCount
-              ? `Open download manager, ${activeCount} active`
-              : 'Open download manager'
+            activeCount ? `Open download manager, ${activeCount} active` : 'Open download manager'
           "
           :class="showDownloadManager || activeCount ? 'bg-accent/80 text-foreground' : ''"
           :aria-expanded="showDownloadManager"
@@ -338,10 +327,7 @@ function handleClose(): void {
         </button>
       </Tooltip>
 
-      <Tooltip
-        :text="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
-        position="bottom"
-      >
+      <Tooltip :text="isDark ? 'Switch to light theme' : 'Switch to dark theme'" position="bottom">
         <button
           @click="toggleTheme"
           class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"

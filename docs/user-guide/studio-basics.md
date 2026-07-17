@@ -18,11 +18,11 @@
 
 ## Edit
 
-| Mode | What it does |
-|------|----------------|
-| **Inpaint** | Mask areas to change. Size always follows the source image. |
-| **Img2Img** | Transform whole image with strength. Studio size or match source. |
-| **Ref Edit** | Multi-reference edit (`-r`). Studio size or match ref. |
+| Mode         | What it does                                                      |
+| ------------ | ----------------------------------------------------------------- |
+| **Inpaint**  | Mask areas to change. Size always follows the source image.       |
+| **Img2Img**  | Transform whole image with strength. Studio size or match source. |
+| **Ref Edit** | Multi-reference edit (`-r`). Studio size or match ref.            |
 
 Shared with Image: steps, CFG, seed, **live preview**.  
 On Img2Img / Ref Edit: resolution chip, size policy, optional fit-to-target crop when adding an image.

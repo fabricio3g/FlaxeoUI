@@ -22,9 +22,7 @@ function basename(path: string): string {
 
 function diffusionName(snap: Record<string, unknown>, recipe?: FlaxeoRecipe): string {
   const fromSnap =
-    str(snap, 'standardModel') ||
-    str(snap, 'diffusionModel') ||
-    str(snap, 'diffusion_model')
+    str(snap, 'standardModel') || str(snap, 'diffusionModel') || str(snap, 'diffusion_model')
   if (fromSnap) return basename(fromSnap)
   if (recipe?.modelHints?.diffusion) return basename(recipe.modelHints.diffusion)
   return ''
@@ -88,9 +86,13 @@ export function formatRecipeInstructions(recipe: FlaxeoRecipe): string {
 
   lines.push('## How to use')
   lines.push('')
-  lines.push('1. Place the model files listed below under your Flaxeo `models/` folders (or install via Model Hub).')
+  lines.push(
+    '1. Place the model files listed below under your Flaxeo `models/` folders (or install via Model Hub).'
+  )
   lines.push('2. Open Flaxeo → **Image** (or matching surface).')
-  lines.push('3. **Recipes** → **Import** the companion `.flaxeo-recipe.json` file, then **Apply**.')
+  lines.push(
+    '3. **Recipes** → **Import** the companion `.flaxeo-recipe.json` file, then **Apply**.'
+  )
   lines.push('4. Or set models and generation settings manually from the combination section.')
   lines.push('')
 
@@ -101,11 +103,7 @@ export function formatRecipeInstructions(recipe: FlaxeoRecipe): string {
   pushIf(modelBlock, 'Diffusion / checkpoint', diffusion)
   pushIf(modelBlock, 'High-noise diffusion', basename(str(snap, 'highNoiseDiffusionModel')))
   pushIf(modelBlock, 'Uncond diffusion', basename(str(snap, 'uncondDiffusionModel')))
-  pushIf(
-    modelBlock,
-    'VAE',
-    basename(str(snap, 'vaeModel') || recipe.modelHints?.vae || '')
-  )
+  pushIf(modelBlock, 'VAE', basename(str(snap, 'vaeModel') || recipe.modelHints?.vae || ''))
   pushIf(modelBlock, 'CLIP-L', basename(str(snap, 'clipModel')))
   pushIf(modelBlock, 'CLIP-G', basename(str(snap, 'clipGModel')))
   pushIf(modelBlock, 'CLIP Vision', basename(str(snap, 'clipVisionModel')))
@@ -193,7 +191,7 @@ export function formatRecipeInstructions(recipe: FlaxeoRecipe): string {
 export function recipeGuideFilename(recipe: FlaxeoRecipe): string {
   const base = recipe.name
     .trim()
-    .replace(/[^\w\-]+/g, '_')
+    .replace(/[^\w-]+/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
     .slice(0, 48)

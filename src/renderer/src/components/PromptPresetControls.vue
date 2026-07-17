@@ -189,107 +189,106 @@ const selectedPreset = computed(() =>
         </p>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-
-      <!-- Save -->
-      <label class="block text-[10px] font-medium text-muted-foreground">
-        Save current
-        <span v-if="matchingNamePreset" class="font-normal text-muted-foreground/80">
-          · updates existing
-        </span>
-        <div class="mt-1 flex gap-1.5">
-          <input
-            v-model="presetName"
-            type="text"
-            placeholder="Preset name…"
-            class="aui-field h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
-            @keyup.enter="saveCurrentPreset"
-          />
-          <button
-            type="button"
-            class="inline-flex h-8 shrink-0 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors"
-            :class="
-              canSave
-                ? 'bg-foreground text-background hover:bg-foreground/85'
-                : 'cursor-not-allowed bg-muted text-muted-foreground'
-            "
-            :disabled="!canSave"
-            @click="saveCurrentPreset"
-          >
-            {{ matchingNamePreset ? 'Update' : 'Save' }}
-          </button>
-        </div>
-      </label>
-
-      <!-- Load / manage -->
-      <div class="mt-3 space-y-2 border-t border-border/60 pt-3">
+        <!-- Save -->
         <label class="block text-[10px] font-medium text-muted-foreground">
-          Search
-          <div class="relative mt-1">
-            <Search
-              class="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
-            />
+          Save current
+          <span v-if="matchingNamePreset" class="font-normal text-muted-foreground/80">
+            · updates existing
+          </span>
+          <div class="mt-1 flex gap-1.5">
             <input
-              v-model="presetSearch"
-              type="search"
-              placeholder="Filter presets…"
-              class="aui-field h-8 w-full rounded-md border border-input bg-background py-0 pl-7 pr-2 text-xs text-foreground outline-none"
+              v-model="presetName"
+              type="text"
+              placeholder="Preset name…"
+              class="aui-field h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+              @keyup.enter="saveCurrentPreset"
             />
+            <button
+              type="button"
+              class="inline-flex h-8 shrink-0 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors"
+              :class="
+                canSave
+                  ? 'bg-foreground text-background hover:bg-foreground/85'
+                  : 'cursor-not-allowed bg-muted text-muted-foreground'
+              "
+              :disabled="!canSave"
+              @click="saveCurrentPreset"
+            >
+              {{ matchingNamePreset ? 'Update' : 'Save' }}
+            </button>
           </div>
         </label>
 
-        <label class="block text-[10px] font-medium text-muted-foreground">
-          Load preset
-          <Select
-            :model-value="selectedPresetId"
-            size="sm"
-            aria-label="Select prompt preset"
-            class="mt-1"
-            :options="presetOptions"
-            @update:model-value="selectPreset"
-          />
-        </label>
+        <!-- Load / manage -->
+        <div class="mt-3 space-y-2 border-t border-border/60 pt-3">
+          <label class="block text-[10px] font-medium text-muted-foreground">
+            Search
+            <div class="relative mt-1">
+              <Search
+                class="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                v-model="presetSearch"
+                type="search"
+                placeholder="Filter presets…"
+                class="aui-field h-8 w-full rounded-md border border-input bg-background py-0 pl-7 pr-2 text-xs text-foreground outline-none"
+              />
+            </div>
+          </label>
 
-        <p
-          v-if="selectedPreset"
-          class="line-clamp-2 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground"
-        >
-          {{ previewText(selectedPreset.prompt) }}
-        </p>
-      </div>
+          <label class="block text-[10px] font-medium text-muted-foreground">
+            Load preset
+            <Select
+              :model-value="selectedPresetId"
+              size="sm"
+              aria-label="Select prompt preset"
+              class="mt-1"
+              :options="presetOptions"
+              @update:model-value="selectPreset"
+            />
+          </label>
 
-      <div class="mt-3 flex items-center gap-1.5">
-        <button
-          type="button"
-          class="inline-flex h-8 flex-1 items-center justify-center rounded-md text-[11px] font-medium transition-colors"
-          :class="
-            selectedPreset
-              ? 'bg-foreground text-background hover:bg-foreground/85'
-              : 'cursor-not-allowed bg-muted text-muted-foreground'
-          "
-          :disabled="!selectedPreset"
-          @click="loadSelectedPreset"
-        >
-          Load
-        </button>
-        <button
-          type="button"
-          class="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-input bg-background text-[11px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!selectedPreset"
-          @click="overwriteSelectedPreset"
-        >
-          Overwrite
-        </button>
-        <button
-          type="button"
-          class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!selectedPreset"
-          title="Delete preset"
-          aria-label="Delete preset"
-          @click="deleteSelectedPreset"
-        >
-          <Trash2 class="h-3.5 w-3.5" />
-        </button>
-      </div>
+          <p
+            v-if="selectedPreset"
+            class="line-clamp-2 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground"
+          >
+            {{ previewText(selectedPreset.prompt) }}
+          </p>
+        </div>
+
+        <div class="mt-3 flex items-center gap-1.5">
+          <button
+            type="button"
+            class="inline-flex h-8 flex-1 items-center justify-center rounded-md text-[11px] font-medium transition-colors"
+            :class="
+              selectedPreset
+                ? 'bg-foreground text-background hover:bg-foreground/85'
+                : 'cursor-not-allowed bg-muted text-muted-foreground'
+            "
+            :disabled="!selectedPreset"
+            @click="loadSelectedPreset"
+          >
+            Load
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-input bg-background text-[11px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="!selectedPreset"
+            @click="overwriteSelectedPreset"
+          >
+            Overwrite
+          </button>
+          <button
+            type="button"
+            class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="!selectedPreset"
+            title="Delete preset"
+            aria-label="Delete preset"
+            @click="deleteSelectedPreset"
+          >
+            <Trash2 class="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </PopoverContent>
   </Popover>

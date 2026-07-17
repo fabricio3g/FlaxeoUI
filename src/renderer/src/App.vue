@@ -154,13 +154,15 @@ function toggleHistoryPanel(): void {
   }
 }
 
-function openHistoryPanel(anchor?: {
-  top: number
-  left: number
-  right: number
-  bottom: number
-  width: number
-} | null): void {
+function openHistoryPanel(
+  anchor?: {
+    top: number
+    left: number
+    right: number
+    bottom: number
+    width: number
+  } | null
+): void {
   showQueuePanel.value = false
   if (anchor) {
     historyAnchor.value = anchor
@@ -202,7 +204,6 @@ const modelOptions = computed(() => [
     value: model
   }))
 ])
-
 
 const currentTab = computed(() => {
   const name = route.name as string

@@ -14,11 +14,11 @@ SDXL motion modules are **not** supported by sd.cpp yet.
 
 **Hub → AnimateDiff v3** downloads the recommended stack from sd.cpp docs:
 
-| File | Folder |
-|------|--------|
+| File                                           | Folder                                         |
+| ---------------------------------------------- | ---------------------------------------------- |
 | `Realistic_Vision_V6.0_NV_B1_fp16.safetensors` | `models/diffusion/` (SD1.5 fp16 base, ~2.1 GB) |
-| `mm_sd15_v3.safetensors` | `models/animatediff/` |
-| `mm_sd15_v3_adapter.safetensors` (optional) | `models/loras/` |
+| `mm_sd15_v3.safetensors`                       | `models/animatediff/`                          |
+| `mm_sd15_v3_adapter.safetensors` (optional)    | `models/loras/`                                |
 
 Apply the pack to set Video defaults (512², CFG 8, euler, 16 frames, motion module + standard model selected). Any other SD1.5 checkpoint also works if you swap the base.
 
@@ -42,11 +42,11 @@ Docs verify ~2 GiB with `--max-vram` + stream layers. Use **Low VRAM** profile, 
 
 ## Vs Wan / LTX
 
-| | AnimateDiff | Wan / LTX |
-|--|-------------|-----------|
-| Base | SD 1.5 + motion module | Dedicated video DiT stacks |
-| Load mode | **standard** (`-m`) | **split** |
-| Flow-shift | Off | On |
-| Typical size | 512², 8–16 frames | 832×480, 33+ frames |
+|              | AnimateDiff            | Wan / LTX                  |
+| ------------ | ---------------------- | -------------------------- |
+| Base         | SD 1.5 + motion module | Dedicated video DiT stacks |
+| Load mode    | **standard** (`-m`)    | **split**                  |
+| Flow-shift   | Off                    | On                         |
+| Typical size | 512², 8–16 frames      | 832×480, 33+ frames        |
 
 Clear the motion module select to return to Wan/LTX controls (flow-shift, high-noise, VACE).

@@ -6,10 +6,7 @@ import { useConfigStore } from '@/stores/config'
 import { getFileUrl } from '@/services/api'
 import Select from '@/components/ui/Select.vue'
 import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
-import {
-  REF_IMAGE_PRESET_OPTIONS,
-  resolveRefImagePreset
-} from '../../../shared/refImageArgs'
+import { REF_IMAGE_PRESET_OPTIONS, resolveRefImagePreset } from '../../../shared/refImageArgs'
 
 export type AdvancedToolTab = 'photomaker' | 'controlnet' | 'img2img' | 'kontext'
 

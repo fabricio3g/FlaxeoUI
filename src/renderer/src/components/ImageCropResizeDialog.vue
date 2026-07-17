@@ -130,9 +130,7 @@ function computeDraw(
   const iw = imgNatural.value.width || 1
   const ih = imgNatural.value.height || 1
   const base =
-    fitMode.value === 'contain'
-      ? Math.min(outW / iw, outH / ih)
-      : Math.max(outW / iw, outH / ih)
+    fitMode.value === 'contain' ? Math.min(outW / iw, outH / ih) : Math.max(outW / iw, outH / ih)
   const scale = base * Math.max(0.1, zoom.value)
   const dw = iw * scale
   const dh = ih * scale
@@ -312,7 +310,9 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="rounded-md px-2.5 py-1 font-medium transition-colors"
-                :class="fitMode === 'cover' ? 'bg-foreground text-background' : 'text-muted-foreground'"
+                :class="
+                  fitMode === 'cover' ? 'bg-foreground text-background' : 'text-muted-foreground'
+                "
                 @click="fitMode = 'cover'"
               >
                 Cover
@@ -361,7 +361,11 @@ onUnmounted(() => {
                 class="pointer-events-none absolute"
                 :style="previewImageStyle"
               >
-                <img :src="imageUrl" class="h-full w-full select-none object-fill" draggable="false" />
+                <img
+                  :src="imageUrl"
+                  class="h-full w-full select-none object-fill"
+                  draggable="false"
+                />
               </div>
               <div
                 class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20"
@@ -372,7 +376,9 @@ onUnmounted(() => {
           <p v-if="errorMsg" class="text-xs text-destructive">{{ errorMsg }}</p>
         </div>
 
-        <footer class="flex shrink-0 items-center justify-end gap-2 border-t border-border/60 px-5 py-3">
+        <footer
+          class="flex shrink-0 items-center justify-end gap-2 border-t border-border/60 px-5 py-3"
+        >
           <button
             type="button"
             class="inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium hover:bg-muted"

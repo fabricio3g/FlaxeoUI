@@ -891,10 +891,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         : { width: 832, height: 480, cfg: 6.0, multiple: 16 }
       addGenerationArgs(args, body, outputPath, genDefaults)
       const defaultFrames = motionPath ? 16 : 33
-      args.push(
-        '--video-frames',
-        String(body.videoFrames || body.video_frames || defaultFrames)
-      )
+      args.push('--video-frames', String(body.videoFrames || body.video_frames || defaultFrames))
       const defaultFps = motionPath ? 8 : 24
       const fps = parseInt(String(body.fps ?? defaultFps), 10)
       if (Number.isFinite(fps) && fps > 0) args.push('--fps', String(fps))

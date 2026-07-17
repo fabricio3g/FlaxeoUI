@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { Search, X } from '@/lib/icons'
-import {
-  filterCommandItems,
-  groupCommandItems,
-  type CommandItem
-} from '@/lib/commandPalette'
+import { filterCommandItems, groupCommandItems, type CommandItem } from '@/lib/commandPalette'
 
 const props = defineProps<{
   open: boolean
@@ -118,10 +114,7 @@ function flatIndexOf(item: CommandItem): number {
         </div>
 
         <div class="max-h-[min(50vh,22rem)] overflow-y-auto p-2">
-          <p
-            v-if="!flat.length"
-            class="px-3 py-8 text-center text-sm text-muted-foreground"
-          >
+          <p v-if="!flat.length" class="px-3 py-8 text-center text-sm text-muted-foreground">
             No matches
           </p>
           <div v-for="section in groups" :key="section.group" class="mb-2 last:mb-0">

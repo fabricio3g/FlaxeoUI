@@ -222,10 +222,7 @@ describe('golden: adetailer post-gen args', () => {
       adetailerInpaintHeight: 512
     })
     assert.ok(args.includes('--ad-model'))
-    assert.equal(
-      args[args.indexOf('--ad-model') + 1],
-      '/models/adetailer/face_yolov8n.safetensors'
-    )
+    assert.equal(args[args.indexOf('--ad-model') + 1], '/models/adetailer/face_yolov8n.safetensors')
     assert.ok(args.includes('--ad-prompt'))
     assert.ok(args.includes('--extra-ad-args'))
   })

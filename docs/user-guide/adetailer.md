@@ -51,25 +51,25 @@ Output lands in the gallery like upscales.
 
 ## Settings map
 
-| UI | CLI / extra-ad-args |
-|----|---------------------|
-| Detector | `--ad-model` |
+| UI                   | CLI / extra-ad-args                    |
+| -------------------- | -------------------------------------- |
+| Detector             | `--ad-model`                           |
 | AD prompt / negative | `--ad-prompt` / `--ad-negative-prompt` |
-| Confidence | `confidence` |
-| Denoise | `denoising_strength` |
-| Inpaint W/H | `inpaint_width` / `inpaint_height` |
-| Padding / mask blur | `inpaint_padding` / `mask_blur` |
-| Largest K | `mask_k_largest` (0 = all) |
-| Mask mode | `mask_mode` |
-| Extra args | free-form `key=value,key2=value2` |
+| Confidence           | `confidence`                           |
+| Denoise              | `denoising_strength`                   |
+| Inpaint W/H          | `inpaint_width` / `inpaint_height`     |
+| Padding / mask blur  | `inpaint_padding` / `mask_blur`        |
+| Largest K            | `mask_k_largest` (0 = all)             |
+| Mask mode            | `mask_mode`                            |
+| Extra args           | free-form `key=value,key2=value2`      |
 
 Optional backend placement: `--backend "diffusion=cuda0,detector=cpu"` via backend assignment strings in Advanced hardware if needed.
 
 ## Troubleshoot
 
-| Issue | What to try |
-|-------|-------------|
-| Controls disabled | Upgrade stable-diffusion.cpp; check Settings → Backend |
-| No detector in list | Put `.safetensors` in `models/adetailer`, refresh models |
-| No change in faces | Lower confidence slightly, raise denoise, check AD prompt |
-| OOM | Lower inpaint size, enable Low VRAM, use smaller diffusion quant |
+| Issue               | What to try                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| Controls disabled   | Upgrade stable-diffusion.cpp; check Settings → Backend           |
+| No detector in list | Put `.safetensors` in `models/adetailer`, refresh models         |
+| No change in faces  | Lower confidence slightly, raise denoise, check AD prompt        |
+| OOM                 | Lower inpaint size, enable Low VRAM, use smaller diffusion quant |

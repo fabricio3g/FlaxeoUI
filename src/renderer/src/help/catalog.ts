@@ -305,15 +305,7 @@ Fullscreen image viewer:
     id: 'animatediff',
     title: 'AnimateDiff',
     section: 'Power tools',
-    keywords: [
-      'animatediff',
-      'motion',
-      'motion-module',
-      'sd15',
-      'video',
-      'animation',
-      'mm_sd15'
-    ],
+    keywords: ['animatediff', 'motion', 'motion-module', 'sd15', 'video', 'animation', 'mm_sd15'],
     body: `# AnimateDiff
 
 AnimateDiff adds a **motion module** to SD 1.5 for short animations via \`-M vid_gen --motion-module\`.
@@ -337,16 +329,7 @@ See \`docs/user-guide/animatediff.md\` and [sd.cpp animatediff.md](https://githu
     id: 'adetailer',
     title: 'ADetailer',
     section: 'Power tools',
-    keywords: [
-      'adetailer',
-      'face',
-      'yolo',
-      'inpaint',
-      'detailer',
-      'detect',
-      'ad-model',
-      'repair'
-    ],
+    keywords: ['adetailer', 'face', 'yolo', 'inpaint', 'detailer', 'detect', 'ad-model', 'repair'],
     body: `# ADetailer
 
 ADetailer runs a **YOLOv8** detector, then a **cropped inpaint** on each detection. Powered by [stable-diffusion.cpp ADetailer](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/adetailer.md).

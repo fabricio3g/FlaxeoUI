@@ -15,9 +15,7 @@ export function notifyComposerPopoverOpen(id: ComposerPopoverId): void {
   window.dispatchEvent(new CustomEvent(FLAXEO_COMPOSER_POPOVER, { detail: { id } }))
 }
 
-export function onComposerPopoverOpen(
-  handler: (id: ComposerPopoverId) => void
-): () => void {
+export function onComposerPopoverOpen(handler: (id: ComposerPopoverId) => void): () => void {
   if (typeof window === 'undefined') return () => undefined
   const listener = (event: Event): void => {
     const ce = event as CustomEvent<{ id?: ComposerPopoverId }>

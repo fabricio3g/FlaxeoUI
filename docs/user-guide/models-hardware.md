@@ -19,27 +19,27 @@ A **curated list** based on the [stable-diffusion.cpp documentation](https://git
 Default root: app **data** → `models/`  
 Change it in **Settings → Storage → Models root** (and optional per-folder overrides).
 
-| Folder under `models/` | Put here | Used for |
-|------------------------|----------|----------|
-| `diffusion/` | Main checkpoint / GGUF / DiT | Image, edit, most packs |
-| `uncond_diffusion/` | High-noise / second stream | Dual-stream packs |
-| `vae/` | VAE / AE | Many modern packs |
-| `clip/` | CLIP text encoder | Split / modern stacks |
-| `t5xxl/` | T5 encoder | FLUX-style packs |
-| `embeddings_connectors/` | Connectors / embeds | Some DiT stacks |
-| `llm/` | Language model GGUF | Qwen edit, some DiT |
-| `llm_vision/` | Vision LLM | Multimodal edit |
-| `loras/` | LoRA files | Strength in Model panel |
-| `controlnet/` | ControlNet weights | Advanced tools |
-| `photomaker/` | PhotoMaker | Identity |
-| `adetailer/` | YOLOv8 detectors (`.safetensors`) | ADetailer after gen / Gallery repair |
-| `animatediff/` | AnimateDiff motion modules | Video SD1.5 motion (`--motion-module`) |
-| `upscale/` | ESRGAN etc. | Gallery / queue upscale |
-| `hires_upscalers/` | Hires upscale models | Highres workflows |
-| `taesd/` | Tiny AE | Faster live preview (TAE) |
-| `embeddings/` | Textual inversion | Prompt embeds |
-| `clip_vision/` | CLIP vision | Specialty packs |
-| `audio_vae/` | Audio VAE | Audio-capable packs |
+| Folder under `models/`   | Put here                          | Used for                               |
+| ------------------------ | --------------------------------- | -------------------------------------- |
+| `diffusion/`             | Main checkpoint / GGUF / DiT      | Image, edit, most packs                |
+| `uncond_diffusion/`      | High-noise / second stream        | Dual-stream packs                      |
+| `vae/`                   | VAE / AE                          | Many modern packs                      |
+| `clip/`                  | CLIP text encoder                 | Split / modern stacks                  |
+| `t5xxl/`                 | T5 encoder                        | FLUX-style packs                       |
+| `embeddings_connectors/` | Connectors / embeds               | Some DiT stacks                        |
+| `llm/`                   | Language model GGUF               | Qwen edit, some DiT                    |
+| `llm_vision/`            | Vision LLM                        | Multimodal edit                        |
+| `loras/`                 | LoRA files                        | Strength in Model panel                |
+| `controlnet/`            | ControlNet weights                | Advanced tools                         |
+| `photomaker/`            | PhotoMaker                        | Identity                               |
+| `adetailer/`             | YOLOv8 detectors (`.safetensors`) | ADetailer after gen / Gallery repair   |
+| `animatediff/`           | AnimateDiff motion modules        | Video SD1.5 motion (`--motion-module`) |
+| `upscale/`               | ESRGAN etc.                       | Gallery / queue upscale                |
+| `hires_upscalers/`       | Hires upscale models              | Highres workflows                      |
+| `taesd/`                 | Tiny AE                           | Faster live preview (TAE)              |
+| `embeddings/`            | Textual inversion                 | Prompt embeds                          |
+| `clip_vision/`           | CLIP vision                       | Specialty packs                        |
+| `audio_vae/`             | Audio VAE                         | Audio-capable packs                    |
 
 **Outputs** and **temp** are separate dirs under Settings → Storage (not inside `models/`).
 
@@ -47,10 +47,10 @@ After adding files manually, open the Model panel and **refresh** so Flaxeo sees
 
 ## How to pick models in the UI
 
-| Load mode | When |
-|-----------|------|
-| **Standard** | Single-file / classic checkpoint workflow |
-| **Split** | Diffusion + separate VAE / encoders / LLM (common for modern packs) |
+| Load mode    | When                                                                |
+| ------------ | ------------------------------------------------------------------- |
+| **Standard** | Single-file / classic checkpoint workflow                           |
+| **Split**    | Diffusion + separate VAE / encoders / LLM (common for modern packs) |
 
 Select each file from the dropdowns (diffusion, VAE, CLIP, T5, LLM, LoRAs). Hub packs set these for you when you apply a pack.
 
@@ -62,9 +62,9 @@ Select each file from the dropdowns (diffusion, VAE, CLIP, T5, LLM, LoRAs). Hub 
 
 ## CLI vs Server
 
-| Mode | Best for |
-|------|----------|
-| **CLI** | Default. Edit, video, batch, uploads — full features. |
+| Mode       | Best for                                                              |
+| ---------- | --------------------------------------------------------------------- |
+| **CLI**    | Default. Edit, video, batch, uploads — full features.                 |
 | **Server** | Warm multi-gen for simple Text2Image. Advanced jobs fall back to CLI. |
 
 ## Quantize

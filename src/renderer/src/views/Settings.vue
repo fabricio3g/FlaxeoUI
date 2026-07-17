@@ -30,21 +30,14 @@ import {
   type LanTransport
 } from '../../../shared/lan'
 import { setRemoteAccessLevel, useRemoteSession } from '@/composables/useRemoteSession'
-import {
-  useOutputPreferences,
-  type ArchiveImageFormat
-} from '@/composables/useOutputPreferences'
+import { useOutputPreferences, type ArchiveImageFormat } from '@/composables/useOutputPreferences'
 
 const { reopenSetup } = useSetup()
 const { themePreference, setTheme } = useTheme()
 const { fetchCapabilities } = useBackendCapabilities()
 const { isRemote, accessLevel } = useRemoteSession()
-const {
-  defaultSaveFormat,
-  autoDownloadGenerated,
-  setDefaultSaveFormat,
-  setAutoDownloadGenerated
-} = useOutputPreferences()
+const { defaultSaveFormat, autoDownloadGenerated, setDefaultSaveFormat, setAutoDownloadGenerated } =
+  useOutputPreferences()
 
 type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
 
@@ -1134,8 +1127,8 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                   <div>
                     <p class="text-sm font-medium">Store generations as</p>
                     <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                      AVIF stages PNG in temp and publishes AVIF only to Image output. PNG keeps
-                      raw outputs (best for reuse-settings from file metadata).
+                      AVIF stages PNG in temp and publishes AVIF only to Image output. PNG keeps raw
+                      outputs (best for reuse-settings from file metadata).
                     </p>
                     <div class="mt-2 flex flex-wrap gap-2">
                       <button
@@ -1173,8 +1166,8 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                   <div>
                     <p class="text-sm font-medium">Default save / archive format</p>
                     <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
-                      Used by Download and by automatic download. You can still pick PNG or AVIF
-                      per save from the workspace Download menu.
+                      Used by Download and by automatic download. You can still pick PNG or AVIF per
+                      save from the workspace Download menu.
                     </p>
                     <div class="mt-2 flex flex-wrap gap-2">
                       <button
@@ -1210,16 +1203,16 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       class="mt-0.5 size-4 rounded border-input accent-foreground"
                       :checked="autoDownloadGenerated"
                       @change="
-                        setAutoDownloadGenerated(
-                          ($event.target as HTMLInputElement).checked
-                        )
+                        setAutoDownloadGenerated(($event.target as HTMLInputElement).checked)
                       "
                     />
                     <span>
-                      <span class="block text-sm font-medium">Download generated images automatically</span>
+                      <span class="block text-sm font-medium"
+                        >Download generated images automatically</span
+                      >
                       <span class="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-                        After a successful generation, save outputs with the default archive
-                        format (same as the workspace Download button).
+                        After a successful generation, save outputs with the default archive format
+                        (same as the workspace Download button).
                       </span>
                     </span>
                   </label>

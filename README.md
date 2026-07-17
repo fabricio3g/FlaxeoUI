@@ -4,7 +4,7 @@
 
 ![Build Status](https://github.com/fabricio3g/FlaxeoUI/workflows/Build%20and%20Release/badge.svg)
 
-**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** 
+**Local. Fast. Beautiful.** A desktop studio for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**
 
 ![Flaxeo Image Screenshot](screenshot/screenshot.png)
 
@@ -105,8 +105,6 @@ UI workspaces → Express routes → sd.ts arg builders → sd-cli / sd-server
 ## Credits
 
 UI for **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by **[@leejet](https://github.com/leejet)**.
-
-
 
 ## License
 

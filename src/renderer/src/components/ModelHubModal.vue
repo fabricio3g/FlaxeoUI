@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import {
-  Check,
-  ChevronLeft,
-  Download,
-  ExternalLink,
-  Loader2,
-  Search,
-  X
-} from '@/lib/icons'
+import { Check, ChevronLeft, Download, ExternalLink, Loader2, Search, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { apiPost } from '@/services/api'
 import { useModels } from '@/composables/useModels'
@@ -125,9 +117,7 @@ function applyPreset(model = activeModel.value): void {
   if (motionModule || standardModel) {
     configStore.updateConfig({
       ...(motionModule ? { motionModule } : {}),
-      ...(standardModel
-        ? { standardModel, loadMode: 'standard' as const, videoMode: true }
-        : {})
+      ...(standardModel ? { standardModel, loadMode: 'standard' as const, videoMode: true } : {})
     })
   }
   toast.success(`Applied ${model.name}`)
@@ -429,9 +419,7 @@ onUnmounted(() => {
                         @click="selectPack(model.id)"
                       >
                         <div class="flex items-start justify-between gap-2">
-                          <span class="text-lg font-semibold tracking-tight">{{
-                            model.name
-                          }}</span>
+                          <span class="text-lg font-semibold tracking-tight">{{ model.name }}</span>
                           <Check
                             v-if="packReady(model)"
                             class="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"

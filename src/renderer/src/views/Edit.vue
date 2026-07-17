@@ -43,30 +43,17 @@ import { resolutionPresets } from '@/lib/resolutionPresets'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
 import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
-import {
-  readImageNaturalSize,
-  useRefEditSizePrefs
-} from '@/composables/useRefEditSizePrefs'
-import {
-  LIVE_PREVIEW_METHOD_OPTIONS,
-  useLivePreview
-} from '@/composables/useLivePreview'
-import {
-  REF_IMAGE_PRESET_OPTIONS,
-  resolveRefImagePreset
-} from '../../../shared/refImageArgs'
+import { readImageNaturalSize, useRefEditSizePrefs } from '@/composables/useRefEditSizePrefs'
+import { LIVE_PREVIEW_METHOD_OPTIONS, useLivePreview } from '@/composables/useLivePreview'
+import { REF_IMAGE_PRESET_OPTIONS, resolveRefImagePreset } from '../../../shared/refImageArgs'
 
 const router = useRouter()
 const toast = useToast()
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const { supportsRefImageArgs, refImageCliFlag, fetchCapabilities } = useBackendCapabilities()
-const {
-  refEditSizeMode,
-  refSizePromptDisabled,
-  setRefEditSizeMode,
-  setRefSizePromptDisabled
-} = useRefEditSizePrefs()
+const { refEditSizeMode, refSizePromptDisabled, setRefEditSizeMode, setRefSizePromptDisabled } =
+  useRefEditSizePrefs()
 
 type EditMode = 'inpaint' | 'ref' | 'img2img'
 
@@ -133,13 +120,9 @@ interface RefChip {
 const refChips = ref<RefChip[]>([])
 
 /** Ref Edit + Img2Img can choose studio W×H; Inpaint always follows source. */
-const freeSizeMode = computed(
-  () => editMode.value === 'ref' || editMode.value === 'img2img'
-)
+const freeSizeMode = computed(() => editMode.value === 'ref' || editMode.value === 'img2img')
 
-const matchSizeLabel = computed(() =>
-  editMode.value === 'img2img' ? 'Match source' : 'Match ref'
-)
+const matchSizeLabel = computed(() => (editMode.value === 'img2img' ? 'Match source' : 'Match ref'))
 
 /** Effective output label: studio config or following image when match_ref. */
 const generationStripLabel = computed(() => {
@@ -220,7 +203,9 @@ async function matchRefResolution(): Promise<void> {
       return
     }
     toast.error(
-      editMode.value === 'img2img' ? 'Load a source image first' : 'Add a reference or source image first'
+      editMode.value === 'img2img'
+        ? 'Load a source image first'
+        : 'Add a reference or source image first'
     )
   } catch {
     toast.error('Could not read image dimensions')
@@ -355,11 +340,7 @@ function onCropCancel(): void {
   cropEditor.value = null
 }
 
-async function onCropApply(payload: {
-  file: File
-  width: number
-  height: number
-}): Promise<void> {
+async function onCropApply(payload: { file: File; width: number; height: number }): Promise<void> {
   if (!cropEditor.value) return
   const editor = cropEditor.value
 
@@ -1450,10 +1431,7 @@ onUnmounted(() => {
               />
             </label>
           </div>
-          <div
-            v-else-if="editMode === 'img2img'"
-            class="flex shrink-0 items-center gap-1 pl-0.5"
-          >
+          <div v-else-if="editMode === 'img2img'" class="flex shrink-0 items-center gap-1 pl-0.5">
             <label
               class="flex h-8 items-center gap-1.5 rounded-full border border-transparent px-2 transition-colors duration-150 hover:border-border hover:bg-background/70"
             >
@@ -1686,7 +1664,10 @@ onUnmounted(() => {
                       ? 'Output size follows the source image natural pixels'
                       : 'Output size follows the first reference’s natural pixels'
                   "
-                  @click="setRefEditSizeMode('match_ref'); refreshMatchRefSize()"
+                  @click="
+                    setRefEditSizeMode('match_ref')
+                    refreshMatchRefSize()
+                  "
                 >
                   {{ matchSizeLabel }}
                 </button>
@@ -1771,9 +1752,7 @@ onUnmounted(() => {
                   @click="matchRefResolution"
                 >
                   {{
-                    editMode === 'img2img'
-                      ? 'Use source size as studio'
-                      : 'Use ref size as studio'
+                    editMode === 'img2img' ? 'Use source size as studio' : 'Use ref size as studio'
                   }}
                 </button>
                 <button
@@ -1864,10 +1843,7 @@ onUnmounted(() => {
                   </label>
                 </div>
 
-                <div
-                  v-if="freeSizeMode"
-                  class="mt-3 space-y-2 border-t border-border/60 pt-3"
-                >
+                <div v-if="freeSizeMode" class="mt-3 space-y-2 border-t border-border/60 pt-3">
                   <p class="text-[10px] font-medium text-muted-foreground">
                     Output size ({{ editMode === 'img2img' ? 'Img2Img' : 'Ref Edit' }})
                   </p>
@@ -1892,7 +1868,10 @@ onUnmounted(() => {
                           ? 'bg-foreground text-background'
                           : 'text-muted-foreground'
                       "
-                      @click="setRefEditSizeMode('match_ref'); refreshMatchRefSize()"
+                      @click="
+                        setRefEditSizeMode('match_ref')
+                        refreshMatchRefSize()
+                      "
                     >
                       {{ matchSizeLabel }}
                     </button>
@@ -1982,15 +1961,15 @@ onUnmounted(() => {
                 "
                 position="top"
               >
-              <button
-                type="button"
-                @click="handleGenerate"
-                :disabled="!canSubmitEdit"
-                class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
-                :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"
-              >
-                <ArrowUp class="size-4 stroke-[2.5]" />
-              </button>
+                <button
+                  type="button"
+                  @click="handleGenerate"
+                  :disabled="!canSubmitEdit"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"
+                >
+                  <ArrowUp class="size-4 stroke-[2.5]" />
+                </button>
               </Tooltip>
             </div>
           </div>

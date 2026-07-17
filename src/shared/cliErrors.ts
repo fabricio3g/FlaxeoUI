@@ -41,8 +41,7 @@ export function humanizeCliError(raw: unknown): HumanizedError {
   ) {
     return {
       title: 'ADetailer detector missing',
-      detail:
-        'Place a converted YOLOv8 .safetensors detector in models/adetailer and select it.',
+      detail: 'Place a converted YOLOv8 .safetensors detector in models/adetailer and select it.',
       hint: 'See Help → ADetailer for conversion steps (face_yolov8n.pt → .safetensors).'
     }
   }

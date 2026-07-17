@@ -52,10 +52,7 @@ import { useRemoteSession } from '@/composables/useRemoteSession'
 import { onStarterPrompt } from '@/lib/appEvents'
 import { requestConfirm } from '@/composables/useConfirm'
 import { downloadOutputAsFormat } from '@/lib/mediaExport'
-import {
-  useOutputPreferences,
-  type ArchiveImageFormat
-} from '@/composables/useOutputPreferences'
+import { useOutputPreferences, type ArchiveImageFormat } from '@/composables/useOutputPreferences'
 
 const toast = useToast()
 const { markFirstImageDone } = useSetup()
@@ -145,9 +142,7 @@ const { addEntry: addHistoryEntry } = useGenerationHistory()
 
 const adetailerModelOptions = computed(() => [
   {
-    label: models.value.adetailer?.length
-      ? 'Select detector…'
-      : 'No models in models/adetailer',
+    label: models.value.adetailer?.length ? 'Select detector…' : 'No models in models/adetailer',
     value: ''
   },
   ...(models.value.adetailer || []).map((m) => ({ label: m, value: m }))
@@ -556,11 +551,7 @@ function onImageToolCropCancel(): void {
   imageToolCrop.value = null
 }
 
-function onImageToolCropApply(payload: {
-  file: File
-  width: number
-  height: number
-}): void {
+function onImageToolCropApply(payload: { file: File; width: number; height: number }): void {
   if (!imageToolCrop.value) return
   const target = imageToolCrop.value.target
   const url = URL.createObjectURL(payload.file)
@@ -978,8 +969,7 @@ async function clearSessionScreen(): Promise<void> {
   if (galleryImages.value.length >= 3) {
     const ok = await requestConfirm({
       title: 'Clear screen',
-      message:
-        'Clear this session from the workspace? Images stay in Gallery and on disk.',
+      message: 'Clear this session from the workspace? Images stay in Gallery and on disk.',
       confirmLabel: 'Clear screen',
       danger: false
     })
@@ -1026,7 +1016,11 @@ async function autoDownloadOutputs(names: string[]): Promise<void> {
     }
   }
   if (ok > 0) {
-    toast.info(ok > 1 ? `Auto-saved ${ok} images as ${format.toUpperCase()}` : `Auto-saved as ${format.toUpperCase()}`)
+    toast.info(
+      ok > 1
+        ? `Auto-saved ${ok} images as ${format.toUpperCase()}`
+        : `Auto-saved as ${format.toUpperCase()}`
+    )
   }
 }
 
@@ -1499,20 +1493,15 @@ onActivated(() => {
                 @click="onSessionThumbClick(img)"
                 class="relative size-14 shrink-0 snap-start overflow-hidden rounded-xl opacity-70 transition-all duration-150 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/40 md:size-16"
                 :class="
-                  !isGenerating &&
-                  (selectedFilename === img || currentImageFilename === img)
+                  !isGenerating && (selectedFilename === img || currentImageFilename === img)
                     ? 'opacity-100 ring-1 ring-foreground/30'
                     : showImageViewer && viewerFilename === img
                       ? 'opacity-100 ring-1 ring-foreground/20'
                       : ''
                 "
-                :title="
-                  isGenerating ? `View ${img} (opens viewer)` : `Show ${img}`
-                "
+                :title="isGenerating ? `View ${img} (opens viewer)` : `Show ${img}`"
                 :aria-label="
-                  isGenerating
-                    ? `Open generation ${img} in viewer`
-                    : `Select generation ${img}`
+                  isGenerating ? `Open generation ${img} in viewer` : `Select generation ${img}`
                 "
               >
                 <img
@@ -1577,10 +1566,7 @@ onActivated(() => {
               <Image class="size-4" />
             </button>
           </Tooltip>
-          <Tooltip
-            text="Reference — multi-ref for Kontext / Anima / Qwen edit (-r)"
-            position="top"
-          >
+          <Tooltip text="Reference — multi-ref for Kontext / Anima / Qwen edit (-r)" position="top">
             <button
               type="button"
               class="aui-icon-button inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -1791,318 +1777,317 @@ onActivated(() => {
                   </p>
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+                  <div class="grid grid-cols-3 gap-2">
+                    <label class="text-xs font-medium text-muted-foreground">
+                      Steps
+                      <input
+                        v-model.number="config.steps"
+                        type="number"
+                        min="1"
+                        max="150"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                      />
+                    </label>
+                    <label class="text-xs font-medium text-muted-foreground">
+                      CFG
+                      <input
+                        v-model.number="config.cfgScale"
+                        type="number"
+                        min="0"
+                        max="30"
+                        step="0.5"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                      />
+                    </label>
+                    <label class="text-xs font-medium text-muted-foreground">
+                      Batch
+                      <input
+                        v-model.number="config.batchCount"
+                        type="number"
+                        min="1"
+                        max="16"
+                        title="Number of images per job (-b)"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                        @change="
+                          configStore.updateConfig({
+                            batchCount: clampBatchCount(config.batchCount)
+                          })
+                        "
+                      />
+                    </label>
+                  </div>
 
-                <div class="grid grid-cols-3 gap-2">
-                  <label class="text-xs font-medium text-muted-foreground">
-                    Steps
-                    <input
-                      v-model.number="config.steps"
-                      type="number"
-                      min="1"
-                      max="150"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
-                    />
-                  </label>
-                  <label class="text-xs font-medium text-muted-foreground">
-                    CFG
-                    <input
-                      v-model.number="config.cfgScale"
-                      type="number"
-                      min="0"
-                      max="30"
-                      step="0.5"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
-                    />
-                  </label>
-                  <label class="text-xs font-medium text-muted-foreground">
-                    Batch
-                    <input
-                      v-model.number="config.batchCount"
-                      type="number"
-                      min="1"
-                      max="16"
-                      title="Number of images per job (-b)"
-                      class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
-                      @change="
-                        configStore.updateConfig({
-                          batchCount: clampBatchCount(config.batchCount)
-                        })
-                      "
-                    />
-                  </label>
-                </div>
+                  <button
+                    type="button"
+                    class="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-border/70 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+                    :disabled="!prompt.trim()"
+                    title="Enqueue 4 jobs with different random seeds"
+                    @click="queueSeedVariants(4)"
+                  >
+                    Queue 4 seed variants
+                  </button>
 
-                <button
-                  type="button"
-                  class="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-border/70 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                  :disabled="!prompt.trim()"
-                  title="Enqueue 4 jobs with different random seeds"
-                  @click="queueSeedVariants(4)"
-                >
-                  Queue 4 seed variants
-                </button>
-
-                <label
-                  v-if="supportsUpscale && models.upscale.length"
-                  class="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-foreground"
-                >
-                  <input
-                    v-model="queueUpscaleAfter"
-                    type="checkbox"
-                    class="mt-0.5 rounded border-border"
-                  />
-                  <span>
-                    Queue upscale after success
-                    <span class="mt-0.5 block text-xs text-muted-foreground">
-                      Uses first model in models/upscale
-                    </span>
-                  </span>
-                </label>
-
-                <!-- ADetailer (post-gen YOLOv8 face/object repair) -->
-                <div
-                  class="mt-3 space-y-2 rounded-md border border-border/70 p-2.5"
-                  :class="!supportsAdetailer ? 'opacity-60' : ''"
-                >
-                  <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+                  <label
+                    v-if="supportsUpscale && models.upscale.length"
+                    class="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-foreground"
+                  >
                     <input
-                      v-model="config.adetailerEnabled"
+                      v-model="queueUpscaleAfter"
                       type="checkbox"
                       class="mt-0.5 rounded border-border"
-                      :disabled="!supportsAdetailer"
                     />
                     <span>
-                      ADetailer after generate
+                      Queue upscale after success
                       <span class="mt-0.5 block text-xs text-muted-foreground">
-                        <template v-if="!supportsAdetailer">
-                          Backend lacks --ad-model — upgrade stable-diffusion.cpp
-                        </template>
-                        <template v-else>
-                          Detect + inpaint (YOLOv8). Models in models/adetailer
-                        </template>
+                        Uses first model in models/upscale
                       </span>
                     </span>
                   </label>
-                  <template v-if="config.adetailerEnabled && supportsAdetailer">
-                    <label class="block text-xs text-muted-foreground">
-                      Detector
-                      <Select
-                        class="mt-1 w-full"
-                        :model-value="config.adetailerModel"
-                        :options="adetailerModelOptions"
-                        @update:model-value="
-                          (v) => configStore.updateConfig({ adetailerModel: String(v || '') })
-                        "
-                      />
-                    </label>
-                    <label class="block text-xs text-muted-foreground">
-                      AD prompt
+
+                  <!-- ADetailer (post-gen YOLOv8 face/object repair) -->
+                  <div
+                    class="mt-3 space-y-2 rounded-md border border-border/70 p-2.5"
+                    :class="!supportsAdetailer ? 'opacity-60' : ''"
+                  >
+                    <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
                       <input
-                        v-model="config.adetailerPrompt"
-                        type="text"
-                        placeholder="[PROMPT], detailed face"
-                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                        v-model="config.adetailerEnabled"
+                        type="checkbox"
+                        class="mt-0.5 rounded border-border"
+                        :disabled="!supportsAdetailer"
                       />
+                      <span>
+                        ADetailer after generate
+                        <span class="mt-0.5 block text-xs text-muted-foreground">
+                          <template v-if="!supportsAdetailer">
+                            Backend lacks --ad-model — upgrade stable-diffusion.cpp
+                          </template>
+                          <template v-else>
+                            Detect + inpaint (YOLOv8). Models in models/adetailer
+                          </template>
+                        </span>
+                      </span>
                     </label>
-                    <label class="block text-xs text-muted-foreground">
-                      AD negative
-                      <input
-                        v-model="config.adetailerNegativePrompt"
-                        type="text"
-                        placeholder="deformed face"
-                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
-                      />
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <template v-if="config.adetailerEnabled && supportsAdetailer">
                       <label class="block text-xs text-muted-foreground">
-                        Confidence
-                        <input
-                          v-model.number="config.adetailerConfidence"
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Denoise
-                        <input
-                          v-model.number="config.adetailerDenoisingStrength"
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Inpaint W
-                        <input
-                          v-model.number="config.adetailerInpaintWidth"
-                          type="number"
-                          min="64"
-                          step="64"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Inpaint H
-                        <input
-                          v-model.number="config.adetailerInpaintHeight"
-                          type="number"
-                          min="64"
-                          step="64"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Padding
-                        <input
-                          v-model.number="config.adetailerInpaintPadding"
-                          type="number"
-                          min="0"
-                          step="1"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Mask blur
-                        <input
-                          v-model.number="config.adetailerMaskBlur"
-                          type="number"
-                          min="0"
-                          step="1"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Largest K
-                        <input
-                          v-model.number="config.adetailerMaskKLargest"
-                          type="number"
-                          min="0"
-                          step="1"
-                          title="0 = all detections"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
-                        />
-                      </label>
-                      <label class="block text-xs text-muted-foreground">
-                        Mask mode
+                        Detector
                         <Select
                           class="mt-1 w-full"
-                          :model-value="config.adetailerMaskMode"
-                          :options="adetailerMaskModeOptions"
+                          :model-value="config.adetailerModel"
+                          :options="adetailerModelOptions"
                           @update:model-value="
-                            (v) =>
-                              configStore.updateConfig({ adetailerMaskMode: String(v || 'none') })
+                            (v) => configStore.updateConfig({ adetailerModel: String(v || '') })
                           "
                         />
                       </label>
+                      <label class="block text-xs text-muted-foreground">
+                        AD prompt
+                        <input
+                          v-model="config.adetailerPrompt"
+                          type="text"
+                          placeholder="[PROMPT], detailed face"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        AD negative
+                        <input
+                          v-model="config.adetailerNegativePrompt"
+                          type="text"
+                          placeholder="deformed face"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <div class="grid grid-cols-2 gap-2">
+                        <label class="block text-xs text-muted-foreground">
+                          Confidence
+                          <input
+                            v-model.number="config.adetailerConfidence"
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Denoise
+                          <input
+                            v-model.number="config.adetailerDenoisingStrength"
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Inpaint W
+                          <input
+                            v-model.number="config.adetailerInpaintWidth"
+                            type="number"
+                            min="64"
+                            step="64"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Inpaint H
+                          <input
+                            v-model.number="config.adetailerInpaintHeight"
+                            type="number"
+                            min="64"
+                            step="64"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Padding
+                          <input
+                            v-model.number="config.adetailerInpaintPadding"
+                            type="number"
+                            min="0"
+                            step="1"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Mask blur
+                          <input
+                            v-model.number="config.adetailerMaskBlur"
+                            type="number"
+                            min="0"
+                            step="1"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Largest K
+                          <input
+                            v-model.number="config.adetailerMaskKLargest"
+                            type="number"
+                            min="0"
+                            step="1"
+                            title="0 = all detections"
+                            class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                          />
+                        </label>
+                        <label class="block text-xs text-muted-foreground">
+                          Mask mode
+                          <Select
+                            class="mt-1 w-full"
+                            :model-value="config.adetailerMaskMode"
+                            :options="adetailerMaskModeOptions"
+                            @update:model-value="
+                              (v) =>
+                                configStore.updateConfig({ adetailerMaskMode: String(v || 'none') })
+                            "
+                          />
+                        </label>
+                      </div>
+                      <label class="block text-xs text-muted-foreground">
+                        Extra args
+                        <input
+                          v-model="config.adetailerExtraArgs"
+                          type="text"
+                          placeholder="input_size=640,nms=0.45"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground outline-none"
+                        />
+                      </label>
+                    </template>
+                  </div>
+
+                  <div class="mt-3">
+                    <div class="mb-1 flex items-center justify-between gap-2">
+                      <span class="text-[10px] font-medium text-muted-foreground">Seed</span>
+                      <div class="flex items-center gap-0.5">
+                        <Tooltip
+                          :text="
+                            config.seedLocked
+                              ? 'Unlock seed (random next gen)'
+                              : 'Lock seed for reproducibility'
+                          "
+                          position="top"
+                        >
+                          <button
+                            type="button"
+                            class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            :aria-label="config.seedLocked ? 'Unlock seed' : 'Lock seed'"
+                            :aria-pressed="config.seedLocked"
+                            @click="toggleSeedLock"
+                          >
+                            <Lock v-if="config.seedLocked" class="size-3.5" />
+                            <LockOpen v-else class="size-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip text="Randomize seed" position="top">
+                          <button
+                            type="button"
+                            class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label="Randomize seed"
+                            @click="randomizeSeed"
+                          >
+                            <Dices class="size-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip text="Copy seed" position="top">
+                          <button
+                            type="button"
+                            class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label="Copy seed"
+                            @click="copySeed"
+                          >
+                            <Copy class="size-3.5" />
+                          </button>
+                        </Tooltip>
+                      </div>
                     </div>
-                    <label class="block text-xs text-muted-foreground">
-                      Extra args
-                      <input
-                        v-model="config.adetailerExtraArgs"
-                        type="text"
-                        placeholder="input_size=640,nms=0.45"
-                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground outline-none"
+                    <input
+                      v-model.number="config.seed"
+                      type="number"
+                      min="-1"
+                      title="Use -1 for a random seed when unlocked"
+                      class="aui-field h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none"
+                      @change="
+                        () => {
+                          if (config.seed >= 0) configStore.updateConfig({ seedLocked: true })
+                        }
+                      "
+                    />
+                    <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
+                      {{
+                        config.seedLocked
+                          ? 'Locked — same seed on every generate.'
+                          : 'Unlocked — CLI picks a random seed (-1) each run.'
+                      }}
+                      <span v-if="config.batchCount > 1">
+                        Batch {{ clampBatchCount(config.batchCount) }} uses -b on sd-cli.
+                      </span>
+                    </p>
+                  </div>
+
+                  <div class="mt-3 space-y-2">
+                    <label class="block text-[10px] font-medium text-muted-foreground">
+                      Scheduler
+                      <Select
+                        v-model="config.scheduler"
+                        size="sm"
+                        aria-label="Scheduler"
+                        class="mt-1"
+                        :options="schedulerOptions"
                       />
                     </label>
-                  </template>
-                </div>
-
-                <div class="mt-3">
-                  <div class="mb-1 flex items-center justify-between gap-2">
-                    <span class="text-[10px] font-medium text-muted-foreground">Seed</span>
-                    <div class="flex items-center gap-0.5">
-                      <Tooltip
-                        :text="
-                          config.seedLocked
-                            ? 'Unlock seed (random next gen)'
-                            : 'Lock seed for reproducibility'
-                        "
-                        position="top"
-                      >
-                        <button
-                          type="button"
-                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          :aria-label="config.seedLocked ? 'Unlock seed' : 'Lock seed'"
-                          :aria-pressed="config.seedLocked"
-                          @click="toggleSeedLock"
-                        >
-                          <Lock v-if="config.seedLocked" class="size-3.5" />
-                          <LockOpen v-else class="size-3.5" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip text="Randomize seed" position="top">
-                        <button
-                          type="button"
-                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          aria-label="Randomize seed"
-                          @click="randomizeSeed"
-                        >
-                          <Dices class="size-3.5" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip text="Copy seed" position="top">
-                        <button
-                          type="button"
-                          class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          aria-label="Copy seed"
-                          @click="copySeed"
-                        >
-                          <Copy class="size-3.5" />
-                        </button>
-                      </Tooltip>
-                    </div>
+                    <label class="block text-[10px] font-medium text-muted-foreground">
+                      Sampler
+                      <Select
+                        v-model="config.sampler"
+                        size="sm"
+                        aria-label="Sampler"
+                        class="mt-1"
+                        :options="samplerOptions"
+                      />
+                    </label>
                   </div>
-                  <input
-                    v-model.number="config.seed"
-                    type="number"
-                    min="-1"
-                    title="Use -1 for a random seed when unlocked"
-                    class="aui-field h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none"
-                    @change="
-                      () => {
-                        if (config.seed >= 0) configStore.updateConfig({ seedLocked: true })
-                      }
-                    "
-                  />
-                  <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
-                    {{
-                      config.seedLocked
-                        ? 'Locked — same seed on every generate.'
-                        : 'Unlocked — CLI picks a random seed (-1) each run.'
-                    }}
-                    <span v-if="config.batchCount > 1">
-                      Batch {{ clampBatchCount(config.batchCount) }} uses -b on sd-cli.
-                    </span>
-                  </p>
-                </div>
-
-                <div class="mt-3 space-y-2">
-                  <label class="block text-[10px] font-medium text-muted-foreground">
-                    Scheduler
-                    <Select
-                      v-model="config.scheduler"
-                      size="sm"
-                      aria-label="Scheduler"
-                      class="mt-1"
-                      :options="schedulerOptions"
-                    />
-                  </label>
-                  <label class="block text-[10px] font-medium text-muted-foreground">
-                    Sampler
-                    <Select
-                      v-model="config.sampler"
-                      size="sm"
-                      aria-label="Sampler"
-                      class="mt-1"
-                      :options="samplerOptions"
-                    />
-                  </label>
-                </div>
                 </div>
                 <!-- /scroll body -->
               </PopoverContent>
@@ -2119,10 +2104,7 @@ onActivated(() => {
                   <Square class="size-3.5 fill-current" />
                 </button>
               </Tooltip>
-              <Tooltip
-                :text="isGenerating ? 'Add to queue' : 'Generate image'"
-                position="top"
-              >
+              <Tooltip :text="isGenerating ? 'Add to queue' : 'Generate image'" position="top">
                 <button
                   type="button"
                   @click="handleGenerate"

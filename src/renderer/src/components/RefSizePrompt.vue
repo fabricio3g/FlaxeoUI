@@ -46,16 +46,17 @@ function onDontAskChange(e: Event): void {
         >
           <header class="flex items-start gap-3 px-5 pt-5">
             <div class="min-w-0 flex-1">
-              <h2 id="ref-size-title" class="text-base font-semibold tracking-tight text-foreground">
+              <h2
+                id="ref-size-title"
+                class="text-base font-semibold tracking-tight text-foreground"
+              >
                 Output size
               </h2>
               <p class="mt-1.5 text-sm leading-6 text-muted-foreground">
                 This image is
-                <span class="font-mono text-foreground"
-                  >{{ imageWidth }}×{{ imageHeight }}</span
+                <span class="font-mono text-foreground">{{ imageWidth }}×{{ imageHeight }}</span
                 >. Output target is
-                <span class="font-mono text-foreground"
-                  >{{ targetWidth }}×{{ targetHeight }}</span
+                <span class="font-mono text-foreground">{{ targetWidth }}×{{ targetHeight }}</span
                 >.
               </p>
             </div>

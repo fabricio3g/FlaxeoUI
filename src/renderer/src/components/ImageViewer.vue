@@ -120,10 +120,7 @@ async function saveImageFile(): Promise<void> {
     toast.error('No image to save')
     return
   }
-  const filename =
-    props.filename ||
-    props.src.split('/').pop()?.split('?')[0] ||
-    'image.png'
+  const filename = props.filename || props.src.split('/').pop()?.split('?')[0] || 'image.png'
   try {
     await downloadOutputAsFormat(filename, defaultSaveFormat.value, {
       prompt: metadata.value?.prompt,

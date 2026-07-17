@@ -131,7 +131,9 @@ export function buildExtraAdArgs(body: Record<string, unknown>): string | undefi
   const sortBy = String(body.adetailerSortBy ?? body.ad_sort_by ?? '').trim()
   if (sortBy && sortBy !== 'none') parts.push(`sort_by=${sortBy}`)
 
-  const extra = String(body.adetailerExtraArgs ?? body.extra_ad_args ?? body.extraAdArgs ?? '').trim()
+  const extra = String(
+    body.adetailerExtraArgs ?? body.extra_ad_args ?? body.extraAdArgs ?? ''
+  ).trim()
   if (extra) {
     // Allow free-form "k=v,k2=v2" tail without duplicating keys already set
     const existingKeys = new Set(parts.map((p) => p.split('=')[0]))
@@ -203,9 +205,10 @@ function firstNonEmpty(...values: unknown[]): string | undefined {
 export function addHardwareArgs(args: string[], body: Record<string, unknown>, prompt = ''): void {
   // Flash attention stays enabled with LoRA (critical for Anima/Vulkan iGPU).
   // Default true when UI leaves diffusionFa unset.
-  const diffusionFa = body.diffusionFa === undefined || body.diffusionFa === null || body.diffusionFa === ''
-    ? true
-    : body.diffusionFa
+  const diffusionFa =
+    body.diffusionFa === undefined || body.diffusionFa === null || body.diffusionFa === ''
+      ? true
+      : body.diffusionFa
   pushBoolArg(args, '--diffusion-fa', diffusionFa)
   pushBoolArg(args, '--vae-tiling', body.vaeTiling)
   pushBoolArg(args, '--clip-on-cpu', body.clipOnCpu)

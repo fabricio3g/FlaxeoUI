@@ -834,10 +834,16 @@ onUnmounted(() => {
                       (v) => configStore.updateConfig({ motionModule: String(v || '') })
                     "
                   />
-                  <span v-if="!supportsMotionModule" class="mt-1 block text-[10px] text-muted-foreground">
+                  <span
+                    v-if="!supportsMotionModule"
+                    class="mt-1 block text-[10px] text-muted-foreground"
+                  >
                     Backend lacks --motion-module — upgrade stable-diffusion.cpp
                   </span>
-                  <span v-else-if="isAnimateDiff" class="mt-1 block text-[10px] text-muted-foreground">
+                  <span
+                    v-else-if="isAnimateDiff"
+                    class="mt-1 block text-[10px] text-muted-foreground"
+                  >
                     Uses standard SD1.5 checkpoint + CFG 8 / euler. I2V = img2video with strength.
                   </span>
                 </label>
@@ -988,10 +994,7 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <div
-                  v-if="!isAnimateDiff"
-                  class="mt-4 space-y-2 border-t border-border/60 pt-3"
-                >
+                <div v-if="!isAnimateDiff" class="mt-4 space-y-2 border-t border-border/60 pt-3">
                   <p class="text-xs font-medium text-foreground">VACE / control video</p>
                   <p class="text-[10px] leading-4 text-muted-foreground">
                     Directory of frames in lexicographic order (e.g. 00.png, 01.png). Maps to
@@ -1032,10 +1035,7 @@ onUnmounted(() => {
                   <Square class="size-3.5 fill-current" />
                 </button>
               </Tooltip>
-              <Tooltip
-                :text="isGenerating ? 'Add to queue' : 'Generate video'"
-                position="top"
-              >
+              <Tooltip :text="isGenerating ? 'Add to queue' : 'Generate video'" position="top">
                 <button
                   type="button"
                   @click="handleGenerate"

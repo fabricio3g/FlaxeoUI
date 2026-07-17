@@ -107,10 +107,7 @@ onUnmounted(() => {
         </div>
 
         <div class="max-h-[min(22rem,50vh)] overflow-y-auto p-2">
-          <p
-            v-if="!downloads.length"
-            class="px-2 py-6 text-center text-xs text-muted-foreground"
-          >
+          <p v-if="!downloads.length" class="px-2 py-6 text-center text-xs text-muted-foreground">
             No downloads yet. Use Model Hub or Settings → Backend.
           </p>
 
@@ -125,7 +122,10 @@ onUnmounted(() => {
                   <p class="truncate text-xs font-medium text-foreground" :title="task.label">
                     {{ task.label }}
                   </p>
-                  <p class="mt-0.5 truncate text-[10px] text-muted-foreground" :title="task.targetPath">
+                  <p
+                    class="mt-0.5 truncate text-[10px] text-muted-foreground"
+                    :title="task.targetPath"
+                  >
                     {{ task.targetPath }}
                   </p>
                 </div>

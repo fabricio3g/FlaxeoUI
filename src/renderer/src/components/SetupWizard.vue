@@ -559,8 +559,7 @@ watch(selectedRelease, (release) => {
               </p>
               <h3 class="mt-1 text-xl font-semibold tracking-tight">Choose a starter model</h3>
               <p class="mt-1 text-sm text-muted-foreground">
-                Pick one pack to download now, or skip and add models later (Hub or your own
-                files).
+                Pick one pack to download now, or skip and add models later (Hub or your own files).
               </p>
               <p
                 v-if="packRecommendReason"
