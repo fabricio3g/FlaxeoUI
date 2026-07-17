@@ -139,6 +139,25 @@ export interface GenerationConfig {
   initImagePath: string
   img2imgStrength: number
 
+  // ADetailer (YOLOv8 detect + cropped inpaint; sd-cli --ad-model / -M adetailer)
+  adetailerEnabled: boolean
+  adetailerModel: string
+  adetailerPrompt: string
+  adetailerNegativePrompt: string
+  adetailerConfidence: number
+  adetailerDenoisingStrength: number
+  adetailerInpaintPadding: number
+  adetailerMaskBlur: number
+  adetailerInpaintWidth: number
+  adetailerInpaintHeight: number
+  adetailerMaskKLargest: number
+  adetailerMaskMode: string
+  adetailerSortBy: string
+  adetailerExtraArgs: string
+
+  // AnimateDiff motion module (models/animatediff → --motion-module)
+  motionModule: string
+
   // Video mode
   videoMode: boolean
 }
@@ -246,11 +265,31 @@ const defaultConfig: GenerationConfig = {
   refImagePreset: 'auto',
   initImagePath: '',
   img2imgStrength: 0.4,
+  adetailerEnabled: false,
+  adetailerModel: '',
+  adetailerPrompt: '',
+  adetailerNegativePrompt: '',
+  adetailerConfidence: 0.3,
+  adetailerDenoisingStrength: 0.4,
+  adetailerInpaintPadding: 32,
+  adetailerMaskBlur: 4,
+  adetailerInpaintWidth: 512,
+  adetailerInpaintHeight: 512,
+  adetailerMaskKLargest: 0,
+  adetailerMaskMode: 'none',
+  adetailerSortBy: 'none',
+  adetailerExtraArgs: '',
+  motionModule: '',
   videoMode: false
 }
 
 function presetConfig(partial: Partial<GenerationConfig>): GenerationConfig {
-  return normalizeConfig({ ...partial, standardModel: '', diffusionModel: '' })
+  // Clear model filenames by default so presets are pack-agnostic; callers may set names.
+  return normalizeConfig({
+    standardModel: '',
+    diffusionModel: '',
+    ...partial
+  })
 }
 
 const BUILTIN_PRESETS: ConfigPreset[] = [
@@ -676,6 +715,31 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
     })
   },
   {
+    id: 'builtin-animatediff-v3',
+    name: 'AnimateDiff v3 (SD1.5)',
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
+    config: presetConfig({
+      loadMode: 'standard',
+      videoMode: true,
+      // Recommended base from sd.cpp animatediff.md (Realistic Vision V6.0 B1 fp16)
+      standardModel: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors',
+      cfgScale: 8,
+      guidance: 3.5,
+      steps: 20,
+      width: 512,
+      height: 512,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      flowShift: 0,
+      flashAttention: true,
+      cpuOffload: true,
+      motionModule: 'mm_sd15_v3.safetensors',
+      img2imgStrength: 0.75
+    })
+  },
+  {
     id: 'builtin-wan21',
     name: 'Wan2.1 Video',
     builtin: true,
@@ -695,7 +759,8 @@ const BUILTIN_PRESETS: ConfigPreset[] = [
       flashAttention: true,
       cpuOffload: true,
       t5xxlModel: '',
-      vaeModel: ''
+      vaeModel: '',
+      motionModule: ''
     })
   },
   {

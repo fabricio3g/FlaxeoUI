@@ -16,10 +16,8 @@ import SetupWizard from './components/SetupWizard.vue'
 import OnboardingStrip from './components/OnboardingStrip.vue'
 import QueuePanel from './components/QueuePanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
-import { useJobQueue } from './composables/useJobQueue'
 import { useGenerationHistory } from './composables/useGenerationHistory'
 import { useConfigStore } from './stores/config'
-import SegmentedControl from './components/ui/SegmentedControl.vue'
 import Select from './components/ui/Select.vue'
 import Tooltip from './components/ui/Tooltip.vue'
 import { useRuntimeStatus } from './composables/useRuntimeStatus'
@@ -83,7 +81,6 @@ const remotePairingError = ref('')
 const remotePairingBusy = ref(false)
 const remoteTransport = ref<LanTransport>('https')
 const remoteOfferedAccess = ref<LanAccessLevel>('generation')
-const queueBtnRef = ref<HTMLElement | null>(null)
 const historyBtnRef = ref<HTMLElement | null>(null)
 const queueAnchor = ref<{
   top: number
@@ -99,7 +96,6 @@ const historyAnchor = ref<{
   bottom: number
   width: number
 } | null>(null)
-const { pendingCount, current: currentJob } = useJobQueue()
 const { entries: historyEntries } = useGenerationHistory()
 
 /** Optional tip bar — never after skip, permanent dismiss, only while checklist incomplete */
@@ -111,11 +107,6 @@ const showOnboardingStrip = computed(
     !checklistComplete.value &&
     !stripDismissed.value
 )
-
-const queueBadge = computed(() => {
-  const n = pendingCount.value + (currentJob.value ? 1 : 0)
-  return n
-})
 
 const historyCount = computed(() => historyEntries.value.length)
 
@@ -131,18 +122,22 @@ function rectFromEl(el: HTMLElement | null) {
   }
 }
 
-function updateQueueAnchor(): void {
-  queueAnchor.value = rectFromEl(queueBtnRef.value)
-}
-
 function updateHistoryAnchor(): void {
   historyAnchor.value = rectFromEl(historyBtnRef.value)
 }
 
-function toggleQueuePanel(): void {
+function onToggleQueue(
+  anchor: {
+    top: number
+    left: number
+    right: number
+    bottom: number
+    width: number
+  } | null
+): void {
   if (!showQueuePanel.value) {
     showHistoryPanel.value = false
-    updateQueueAnchor()
+    queueAnchor.value = anchor
     showQueuePanel.value = true
   } else {
     showQueuePanel.value = false
@@ -207,10 +202,7 @@ const modelOptions = computed(() => [
     value: model
   }))
 ])
-const backendModeOptions = [
-  { value: 'cli', label: 'CLI' },
-  { value: 'server', label: 'Server' }
-]
+
 
 const currentTab = computed(() => {
   const name = route.name as string
@@ -392,7 +384,6 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
 }
 
 function onWindowResize(): void {
-  updateQueueAnchor()
   updateHistoryAnchor()
 }
 
@@ -589,10 +580,13 @@ onUnmounted(() => {
           :current-tab="currentTab"
           :setup-needed="isSetupNeeded"
           :collapsed="sidebarCollapsed"
+          :queue-open="showQueuePanel"
           @toggle-sidebar="toggleSidebar"
           @toggle-mobile-config="showMobileConfig = !showMobileConfig"
           @toggle-logs="showFloatingLogs = !showFloatingLogs"
           @open-setup="reopenSetup"
+          @update:backend-mode="handleBackendMode"
+          @toggle-queue="onToggleQueue"
         />
 
         <OnboardingStrip
@@ -613,13 +607,6 @@ onUnmounted(() => {
               class="aui-command-strip no-scrollbar absolute left-3 top-1.5 z-30 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 overflow-x-auto whitespace-nowrap titlebar-no-drag md:left-4 md:max-w-[calc(100%-2rem)]"
               @click.stop
             >
-              <SegmentedControl
-                :model-value="config.backendMode"
-                :options="backendModeOptions"
-                size="sm"
-                aria-label="Backend mode"
-                @update:model-value="handleBackendMode"
-              />
               <span
                 v-if="modelsError"
                 class="max-w-[12rem] truncate text-[10px] text-destructive"
@@ -636,25 +623,6 @@ onUnmounted(() => {
                 class="min-w-[11rem] border-0 bg-transparent shadow-none hover:bg-accent md:min-w-[12rem]"
                 @update:model-value="selectModel"
               />
-              <Tooltip text="Job queue — reorder, pause, or cancel runs" position="bottom">
-                <button
-                  ref="queueBtnRef"
-                  type="button"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-                  :class="showQueuePanel || queueBadge ? 'bg-accent/80 text-foreground' : ''"
-                  :aria-expanded="showQueuePanel"
-                  aria-label="Job queue"
-                  @click="toggleQueuePanel"
-                >
-                  <span>Queue</span>
-                  <span
-                    v-if="queueBadge"
-                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-medium text-background"
-                  >
-                    {{ queueBadge }}
-                  </span>
-                </button>
-              </Tooltip>
               <Tooltip text="Generation history for this session" position="bottom">
                 <button
                   ref="historyBtnRef"

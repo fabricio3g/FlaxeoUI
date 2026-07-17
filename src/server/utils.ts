@@ -1,10 +1,12 @@
 import fs from 'fs'
+import http from 'http'
 import https from 'https'
 import net from 'net'
 import os from 'os'
 import path from 'path'
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
+import type { IncomingMessage } from 'http'
 import type { AppContext } from './types'
 import { isModelDirectoryKey } from '../shared/storage'
 import { resolveStoredPath } from '../shared/pathSecurity'
@@ -150,6 +152,13 @@ export function fetchJson<T>(url: string): Promise<T> {
   })
 }
 
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
+const MAX_DOWNLOAD_REDIRECTS = 8
+
+/**
+ * Download a remote file to disk. Follows HTTP(S) redirects (HF CDN uses 302/307
+ * to cas-bridge / LFS hosts). Supports large multi-hundred-MB model weights.
+ */
 export function downloadFile(
   url: string,
   destPath: string,
@@ -161,41 +170,81 @@ export function downloadFile(
   return new Promise((resolve, reject) => {
     let settled = false
     let file: fs.WriteStream | null = null
-    let activeRequest: ReturnType<typeof https.get> | null = null
+    let activeRequest: http.ClientRequest | null = null
+    let activeResponse: IncomingMessage | null = null
+
     const fail = (error: Error): void => {
       if (settled) return
       settled = true
+      try {
+        activeResponse?.destroy()
+      } catch {
+        /* ignore */
+      }
       file?.destroy()
       fs.unlink(destPath, () => undefined)
       reject(error)
     }
 
     options.registerCancel?.(() => {
-      activeRequest?.destroy(new Error('Download cancelled'))
+      try {
+        activeRequest?.destroy(new Error('Download cancelled'))
+      } catch {
+        /* ignore */
+      }
       fail(new Error('Download cancelled'))
     })
 
-    const doDownload = (downloadUrl: string): void => {
-      activeRequest = https
+    const doDownload = (downloadUrl: string, redirectDepth: number): void => {
+      if (redirectDepth > MAX_DOWNLOAD_REDIRECTS) {
+        fail(new Error(`Download failed: too many redirects (>${MAX_DOWNLOAD_REDIRECTS})`))
+        return
+      }
+
+      let parsed: URL
+      try {
+        parsed = new URL(downloadUrl)
+      } catch {
+        fail(new Error(`Download failed: invalid URL`))
+        return
+      }
+
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        fail(new Error(`Download failed: only http(s) supported`))
+        return
+      }
+
+      const transport = parsed.protocol === 'http:' ? http : https
+      activeRequest = transport
         .get(
-          downloadUrl,
+          parsed,
           {
             headers: {
               'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              Accept: 'application/octet-stream'
+              Accept: '*/*'
             }
           },
           (response) => {
-            if (
-              (response.statusCode === 301 || response.statusCode === 302) &&
-              response.headers.location
-            ) {
-              doDownload(response.headers.location)
+            activeResponse = response
+            const code = response.statusCode || 0
+
+            if (REDIRECT_STATUSES.has(code) && response.headers.location) {
+              response.resume()
+              let nextUrl: string
+              try {
+                nextUrl = new URL(response.headers.location, parsed).toString()
+              } catch {
+                fail(new Error(`Download failed: bad redirect location`))
+                return
+              }
+              doDownload(nextUrl, redirectDepth + 1)
               return
             }
-            if (response.statusCode !== 200) {
-              fail(new Error(`Download failed: ${response.statusCode}`))
+
+            if (code !== 200) {
+              response.resume()
+              fail(new Error(`Download failed: HTTP ${code}`))
               return
             }
 
@@ -203,11 +252,17 @@ export function downloadFile(
               ? parseInt(response.headers['content-length'], 10)
               : null
             let received = 0
+            try {
+              fs.mkdirSync(path.dirname(destPath), { recursive: true })
+            } catch {
+              /* parent may already exist */
+            }
             file = fs.createWriteStream(destPath)
             response.on('data', (chunk: Buffer) => {
               received += chunk.length
-              options.onProgress?.(received, total)
+              options.onProgress?.(received, Number.isFinite(total) ? total : null)
             })
+            response.on('error', (error) => fail(error))
             response.pipe(file)
             file.on('finish', () => {
               file?.close()
@@ -224,7 +279,7 @@ export function downloadFile(
     }
 
     console.log(`[Backend] Starting download from ${url} to ${destPath}`)
-    doDownload(url)
+    doDownload(url, 0)
   })
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { FileText, Search, Trash2 } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { usePromptPresetStore } from '@/stores/promptPresets'
 import { useToast } from '@/composables/useToast'
 import { requestConfirm } from '@/composables/useConfirm'
+import { notifyComposerPopoverOpen, onComposerPopoverOpen } from '@/lib/appEvents'
 
 const prompt = defineModel<string>('prompt', { required: true })
 const negativePrompt = defineModel<string>('negativePrompt', { required: true })
@@ -25,6 +26,20 @@ const { presets, selectedPresetId } = storeToRefs(promptPresetStore)
 const presetName = ref('')
 const presetSearch = ref('')
 const open = ref(false)
+
+watch(open, (isOpen) => {
+  if (isOpen) notifyComposerPopoverOpen('prompt-presets')
+})
+
+let unsubPopover: (() => void) | null = null
+onMounted(() => {
+  unsubPopover = onComposerPopoverOpen((id) => {
+    if (id !== 'prompt-presets') open.value = false
+  })
+})
+onUnmounted(() => {
+  unsubPopover?.()
+})
 
 const filteredPresets = computed(() => {
   const query = presetSearch.value.trim().toLowerCase()
@@ -160,13 +175,20 @@ const selectedPreset = computed(() =>
       </button>
     </PopoverTrigger>
 
-    <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
-      <div class="mb-3">
-        <p class="text-base font-semibold">Prompt presets</p>
-        <p class="mt-0.5 text-sm text-muted-foreground">
+    <PopoverContent
+      side="top"
+      align="end"
+      :side-offset="8"
+      :collision-padding="12"
+      class="flex w-80 max-h-[min(70vh,36rem)] flex-col overflow-hidden p-0"
+    >
+      <div class="shrink-0 border-b border-border/60 px-3 py-2.5">
+        <p class="text-sm font-semibold">Prompt presets</p>
+        <p class="mt-0.5 text-[11px] text-muted-foreground">
           Save and reuse positive / negative prompts
         </p>
       </div>
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
 
       <!-- Save -->
       <label class="block text-[10px] font-medium text-muted-foreground">
@@ -267,6 +289,7 @@ const selectedPreset = computed(() =>
         >
           <Trash2 class="h-3.5 w-3.5" />
         </button>
+      </div>
       </div>
     </PopoverContent>
   </Popover>

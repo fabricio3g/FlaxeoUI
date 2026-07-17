@@ -55,6 +55,12 @@ export function useBackendCapabilities() {
   const supportsFlowShift = computed(() => hasFlag('--flow-shift'))
   const supportsFps = computed(() => hasFlag('--fps'))
   const supportsInpaint = computed(() => hasFlag('--mask'))
+  /** YOLOv8 ADetailer (sd.cpp docs/adetailer.md). Soft-gate: older builds lack --ad-model. */
+  const supportsAdetailer = computed(
+    () => hasFlag('--ad-model') || hasFlag('--extra-ad-args') || hasMode('adetailer')
+  )
+  /** AnimateDiff motion module (sd.cpp docs/animatediff.md). */
+  const supportsMotionModule = computed(() => hasFlag('--motion-module'))
   /**
    * PR #1780 unified ref processing. Master uses --ref-image-args; some mid-builds
    * advertised --ref-image-mode. Pessimistic until probed so old binaries never see the flag.
@@ -118,6 +124,8 @@ export function useBackendCapabilities() {
     supportsFlowShift,
     supportsFps,
     supportsInpaint,
+    supportsAdetailer,
+    supportsMotionModule,
     supportsRefImageArgs,
     refImageCliFlag,
     fetchCapabilities

@@ -5,7 +5,7 @@ export type HistoryStatus = 'success' | 'failed' | 'cancelled'
 export interface GenerationHistoryEntry {
   id: string
   timestamp: number
-  surface: 'text2image' | 'edit' | 'video' | 'upscale'
+  surface: 'text2image' | 'edit' | 'video' | 'upscale' | 'adetailer'
   status: HistoryStatus
   prompt: string
   negativePrompt?: string

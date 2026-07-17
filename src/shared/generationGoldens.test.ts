@@ -116,6 +116,39 @@ describe('golden: inpaint args', () => {
   })
 })
 
+describe('golden: AnimateDiff video args', () => {
+  it('uses motion-module without flow-shift', () => {
+    const args: string[] = ['-M', 'vid_gen', '-m', '/models/diffusion/sd15.safetensors']
+    const body = {
+      motionModulePath: '/models/animatediff/mm_sd15_v3.safetensors',
+      video_frames: 16,
+      fps: 8,
+      cfg_scale: 8,
+      width: 512,
+      height: 512,
+      steps: 20,
+      prompt: 'a red apple',
+      samplingMethod: 'euler',
+      scheduler: 'discrete'
+    }
+    args.push('--motion-module', String(body.motionModulePath))
+    addGenerationArgs(args, body, '/tmp/out.mp4', {
+      width: 512,
+      height: 512,
+      cfg: 8,
+      multiple: 64
+    })
+    args.push('--video-frames', String(body.video_frames))
+    args.push('--fps', String(body.fps))
+    // AnimateDiff path must not force flow-shift
+    assert.equal(args.includes('--flow-shift'), false)
+    assert.equal(flagValue(args, '--motion-module'), '/models/animatediff/mm_sd15_v3.safetensors')
+    assert.equal(flagValue(args, '--video-frames'), '16')
+    assert.equal(flagValue(args, '--fps'), '8')
+    assert.equal(flagValue(args, '--cfg-scale'), '8')
+  })
+})
+
 describe('golden: video args', () => {
   it('builds vid_gen shape with frames, fps, flow-shift, high-noise', () => {
     const args: string[] = ['-M', 'vid_gen']
@@ -175,6 +208,29 @@ describe('golden: video args', () => {
   })
 })
 
+describe('golden: adetailer post-gen args', () => {
+  it('appends --ad-model and extra-ad-args when enabled', async () => {
+    const { addAdetailerArgs } = await import('./sdArgHelpers.ts')
+    const args: string[] = ['-M', 'img_gen']
+    addAdetailerArgs(args, {
+      adetailerEnabled: true,
+      adetailerModelPath: '/models/adetailer/face_yolov8n.safetensors',
+      adetailerPrompt: '[PROMPT], detailed face',
+      adetailerConfidence: 0.3,
+      adetailerDenoisingStrength: 0.4,
+      adetailerInpaintWidth: 512,
+      adetailerInpaintHeight: 512
+    })
+    assert.ok(args.includes('--ad-model'))
+    assert.equal(
+      args[args.indexOf('--ad-model') + 1],
+      '/models/adetailer/face_yolov8n.safetensors'
+    )
+    assert.ok(args.includes('--ad-prompt'))
+    assert.ok(args.includes('--extra-ad-args'))
+  })
+})
+
 describe('golden: upscale args', () => {
   it('builds -M upscale with model and hardware', () => {
     const args: string[] = [
@@ -230,9 +286,9 @@ describe('golden: hardware Low VRAM profile flags', () => {
     assert.ok(hasFlag(args, '--diffusion-fa'))
   })
 
-  it('skips diffusion-fa when prompt already has lora tokens', () => {
+  it('keeps diffusion-fa when prompt has lora tokens (Vulkan / Anima)', () => {
     const args: string[] = []
     addHardwareArgs(args, { diffusionFa: true }, 'portrait <lora:style:0.8>')
-    assert.equal(hasFlag(args, '--diffusion-fa'), false)
+    assert.equal(hasFlag(args, '--diffusion-fa'), true)
   })
 })

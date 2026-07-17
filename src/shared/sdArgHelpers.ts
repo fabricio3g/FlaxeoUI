@@ -98,8 +98,115 @@ export function addOptionalArgs(args: string[], body: Record<string, unknown>): 
   pushArg(args, '--scm-policy', body.scmPolicy)
 }
 
+/**
+ * Build comma-separated --extra-ad-args from structured ADetailer fields.
+ * Only emits non-default / meaningful values so CLI inherits the rest.
+ */
+export function buildExtraAdArgs(body: Record<string, unknown>): string | undefined {
+  const parts: string[] = []
+
+  const pushKv = (key: string, value: unknown, skip?: (n: number) => boolean): void => {
+    if (value === '' || value == null || value === false) return
+    if (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) {
+      const n = Number(value)
+      if (Number.isFinite(n) && skip?.(n)) return
+      parts.push(`${key}=${value}`)
+      return
+    }
+    if (typeof value === 'string' && value.trim()) parts.push(`${key}=${value.trim()}`)
+  }
+
+  // Always pass the common knobs when present (UI supplies defaults)
+  pushKv('confidence', body.adetailerConfidence ?? body.ad_confidence)
+  pushKv('denoising_strength', body.adetailerDenoisingStrength ?? body.ad_denoising_strength)
+  pushKv('inpaint_padding', body.adetailerInpaintPadding ?? body.ad_inpaint_padding)
+  pushKv('mask_blur', body.adetailerMaskBlur ?? body.ad_mask_blur)
+  pushKv('inpaint_width', body.adetailerInpaintWidth ?? body.ad_inpaint_width, (n) => n <= 0)
+  pushKv('inpaint_height', body.adetailerInpaintHeight ?? body.ad_inpaint_height, (n) => n <= 0)
+  pushKv('mask_k_largest', body.adetailerMaskKLargest ?? body.ad_mask_k_largest, (n) => n === 0)
+
+  const maskMode = String(body.adetailerMaskMode ?? body.ad_mask_mode ?? '').trim()
+  if (maskMode && maskMode !== 'none') parts.push(`mask_mode=${maskMode}`)
+
+  const sortBy = String(body.adetailerSortBy ?? body.ad_sort_by ?? '').trim()
+  if (sortBy && sortBy !== 'none') parts.push(`sort_by=${sortBy}`)
+
+  const extra = String(body.adetailerExtraArgs ?? body.extra_ad_args ?? body.extraAdArgs ?? '').trim()
+  if (extra) {
+    // Allow free-form "k=v,k2=v2" tail without duplicating keys already set
+    const existingKeys = new Set(parts.map((p) => p.split('=')[0]))
+    for (const chunk of extra.split(',')) {
+      const piece = chunk.trim()
+      if (!piece) continue
+      const eq = piece.indexOf('=')
+      const key = eq === -1 ? piece : piece.slice(0, eq).trim()
+      if (!key || existingKeys.has(key)) continue
+      parts.push(piece.includes('=') ? `${key}=${piece.slice(eq + 1).trim()}` : piece)
+      existingKeys.add(key)
+    }
+  }
+
+  return parts.length ? parts.join(',') : undefined
+}
+
+/**
+ * Append ADetailer flags when enabled and a detector model path (or filename) is provided.
+ * Server should resolve filename → absolute path and pass `adetailerModelPath` or set
+ * `adetailerModel` to the resolved path before calling this helper.
+ *
+ * When `requireEnabled` is false (standalone -M adetailer), only a model path is required.
+ */
+export function addAdetailerArgs(
+  args: string[],
+  body: Record<string, unknown>,
+  options?: { requireEnabled?: boolean }
+): void {
+  const requireEnabled = options?.requireEnabled !== false
+  const enabled = asBool(body.adetailerEnabled ?? body.ad_enabled)
+  if (requireEnabled && !enabled) return
+
+  const modelPath =
+    firstNonEmpty(
+      body.adetailerModelPath,
+      body.ad_model_path,
+      body.adetailerModel,
+      body.ad_model,
+      body.adModel
+    ) || ''
+  if (!modelPath) return
+
+  args.push('--ad-model', modelPath)
+
+  const adPrompt = body.adetailerPrompt ?? body.ad_prompt ?? body.adPrompt
+  if (adPrompt != null && String(adPrompt).length > 0) {
+    args.push('--ad-prompt', String(adPrompt))
+  }
+
+  const adNeg = body.adetailerNegativePrompt ?? body.ad_negative_prompt ?? body.adNegativePrompt
+  if (adNeg != null && String(adNeg).length > 0) {
+    args.push('--ad-negative-prompt', String(adNeg))
+  }
+
+  const extra = buildExtraAdArgs(body)
+  if (extra) args.push('--extra-ad-args', extra)
+}
+
+function firstNonEmpty(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (value == null || value === false) continue
+    const s = String(value).trim()
+    if (s) return s
+  }
+  return undefined
+}
+
 export function addHardwareArgs(args: string[], body: Record<string, unknown>, prompt = ''): void {
-  if (!prompt.includes('<lora:')) pushBoolArg(args, '--diffusion-fa', body.diffusionFa)
+  // Flash attention stays enabled with LoRA (critical for Anima/Vulkan iGPU).
+  // Default true when UI leaves diffusionFa unset.
+  const diffusionFa = body.diffusionFa === undefined || body.diffusionFa === null || body.diffusionFa === ''
+    ? true
+    : body.diffusionFa
+  pushBoolArg(args, '--diffusion-fa', diffusionFa)
   pushBoolArg(args, '--vae-tiling', body.vaeTiling)
   pushBoolArg(args, '--clip-on-cpu', body.clipOnCpu)
   pushBoolArg(args, '--vae-on-cpu', body.vaeOnCpu)
@@ -122,8 +229,9 @@ export function addHardwareArgs(args: string[], body: Record<string, unknown>, p
     pushArg(args, '--params-backend', body.paramsBackendAssignment)
   }
   pushBoolArg(args, '--auto-fit', body.autoFit)
-  pushArg(args, '--split-mode', body.splitMode)
+  // --split-mode is llama.cpp-only; do not pass to sd-cli
   pushNumericArg(args, '--threads', body.threads, (value) => value > 0)
   pushNumericArg(args, '--max-vram', body.maxVram, (value) => value !== 0)
   pushNumericArg(args, '--chroma-t5-mask-pad', body.chromaT5MaskPad, (value) => value > 0)
+  void prompt
 }

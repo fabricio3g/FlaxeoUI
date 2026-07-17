@@ -77,7 +77,8 @@ function surfaceLabel(surface: string): string {
     text2image: 'Image',
     edit: 'Edit',
     video: 'Video',
-    upscale: 'Upscale'
+    upscale: 'Upscale',
+    adetailer: 'ADetailer'
   }
   return map[surface] || surface
 }

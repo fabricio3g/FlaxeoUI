@@ -4,6 +4,21 @@ All notable changes to Flaxeo Image are documented in this file.
 
 ## Unreleased
 
+### AnimateDiff (stable-diffusion.cpp)
+
+- Video: `--motion-module` from `models/animatediff/`; standard SD1.5 load (`-m`) for AnimateDiff stacks
+- Skip forced flow-shift / Wan high-noise / VACE when a motion module is selected; img2video strength for I2V
+- Model Hub pack **AnimateDiff v3** (Realistic Vision SD1.5 base + mm_sd15_v3 + optional domain adapter LoRA) and builtin sampling preset
+- Soft-gate on `--motion-module`; Help + user guide
+
+### ADetailer (stable-diffusion.cpp)
+
+- Post-generation ADetailer on Text2Image: enable detector, AD prompts, confidence/denoise/inpaint knobs → `--ad-model` + `--extra-ad-args`
+- Gallery **ADetailer** action queues standalone `-M adetailer` repair on the selected image
+- Model folder `models/adetailer/` for converted YOLOv8 `.safetensors` detectors
+- Soft-gated on backend capabilities (`--ad-model` / mode `adetailer`); Help topic + user guide
+- LAN policy: `POST /api/adetailer` under generation access
+
 ### Security
 
 - Removed the built-in Ngrok and Cloudflare tunnel integrations and their binary dependencies.

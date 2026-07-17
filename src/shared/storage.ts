@@ -15,7 +15,9 @@ export const MODEL_DIRECTORY_KEYS = [
   'upscale',
   'hires_upscalers',
   'taesd',
-  'embeddings'
+  'embeddings',
+  'adetailer',
+  'animatediff'
 ] as const
 
 export type ModelDirectoryKey = (typeof MODEL_DIRECTORY_KEYS)[number]

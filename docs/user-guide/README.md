@@ -11,6 +11,8 @@ End-user documentation. The in-app **Help** view shows the same topics offline.
 | Surfaces & map looks    | [surfaces-maps.md](./surfaces-maps.md)     |
 | Frames & mockups        | [frames-mockups.md](./frames-mockups.md)   |
 | Batch & queue workflows | [batch-queue.md](./batch-queue.md)         |
+| ADetailer (face/object repair) | [adetailer.md](./adetailer.md)             |
+| AnimateDiff (SD1.5 video) | [animatediff.md](./animatediff.md)         |
 | Models & hardware (folders, Hub, manual install) | [models-hardware.md](./models-hardware.md) |
 | Troubleshoot            | [troubleshoot.md](./troubleshoot.md)       |
 | Community               | [community.md](./community.md)             |

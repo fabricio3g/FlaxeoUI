@@ -143,7 +143,9 @@ const modelLocations = [
   { id: 'upscale', label: 'Image upscalers' },
   { id: 'hires_upscalers', label: 'Hi-res upscalers' },
   { id: 'taesd', label: 'TAESD' },
-  { id: 'embeddings', label: 'Textual embeddings' }
+  { id: 'embeddings', label: 'Textual embeddings' },
+  { id: 'adetailer', label: 'ADetailer detectors (YOLOv8 .safetensors)' },
+  { id: 'animatediff', label: 'AnimateDiff motion modules' }
 ] as const
 
 const storageSettings = ref<StorageSettings | null>(null)

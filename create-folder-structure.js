@@ -42,7 +42,9 @@ const modelSubdirs = [
   'upscale',
   'hires_upscalers',
   'taesd',
-  'embeddings'
+  'embeddings',
+  'adetailer',
+  'animatediff'
 ]
 
 const modelsTargetRoot = path.join(__dirname, outputDir, 'models')

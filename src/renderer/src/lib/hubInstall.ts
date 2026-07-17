@@ -25,7 +25,9 @@ const CATEGORY_MAP: Record<string, keyof ModelCategories> = {
   upscale: 'upscale',
   hires_upscalers: 'hiresUpscalers',
   taesd: 'taesd',
-  embeddings: 'embeddings'
+  embeddings: 'embeddings',
+  adetailer: 'adetailer',
+  animatediff: 'animatediff'
 }
 
 function basename(path: string): string {

@@ -5,6 +5,27 @@
 export const FLAXEO_OPEN_LOGS = 'flaxeo-open-logs'
 export const FLAXEO_STARTER_PROMPT = 'flaxeo-starter-prompt'
 export const FLAXEO_OPEN_HISTORY = 'flaxeo-open-history'
+/** Composer popovers: recipes | prompt-presets — only one open at a time */
+export const FLAXEO_COMPOSER_POPOVER = 'flaxeo-composer-popover'
+
+export type ComposerPopoverId = 'recipes' | 'prompt-presets'
+
+export function notifyComposerPopoverOpen(id: ComposerPopoverId): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(FLAXEO_COMPOSER_POPOVER, { detail: { id } }))
+}
+
+export function onComposerPopoverOpen(
+  handler: (id: ComposerPopoverId) => void
+): () => void {
+  if (typeof window === 'undefined') return () => undefined
+  const listener = (event: Event): void => {
+    const ce = event as CustomEvent<{ id?: ComposerPopoverId }>
+    if (ce.detail?.id) handler(ce.detail.id)
+  }
+  window.addEventListener(FLAXEO_COMPOSER_POPOVER, listener)
+  return () => window.removeEventListener(FLAXEO_COMPOSER_POPOVER, listener)
+}
 
 export function requestOpenLogs(): void {
   if (typeof window === 'undefined') return

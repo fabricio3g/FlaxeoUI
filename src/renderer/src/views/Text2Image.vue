@@ -63,6 +63,7 @@ const { enqueue, cancelCurrent, pendingCount } = useJobQueue()
 const { models } = useModels()
 const {
   supportsUpscale,
+  supportsAdetailer,
   supportsRefImageArgs,
   refImageCliFlag,
   fetchCapabilities
@@ -141,6 +142,22 @@ const { config } = storeToRefs(configStore)
 const { isGenerating } = useGeneration()
 const progress = useGenerationProgress()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
+
+const adetailerModelOptions = computed(() => [
+  {
+    label: models.value.adetailer?.length
+      ? 'Select detector…'
+      : 'No models in models/adetailer',
+    value: ''
+  },
+  ...(models.value.adetailer || []).map((m) => ({ label: m, value: m }))
+])
+
+const adetailerMaskModeOptions = [
+  { label: 'None (per detection)', value: 'none' },
+  { label: 'Merge masks', value: 'merge' },
+  { label: 'Merge + invert', value: 'merge_invert' }
+]
 
 // Form state
 const prompt = ref('')
@@ -1761,13 +1778,19 @@ onActivated(() => {
                   <SlidersHorizontal class="size-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
-                <div class="mb-3">
+              <PopoverContent
+                side="top"
+                align="end"
+                :side-offset="8"
+                class="flex w-80 max-h-[min(70vh,32rem)] flex-col overflow-hidden p-0"
+              >
+                <div class="shrink-0 border-b border-border/60 px-3 py-2.5">
                   <p class="text-sm font-medium">Generation settings</p>
                   <p class="mt-0.5 text-xs text-muted-foreground">
-                    Sampling, batch, and seed variants
+                    Sampling, batch, seed, and ADetailer
                   </p>
                 </div>
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
 
                 <div class="grid grid-cols-3 gap-2">
                   <label class="text-xs font-medium text-muted-foreground">
@@ -1835,6 +1858,159 @@ onActivated(() => {
                     </span>
                   </span>
                 </label>
+
+                <!-- ADetailer (post-gen YOLOv8 face/object repair) -->
+                <div
+                  class="mt-3 space-y-2 rounded-md border border-border/70 p-2.5"
+                  :class="!supportsAdetailer ? 'opacity-60' : ''"
+                >
+                  <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+                    <input
+                      v-model="config.adetailerEnabled"
+                      type="checkbox"
+                      class="mt-0.5 rounded border-border"
+                      :disabled="!supportsAdetailer"
+                    />
+                    <span>
+                      ADetailer after generate
+                      <span class="mt-0.5 block text-xs text-muted-foreground">
+                        <template v-if="!supportsAdetailer">
+                          Backend lacks --ad-model — upgrade stable-diffusion.cpp
+                        </template>
+                        <template v-else>
+                          Detect + inpaint (YOLOv8). Models in models/adetailer
+                        </template>
+                      </span>
+                    </span>
+                  </label>
+                  <template v-if="config.adetailerEnabled && supportsAdetailer">
+                    <label class="block text-xs text-muted-foreground">
+                      Detector
+                      <Select
+                        class="mt-1 w-full"
+                        :model-value="config.adetailerModel"
+                        :options="adetailerModelOptions"
+                        @update:model-value="
+                          (v) => configStore.updateConfig({ adetailerModel: String(v || '') })
+                        "
+                      />
+                    </label>
+                    <label class="block text-xs text-muted-foreground">
+                      AD prompt
+                      <input
+                        v-model="config.adetailerPrompt"
+                        type="text"
+                        placeholder="[PROMPT], detailed face"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                      />
+                    </label>
+                    <label class="block text-xs text-muted-foreground">
+                      AD negative
+                      <input
+                        v-model="config.adetailerNegativePrompt"
+                        type="text"
+                        placeholder="deformed face"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
+                      />
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label class="block text-xs text-muted-foreground">
+                        Confidence
+                        <input
+                          v-model.number="config.adetailerConfidence"
+                          type="number"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Denoise
+                        <input
+                          v-model.number="config.adetailerDenoisingStrength"
+                          type="number"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Inpaint W
+                        <input
+                          v-model.number="config.adetailerInpaintWidth"
+                          type="number"
+                          min="64"
+                          step="64"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Inpaint H
+                        <input
+                          v-model.number="config.adetailerInpaintHeight"
+                          type="number"
+                          min="64"
+                          step="64"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Padding
+                        <input
+                          v-model.number="config.adetailerInpaintPadding"
+                          type="number"
+                          min="0"
+                          step="1"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Mask blur
+                        <input
+                          v-model.number="config.adetailerMaskBlur"
+                          type="number"
+                          min="0"
+                          step="1"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Largest K
+                        <input
+                          v-model.number="config.adetailerMaskKLargest"
+                          type="number"
+                          min="0"
+                          step="1"
+                          title="0 = all detections"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
+                        />
+                      </label>
+                      <label class="block text-xs text-muted-foreground">
+                        Mask mode
+                        <Select
+                          class="mt-1 w-full"
+                          :model-value="config.adetailerMaskMode"
+                          :options="adetailerMaskModeOptions"
+                          @update:model-value="
+                            (v) =>
+                              configStore.updateConfig({ adetailerMaskMode: String(v || 'none') })
+                          "
+                        />
+                      </label>
+                    </div>
+                    <label class="block text-xs text-muted-foreground">
+                      Extra args
+                      <input
+                        v-model="config.adetailerExtraArgs"
+                        type="text"
+                        placeholder="input_size=640,nms=0.45"
+                        class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground outline-none"
+                      />
+                    </label>
+                  </template>
+                </div>
 
                 <div class="mt-3">
                   <div class="mb-1 flex items-center justify-between gap-2">
@@ -1927,6 +2103,8 @@ onActivated(() => {
                     />
                   </label>
                 </div>
+                </div>
+                <!-- /scroll body -->
               </PopoverContent>
             </Popover>
 

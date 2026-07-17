@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { addGenerationArgs, addHardwareArgs, addOptionalArgs } from './sdArgHelpers.ts'
+import {
+  addAdetailerArgs,
+  addGenerationArgs,
+  addHardwareArgs,
+  addOptionalArgs,
+  buildExtraAdArgs
+} from './sdArgHelpers.ts'
 
 describe('addGenerationArgs', () => {
   it('builds core generation flags', () => {
@@ -97,10 +103,22 @@ describe('addHardwareArgs', () => {
     assert.ok(args.includes('--clip-on-cpu'))
   })
 
-  it('disables flash attention when lora token present in prompt', () => {
+  it('keeps flash attention when lora token present in prompt', () => {
     const args: string[] = []
     addHardwareArgs(args, { diffusionFa: true }, 'a cat <lora:style:1>')
-    assert.equal(args.includes('--diffusion-fa'), false)
+    assert.ok(args.includes('--diffusion-fa'))
+  })
+
+  it('defaults flash attention on when diffusionFa unset', () => {
+    const args: string[] = []
+    addHardwareArgs(args, {}, 'a cat <lora:style:1>')
+    assert.ok(args.includes('--diffusion-fa'))
+  })
+
+  it('does not pass --split-mode to sd-cli', () => {
+    const args: string[] = []
+    addHardwareArgs(args, { splitMode: 'layer', diffusionFa: true }, '')
+    assert.equal(args.includes('--split-mode'), false)
   })
 
   it('skips backend assignment when autoFit is on', () => {
@@ -113,5 +131,84 @@ describe('addHardwareArgs', () => {
     assert.ok(args.includes('--auto-fit'))
     assert.equal(args.includes('--backend'), false)
     assert.equal(args.includes('--params-backend'), false)
+  })
+})
+
+describe('buildExtraAdArgs / addAdetailerArgs', () => {
+  it('serializes structured ADetailer knobs', () => {
+    const extra = buildExtraAdArgs({
+      adetailerConfidence: 0.3,
+      adetailerDenoisingStrength: 0.4,
+      adetailerInpaintPadding: 32,
+      adetailerMaskBlur: 4,
+      adetailerInpaintWidth: 512,
+      adetailerInpaintHeight: 512,
+      adetailerMaskKLargest: 1,
+      adetailerMaskMode: 'merge',
+      adetailerSortBy: 'area'
+    })
+    assert.ok(extra)
+    assert.ok(extra!.includes('confidence=0.3'))
+    assert.ok(extra!.includes('denoising_strength=0.4'))
+    assert.ok(extra!.includes('inpaint_width=512'))
+    assert.ok(extra!.includes('mask_k_largest=1'))
+    assert.ok(extra!.includes('mask_mode=merge'))
+    assert.ok(extra!.includes('sort_by=area'))
+  })
+
+  it('skips mask_k_largest when zero and mask_mode none', () => {
+    const extra = buildExtraAdArgs({
+      adetailerConfidence: 0.3,
+      adetailerMaskKLargest: 0,
+      adetailerMaskMode: 'none'
+    })
+    assert.ok(extra)
+    assert.equal(extra!.includes('mask_k_largest'), false)
+    assert.equal(extra!.includes('mask_mode'), false)
+  })
+
+  it('appends free-form extra without duplicating keys', () => {
+    const extra = buildExtraAdArgs({
+      adetailerConfidence: 0.5,
+      adetailerExtraArgs: 'confidence=0.4,input_size=640'
+    })
+    assert.ok(extra)
+    assert.equal((extra!.match(/confidence=/g) || []).length, 1)
+    assert.ok(extra!.includes('input_size=640'))
+  })
+
+  it('adds --ad-model when enabled with path', () => {
+    const args: string[] = []
+    addAdetailerArgs(args, {
+      adetailerEnabled: true,
+      adetailerModelPath: '/models/adetailer/face_yolov8n.safetensors',
+      adetailerPrompt: '[PROMPT], detailed face',
+      adetailerConfidence: 0.3,
+      adetailerDenoisingStrength: 0.4
+    })
+    assert.equal(args[0], '--ad-model')
+    assert.equal(args[1], '/models/adetailer/face_yolov8n.safetensors')
+    assert.ok(args.includes('--ad-prompt'))
+    assert.ok(args.includes('[PROMPT], detailed face'))
+    assert.ok(args.includes('--extra-ad-args'))
+  })
+
+  it('skips flags when disabled (post-gen path)', () => {
+    const args: string[] = []
+    addAdetailerArgs(args, {
+      adetailerEnabled: false,
+      adetailerModelPath: '/models/adetailer/face.safetensors'
+    })
+    assert.equal(args.length, 0)
+  })
+
+  it('allows standalone mode without enabled flag', () => {
+    const args: string[] = []
+    addAdetailerArgs(
+      args,
+      { adetailerModelPath: '/models/adetailer/face.safetensors' },
+      { requireEnabled: false }
+    )
+    assert.equal(args[0], '--ad-model')
   })
 })

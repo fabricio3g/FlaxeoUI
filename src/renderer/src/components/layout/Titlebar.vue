@@ -7,7 +7,6 @@ import {
   SlidersHorizontal,
   Sun,
   Terminal,
-  Video,
   X
 } from '@/lib/icons'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
@@ -16,14 +15,26 @@ import { useConfigStore } from '@/stores/config'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
 import { useTheme } from '@/composables/useTheme'
 import { useRemoteSession } from '@/composables/useRemoteSession'
+import { useJobQueue } from '@/composables/useJobQueue'
+import { useDownloads } from '@/composables/useDownloads'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+
+export type PanelAnchor = {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+}
 
 const props = defineProps<{
   currentTab: string
   setupNeeded?: boolean
   collapsed?: boolean
+  queueOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,11 +42,14 @@ const emit = defineEmits<{
   toggleLogs: []
   openSetup: []
   toggleSidebar: []
+  'update:backendMode': [value: string]
+  toggleQueue: [anchor: PanelAnchor | null]
 }>()
 
 const isElectron = ref(false)
 const showModelHub = ref(false)
 const showDownloadManager = ref(false)
+const queueBtnRef = ref<HTMLElement | null>(null)
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const {
@@ -49,6 +63,27 @@ const {
 } = useRuntimeStatus()
 const { isDark, toggleTheme } = useTheme()
 const { canControl } = useRemoteSession()
+const { pendingCount, current: currentJob } = useJobQueue()
+const { activeCount, subscribeDownloads } = useDownloads()
+
+const backendModeOptions = [
+  { value: 'cli', label: 'CLI' },
+  { value: 'server', label: 'Server' }
+]
+
+const queueBadge = computed(() => pendingCount.value + (currentJob.value ? 1 : 0))
+
+const downloadBadgeLabel = computed(() => {
+  const n = activeCount.value
+  if (n <= 0) return ''
+  return n > 99 ? '99+' : String(n)
+})
+
+const queueBadgeLabel = computed(() => {
+  const n = queueBadge.value
+  if (n <= 0) return ''
+  return n > 99 ? '99+' : String(n)
+})
 
 const statusDotClass = computed(() => {
   if (runtimeState.value === 'online') return 'bg-emerald-500'
@@ -66,20 +101,45 @@ const statusHint = computed(() => {
 
 const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
 
+function rectFromEl(el: HTMLElement | null): PanelAnchor | null {
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  return {
+    top: r.top,
+    left: r.left,
+    right: r.right,
+    bottom: r.bottom,
+    width: r.width
+  }
+}
+
+function handleToggleQueue(): void {
+  emit('toggleQueue', rectFromEl(queueBtnRef.value))
+}
+
+function handleBackendMode(value: string): void {
+  emit('update:backendMode', value)
+}
+
 function handleGlobalKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape' && showDownloadManager.value) {
     showDownloadManager.value = false
   }
 }
 
+let unsubDownloads: (() => void) | null = null
+
 onMounted(() => {
   isElectron.value = !!window.electronAPI
   startRuntimeStatusPolling()
+  unsubDownloads = subscribeDownloads()
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
   stopRuntimeStatusPolling()
+  unsubDownloads?.()
+  unsubDownloads = null
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
@@ -94,23 +154,14 @@ function handleMaximize(): void {
 function handleClose(): void {
   window.electronAPI?.close()
 }
-
-function iconBtnClasses(active = false): string {
-  return [
-    'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors',
-    'hover:bg-accent hover:text-accent-foreground',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-    active ? 'bg-accent text-accent-foreground' : ''
-  ].join(' ')
-}
 </script>
 
 <template>
   <header
     class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
   >
-    <div class="hidden h-full items-center gap-2 px-2 titlebar-no-drag md:flex">
-      <div class="group relative flex h-8 items-center justify-center titlebar-no-drag">
+    <div class="flex h-full min-w-0 items-center gap-1.5 px-2 titlebar-no-drag">
+      <div class="group relative hidden h-8 items-center justify-center titlebar-no-drag md:flex">
         <button
           class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
@@ -162,6 +213,16 @@ function iconBtnClasses(active = false): string {
           </p>
         </div>
       </div>
+
+      <!-- Backend mode next to sidebar / status -->
+      <SegmentedControl
+        class="shrink-0"
+        :model-value="config.backendMode"
+        :options="backendModeOptions"
+        size="sm"
+        aria-label="Backend mode"
+        @update:model-value="handleBackendMode"
+      />
     </div>
 
     <div
@@ -169,7 +230,7 @@ function iconBtnClasses(active = false): string {
       class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 titlebar-no-drag md:flex"
     >
       <button
-        class="inline-flex h-7 items-center justify-center rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="inline-flex h-7 items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         type="button"
         @click="showModelHub = true"
       >
@@ -177,10 +238,31 @@ function iconBtnClasses(active = false): string {
       </button>
     </div>
 
-    <!-- Mobile: empty left drag region (no Flaxeo Image title) -->
-    <div class="min-w-0 flex-1 md:hidden" aria-hidden="true" />
+    <!-- Drag region between left tools and right actions -->
+    <div class="min-w-0 flex-1" aria-hidden="true" />
 
-    <div class="flex h-full items-center titlebar-no-drag">
+    <div class="flex h-full items-center gap-0.5 titlebar-no-drag">
+      <!-- Queue -->
+      <Tooltip text="Job queue — reorder, pause, or cancel runs" position="bottom">
+        <button
+          ref="queueBtnRef"
+          type="button"
+          class="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="props.queueOpen || queueBadge ? 'bg-accent/80 text-foreground' : ''"
+          :aria-expanded="props.queueOpen"
+          aria-label="Job queue"
+          @click="handleToggleQueue"
+        >
+          <span>Queue</span>
+          <span
+            v-if="queueBadgeLabel"
+            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-[10px] font-medium tabular-nums text-background"
+          >
+            {{ queueBadgeLabel }}
+          </span>
+        </button>
+      </Tooltip>
+
       <Tooltip v-if="showMobileConfig" text="Model & settings" position="bottom">
         <button
           @click="emit('toggleMobileConfig')"
@@ -194,7 +276,7 @@ function iconBtnClasses(active = false): string {
 
       <button
         v-if="props.setupNeeded"
-        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-full bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:hidden"
+        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:hidden"
         type="button"
         title="Open setup wizard"
         @click="emit('openSetup')"
@@ -203,33 +285,9 @@ function iconBtnClasses(active = false): string {
         Setup
       </button>
 
-      <Tooltip v-if="isElectron" text="Downloads — model & package downloads" position="bottom">
-        <button
-          @click="showDownloadManager = !showDownloadManager"
-          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:hidden"
-          type="button"
-          aria-label="Open download manager"
-          :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
-          :aria-expanded="showDownloadManager"
-        >
-          <Download class="h-4 w-4" />
-        </button>
-      </Tooltip>
-
-      <Tooltip v-if="canControl" text="Terminal — server / generation logs" position="bottom">
-        <button
-          @click="emit('toggleLogs')"
-          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
-          type="button"
-          aria-label="Open server logs"
-        >
-          <Terminal class="h-4 w-4" />
-        </button>
-      </Tooltip>
-
       <button
         v-if="props.setupNeeded"
-        class="aui-status-badge mr-1 hidden h-7 items-center gap-1.5 rounded-full bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:inline-flex"
+        class="aui-status-badge mr-0.5 hidden h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:inline-flex"
         type="button"
         @click="emit('openSetup')"
       >
@@ -237,23 +295,42 @@ function iconBtnClasses(active = false): string {
         Setup
       </button>
 
-      <Tooltip v-if="isElectron" text="Downloads — model & package downloads" position="bottom">
+      <!-- Downloads with active file count -->
+      <Tooltip
+        v-if="isElectron"
+        :text="
+          activeCount
+            ? `Downloads — ${activeCount} file${activeCount === 1 ? '' : 's'} transferring`
+            : 'Downloads — model & package downloads'
+        "
+        position="bottom"
+      >
         <button
           @click="showDownloadManager = !showDownloadManager"
-          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none md:inline-flex"
+          class="aui-icon-button relative mr-0.5 inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-1.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
           type="button"
-          aria-label="Open download manager"
-          :class="showDownloadManager ? 'bg-accent text-accent-foreground' : ''"
+          :aria-label="
+            activeCount
+              ? `Open download manager, ${activeCount} active`
+              : 'Open download manager'
+          "
+          :class="showDownloadManager || activeCount ? 'bg-accent/80 text-foreground' : ''"
           :aria-expanded="showDownloadManager"
         >
-          <Download class="h-4 w-4" />
+          <Download class="h-4 w-4 shrink-0" />
+          <span
+            v-if="downloadBadgeLabel"
+            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-[10px] font-medium tabular-nums text-background"
+          >
+            {{ downloadBadgeLabel }}
+          </span>
         </button>
       </Tooltip>
 
       <Tooltip v-if="canControl" text="Terminal — server / generation logs" position="bottom">
         <button
           @click="emit('toggleLogs')"
-          class="aui-icon-button mr-0.5 hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           type="button"
           aria-label="Open server logs"
         >

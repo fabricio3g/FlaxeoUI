@@ -18,8 +18,10 @@ Built-ins are starting points; change anything after apply.
 
 ## Share
 
-- **Export** writes a `.flaxeo-recipe.json` file you can send offline.
-- **Import** loads a recipe file into your library.
+- **Export** (download icon on a saved recipe) writes:
+  1. `.flaxeo-recipe.json` — importable machine file
+  2. `.recipe-guide.md` — human guide with **model filenames** and **generation combination** (size, steps, sampler, LoRAs, etc.)
+- **Import** loads a `.flaxeo-recipe.json` into your library.
 
 See also [community.md](./community.md) and `docs/schemas/recipe.schema.json`.
 

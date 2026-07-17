@@ -51,6 +51,7 @@ describe('LAN endpoint policy', () => {
       ['POST', '/api/inpaint'],
       ['POST', '/api/generate-video'],
       ['POST', '/api/upscale'],
+      ['POST', '/api/adetailer'],
       ['POST', '/api/cancel'],
       ['POST', '/api/cancel-cli'],
       ['GET', '/api/preview-image'],

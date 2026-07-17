@@ -12,6 +12,7 @@ import {
 import { useConfigStore } from '@/stores/config'
 import { apiPost } from '@/services/api'
 import { useModels } from '@/composables/useModels'
+import { useDownloads } from '@/composables/useDownloads'
 import {
   enrichHubModel,
   filterHubModels,
@@ -108,15 +109,82 @@ function onBackdropPointerDown(event: PointerEvent): void {
 
 function applyPreset(model = activeModel.value): void {
   configStore.applyPreset(model.presetId)
+  // Assign on-disk files from the pack (motion module, diffusion checkpoint, etc.)
+  let motionModule = ''
+  let standardModel = ''
+  for (const file of model.files) {
+    if (!fileInstalled(file)) continue
+    if (file.category === 'animatediff') motionModule = file.filename
+    // Prefer SD1.5 base for AnimateDiff / any pack that ships a diffusion checkpoint
+    if (file.category === 'diffusion' && file.required !== false) {
+      if (model.presetId?.includes('animatediff') || model.id.includes('animatediff')) {
+        standardModel = file.filename
+      }
+    }
+  }
+  if (motionModule || standardModel) {
+    configStore.updateConfig({
+      ...(motionModule ? { motionModule } : {}),
+      ...(standardModel
+        ? { standardModel, loadMode: 'standard' as const, videoMode: true }
+        : {})
+    })
+  }
   toast.success(`Applied ${model.name}`)
+}
+
+async function waitForDownloadTask(id: string, key: string): Promise<void> {
+  const { fetchDownloads, downloads } = useDownloads()
+  const deadline = Date.now() + 60 * 60 * 1000 // large files (AnimateDiff ~800MB)
+  while (Date.now() < deadline) {
+    await fetchDownloads()
+    const task = downloads.value.find((d) => d.id === id)
+    if (!task) {
+      await new Promise((r) => setTimeout(r, 800))
+      continue
+    }
+    if (task.status === 'completed') return
+    if (task.status === 'failed') {
+      throw new Error(task.error || 'Download failed')
+    }
+    if (task.status === 'cancelled') {
+      throw new Error('Download cancelled')
+    }
+    if (task.totalBytes && task.totalBytes > 0) {
+      const pct = Math.min(99, Math.round((task.receivedBytes / task.totalBytes) * 100))
+      downloadStatus.value[key] = `Downloading… ${pct}%`
+    } else if (task.receivedBytes > 0) {
+      const mb = (task.receivedBytes / (1024 * 1024)).toFixed(1)
+      downloadStatus.value[key] = `Downloading… ${mb} MB`
+    } else {
+      downloadStatus.value[key] = 'Downloading…'
+    }
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+  throw new Error('Download timed out')
 }
 
 async function downloadFile(file: HubFile): Promise<void> {
   const key = `${file.category}/${file.filename}`
   downloading.value = key
-  downloadStatus.value[key] = 'Downloading…'
+  downloadStatus.value[key] = 'Queuing…'
   try {
-    await apiPost('/api/models/download', file)
+    const result = await apiPost<{
+      success?: boolean
+      id?: string
+      queued?: boolean
+      error?: string
+    }>('/api/models/download', {
+      url: file.url,
+      category: file.category,
+      filename: file.filename,
+      label: file.label
+    })
+    if (!result?.id) {
+      throw new Error(result?.error || 'Download did not start')
+    }
+    downloadStatus.value[key] = 'Downloading…'
+    await waitForDownloadTask(result.id, key)
     downloadStatus.value[key] = 'Downloaded'
     await fetchModels({ force: true })
   } catch (error) {

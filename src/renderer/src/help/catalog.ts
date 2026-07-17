@@ -302,6 +302,90 @@ Fullscreen image viewer:
 `
   },
   {
+    id: 'animatediff',
+    title: 'AnimateDiff',
+    section: 'Power tools',
+    keywords: [
+      'animatediff',
+      'motion',
+      'motion-module',
+      'sd15',
+      'video',
+      'animation',
+      'mm_sd15'
+    ],
+    body: `# AnimateDiff
+
+AnimateDiff adds a **motion module** to SD 1.5 for short animations via \`-M vid_gen --motion-module\`.
+
+## Hub
+
+**Model Hub → AnimateDiff v3** installs the recommended stack: **Realistic Vision V6.0 B1** (\`models/diffusion/\`) + \`mm_sd15_v3\` (\`models/animatediff/\`) + optional domain adapter LoRA. **Standard** load mode.
+
+## Generate
+
+1. Video workspace → settings → pick motion module.
+2. 512×512, 16 frames, 8 FPS, CFG 8, euler + discrete (applied when you select a module).
+3. T2V or I2V (img2video strength ~0.75).
+
+Clear the motion module to use Wan/LTX stacks again (flow-shift, high-noise, VACE).
+
+See \`docs/user-guide/animatediff.md\` and [sd.cpp animatediff.md](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/animatediff.md).
+`
+  },
+  {
+    id: 'adetailer',
+    title: 'ADetailer',
+    section: 'Power tools',
+    keywords: [
+      'adetailer',
+      'face',
+      'yolo',
+      'inpaint',
+      'detailer',
+      'detect',
+      'ad-model',
+      'repair'
+    ],
+    body: `# ADetailer
+
+ADetailer runs a **YOLOv8** detector, then a **cropped inpaint** on each detection. Powered by [stable-diffusion.cpp ADetailer](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/adetailer.md).
+
+## Requirements
+
+1. Backend that supports \`--ad-model\` / mode \`adetailer\` (upgrade in Settings if UI is disabled).
+2. Converted detector \`.safetensors\` in \`models/adetailer/\` (not raw \`.pt\`).
+3. Diffusion model selected for the inpaint pass.
+
+## Convert a detector
+
+\`\`\`bash
+python scripts/convert_yolov8_to_safetensors.py face_yolov8n.pt face_yolov8n.safetensors
+\`\`\`
+
+Copy the \`.safetensors\` file into \`models/adetailer/\`, then refresh models.
+
+## After generate
+
+Image workspace → generation settings → **ADetailer after generate** → pick detector → generate.
+
+- Empty AD prompt inherits the main prompt.
+- \`[PROMPT]\` inserts the main prompt; \`[SEP]\` / \`[SKIP]\` control multi-mask prompts.
+
+## Gallery repair
+
+Open an image → **ADetailer** (wand) → queues \`-M adetailer\` with your current detector settings.
+
+## Folders
+
+| Path | Contents |
+|------|----------|
+| \`models/adetailer/\` | YOLOv8 detection \`.safetensors\` |
+
+See also: full guide in the repo \`docs/user-guide/adetailer.md\`.
+`
+  },
+  {
     id: 'prompt-assistant',
     title: 'Prompt Assistant (coming soon)',
     section: 'Power tools',
@@ -366,6 +450,8 @@ Change it in **Settings → Storage → Models root** (and optional per-folder o
 | \`llm_vision/\` | Vision LLM | Multimodal edit |
 | \`loras/\` | LoRA files | Strength in Model panel |
 | \`controlnet/\` | ControlNet weights | Advanced tools |
+| \`adetailer/\` | YOLOv8 ADetailer detectors (\`.safetensors\`) | ADetailer after gen / Gallery |
+| \`animatediff/\` | AnimateDiff motion modules | Video SD1.5 motion |
 | \`photomaker/\` | PhotoMaker | Identity |
 | \`upscale/\` | ESRGAN etc. | Gallery / queue upscale |
 | \`hires_upscalers/\` | Hires upscale models | Highres workflows |

@@ -20,6 +20,8 @@ export interface ModelCategories {
   hiresUpscalers: string[]
   taesd: string[]
   embeddings: string[]
+  adetailer: string[]
+  animatediff: string[]
 }
 
 const emptyModels = (): ModelCategories => ({
@@ -40,7 +42,9 @@ const emptyModels = (): ModelCategories => ({
   upscale: [],
   hiresUpscalers: [],
   taesd: [],
-  embeddings: []
+  embeddings: [],
+  adetailer: [],
+  animatediff: []
 })
 
 /** Module-level singleton — all callers share one list (avoids N× /api/models on mount). */
@@ -80,8 +84,8 @@ export function useModels() {
       try {
         error.value = ''
         const endpoint = force ? '/api/models?refresh=1' : '/api/models'
-        const data = await apiGet<ModelCategories>(endpoint)
-        models.value = data
+        const data = await apiGet<Partial<ModelCategories>>(endpoint)
+        models.value = { ...emptyModels(), ...data }
         lastFetchedAt.value = Date.now()
       } catch (e) {
         error.value = e instanceof Error ? e.message : 'Model list unavailable'

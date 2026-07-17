@@ -1391,6 +1391,20 @@ onUnmounted(() => {
                     ]"
                   />
                 </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >ADetailer detector</label
+                  >
+                  <Select
+                    v-model="config.adetailerModel"
+                    size="md"
+                    placeholder="None"
+                    :options="[
+                      { label: 'None', value: '' },
+                      ...(models.adetailer || []).map((m) => ({ label: m, value: m }))
+                    ]"
+                  />
+                </div>
               </div>
               <div v-if="!config.videoMode">
                 <label class="mb-1.5 block text-xs font-medium text-muted-foreground">TAESD</label>

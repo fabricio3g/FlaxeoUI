@@ -45,7 +45,7 @@ function parseCliHelp(helpText: string): {
   }
 
   // Common modes even if regex misses
-  for (const mode of ['img_gen', 'vid_gen', 'upscale', 'convert', 'metadata']) {
+  for (const mode of ['img_gen', 'vid_gen', 'upscale', 'convert', 'metadata', 'adetailer']) {
     if (helpText.includes(mode)) modes.add(mode)
   }
 

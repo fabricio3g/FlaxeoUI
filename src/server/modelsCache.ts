@@ -30,7 +30,9 @@ export function buildModelsPayload(ctx: AppContext): Record<string, string[]> {
     upscale: listFiles(modelDir('upscale')),
     hiresUpscalers: listFiles(modelDir('hires_upscalers')),
     taesd: listFiles(modelDir('taesd')),
-    embeddings: listFiles(modelDir('embeddings'))
+    embeddings: listFiles(modelDir('embeddings')),
+    adetailer: listFiles(modelDir('adetailer')),
+    animatediff: listFiles(modelDir('animatediff'))
   }
 }
 

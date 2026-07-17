@@ -16,7 +16,8 @@ import {
   Video,
   Scale,
   X,
-  History
+  History,
+  Wand2
 } from '@/lib/icons'
 import { requestOpenHistory, type HistoryPanelAnchor } from '@/lib/appEvents'
 import { copyImageUrlToClipboard, downloadOutputAsFormat } from '@/lib/mediaExport'
@@ -61,7 +62,7 @@ const toast = useToast()
 const configStore = useConfigStore()
 const { models, fetchModels } = useModels()
 const { addEntry: addHistoryEntry } = useGenerationHistory()
-const { supportsUpscale, fetchCapabilities } = useBackendCapabilities()
+const { supportsUpscale, supportsAdetailer, fetchCapabilities } = useBackendCapabilities()
 const { enqueue, pendingCount } = useJobQueue()
 const { isRemote } = useRemoteSession()
 const { defaultSaveFormat } = useOutputPreferences()
@@ -385,6 +386,112 @@ function queueUpscaleNow(): void {
   toast.info('Upscale queued')
 }
 
+/** Queue ADetailer repair on the selected gallery image (-M adetailer). */
+function queueAdetailerNow(): void {
+  if (!selectedImage.value) {
+    toast.error('Select an image first')
+    return
+  }
+  if (!supportsAdetailer.value) {
+    toast.error('Active backend does not support ADetailer — upgrade stable-diffusion.cpp')
+    return
+  }
+
+  const c = configStore.config
+  let adModel = c.adetailerModel
+  if (!adModel && models.value.adetailer?.[0]) {
+    adModel = models.value.adetailer[0]
+    configStore.updateConfig({ adetailerModel: adModel })
+  }
+  if (!adModel) {
+    toast.error('No detector in models/adetailer (converted YOLOv8 .safetensors)')
+    return
+  }
+
+  const diffusionModel = c.loadMode === 'standard' ? c.standardModel : c.diffusionModel
+  if (!diffusionModel) {
+    toast.error('Select a diffusion model for the ADetailer inpaint pass')
+    return
+  }
+
+  const source = selectedImage.value
+  const busy = isAnyGenerationBusy()
+
+  enqueue({
+    surface: 'adetailer',
+    label: `ADetailer ${source}`,
+    prompt: c.adetailerPrompt || `ADetailer ${source}`,
+    kind: 'json',
+    endpoint: '/api/adetailer',
+    jsonBody: {
+      filename: source,
+      loadMode: c.loadMode,
+      diffusionModel,
+      diffusion_model: diffusionModel,
+      vae: c.vaeModel || undefined,
+      steps: c.steps,
+      cfg_scale: c.cfgScale,
+      width: c.width,
+      height: c.height,
+      seed: c.seed,
+      samplingMethod: c.sampler,
+      scheduler: c.scheduler,
+      prompt: c.adetailerPrompt || '',
+      negative_prompt: c.adetailerNegativePrompt || '',
+      adetailerModel: adModel,
+      adetailerPrompt: c.adetailerPrompt || undefined,
+      adetailerNegativePrompt: c.adetailerNegativePrompt || undefined,
+      adetailerConfidence: c.adetailerConfidence,
+      adetailerDenoisingStrength: c.adetailerDenoisingStrength,
+      adetailerInpaintPadding: c.adetailerInpaintPadding,
+      adetailerMaskBlur: c.adetailerMaskBlur,
+      adetailerInpaintWidth: c.adetailerInpaintWidth,
+      adetailerInpaintHeight: c.adetailerInpaintHeight,
+      adetailerMaskKLargest: c.adetailerMaskKLargest,
+      adetailerMaskMode: c.adetailerMaskMode,
+      adetailerSortBy: c.adetailerSortBy,
+      adetailerExtraArgs: c.adetailerExtraArgs || undefined,
+      strength: c.adetailerDenoisingStrength,
+      offloadToCpu: c.cpuOffload,
+      diffusionFa: c.flashAttention,
+      streamLayers: c.streamLayers,
+      maxVram: c.maxVram,
+      threads: c.threads,
+      clipOnCpu: c.clipOnCpu,
+      vaeOnCpu: c.vaeOnCpu,
+      vaeTiling: c.vaeTiling
+    },
+    onSuccess: async (result) => {
+      const filename = result.filename || result.filenames?.[0]
+      if (!filename) {
+        toastGenerationError(toast, result.message || 'ADetailer failed', 'ADetailer failed')
+        return
+      }
+      addHistoryEntry({
+        surface: 'adetailer',
+        status: 'success',
+        prompt: `ADetailer ${source}`,
+        filename
+      })
+      toast.success('ADetailer complete')
+      await fetchGallery()
+      openImageViewer(filename)
+    },
+    onError: (msg) => {
+      if (msg === 'Cancelled') return
+      toastGenerationError(toast, msg, 'ADetailer failed')
+      addHistoryEntry({
+        surface: 'adetailer',
+        status: 'failed',
+        prompt: `ADetailer ${source}`,
+        error: msg
+      })
+    }
+  })
+
+  toast.info(busy ? `ADetailer queued · ${pendingCount.value} waiting` : 'ADetailer started')
+}
+
 function openGalleryFolder(): void {
   window.electronAPI?.openGalleryFolder()
 }
@@ -501,6 +608,17 @@ onUnmounted(() => {
               :disabled="!supportsUpscale || !models.upscale.length"
             >
               <Scale class="size-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Queue ADetailer (face/object repair)" position="bottom">
+            <button
+              type="button"
+              @click="queueAdetailerNow"
+              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
+              aria-label="Queue ADetailer"
+              :disabled="!supportsAdetailer || !(models.adetailer && models.adetailer.length)"
+            >
+              <Wand2 class="size-4" />
             </button>
           </Tooltip>
           <Tooltip text="Upscale options" position="bottom">

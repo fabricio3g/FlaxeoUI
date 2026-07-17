@@ -63,7 +63,22 @@ const SNAPSHOT_KEYS = [
   'livePreviewMethod',
   'refImagePreset',
   'videoMode',
-  'qwenImageZeroCondT'
+  'qwenImageZeroCondT',
+  'adetailerEnabled',
+  'adetailerModel',
+  'adetailerPrompt',
+  'adetailerNegativePrompt',
+  'adetailerConfidence',
+  'adetailerDenoisingStrength',
+  'adetailerInpaintPadding',
+  'adetailerMaskBlur',
+  'adetailerInpaintWidth',
+  'adetailerInpaintHeight',
+  'adetailerMaskKLargest',
+  'adetailerMaskMode',
+  'adetailerSortBy',
+  'adetailerExtraArgs',
+  'motionModule'
 ] as const satisfies readonly (keyof GenerationConfig)[]
 
 export type ConfigSnapshot = Partial<GenerationConfig> & {

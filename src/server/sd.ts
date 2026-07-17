@@ -3,6 +3,7 @@ import path from 'path'
 import type { AppContext, JsonObject } from './types'
 import { firstString, modelDirectory, modelPath } from './utils'
 import {
+  addAdetailerArgs as addAdetailerArgsPure,
   addGenerationArgs as addGenerationArgsPure,
   addHardwareArgs as addHardwareArgsPure,
   addOptionalArgs as addOptionalArgsPure,
@@ -97,6 +98,30 @@ export function addOptionalArgs(args: string[], body: JsonObject): void {
 
 export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): void {
   addHardwareArgsPure(args, body, prompt)
+}
+
+/**
+ * Resolve ADetailer detector under models/adetailer and append --ad-* flags.
+ * `requireEnabled` true for post-gen; false for standalone -M adetailer.
+ */
+export function addAdetailerArgs(
+  ctx: AppContext,
+  args: string[],
+  body: JsonObject,
+  options?: { requireEnabled?: boolean }
+): void {
+  const name = firstString(
+    body.adetailerModel,
+    body.ad_model,
+    body.adModel,
+    body.adetailerModelPath,
+    body.ad_model_path
+  )
+  const resolved = name ? modelPath(ctx, 'adetailer', name) : undefined
+  const bodyWithPath: JsonObject = resolved
+    ? { ...body, adetailerModelPath: resolved, adetailerModel: resolved }
+    : { ...body }
+  addAdetailerArgsPure(args, bodyWithPath, options)
 }
 
 /** Collect LoRA base names from prompt tokens and body.loras (no extension). */

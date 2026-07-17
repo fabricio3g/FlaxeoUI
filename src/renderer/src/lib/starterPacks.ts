@@ -81,6 +81,14 @@ export const HUB_PACK_META: Record<string, HubPackMeta> = {
     minVramGb: 12,
     featured: true
   },
+  'animatediff-v3': {
+    kind: 'video',
+    tags: ['animatediff', 'sd15', 'motion', 't2v'],
+    blurb: 'AnimateDiff v3 + Realistic Vision SD1.5 fp16 base (smallest official).',
+    sizeGb: 3,
+    minVramGb: 4,
+    featured: true
+  },
   wan22: {
     kind: 'video',
     tags: ['wan', 't2v'],
@@ -793,6 +801,38 @@ export const hubModels: HubModel[] = [
         filename: 'qwen_image_vae.safetensors',
         required: true,
         url: 'https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors'
+      }
+    ]
+  },
+  {
+    id: 'animatediff-v3',
+    name: 'AnimateDiff v3',
+    description:
+      'Recommended AnimateDiff stack from sd.cpp docs: Realistic Vision V6.0 B1 (SD1.5) + motion module mm_sd15_v3 @ 512². Use Video workspace (standard load). Optional domain adapter: <lora:mm_sd15_v3_adapter:1.0>.',
+    presetId: 'builtin-animatediff-v3',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/animatediff.md',
+    files: [
+      {
+        label: 'Realistic Vision V6.0 B1 fp16 (SD1.5 base, smallest official)',
+        category: 'diffusion',
+        filename: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors',
+        required: true,
+        // Official SG161222 fp16 (~2.1 GB) — smallest single-file RV6.0 B1 on HF
+        url: 'https://huggingface.co/SG161222/Realistic_Vision_V6.0_B1_noVAE/resolve/main/Realistic_Vision_V6.0_NV_B1_fp16.safetensors?download=true'
+      },
+      {
+        label: 'Motion module mm_sd15_v3 (fp16)',
+        category: 'animatediff',
+        filename: 'mm_sd15_v3.safetensors',
+        required: true,
+        url: 'https://huggingface.co/conrevo/AnimateDiff-A1111/resolve/main/motion_module/mm_sd15_v3.safetensors?download=true'
+      },
+      {
+        label: 'Domain adapter LoRA (v3, optional)',
+        category: 'loras',
+        filename: 'mm_sd15_v3_adapter.safetensors',
+        required: false,
+        url: 'https://huggingface.co/conrevo/AnimateDiff-A1111/resolve/main/lora/mm_sd15_v3_adapter.safetensors?download=true'
       }
     ]
   },

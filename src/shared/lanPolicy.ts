@@ -34,6 +34,7 @@ const STATIC_ENDPOINTS = new Map<string, LanEndpointClass>([
   ['POST /api/inpaint', 'generation'],
   ['POST /api/generate-video', 'generation'],
   ['POST /api/upscale', 'generation'],
+  ['POST /api/adetailer', 'generation'],
   ['POST /api/cancel', 'generation'],
   ['POST /api/cancel-cli', 'generation'],
   ['GET /api/preview-image', 'generation'],

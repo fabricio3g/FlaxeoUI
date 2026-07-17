@@ -32,6 +32,8 @@ Change it in **Settings → Storage → Models root** (and optional per-folder o
 | `loras/` | LoRA files | Strength in Model panel |
 | `controlnet/` | ControlNet weights | Advanced tools |
 | `photomaker/` | PhotoMaker | Identity |
+| `adetailer/` | YOLOv8 detectors (`.safetensors`) | ADetailer after gen / Gallery repair |
+| `animatediff/` | AnimateDiff motion modules | Video SD1.5 motion (`--motion-module`) |
 | `upscale/` | ESRGAN etc. | Gallery / queue upscale |
 | `hires_upscalers/` | Hires upscale models | Highres workflows |
 | `taesd/` | Tiny AE | Faster live preview (TAE) |

@@ -29,6 +29,7 @@ import type { ParsedStep } from '../utils'
 import { invalidateModelsCache } from '../modelsCache'
 import type { ProgressPhase } from '../types'
 import {
+  addAdetailerArgs,
   addGenerationArgs,
   addHardwareArgs,
   addModelArgs,
@@ -37,8 +38,7 @@ import {
   assertLoraFilesPresent,
   ensureBinaryExecutable,
   getSdCliPath,
-  pushArg,
-  pushModelArg
+  pushArg
 } from '../sd'
 import { resolveInpaintStrength } from '../../shared/sdArgHelpers'
 import {
@@ -576,6 +576,9 @@ function buildImageArgs(
     if (asBool(body.applyCanny)) args.push('--canny')
   }
 
+  // Post-generation ADetailer (YOLOv8) — only when enabled + detector present
+  addAdetailerArgs(ctx, args, body, { requireEnabled: true })
+
   args.push('-v')
   return {
     args,
@@ -834,55 +837,40 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       const filename = `video_${Date.now()}.mp4`
       const outputPath = path.join(ctx.paths.outputDir, filename)
       const args = ['-M', 'vid_gen']
-      pushModelArg(
-        ctx,
-        args,
-        '--diffusion-model',
-        'diffusion',
-        firstString(body.diffusionModel, body.diffusion_model)
+
+      // Normalize diffusion name for addModelArgs (standard AnimateDiff uses -m)
+      const loadMode = firstString(body.loadMode) || 'split'
+      const diffusionName =
+        firstString(body.diffusionModel, body.diffusion_model, body.standardModel) || ''
+      const modelBody: JsonObject = {
+        ...body,
+        loadMode,
+        diffusionModel: diffusionName,
+        diffusion_model: diffusionName
+      }
+      addModelArgs(ctx, args, modelBody)
+
+      const highNoiseName = firstString(
+        body.highNoiseDiffusionModel,
+        body.high_noise_diffusion_model
       )
-      const highNoise = modelPath(
-        ctx,
-        'diffusion',
-        firstString(body.highNoiseDiffusionModel, body.high_noise_diffusion_model)
-      )
-      if (highNoise) args.push('--high-noise-diffusion-model', highNoise)
-      pushModelArg(ctx, args, '--t5xxl', 't5xxl', firstString(body.t5xxl))
-      pushModelArg(ctx, args, '--llm', 'llm', firstString(body.llm))
-      pushModelArg(
-        ctx,
-        args,
-        '--llm_vision',
-        'llm_vision',
-        firstString(body.llmVision, body.llm_vision)
-      )
-      pushModelArg(
-        ctx,
-        args,
-        '--embeddings-connectors',
-        'embeddings_connectors',
-        firstString(body.embeddingsConnectors, body.embeddings_connectors)
-      )
-      pushModelArg(ctx, args, '--vae', 'vae', firstString(body.vae))
-      pushModelArg(
-        ctx,
-        args,
-        '--audio-vae',
-        'audio_vae',
-        firstString(body.audioVae, body.audio_vae)
-      )
-      pushModelArg(
-        ctx,
-        args,
-        '--clip_vision',
-        'clip_vision',
-        firstString(body.clipVision, body.clip_vision)
-      )
+      const highNoise = highNoiseName ? modelPath(ctx, 'diffusion', highNoiseName) : undefined
+      const motionName = firstString(body.motionModule, body.motion_module, body.motionModuleModel)
+      const motionPath = motionName ? modelPath(ctx, 'animatediff', motionName) : undefined
+
+      // AnimateDiff: --motion-module under models/animatediff/
+      if (motionPath) args.push('--motion-module', motionPath)
+
       const initImg =
         fileFromUpload(req, 'initImage') ||
         fileFromUpload(req, 'reference_image') ||
         resolveInputFile(ctx, firstString(body.initImagePath))
-      if (initImg) args.push('-i', initImg)
+      if (initImg) {
+        args.push('-i', initImg)
+        // img2video / I2V denoise strength (AnimateDiff docs: ~0.75)
+        const strength = body.strength ?? body.img2imgStrength ?? body.img2img_strength
+        if (strength !== '' && strength != null) pushArg(args, '--strength', strength)
+      }
 
       // FLF2V end frame
       const endImg =
@@ -898,31 +886,50 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       )
       if (controlVideo) args.push('--control-video', controlVideo)
 
-      addGenerationArgs(args, body, outputPath, { width: 832, height: 480, cfg: 6.0, multiple: 16 })
-      args.push('--video-frames', String(body.videoFrames || body.video_frames || 33))
-      const fps = parseInt(String(body.fps ?? 24), 10)
+      const genDefaults = motionPath
+        ? { width: 512, height: 512, cfg: 8.0, multiple: 64 }
+        : { width: 832, height: 480, cfg: 6.0, multiple: 16 }
+      addGenerationArgs(args, body, outputPath, genDefaults)
+      const defaultFrames = motionPath ? 16 : 33
+      args.push(
+        '--video-frames',
+        String(body.videoFrames || body.video_frames || defaultFrames)
+      )
+      const defaultFps = motionPath ? 8 : 24
+      const fps = parseInt(String(body.fps ?? defaultFps), 10)
       if (Number.isFinite(fps) && fps > 0) args.push('--fps', String(fps))
-      args.push('--flow-shift', String(body.flowShift || body.flow_shift || 3.0))
 
-      pushNumericArgIfPresent(args, '--vace-strength', body.vaceStrength ?? body.vace_strength)
-      pushNumericArgIfPresent(args, '--moe-boundary', body.moeBoundary ?? body.moe_boundary)
+      // Flow-shift is Wan/DiT; do not force it for AnimateDiff
+      if (!motionPath) {
+        const fsVal = body.flowShift ?? body.flow_shift
+        if (fsVal !== '' && fsVal != null && Number(fsVal) !== 0) {
+          args.push('--flow-shift', String(fsVal))
+        } else {
+          args.push('--flow-shift', '3.0')
+        }
+      }
 
-      // High-noise suite (Wan2.2 MoE and similar)
-      if (highNoise || body.highNoiseSteps != null || body.highNoiseCfg != null) {
-        pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg ?? body.highNoiseCfgScale)
-        pushArg(args, '--high-noise-steps', body.highNoiseSteps)
-        pushArg(
-          args,
-          '--high-noise-sampling-method',
-          body.highNoiseSampler ?? body.highNoiseSamplingMethod
-        )
-        pushArg(args, '--high-noise-guidance', body.highNoiseGuidance)
-        pushArg(args, '--high-noise-eta', body.highNoiseEta)
-        pushArg(args, '--high-noise-slg-scale', body.highNoiseSlgScale)
-        pushArg(args, '--high-noise-skip-layers', body.highNoiseSkipLayers)
-        pushArg(args, '--high-noise-skip-layer-start', body.highNoiseSkipLayerStart)
-        pushArg(args, '--high-noise-skip-layer-end', body.highNoiseSkipLayerEnd)
-        pushArg(args, '--high-noise-img-cfg-scale', body.highNoiseImgCfgScale)
+      if (!motionPath) {
+        pushNumericArgIfPresent(args, '--vace-strength', body.vaceStrength ?? body.vace_strength)
+        pushNumericArgIfPresent(args, '--moe-boundary', body.moeBoundary ?? body.moe_boundary)
+
+        // High-noise suite (Wan2.2 MoE and similar)
+        if (highNoise || body.highNoiseSteps != null || body.highNoiseCfg != null) {
+          pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg ?? body.highNoiseCfgScale)
+          pushArg(args, '--high-noise-steps', body.highNoiseSteps)
+          pushArg(
+            args,
+            '--high-noise-sampling-method',
+            body.highNoiseSampler ?? body.highNoiseSamplingMethod
+          )
+          pushArg(args, '--high-noise-guidance', body.highNoiseGuidance)
+          pushArg(args, '--high-noise-eta', body.highNoiseEta)
+          pushArg(args, '--high-noise-slg-scale', body.highNoiseSlgScale)
+          pushArg(args, '--high-noise-skip-layers', body.highNoiseSkipLayers)
+          pushArg(args, '--high-noise-skip-layer-start', body.highNoiseSkipLayerStart)
+          pushArg(args, '--high-noise-skip-layer-end', body.highNoiseSkipLayerEnd)
+          pushArg(args, '--high-noise-img-cfg-scale', body.highNoiseImgCfgScale)
+        }
       }
 
       addOptionalArgs(args, body)
@@ -994,6 +1001,95 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         }
       }
       sendCliFailure(res, error, 'Upscale failed')
+    }
+  })
+
+  /**
+   * Standalone ADetailer repair on an existing gallery image (-M adetailer).
+   * Requires diffusion weights + YOLO detector under models/adetailer.
+   */
+  app.post('/api/adetailer', async (req, res) => {
+    if (!ensureCliIdle(ctx, res)) return
+    ctx.state.cliCancelRequested = false
+
+    const body = (req.body || {}) as JsonObject
+    const sourceFilename = firstString(body.filename, body.source, body.image)
+    if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
+
+    const sourcePath = resolveOutputFile(ctx, sourceFilename)
+    if (!sourcePath) return res.status(400).json({ message: 'Source image not found' })
+
+    const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
+    if (!diffusionModel) {
+      return res.status(400).json({
+        message: 'No model selected. Select a diffusion model for the ADetailer inpaint pass.',
+        error: 'MODEL_REQUIRED'
+      })
+    }
+
+    const adName = firstString(body.adetailerModel, body.ad_model, body.adModel)
+    const adResolved = modelPath(ctx, 'adetailer', adName)
+    if (!adResolved) {
+      return res.status(400).json({
+        message:
+          'ADetailer detector required. Place a converted YOLOv8 .safetensors in models/adetailer.',
+        error: 'ADETAILER_MODEL_REQUIRED'
+      })
+    }
+
+    const imagePlan = planCliImageOutput(ctx, `adetailer_${Date.now()}.png`)
+    const args: string[] = ['-M', 'adetailer']
+    addModelArgs(ctx, args, body)
+    args.push('-i', sourcePath)
+
+    const prompt = String(body.prompt || body.adetailerPrompt || '')
+    // Prefer ad prompts when provided; generation args still need -p
+    const genBody: JsonObject = {
+      ...body,
+      prompt: prompt || 'detailed',
+      negative_prompt: body.negative_prompt ?? body.adetailerNegativePrompt ?? '',
+      // Standalone mode: strength is the detail denoise when not overridden in extra-ad-args
+      strength: body.strength ?? body.adetailerDenoisingStrength ?? body.img2imgStrength ?? 0.4
+    }
+    addGenerationArgs(args, genBody, imagePlan.cliOutputPath, {
+      width: 1024,
+      height: 1024,
+      cfg: 7,
+      multiple: 64
+    })
+    // Detail denoise: adetailer mode inherits --strength (docs)
+    pushArg(args, '--strength', genBody.strength)
+
+    addOptionalArgs(args, body)
+    addHardwareArgs(args, body, prompt)
+    assertLoraFilesPresent(ctx, body, prompt)
+    addPromptModelExtras(ctx, args, body, prompt)
+
+    addAdetailerArgs(
+      ctx,
+      args,
+      {
+        ...body,
+        adetailerEnabled: true,
+        adetailerModel: adName
+      },
+      { requireEnabled: false }
+    )
+
+    args.push('-v')
+
+    try {
+      const result = await runCli(ctx, args, 'ADETAILER')
+      await sendCliImageResult(ctx, res, result, imagePlan, 'ADetailer failed - no output file')
+    } catch (error: unknown) {
+      if (imagePlan.stageDir) {
+        try {
+          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
+        } catch {
+          /* ignore */
+        }
+      }
+      sendCliFailure(res, error, 'ADetailer failed')
     }
   })
 

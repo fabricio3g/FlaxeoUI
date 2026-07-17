@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { storeToRefs } from 'pinia'
 import { authenticatedFetch, getOutputUrl } from '@/services/api'
@@ -32,10 +32,48 @@ import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
+import { useModels } from '@/composables/useModels'
+import { useBackendCapabilities } from '@/composables/useBackendCapabilities'
 
 const toast = useToast()
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
+const { models, fetchModels } = useModels()
+const { supportsMotionModule, fetchCapabilities } = useBackendCapabilities()
+
+const isAnimateDiff = computed(() => !!config.value.motionModule)
+
+const motionModuleOptions = computed(() => [
+  {
+    label: models.value.animatediff?.length
+      ? 'None (Wan / LTX stack)'
+      : 'No modules in models/animatediff',
+    value: ''
+  },
+  ...(models.value.animatediff || []).map((m) => ({ label: m, value: m }))
+])
+
+/** Apply AnimateDiff-friendly sampling defaults when a motion module is chosen. */
+watch(
+  () => config.value.motionModule,
+  (mod, prev) => {
+    if (!mod || mod === prev) return
+    // v3 native resolution / temporal context
+    videoWidth.value = 512
+    videoHeight.value = 512
+    videoFrames.value = 16
+    videoFps.value = 8
+    configStore.updateConfig({
+      loadMode: 'standard',
+      cfgScale: 8,
+      sampler: 'euler',
+      scheduler: 'discrete',
+      steps: config.value.steps || 20,
+      img2imgStrength: config.value.img2imgStrength || 0.75,
+      flowShift: 0
+    })
+  }
+)
 
 // Video generation state
 const prompt = ref('')
@@ -239,7 +277,8 @@ async function handleGenerate(): Promise<void> {
     ...pickConfigSnapshot(config.value),
     width: videoWidth.value,
     height: videoHeight.value,
-    flowShift: flowShift.value
+    flowShift: isAnimateDiff.value ? 0 : flowShift.value,
+    motionModule: config.value.motionModule || undefined
   }
   const promptSnap = prompt.value
   const negSnap = negativePrompt.value
@@ -251,12 +290,17 @@ async function handleGenerate(): Promise<void> {
     video_frames: videoFrames.value,
     videoFrames: videoFrames.value,
     fps: videoFps.value,
-    flow_shift: flowShift.value,
-    flowShift: flowShift.value,
-    videoMode: true
+    videoMode: true,
+    motionModule: config.value.motionModule || undefined,
+    standardModel: config.value.standardModel || undefined
   }
 
-  if (hasHighNoiseModel.value || showHighNoise.value) {
+  if (!isAnimateDiff.value) {
+    extra.flow_shift = flowShift.value
+    extra.flowShift = flowShift.value
+  }
+
+  if (!isAnimateDiff.value && (hasHighNoiseModel.value || showHighNoise.value)) {
     extra.highNoiseSteps = highNoiseSteps.value
     extra.highNoiseCfg = highNoiseCfg.value
     extra.highNoiseSampler = highNoiseSampler.value
@@ -264,9 +308,18 @@ async function handleGenerate(): Promise<void> {
     extra.moeBoundary = moeBoundary.value
   }
 
-  if (controlVideoPath.value.trim()) {
+  if (!isAnimateDiff.value && controlVideoPath.value.trim()) {
     extra.controlVideo = controlVideoPath.value.trim()
     extra.vaceStrength = vaceStrength.value
+  }
+
+  if (
+    isAnimateDiff.value &&
+    (videoMode.value === 'i2v' || videoMode.value === 'flf2v') &&
+    referenceFile.value
+  ) {
+    extra.strength = config.value.img2imgStrength
+    extra.img2imgStrength = config.value.img2imgStrength
   }
 
   const payload = buildGenerationPayload(config.value, {
@@ -366,6 +419,8 @@ onMounted(() => {
   window.addEventListener('resize', handleWindowResize)
   window.addEventListener('keydown', handleGlobalKeydown)
   document.addEventListener('click', handleResolutionMenuClick)
+  void fetchModels()
+  void fetchCapabilities()
 
   const referenceUrl = sessionStorage.getItem('videoReferenceImage')
   if (!referenceUrl) return
@@ -760,12 +815,53 @@ onUnmounted(() => {
                 <div class="mb-3">
                   <p class="text-sm font-medium">Video settings</p>
                   <p class="mt-0.5 text-[11px] text-muted-foreground">
-                    Sampling, high-noise MoE, and VACE controls
+                    <template v-if="isAnimateDiff">AnimateDiff (SD1.5 + motion module)</template>
+                    <template v-else>Sampling, high-noise MoE, and VACE controls</template>
                   </p>
                 </div>
 
+                <label
+                  class="mb-3 block text-[10px] font-medium text-muted-foreground"
+                  :class="!supportsMotionModule ? 'opacity-60' : ''"
+                >
+                  AnimateDiff motion module
+                  <Select
+                    class="mt-1 w-full"
+                    :model-value="config.motionModule"
+                    :options="motionModuleOptions"
+                    :disabled="!supportsMotionModule"
+                    @update:model-value="
+                      (v) => configStore.updateConfig({ motionModule: String(v || '') })
+                    "
+                  />
+                  <span v-if="!supportsMotionModule" class="mt-1 block text-[10px] text-muted-foreground">
+                    Backend lacks --motion-module — upgrade stable-diffusion.cpp
+                  </span>
+                  <span v-else-if="isAnimateDiff" class="mt-1 block text-[10px] text-muted-foreground">
+                    Uses standard SD1.5 checkpoint + CFG 8 / euler. I2V = img2video with strength.
+                  </span>
+                </label>
+
+                <label
+                  v-if="isAnimateDiff && (videoMode === 'i2v' || videoMode === 'flf2v')"
+                  class="mb-3 block text-[10px] font-medium text-muted-foreground"
+                >
+                  Img2video strength
+                  <input
+                    v-model.number="config.img2imgStrength"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                </label>
+
                 <div class="grid grid-cols-3 gap-2">
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label
+                    v-if="!isAnimateDiff"
+                    class="text-[10px] font-medium text-muted-foreground"
+                  >
                     Flow
                     <input
                       v-model.number="flowShift"
@@ -822,7 +918,7 @@ onUnmounted(() => {
                   </label>
                 </div>
 
-                <div class="mt-4 border-t border-border/60 pt-3">
+                <div v-if="!isAnimateDiff" class="mt-4 border-t border-border/60 pt-3">
                   <button
                     type="button"
                     class="mb-2 flex w-full items-center justify-between text-left text-xs font-medium text-foreground"
@@ -892,7 +988,10 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <div class="mt-4 border-t border-border/60 pt-3 space-y-2">
+                <div
+                  v-if="!isAnimateDiff"
+                  class="mt-4 space-y-2 border-t border-border/60 pt-3"
+                >
                   <p class="text-xs font-medium text-foreground">VACE / control video</p>
                   <p class="text-[10px] leading-4 text-muted-foreground">
                     Directory of frames in lexicographic order (e.g. 00.png, 01.png). Maps to

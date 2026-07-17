@@ -53,6 +53,23 @@ Run before tagging a release. Goal: cold install feels trustworthy.
 - [ ] Recipes vs Prompt presets: different icons; only in composer (not duplicated in quick tools)
 - [ ] Recipes list readable (larger type)
 
+## ADetailer
+
+- [ ] Backend with ADetailer: `models/adetailer` lists converted YOLO `.safetensors`
+- [ ] Image settings: enable ADetailer after generate; generate portrait → refined output; logs show `--ad-model`
+- [ ] Disable ADetailer → no `--ad-*` flags on next gen
+- [ ] Gallery wand action queues ADetailer repair; result appears in gallery
+- [ ] Old backend without flags: controls disabled with clear message
+
+## AnimateDiff
+
+- [ ] Hub **AnimateDiff v3** downloads motion module into `models/animatediff`
+- [ ] Apply pack → standard load, 512², CFG 8, euler, motion module set
+- [ ] Video T2V with SD1.5 + motion → logs show `--motion-module` and no forced flow-shift; playable output
+- [ ] I2V with strength ~0.75 produces img2video-style motion
+- [ ] Clear motion module → Wan/LTX controls (flow-shift) return
+- [ ] Old backend without `--motion-module`: picker disabled
+
 ## Polish
 
 - [ ] Icon buttons: no sticky border on click

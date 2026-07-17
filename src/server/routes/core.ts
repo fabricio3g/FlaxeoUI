@@ -95,38 +95,90 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     res.json(getModelsPayload(ctx, force))
   })
 
+  /**
+   * Queue a model download and return immediately.
+   * Large weights (e.g. AnimateDiff ~800MB) must not hold the HTTP request open —
+   * progress is tracked via GET /api/downloads.
+   */
   app.post('/api/models/download', async (req, res) => {
-    const { url, category, filename } = req.body || {}
+    const { url, category, filename, label } = req.body || {}
     if (typeof url !== 'string' || !url.startsWith('https://'))
       return res.status(400).json({ error: 'HTTPS model URL required' })
     if (typeof category !== 'string' || !MODEL_DOWNLOAD_DIRS.has(category))
-      return res.status(400).json({ error: 'Invalid model category' })
+      return res.status(400).json({
+        error: `Invalid model category: ${category}. Allowed: ${[...MODEL_DOWNLOAD_DIRS].join(', ')}`
+      })
 
     const safeFilename = path.basename(
       typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url)
     )
     const targetDir = modelDirectory(ctx, category)
     const targetPath = path.join(targetDir, safeFilename)
-    const id = createDownloadTask(ctx, `Model: ${safeFilename}`, url, targetPath)
 
     try {
       fs.mkdirSync(targetDir, { recursive: true })
-      await trackedDownload(ctx, id, url, targetPath)
-      ctx.state.downloads[id].status = 'completed'
-      ctx.state.downloads[id].updatedAt = Date.now()
-      invalidateModelsCache()
-      res.json({ success: true, id, category, filename: safeFilename, path: targetPath })
     } catch (error: unknown) {
-      if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
-      const task = ctx.state.downloads[id]
-      const message = errorMessage(error)
-      if (task) {
-        task.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
-        task.error = message
-        task.updatedAt = Date.now()
-      }
-      res.status(500).json({ error: message })
+      return res.status(500).json({
+        error: `Cannot create model folder ${category}: ${errorMessage(error)}`
+      })
     }
+
+    // Prefer HF resolve?download=true for more reliable LFS/CDN redirects
+    let downloadUrl = url
+    try {
+      const parsed = new URL(url)
+      if (
+        parsed.hostname.endsWith('huggingface.co') &&
+        parsed.pathname.includes('/resolve/') &&
+        !parsed.searchParams.has('download')
+      ) {
+        parsed.searchParams.set('download', 'true')
+        downloadUrl = parsed.toString()
+      }
+    } catch {
+      /* keep original url */
+    }
+
+    const taskLabel =
+      typeof label === 'string' && label.trim()
+        ? `Model: ${label.trim()}`
+        : `Model: ${safeFilename}`
+    const id = createDownloadTask(ctx, taskLabel, downloadUrl, targetPath)
+
+    // Respond before the multi-hundred-MB transfer finishes
+    res.status(202).json({
+      success: true,
+      queued: true,
+      id,
+      category,
+      filename: safeFilename,
+      path: targetPath
+    })
+
+    void trackedDownload(ctx, id, downloadUrl, targetPath)
+      .then(() => {
+        const task = ctx.state.downloads[id]
+        if (!task || task.status === 'cancelled') return
+        task.status = 'completed'
+        task.updatedAt = Date.now()
+        invalidateModelsCache()
+        appendLog(ctx, `[Download] completed ${safeFilename} → ${targetPath}\n`)
+      })
+      .catch((error: unknown) => {
+        try {
+          if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
+        } catch {
+          /* ignore */
+        }
+        const task = ctx.state.downloads[id]
+        const message = errorMessage(error)
+        if (task && task.status === 'downloading') {
+          task.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
+          task.error = message
+          task.updatedAt = Date.now()
+        }
+        appendLog(ctx, `[Download] failed ${safeFilename}: ${message}\n`)
+      })
   })
 
   app.get('/api/downloads', (_req, res) => {

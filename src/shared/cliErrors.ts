@@ -36,6 +36,17 @@ export function humanizeCliError(raw: unknown): HumanizedError {
     }
   }
 
+  if (
+    /ADETAILER_MODEL_REQUIRED|adetailer (detector|model) required|models[/\\]adetailer/i.test(text)
+  ) {
+    return {
+      title: 'ADetailer detector missing',
+      detail:
+        'Place a converted YOLOv8 .safetensors detector in models/adetailer and select it.',
+      hint: 'See Help → ADetailer for conversion steps (face_yolov8n.pt → .safetensors).'
+    }
+  }
+
   if (/out of memory|CUDA out of memory|failed to allocate|GGML_ASSERT.*alloc|oom/i.test(text)) {
     return {
       title: 'Out of memory',

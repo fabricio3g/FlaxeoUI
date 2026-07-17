@@ -61,7 +61,7 @@ const sizeClass = computed(() => {
       <span
         v-for="(sq, i) in squares"
         :key="i"
-        class="brand-mark__square absolute rounded-[3px] border-2 border-foreground/35 bg-foreground/10 dark:border-white/40 dark:bg-white/10"
+        class="brand-mark__square absolute rounded-[3px] border-2 border-foreground/30 bg-foreground/8 dark:border-white/35 dark:bg-white/10"
         :style="{
           width: sq.s,
           height: sq.s,
@@ -72,23 +72,20 @@ const sizeClass = computed(() => {
       />
     </span>
 
-    <!-- Flaxeo: hard / heavy — same style at every size -->
     <span class="brand-mark__flaxeo relative z-10">Flaxeo</span>
-    <!-- Image: slim / light — same style at every size -->
     <span class="brand-mark__image relative z-10">Image</span>
   </span>
 </template>
 
 <style scoped>
-/* Shared wordmark system (sidebar sm + hero lg/xl) */
 .brand-mark {
-  gap: 0.4em; /* proportional to font-size so spacing matches at every size */
+  gap: 0.4em;
   line-height: 1;
 }
 
 .brand-mark__flaxeo {
-  font-weight: 900;
-  letter-spacing: -0.05em;
+  font-weight: 600;
+  letter-spacing: -0.04em;
   color: inherit;
 }
 
@@ -99,7 +96,7 @@ const sizeClass = computed(() => {
 }
 
 .brand-mark--sm {
-  font-size: 0.875rem; /* 14px — sidebar */
+  font-size: 0.875rem;
 }
 
 .brand-mark--md {
@@ -107,20 +104,19 @@ const sizeClass = computed(() => {
 }
 
 .brand-mark--lg {
-  font-size: 2.25rem; /* 36px — empty states */
+  font-size: 2.25rem;
 }
 
 .brand-mark--xl {
-  font-size: 3rem; /* 48px — Image hero */
+  font-size: 3rem;
 }
 
 @media (min-width: 768px) {
   .brand-mark--xl {
-    font-size: 3.75rem; /* 60px */
+    font-size: 3.75rem;
   }
 }
 
-/* Ambient squares: same padding scale for lg/xl heroes */
 .brand-mark--ambient {
   padding: 0.75em 1em;
   isolation: isolate;
@@ -131,7 +127,8 @@ const sizeClass = computed(() => {
   transform: translate(-50%, -50%);
   animation: brand-square-drift 4.8s ease-in-out infinite;
   will-change: transform, opacity;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.04);
+  /* Match monochrome UI chrome (border / foreground), no neon accent */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 @keyframes brand-square-drift {

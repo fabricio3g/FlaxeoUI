@@ -148,7 +148,29 @@ export function buildGenerationPayload(
     upscaleModel: c.upscaleModel || undefined,
     taesdModel: c.taesdModel || undefined,
     guidance: c.guidance || undefined,
-    videoMode: c.videoMode || undefined
+    videoMode: c.videoMode || undefined,
+    motionModule: c.motionModule || undefined
+  }
+
+  if (c.adetailerEnabled && c.adetailerModel) {
+    params.adetailerEnabled = true
+    params.adetailerModel = c.adetailerModel
+    if (c.adetailerPrompt) params.adetailerPrompt = c.adetailerPrompt
+    if (c.adetailerNegativePrompt) params.adetailerNegativePrompt = c.adetailerNegativePrompt
+    params.adetailerConfidence = c.adetailerConfidence
+    params.adetailerDenoisingStrength = c.adetailerDenoisingStrength
+    params.adetailerInpaintPadding = c.adetailerInpaintPadding
+    params.adetailerMaskBlur = c.adetailerMaskBlur
+    params.adetailerInpaintWidth = c.adetailerInpaintWidth
+    params.adetailerInpaintHeight = c.adetailerInpaintHeight
+    params.adetailerMaskKLargest = c.adetailerMaskKLargest
+    if (c.adetailerMaskMode && c.adetailerMaskMode !== 'none') {
+      params.adetailerMaskMode = c.adetailerMaskMode
+    }
+    if (c.adetailerSortBy && c.adetailerSortBy !== 'none') {
+      params.adetailerSortBy = c.adetailerSortBy
+    }
+    if (c.adetailerExtraArgs) params.adetailerExtraArgs = c.adetailerExtraArgs
   }
 
   if (c.loras.length > 0) {

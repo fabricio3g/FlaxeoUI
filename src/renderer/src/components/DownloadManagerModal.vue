@@ -1,30 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { Download, Loader2, Trash2, X, XCircle } from '@/lib/icons'
-import { apiGet, apiPost } from '@/services/api'
-
-interface DownloadTask {
-  id: string
-  label: string
-  targetPath: string
-  url: string
-  status: 'downloading' | 'completed' | 'failed' | 'cancelled'
-  receivedBytes: number
-  totalBytes: number | null
-  startedAt: number
-  updatedAt: number
-  error?: string
-}
+import { onMounted, onUnmounted, watch } from 'vue'
+import { Download, Trash2, X, XCircle } from '@/lib/icons'
+import { useDownloads, type DownloadTask } from '@/composables/useDownloads'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
-const downloads = ref<DownloadTask[]>([])
-let pollInterval: ReturnType<typeof setInterval> | null = null
+const {
+  downloads,
+  activeDownloads,
+  fetchDownloads,
+  subscribeDownloads,
+  cancelDownload,
+  clearCompleted
+} = useDownloads()
 
-const activeDownloads = computed(() =>
-  downloads.value.filter((task) => task.status === 'downloading')
-)
+let unsubscribe: (() => void) | null = null
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
@@ -38,56 +29,22 @@ function progressPercent(task: DownloadTask): number {
   return Math.min(100, Math.max(0, (task.receivedBytes / task.totalBytes) * 100))
 }
 
-async function fetchDownloads(): Promise<void> {
-  try {
-    const result = await apiGet<{ downloads: DownloadTask[] }>('/api/downloads')
-    downloads.value = result.downloads || []
-  } catch {
-    /* ignore poll errors while closed/opening */
-  }
-}
-
-async function cancelDownload(id: string): Promise<void> {
-  await apiPost(`/api/downloads/${id}/cancel`, {})
-  await fetchDownloads()
-}
-
-async function clearCompleted(): Promise<void> {
-  await apiPost('/api/downloads/clear-completed', {})
-  await fetchDownloads()
-}
-
-function startPolling(): void {
-  if (pollInterval) return
-  pollInterval = setInterval(fetchDownloads, 1000)
-}
-
-function stopPolling(): void {
-  if (!pollInterval) return
-  clearInterval(pollInterval)
-  pollInterval = null
-}
-
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) {
-      fetchDownloads()
-      startPolling()
-    } else {
-      stopPolling()
-    }
+    if (isOpen) void fetchDownloads()
   }
 )
 
 onMounted(() => {
-  if (props.open) {
-    fetchDownloads()
-    startPolling()
-  }
+  unsubscribe = subscribeDownloads()
+  if (props.open) void fetchDownloads()
 })
 
-onUnmounted(stopPolling)
+onUnmounted(() => {
+  unsubscribe?.()
+  unsubscribe = null
+})
 </script>
 
 <template>
@@ -99,114 +56,122 @@ onUnmounted(stopPolling)
       aria-hidden="true"
       @pointerdown="emit('close')"
     />
-    <Transition name="float-panel">
+
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0 translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-1"
+    >
       <div
         v-if="open"
+        class="fixed right-3 top-12 z-[110] flex w-[min(22rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 titlebar-no-drag dark:shadow-black/40"
         role="dialog"
-        aria-label="Downloads"
-        class="aui-float-panel fixed right-2 top-11 z-[110] flex max-h-[min(70vh,28rem)] w-[min(calc(100vw-1rem),22rem)] flex-col overflow-hidden rounded-xl border border-border/80 bg-popover text-popover-foreground titlebar-no-drag sm:right-3"
+        aria-label="Download manager"
         @pointerdown.stop
       >
-        <header
-          class="aui-scroll-header aui-scroll-header--popover aui-scroll-header--compact flex items-center justify-between gap-2 bg-popover px-3 py-2.5"
-        >
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <h2 class="text-xs font-semibold tracking-tight">Downloads</h2>
-              <span
-                v-if="activeDownloads.length"
-                class="text-[10px] tabular-nums text-muted-foreground"
-              >
-                {{ activeDownloads.length }} active
-              </span>
+        <div class="flex items-center justify-between gap-2 border-b border-border/70 px-3 py-2.5">
+          <div class="flex items-center gap-2 min-w-0">
+            <Download class="size-4 shrink-0 text-muted-foreground" />
+            <div class="min-w-0">
+              <p class="text-sm font-medium">Downloads</p>
+              <p class="text-[11px] text-muted-foreground">
+                <template v-if="activeDownloads.length">
+                  {{ activeDownloads.length }} active
+                </template>
+                <template v-else>Model &amp; package transfers</template>
+              </p>
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-0.5">
+          <div class="flex items-center gap-0.5">
             <button
               type="button"
-              class="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-              :disabled="downloads.length === 0"
+              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="Clear completed"
+              aria-label="Clear completed downloads"
               @click="clearCompleted"
             >
-              <Trash2 class="size-3" />
-              Clear
+              <Trash2 class="size-3.5" />
             </button>
             <button
               type="button"
-              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Close"
+              class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Close downloads"
               @click="emit('close')"
             >
               <X class="size-3.5" />
             </button>
           </div>
-          <div class="aui-scroll-header__fade" aria-hidden="true" />
-        </header>
+        </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto p-2">
-          <div
-            v-if="downloads.length === 0"
-            class="px-3 py-8 text-center text-[11px] text-muted-foreground"
+        <div class="max-h-[min(22rem,50vh)] overflow-y-auto p-2">
+          <p
+            v-if="!downloads.length"
+            class="px-2 py-6 text-center text-xs text-muted-foreground"
           >
-            No downloads yet
-          </div>
+            No downloads yet. Use Model Hub or Settings → Backend.
+          </p>
 
-          <ul v-else class="space-y-1">
+          <ul v-else class="space-y-1.5">
             <li
               v-for="task in downloads"
               :key="task.id"
-              class="rounded-lg border border-border/50 bg-background/80 px-2.5 py-2"
+              class="rounded-lg border border-border/60 bg-background/50 px-2.5 py-2"
             >
-              <div class="flex items-start gap-2">
-                <Loader2
-                  v-if="task.status === 'downloading'"
-                  class="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground"
-                />
-                <XCircle
-                  v-else-if="task.status === 'failed' || task.status === 'cancelled'"
-                  class="mt-0.5 size-3.5 shrink-0 text-destructive"
-                />
-                <Download
-                  v-else
-                  class="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                />
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5">
-                    <p class="min-w-0 truncate text-[11px] font-medium">{{ task.label }}</p>
-                    <span class="shrink-0 text-[9px] capitalize text-muted-foreground">{{
-                      task.status
-                    }}</span>
-                  </div>
-                  <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      class="h-full rounded-full bg-foreground/70 transition-all duration-300"
-                      :class="
-                        !task.totalBytes && task.status === 'downloading'
-                          ? 'w-1/3 animate-pulse'
-                          : ''
-                      "
-                      :style="task.totalBytes ? { width: progressPercent(task) + '%' } : undefined"
-                    />
-                  </div>
-                  <p class="mt-1 text-[9px] tabular-nums text-muted-foreground">
-                    {{ formatBytes(task.receivedBytes)
-                    }}<template v-if="task.totalBytes">
-                      / {{ formatBytes(task.totalBytes) }}</template
-                    >
+                  <p class="truncate text-xs font-medium text-foreground" :title="task.label">
+                    {{ task.label }}
                   </p>
-                  <p v-if="task.error" class="mt-1 text-[10px] text-destructive">
-                    {{ task.error }}
+                  <p class="mt-0.5 truncate text-[10px] text-muted-foreground" :title="task.targetPath">
+                    {{ task.targetPath }}
                   </p>
                 </div>
                 <button
                   v-if="task.status === 'downloading'"
                   type="button"
-                  class="shrink-0 text-[10px] text-muted-foreground hover:text-destructive"
+                  class="aui-icon-button inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Cancel download"
                   @click="cancelDownload(task.id)"
                 >
-                  Cancel
+                  <XCircle class="size-3.5" />
                 </button>
               </div>
+
+              <div v-if="task.status === 'downloading'" class="mt-1.5">
+                <div class="h-1 overflow-hidden rounded-sm bg-muted">
+                  <div
+                    class="h-full rounded-sm bg-foreground/70 transition-all duration-300"
+                    :style="{ width: `${progressPercent(task)}%` }"
+                  />
+                </div>
+                <p class="mt-1 text-[10px] tabular-nums text-muted-foreground">
+                  {{ formatBytes(task.receivedBytes)
+                  }}<template v-if="task.totalBytes">
+                    / {{ formatBytes(task.totalBytes) }}</template
+                  >
+                </p>
+              </div>
+
+              <p
+                v-else
+                class="mt-1 text-[10px] font-medium"
+                :class="{
+                  'text-emerald-600 dark:text-emerald-400': task.status === 'completed',
+                  'text-destructive': task.status === 'failed',
+                  'text-muted-foreground': task.status === 'cancelled'
+                }"
+              >
+                {{
+                  task.status === 'completed'
+                    ? 'Completed'
+                    : task.status === 'failed'
+                      ? task.error || 'Failed'
+                      : 'Cancelled'
+                }}
+              </p>
             </li>
           </ul>
         </div>
