@@ -89,8 +89,10 @@ const sizeClasses: Record<string, string> = {
 }
 
 const contentClasses = cn(
-  'z-[300] max-h-60 min-w-[var(--reka-select-trigger-width)] w-auto max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border bg-popover/95 text-popover-foreground shadow-lg backdrop-blur-sm',
-  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95'
+  'z-[300] max-h-[min(15rem,50vh)] min-w-[var(--reka-select-trigger-width)] w-auto max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border bg-popover/95 text-popover-foreground shadow-lg backdrop-blur-sm',
+  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
+  // Keep popper in viewport on mobile
+  'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1'
 )
 
 const itemClasses = cn(
@@ -125,7 +127,16 @@ const viewportClasses = 'p-1.5'
     </SelectTrigger>
 
     <SelectPortal>
-      <SelectContent data-slot="select-content" :class="contentClasses" :position="'popper'">
+      <SelectContent
+        data-slot="select-content"
+        :class="contentClasses"
+        position="popper"
+        side="bottom"
+        :side-offset="6"
+        align="start"
+        :collision-padding="12"
+        :avoid-collisions="true"
+      >
         <SelectViewport :class="viewportClasses">
           <SelectGroup>
             <SelectItem

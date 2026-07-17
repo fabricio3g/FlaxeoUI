@@ -172,6 +172,11 @@ function selectResolution(preset: (typeof resolutionPresets)[number]): void {
   showResolutionMenu.value = false
 }
 
+function onMatchRefSizeClick(): void {
+  setRefEditSizeMode('match_ref')
+  void refreshMatchRefSize()
+}
+
 function applyCustomResolution(): void {
   setRefEditSizeMode('studio')
   configStore.setDimensions(
@@ -1628,7 +1633,7 @@ onUnmounted(() => {
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-0 z-[100] mb-2 w-64 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-0 z-[100] mb-2 w-[min(16rem,calc(100vw-1.5rem))] max-h-[min(60vh,22rem)] overflow-y-auto rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150 md:left-0"
               @click.stop
             >
               <div class="mb-2 px-1">
@@ -1662,12 +1667,9 @@ onUnmounted(() => {
                   :title="
                     editMode === 'img2img'
                       ? 'Output size follows the source image natural pixels'
-                      : 'Output size follows the first reference’s natural pixels'
+                      : 'Output size follows the first reference natural pixels'
                   "
-                  @click="
-                    setRefEditSizeMode('match_ref')
-                    refreshMatchRefSize()
-                  "
+                  @click="onMatchRefSizeClick"
                 >
                   {{ matchSizeLabel }}
                 </button>
@@ -1868,10 +1870,7 @@ onUnmounted(() => {
                           ? 'bg-foreground text-background'
                           : 'text-muted-foreground'
                       "
-                      @click="
-                        setRefEditSizeMode('match_ref')
-                        refreshMatchRefSize()
-                      "
+                      @click="onMatchRefSizeClick"
                     >
                       {{ matchSizeLabel }}
                     </button>

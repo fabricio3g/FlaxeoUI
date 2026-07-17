@@ -53,6 +53,7 @@ import { onStarterPrompt } from '@/lib/appEvents'
 import { requestConfirm } from '@/composables/useConfirm'
 import { downloadOutputAsFormat } from '@/lib/mediaExport'
 import { useOutputPreferences, type ArchiveImageFormat } from '@/composables/useOutputPreferences'
+import { resolutionPresets } from '@/lib/resolutionPresets'
 
 const toast = useToast()
 const { markFirstImageDone } = useSetup()
@@ -385,22 +386,6 @@ function usePromptSuggestion(suggestion: string): void {
   prompt.value = suggestion
   requestAnimationFrame(() => promptInput.value?.focus())
 }
-
-/** Power-of-two squares + standard frames (capability labels, not vertical brands) */
-const resolutionPresets = [
-  { label: '512²', width: 512, height: 512 },
-  { label: '768²', width: 768, height: 768 },
-  { label: '1024²', width: 1024, height: 1024 },
-  { label: '1536²', width: 1536, height: 1536 },
-  { label: '2048²', width: 2048, height: 2048 },
-  { label: '1:1', width: 1024, height: 1024 },
-  { label: '4:3', width: 1024, height: 768 },
-  { label: '3:2', width: 1152, height: 768 },
-  { label: '16:9', width: 1344, height: 768 },
-  { label: '9:16', width: 768, height: 1344 },
-  { label: '2:3', width: 832, height: 1216 },
-  { label: '3:4', width: 896, height: 1152 }
-]
 
 const resolutionLabel = computed(() => {
   return `${config.value.width}×${config.value.height}`
@@ -1676,7 +1661,7 @@ onActivated(() => {
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full right-0 z-[100] mb-2 w-64 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-0 z-[100] mb-2 w-[min(16rem,calc(100vw-1.5rem))] max-h-[min(60vh,22rem)] overflow-y-auto rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150 md:left-auto md:right-0"
               @click.stop
             >
               <div class="grid grid-cols-2 gap-1">
