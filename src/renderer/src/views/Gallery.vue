@@ -625,7 +625,7 @@ onUnmounted(() => {
             <button
               type="button"
               @click="openUpscalePanel"
-              class="inline-flex h-8 items-center rounded-md px-2 text-[11px] font-medium text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
+              class="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40"
               aria-label="Upscale options"
               :disabled="!supportsUpscale"
             >
@@ -696,11 +696,11 @@ onUnmounted(() => {
 
           <div class="space-y-3">
             <div>
-              <label class="mb-1 block text-xs text-muted-foreground">ESRGAN model</label>
+              <label class="mb-1 block text-sm text-muted-foreground">ESRGAN model</label>
               <Select v-model="upscaleModel" size="md" :options="upscaleModelOptions" />
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <label class="text-xs text-muted-foreground">
+              <label class="text-sm text-muted-foreground">
                 Repeats
                 <input
                   v-model.number="upscaleRepeats"
@@ -710,7 +710,7 @@ onUnmounted(() => {
                   class="mt-1 w-full rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-foreground"
                 />
               </label>
-              <label class="text-xs text-muted-foreground">
+              <label class="text-sm text-muted-foreground">
                 Tile size
                 <input
                   v-model.number="upscaleTileSize"
@@ -721,7 +721,7 @@ onUnmounted(() => {
                 />
               </label>
             </div>
-            <p class="text-[11px] leading-4 text-muted-foreground">
+            <p class="text-xs leading-relaxed text-muted-foreground">
               Uses sd-cli <code class="text-foreground/80">-M upscale</code>. Place models in
               <code class="text-foreground/80">models/upscale</code>.
             </p>
@@ -868,7 +868,7 @@ onUnmounted(() => {
           <div
             class="pointer-events-none absolute inset-x-1.5 bottom-1.5 rounded-md border border-white/10 bg-zinc-950/65 px-2 py-1.5 text-left opacity-0 shadow-sm backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
           >
-            <p class="truncate text-[10px] font-medium text-zinc-100">{{ img }}</p>
+            <p class="truncate text-xs font-medium text-zinc-100">{{ img }}</p>
           </div>
         </button>
       </div>
@@ -883,7 +883,7 @@ onUnmounted(() => {
           <ChevronLeft class="size-4" />
         </button>
         <span
-          class="aui-status-badge rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
+          class="aui-status-badge rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-xs font-medium text-muted-foreground"
           >Page {{ currentPage }} of {{ totalPages }}</span
         >
         <button

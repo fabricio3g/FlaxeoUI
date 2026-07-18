@@ -49,7 +49,7 @@ function handleNavClick(id: string): void {
         :is="item.icon"
         class="h-4 w-4 transition-transform duration-150 group-active:scale-95"
       />
-      <span class="max-w-full truncate text-[10px] font-medium leading-3">{{ item.label }}</span>
+      <span class="max-w-full truncate text-xs font-medium leading-3">{{ item.label }}</span>
     </button>
   </nav>
 </template>

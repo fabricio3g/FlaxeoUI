@@ -4,7 +4,7 @@ import { computed } from 'vue'
 const props = withDefaults(
   defineProps<{
     size?: 'sm' | 'md' | 'lg' | 'xl'
-    /** Soft floating squares behind the mark (lg/xl empty states) */
+    /** Floating squares behind the mark (lg/xl empty states) */
     ambient?: boolean
   }>(),
   {
@@ -15,24 +15,20 @@ const props = withDefaults(
 
 const showAmbient = computed(() => props.ambient ?? (props.size === 'lg' || props.size === 'xl'))
 
-/**
- * Square field around the wordmark.
- * Positions are % of the ambient stage so they scale with size.
- */
+/** Quiet ambient squares around the wordmark */
 const squares = [
-  { s: '0.55rem', x: '8%', y: '18%', d: '0s' },
-  { s: '0.9rem', x: '88%', y: '12%', d: '0.5s' },
-  { s: '0.45rem', x: '4%', y: '62%', d: '1.1s' },
-  { s: '1.15rem', x: '92%', y: '58%', d: '0.25s' },
-  { s: '0.7rem', x: '18%', y: '88%', d: '1.4s' },
-  { s: '0.85rem', x: '78%', y: '86%', d: '0.85s' },
-  { s: '0.4rem', x: '96%', y: '38%', d: '1.7s' },
-  { s: '1rem', x: '2%', y: '38%', d: '0.35s' },
-  { s: '0.5rem', x: '42%', y: '6%', d: '1s' },
-  { s: '0.65rem', x: '58%', y: '94%', d: '1.55s' }
+  { s: '0.55rem', x: '8%', y: '18%' },
+  { s: '0.9rem', x: '88%', y: '12%' },
+  { s: '0.45rem', x: '4%', y: '62%' },
+  { s: '1.15rem', x: '92%', y: '58%' },
+  { s: '0.7rem', x: '18%', y: '88%' },
+  { s: '0.85rem', x: '78%', y: '86%' },
+  { s: '0.4rem', x: '96%', y: '38%' },
+  { s: '1rem', x: '2%', y: '38%' },
+  { s: '0.5rem', x: '42%', y: '6%' },
+  { s: '0.65rem', x: '58%', y: '94%' }
 ] as const
 
-/** Shared type ramp: same weights/tracking everywhere; only font-size changes. */
 const sizeClass = computed(() => {
   switch (props.size) {
     case 'sm':
@@ -61,13 +57,12 @@ const sizeClass = computed(() => {
       <span
         v-for="(sq, i) in squares"
         :key="i"
-        class="brand-mark__square absolute rounded-[3px] border-2 border-foreground/30 bg-foreground/8 dark:border-white/35 dark:bg-white/10"
+        class="brand-mark__square absolute border border-foreground/30 bg-foreground/8 dark:border-white/35 dark:bg-white/10"
         :style="{
           width: sq.s,
           height: sq.s,
           left: sq.x,
-          top: sq.y,
-          animationDelay: sq.d
+          top: sq.y
         }"
       />
     </span>
@@ -124,33 +119,8 @@ const sizeClass = computed(() => {
 }
 
 .brand-mark__square {
+  border-radius: 0;
   transform: translate(-50%, -50%);
-  animation: brand-square-drift 4.8s ease-in-out infinite;
-  will-change: transform, opacity;
-  /* Match monochrome UI chrome (border / foreground), no neon accent */
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 4%, transparent);
-}
-
-@keyframes brand-square-drift {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    opacity: 0.75;
-  }
-  35% {
-    transform: translate(-50%, calc(-50% - 10px)) scale(1.12) rotate(6deg);
-    opacity: 1;
-  }
-  70% {
-    transform: translate(calc(-50% + 6px), calc(-50% + 6px)) scale(0.92) rotate(-5deg);
-    opacity: 0.65;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .brand-mark__square {
-    animation: none;
-    opacity: 0.85;
-  }
+  opacity: 0.75;
 }
 </style>

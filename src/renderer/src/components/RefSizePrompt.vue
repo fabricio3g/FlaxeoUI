@@ -95,7 +95,7 @@ function onDontAskChange(e: Event): void {
           </div>
 
           <footer class="flex items-center px-5 py-4">
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 class="rounded border-border"

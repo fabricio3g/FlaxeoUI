@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+// Bundled fonts (fontsource → Vite assets). Do not load from CDN.
 import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
 

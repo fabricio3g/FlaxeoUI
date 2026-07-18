@@ -119,7 +119,7 @@ function flatIndexOf(item: CommandItem): number {
           </p>
           <div v-for="section in groups" :key="section.group" class="mb-2 last:mb-0">
             <p
-              class="px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+              class="px-2.5 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground"
             >
               {{ section.group }}
             </p>
@@ -145,7 +145,7 @@ function flatIndexOf(item: CommandItem): number {
                 <span class="block truncate text-sm font-medium">{{ item.label }}</span>
                 <span
                   v-if="item.subtitle"
-                  class="block truncate text-[11px] text-muted-foreground"
+                  class="block truncate text-xs text-muted-foreground"
                   >{{ item.subtitle }}</span
                 >
               </span>
@@ -154,7 +154,7 @@ function flatIndexOf(item: CommandItem): number {
         </div>
 
         <div
-          class="flex items-center gap-3 border-t border-border/60 px-3 py-2 text-[10px] text-muted-foreground"
+          class="flex items-center gap-3 border-t border-border/60 px-3 py-2 text-xs text-muted-foreground"
         >
           <span><kbd class="font-mono">↑↓</kbd> navigate</span>
           <span><kbd class="font-mono">Enter</kbd> open</span>

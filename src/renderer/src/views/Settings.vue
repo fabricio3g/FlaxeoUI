@@ -660,7 +660,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               class="flex flex-col gap-3 px-1 py-2 sm:flex-row sm:items-center sm:justify-between"
             >
               <div class="min-w-0">
-                <p class="aui-label text-[11px] font-medium text-muted-foreground">
+                <p class="aui-label text-sm font-medium text-muted-foreground">
                   Active version
                 </p>
                 <p class="mt-1 truncate text-sm font-medium">
@@ -668,7 +668,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                 </p>
               </div>
               <span
-                class="aui-status-badge inline-flex w-fit items-center gap-1.5 text-[10px] font-medium"
+                class="aui-status-badge inline-flex w-fit items-center gap-1.5 text-xs font-medium"
                 :class="config.activeBackendValid ? 'text-foreground' : 'text-destructive'"
               >
                 <span
@@ -683,7 +683,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               v-if="config.installedVersions.length > 0 || config.customBinaryExists"
               class="mt-4 px-1 pt-2"
             >
-              <label class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+              <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
                 >Switch version</label
               >
               <Select
@@ -718,7 +718,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               class="mt-4 flex flex-col gap-1 px-1 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p class="aui-label text-[11px] font-medium text-muted-foreground">
+                <p class="aui-label text-sm font-medium text-muted-foreground">
                   Detected system
                 </p>
                 <p class="mt-0.5 text-xs font-medium">
@@ -734,7 +734,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               </div>
               <p
                 v-if="systemInfo.note"
-                class="max-w-md text-[11px] text-muted-foreground sm:text-right"
+                class="max-w-md text-xs text-muted-foreground sm:text-right"
               >
                 {{ systemInfo.note }}
               </p>
@@ -749,7 +749,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label
-                    class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                    class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
                     >Release version</label
                   >
                   <Select
@@ -764,7 +764,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                 </div>
                 <div>
                   <label
-                    class="aui-label mb-1.5 block text-[11px] font-medium text-muted-foreground"
+                    class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
                     >Binary variant</label
                   >
                   <Select
@@ -818,12 +818,12 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="text-xs font-medium">Localhost</p>
-                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                     Used internally by the desktop app. It remains private to this computer.
                   </p>
                 </div>
                 <span
-                  class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] font-medium text-foreground"
+                  class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs font-medium text-foreground"
                 >
                   <span class="size-1.5 rounded-full bg-foreground"></span>
                   Always on
@@ -835,7 +835,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="text-xs font-medium">Local network sharing</p>
-                  <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                     Share the generation interface with paired devices on one private network
                     adapter.
                   </p>
@@ -856,7 +856,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
               </div>
 
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                <label class="block text-[11px] font-medium text-muted-foreground">
+                <label class="block text-sm font-medium text-muted-foreground">
                   Connection mode
                   <select
                     v-model="lanTransport"
@@ -868,7 +868,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     <option value="http">Quick HTTP</option>
                   </select>
                 </label>
-                <label class="block text-[11px] font-medium text-muted-foreground">
+                <label class="block text-sm font-medium text-muted-foreground">
                   Paired device access
                   <select
                     v-model="lanAccessLevel"
@@ -885,20 +885,20 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
 
               <div
                 v-if="lanTransport === 'http'"
-                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:text-amber-300"
+                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-4 text-amber-800 dark:text-amber-300"
               >
                 Quick HTTP is not encrypted, allows generation only, expires after 15 minutes, and
                 is disabled after restart. Use it only on a trusted home network.
               </div>
               <div
                 v-else-if="lanAccessLevel === 'control'"
-                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:text-amber-300"
+                class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-4 text-amber-800 dark:text-amber-300"
               >
                 Full remote control includes safe runtime and log controls. Backend installation,
                 storage, certificates, downloads, and security settings always remain desktop-only.
               </div>
 
-              <label class="mt-4 block text-[11px] font-medium text-muted-foreground">
+              <label class="mt-4 block text-sm font-medium text-muted-foreground">
                 Network adapter
                 <select
                   v-model="lanAddress"
@@ -929,7 +929,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     class="overflow-hidden rounded-md border border-border bg-white p-2 [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
                     v-html="lanQrSvg"
                   ></div>
-                  <div class="min-w-0 text-[11px] leading-4 text-muted-foreground">
+                  <div class="min-w-0 text-xs leading-relaxed text-muted-foreground">
                     <p class="font-medium text-foreground">Scan to pair</p>
                     <p v-if="lanStatus.transport === 'https'" class="mt-1">
                       Install and trust the Flaxeo certificate before pairing. Never bypass a
@@ -941,7 +941,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     <button
                       type="button"
                       @click="copyUrl(lanPairingUrl)"
-                      class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 font-mono text-[10px] hover:bg-muted/40"
+                      class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 font-mono text-xs hover:bg-muted/40"
                     >
                       <span class="truncate">{{ lanStatus.url }}</span>
                       <Copy class="size-3.5 shrink-0" />
@@ -955,7 +955,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
 
                 <div
                   v-if="lanStatus.transport === 'https'"
-                  class="mt-4 rounded-md bg-muted/30 p-3 text-[10px] leading-4 text-muted-foreground"
+                  class="mt-4 rounded-md bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground"
                 >
                   <p class="font-medium text-foreground">Certificate SHA-256 fingerprint</p>
                   <p class="mt-1 break-all font-mono">{{ lanStatus.certificateFingerprint }}</p>
@@ -1015,7 +1015,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       :key="device.id"
                       class="flex items-start justify-between gap-3 px-3 py-2.5"
                     >
-                      <div class="min-w-0 text-[10px] leading-4 text-muted-foreground">
+                      <div class="min-w-0 text-xs leading-relaxed text-muted-foreground">
                         <p
                           class="truncate text-xs font-medium text-foreground"
                           :title="device.userAgent"
@@ -1083,12 +1083,12 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       <p class="text-sm font-medium">{{ location.label }}</p>
                       <span
                         v-if="storageIsCustom(location.id)"
-                        class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                        class="text-xs uppercase tracking-wide text-muted-foreground"
                         >Custom</span
                       >
                     </div>
                     <p
-                      class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                      class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
                       :title="storagePath(location.id)"
                     >
                       {{ storagePath(location.id) }}
@@ -1126,7 +1126,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                 <div class="mt-5 space-y-4 border-t border-border/60 pt-4">
                   <div>
                     <p class="text-sm font-medium">Store generations as</p>
-                    <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                       AVIF stages PNG in temp and publishes AVIF only to Image output. PNG keeps raw
                       outputs (best for reuse-settings from file metadata).
                     </p>
@@ -1158,14 +1158,14 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                         AVIF
                       </button>
                     </div>
-                    <p v-if="outputFormatError" class="mt-2 text-[11px] text-destructive">
+                    <p v-if="outputFormatError" class="mt-2 text-xs text-destructive">
                       {{ outputFormatError }}
                     </p>
                   </div>
 
                   <div>
                     <p class="text-sm font-medium">Default save / archive format</p>
-                    <p class="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                       Used by Download and by automatic download. You can still pick PNG or AVIF per
                       save from the workspace Download menu.
                     </p>
@@ -1210,7 +1210,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       <span class="block text-sm font-medium"
                         >Download generated images automatically</span
                       >
-                      <span class="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                      <span class="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
                         After a successful generation, save outputs with the default archive format
                         (same as the workspace Download button).
                       </span>
@@ -1231,12 +1231,12 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     <p class="text-sm font-medium">Models root</p>
                     <span
                       v-if="storageIsCustom('modelsRoot')"
-                      class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                      class="text-xs uppercase tracking-wide text-muted-foreground"
                       >Custom</span
                     >
                   </div>
                   <p
-                    class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                    class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
                     :title="storagePath('modelsRoot')"
                   >
                     {{ storagePath('modelsRoot') }}
@@ -1276,12 +1276,12 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       <p class="text-sm font-medium">{{ location.label }}</p>
                       <span
                         v-if="storageIsCustom(location.id)"
-                        class="text-[10px] uppercase tracking-wide text-muted-foreground"
+                        class="text-xs uppercase tracking-wide text-muted-foreground"
                         >Custom</span
                       >
                     </div>
                     <p
-                      class="mt-1 truncate font-mono text-[10px] leading-4 text-muted-foreground"
+                      class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
                       :title="storagePath(location.id)"
                     >
                       {{ storagePath(location.id) }}
@@ -1349,10 +1349,10 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                   class="relative aspect-square w-20 overflow-hidden rounded-sm shadow-sm transition-[opacity,transform,box-shadow] duration-150 group-hover:-translate-y-0.5 sm:w-24"
                   :class="[
                     option.value === 'light'
-                      ? 'bg-[#fdfdfd] text-[#0d0d0d]'
+                      ? 'bg-[#ffffff] text-[#000000]'
                       : option.value === 'dark'
-                        ? 'bg-[#141414] text-white'
-                        : 'bg-linear-to-br from-[#fdfdfd] from-45% to-[#141414] to-55% text-[#737373]',
+                        ? 'bg-[#000000] text-white'
+                        : 'bg-linear-to-br from-[#ffffff] from-45% to-[#000000] to-55% text-[#737373]',
                     themePreference === option.value
                       ? 'opacity-100 shadow-md'
                       : 'opacity-60 group-hover:opacity-90'
@@ -1408,11 +1408,11 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
           >
             <div>
               <h2 class="text-sm font-medium">Express server</h2>
-              <p class="mt-0.5 text-[11px] text-muted-foreground">Backend API connection status</p>
+              <p class="mt-0.5 text-xs text-muted-foreground">Backend API connection status</p>
             </div>
             <div class="flex items-center gap-1.5">
               <span
-                class="aui-status-badge inline-flex items-center gap-1.5 text-[10px] font-medium"
+                class="aui-status-badge inline-flex items-center gap-1.5 text-xs font-medium"
                 :class="serverOnline ? 'text-foreground' : 'text-muted-foreground'"
               >
                 <span

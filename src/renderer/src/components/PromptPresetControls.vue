@@ -164,11 +164,11 @@ const selectedPreset = computed(() =>
         <FileText :class="compact ? 'size-4' : 'h-3.5 w-3.5'" />
         <template v-if="!compact">
           Prompt presets
-          <span class="text-[10px] text-muted-foreground">{{ presets.length }}</span>
+          <span class="text-xs text-muted-foreground">{{ presets.length }}</span>
         </template>
         <span
           v-else-if="presets.length"
-          class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold tabular-nums text-background"
+          class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-xs font-semibold tabular-nums text-background"
         >
           {{ presets.length > 99 ? '99+' : presets.length }}
         </span>
@@ -184,13 +184,13 @@ const selectedPreset = computed(() =>
     >
       <div class="shrink-0 border-b border-border/60 px-3 py-2.5">
         <p class="text-sm font-semibold">Prompt presets</p>
-        <p class="mt-0.5 text-[11px] text-muted-foreground">
+        <p class="mt-0.5 text-xs text-muted-foreground">
           Save and reuse positive / negative prompts
         </p>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         <!-- Save -->
-        <label class="block text-[10px] font-medium text-muted-foreground">
+        <label class="block text-sm font-medium text-muted-foreground">
           Save current
           <span v-if="matchingNamePreset" class="font-normal text-muted-foreground/80">
             · updates existing
@@ -205,7 +205,7 @@ const selectedPreset = computed(() =>
             />
             <button
               type="button"
-              class="inline-flex h-8 shrink-0 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors"
+              class="inline-flex h-8 shrink-0 items-center rounded-md px-2.5 text-xs font-medium transition-colors"
               :class="
                 canSave
                   ? 'bg-foreground text-background hover:bg-foreground/85'
@@ -221,7 +221,7 @@ const selectedPreset = computed(() =>
 
         <!-- Load / manage -->
         <div class="mt-3 space-y-2 border-t border-border/60 pt-3">
-          <label class="block text-[10px] font-medium text-muted-foreground">
+          <label class="block text-sm font-medium text-muted-foreground">
             Search
             <div class="relative mt-1">
               <Search
@@ -236,7 +236,7 @@ const selectedPreset = computed(() =>
             </div>
           </label>
 
-          <label class="block text-[10px] font-medium text-muted-foreground">
+          <label class="block text-sm font-medium text-muted-foreground">
             Load preset
             <Select
               :model-value="selectedPresetId"
@@ -250,7 +250,7 @@ const selectedPreset = computed(() =>
 
           <p
             v-if="selectedPreset"
-            class="line-clamp-2 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground"
+            class="line-clamp-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground"
           >
             {{ previewText(selectedPreset.prompt) }}
           </p>
@@ -259,7 +259,7 @@ const selectedPreset = computed(() =>
         <div class="mt-3 flex items-center gap-1.5">
           <button
             type="button"
-            class="inline-flex h-8 flex-1 items-center justify-center rounded-md text-[11px] font-medium transition-colors"
+            class="inline-flex h-8 flex-1 items-center justify-center rounded-md text-xs font-medium transition-colors"
             :class="
               selectedPreset
                 ? 'bg-foreground text-background hover:bg-foreground/85'
@@ -272,7 +272,7 @@ const selectedPreset = computed(() =>
           </button>
           <button
             type="button"
-            class="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-input bg-background text-[11px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            class="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-input bg-background text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
             :disabled="!selectedPreset"
             @click="overwriteSelectedPreset"
           >

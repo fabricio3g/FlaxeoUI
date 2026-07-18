@@ -231,7 +231,7 @@ function comboLine(id: string): string {
             <Info class="size-3.5" />
           </button>
         </div>
-        <p class="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+        <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
           Full look: prompts + settings. Export includes model guide.
         </p>
       </div>
@@ -247,7 +247,7 @@ function comboLine(id: string): string {
           />
           <button
             type="button"
-            class="inline-flex h-8 shrink-0 items-center rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:bg-foreground/85"
+            class="inline-flex h-8 shrink-0 items-center rounded-md bg-foreground px-2.5 text-xs font-medium text-background hover:bg-foreground/85"
             @click="saveCurrent"
           >
             Save
@@ -256,7 +256,7 @@ function comboLine(id: string): string {
 
         <button
           type="button"
-          class="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+          class="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border/70 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           @click="triggerImport"
         >
           <Upload class="size-3.5" />
@@ -284,7 +284,7 @@ function comboLine(id: string): string {
 
         <p
           v-if="builtins.length"
-          class="pt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          class="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
           Built-in
         </p>
@@ -298,11 +298,11 @@ function comboLine(id: string): string {
               <p class="text-xs font-medium text-foreground">{{ recipe.name }}</p>
               <p
                 v-if="comboLine(recipe.id)"
-                class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
+                class="mt-0.5 truncate font-mono text-xs text-muted-foreground"
               >
                 {{ comboLine(recipe.id) }}
               </p>
-              <p class="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+              <p class="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                 {{ preview(recipe.prompt || recipe.description) }}
               </p>
             </button>
@@ -311,7 +311,7 @@ function comboLine(id: string): string {
 
         <p
           v-if="userList.length"
-          class="pt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          class="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
           Yours
         </p>
@@ -329,11 +329,11 @@ function comboLine(id: string): string {
               <p class="text-xs font-medium text-foreground">{{ recipe.name }}</p>
               <p
                 v-if="comboLine(recipe.id)"
-                class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
+                class="mt-0.5 truncate font-mono text-xs text-muted-foreground"
               >
                 {{ comboLine(recipe.id) }}
               </p>
-              <p class="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+              <p class="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                 {{ preview(recipe.prompt || recipe.description) }}
               </p>
             </button>

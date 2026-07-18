@@ -209,7 +209,7 @@ async function clearAll(): Promise<void> {
               <History class="size-4 text-muted-foreground" />
               History
             </h2>
-            <p class="mt-0.5 text-xs leading-4 text-muted-foreground">
+            <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               <template v-if="list.length"
                 >{{ list.length }} recent job{{ list.length === 1 ? '' : 's' }}</template
               >

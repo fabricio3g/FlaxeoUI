@@ -77,7 +77,7 @@ onUnmounted(() => {
             <Download class="size-4 shrink-0 text-muted-foreground" />
             <div class="min-w-0">
               <p class="text-sm font-medium">Downloads</p>
-              <p class="text-[11px] text-muted-foreground">
+              <p class="text-xs text-muted-foreground">
                 <template v-if="activeDownloads.length">
                   {{ activeDownloads.length }} active
                 </template>
@@ -123,7 +123,7 @@ onUnmounted(() => {
                     {{ task.label }}
                   </p>
                   <p
-                    class="mt-0.5 truncate text-[10px] text-muted-foreground"
+                    class="mt-0.5 truncate text-xs text-muted-foreground"
                     :title="task.targetPath"
                   >
                     {{ task.targetPath }}
@@ -147,7 +147,7 @@ onUnmounted(() => {
                     :style="{ width: `${progressPercent(task)}%` }"
                   />
                 </div>
-                <p class="mt-1 text-[10px] tabular-nums text-muted-foreground">
+                <p class="mt-1 text-xs tabular-nums text-muted-foreground">
                   {{ formatBytes(task.receivedBytes)
                   }}<template v-if="task.totalBytes">
                     / {{ formatBytes(task.totalBytes) }}</template
@@ -157,7 +157,7 @@ onUnmounted(() => {
 
               <p
                 v-else
-                class="mt-1 text-[10px] font-medium"
+                class="mt-1 text-xs font-medium"
                 :class="{
                   'text-emerald-600 dark:text-emerald-400': task.status === 'completed',
                   'text-destructive': task.status === 'failed',

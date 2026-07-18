@@ -89,7 +89,7 @@ watch(
         <nav class="space-y-4 p-3 md:p-4" aria-label="Help topics">
           <div v-for="group in topicsBySection" :key="group.section">
             <p
-              class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+              class="mb-1.5 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               {{ group.section }}
             </p>

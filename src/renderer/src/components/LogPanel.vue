@@ -105,13 +105,13 @@ onUnmounted(() => {
       <div class="flex min-w-0 items-center gap-2">
         <Terminal class="h-4 w-4 shrink-0 text-muted-foreground" />
         <span class="truncate text-xs font-semibold">Server Logs</span>
-        <span class="hidden text-[10px] text-muted-foreground sm:inline">{{ total }} entries</span>
+        <span class="hidden text-xs text-muted-foreground sm:inline">{{ total }} entries</span>
       </div>
 
       <div class="flex shrink-0 items-center gap-1">
         <!-- Auto-scroll toggle -->
         <label
-          class="mr-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground"
+          class="mr-1 flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground"
         >
           <input
             v-model="autoScroll"
@@ -124,7 +124,7 @@ onUnmounted(() => {
         <!-- Polling toggle -->
         <button
           type="button"
-          class="aui-status-badge inline-flex h-7 items-center gap-1.5 rounded-full border px-2 text-[10px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="aui-status-badge inline-flex h-7 items-center gap-1.5 rounded-full border px-2 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           :class="
             isPolling
               ? 'border-border bg-background text-foreground'
@@ -156,7 +156,7 @@ onUnmounted(() => {
       ref="logsContainer"
       role="log"
       aria-live="polite"
-      class="flex-1 select-text overflow-auto bg-muted/20 p-2 font-mono text-[11px] text-foreground/75"
+      class="flex-1 select-text overflow-auto bg-muted/20 p-2 font-mono text-xs text-foreground/75"
     >
       <div
         v-if="logs.length === 0"

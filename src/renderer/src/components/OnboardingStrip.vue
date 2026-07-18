@@ -26,7 +26,7 @@ function onItemClick(id: string): void {
     aria-label="Getting started"
   >
     <p
-      class="hidden text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:block"
+      class="hidden text-xs font-medium uppercase tracking-wider text-muted-foreground sm:block"
     >
       Getting started
     </p>
@@ -34,7 +34,7 @@ function onItemClick(id: string): void {
       <li v-for="item in checklist" :key="item.id">
         <button
           type="button"
-          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors"
+          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
           :class="
             item.done
               ? 'border-border/50 bg-background/60 text-muted-foreground'
@@ -54,7 +54,7 @@ function onItemClick(id: string): void {
     <button
       v-if="!checklist.find((c) => c.id === 'firstImage')?.done"
       type="button"
-      class="hidden shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-medium text-background transition-opacity hover:opacity-90 sm:inline-flex"
+      class="hidden shrink-0 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90 sm:inline-flex"
       @click="emit('firstImage')"
     >
       Try sample

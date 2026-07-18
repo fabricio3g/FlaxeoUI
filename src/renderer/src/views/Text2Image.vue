@@ -155,6 +155,27 @@ const adetailerMaskModeOptions = [
   { label: 'Merge + invert', value: 'merge_invert' }
 ]
 
+/** Seed lock or ADetailer armed — drives composer settings button chrome. */
+const genSettingsActive = computed(
+  () =>
+    config.value.seedLocked ||
+    (config.value.adetailerEnabled && supportsAdetailer.value)
+)
+
+const genSettingsAdetailerOn = computed(
+  () => config.value.adetailerEnabled && supportsAdetailer.value
+)
+
+const genSettingsTitle = computed(() => {
+  const bits: string[] = []
+  if (config.value.seedLocked) bits.push('seed locked')
+  if (genSettingsAdetailerOn.value) bits.push('ADetailer on')
+  if (bits.length === 0) {
+    return 'Generation settings — steps, CFG, seed, sampler'
+  }
+  return `Generation settings · ${bits.join(' · ')}`
+})
+
 // Form state
 const prompt = ref('')
 const negativePrompt = ref('') // Matches template usage
@@ -1333,13 +1354,6 @@ onActivated(() => {
               </div>
             </div>
           </div>
-          <!-- Live badge (quiet) -->
-          <div
-            v-if="isLivePreview"
-            class="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur-xl"
-          >
-            Live
-          </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
             class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-3"
@@ -1402,7 +1416,7 @@ onActivated(() => {
                     title="Choose save format"
                     aria-label="Choose save format"
                   >
-                    <span class="text-[10px] leading-none">▾</span>
+                    <span class="text-xs leading-none">▾</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent class="w-44 p-1" align="end" side="bottom">
@@ -1436,21 +1450,21 @@ onActivated(() => {
 
         <div v-if="galleryImages.length > 0" class="mt-3 w-full shrink-0">
           <div class="mx-auto mb-1.5 flex max-w-4xl items-center gap-2 px-1">
-            <span class="text-[11px] text-muted-foreground">
+            <span class="text-xs text-muted-foreground">
               Session · {{ galleryImages.length }}
             </span>
             <div class="ml-auto flex items-center gap-2">
               <button
                 v-if="galleryImages.length > 1"
                 type="button"
-                class="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 @click="showBatchGrid ? (showBatchGrid = false) : openBatchGrid()"
               >
                 {{ showBatchGrid ? 'Single' : 'Grid' }}
               </button>
               <button
                 type="button"
-                class="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 :disabled="isGenerating"
                 :title="
                   isGenerating
@@ -1627,7 +1641,7 @@ onActivated(() => {
             >
             <span
               v-if="promptMode === 'positive' && config.embeddings.length > 0"
-              class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              class="aui-status-badge absolute right-1 top-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-xs font-medium text-muted-foreground"
               >{{ config.embeddings.length }} embeds</span
             >
           </div>
@@ -1687,7 +1701,7 @@ onActivated(() => {
                       :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
                     ></span>
                   </span>
-                  <span class="font-mono text-[10px] tracking-tight"
+                  <span class="font-mono text-xs tracking-tight"
                     >{{ preset.width }}×{{ preset.height }}</span
                   >
                 </button>
@@ -1700,7 +1714,7 @@ onActivated(() => {
                     min="64"
                     step="64"
                     aria-label="Custom width"
-                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -1709,7 +1723,7 @@ onActivated(() => {
                     min="64"
                     step="64"
                     aria-label="Custom height"
-                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
@@ -1742,11 +1756,30 @@ onActivated(() => {
               <PopoverTrigger as-child>
                 <button
                   type="button"
-                  class="aui-icon-button inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-all duration-150 hover:border-border hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Generation settings — steps, CFG, seed, sampler"
-                  aria-label="Generation settings"
+                  class="aui-icon-button relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  :class="
+                    genSettingsActive
+                      ? 'border-border bg-background text-foreground shadow-sm'
+                      : 'border-transparent text-muted-foreground hover:border-border hover:bg-background hover:text-foreground'
+                  "
+                  :title="genSettingsTitle"
+                  :aria-label="genSettingsTitle"
                 >
                   <SlidersHorizontal class="size-4" />
+                  <span
+                    v-if="genSettingsActive"
+                    class="absolute right-1 top-1 flex gap-0.5"
+                    aria-hidden="true"
+                  >
+                    <span
+                      v-if="config.seedLocked"
+                      class="size-1.5 rounded-full bg-foreground"
+                    />
+                    <span
+                      v-if="genSettingsAdetailerOn"
+                      class="size-1.5 rounded-full bg-foreground"
+                    />
+                  </span>
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -1763,7 +1796,7 @@ onActivated(() => {
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
                   <div class="grid grid-cols-3 gap-2">
-                    <label class="text-xs font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       Steps
                       <input
                         v-model.number="config.steps"
@@ -1773,7 +1806,7 @@ onActivated(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                       />
                     </label>
-                    <label class="text-xs font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       CFG
                       <input
                         v-model.number="config.cfgScale"
@@ -1784,7 +1817,7 @@ onActivated(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                       />
                     </label>
-                    <label class="text-xs font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       Batch
                       <input
                         v-model.number="config.batchCount"
@@ -1831,8 +1864,14 @@ onActivated(() => {
 
                   <!-- ADetailer (post-gen YOLOv8 face/object repair) -->
                   <div
-                    class="mt-3 space-y-2 rounded-md border border-border/70 p-2.5"
-                    :class="!supportsAdetailer ? 'opacity-60' : ''"
+                    class="mt-3 space-y-2 rounded-md border p-2.5 transition-colors duration-150"
+                    :class="
+                      !supportsAdetailer
+                        ? 'border-border/70 opacity-60'
+                        : genSettingsAdetailerOn
+                          ? 'border-foreground/25 bg-muted/40'
+                          : 'border-border/70'
+                    "
                   >
                     <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
                       <input
@@ -1842,10 +1881,26 @@ onActivated(() => {
                         :disabled="!supportsAdetailer"
                       />
                       <span>
-                        ADetailer after generate
+                        <span class="inline-flex flex-wrap items-center gap-1.5">
+                          ADetailer after generate
+                          <span
+                            v-if="genSettingsAdetailerOn"
+                            class="rounded-full bg-foreground px-1.5 py-0.5 text-xs font-medium leading-none text-background"
+                          >
+                            On
+                          </span>
+                        </span>
                         <span class="mt-0.5 block text-xs text-muted-foreground">
                           <template v-if="!supportsAdetailer">
                             Backend lacks --ad-model — upgrade stable-diffusion.cpp
+                          </template>
+                          <template v-else-if="genSettingsAdetailerOn">
+                            Armed ·
+                            {{
+                              config.adetailerModel
+                                ? config.adetailerModel
+                                : 'pick a detector below'
+                            }}
                           </template>
                           <template v-else>
                             Detect + inpaint (YOLOv8). Models in models/adetailer
@@ -1854,7 +1909,7 @@ onActivated(() => {
                       </span>
                     </label>
                     <template v-if="config.adetailerEnabled && supportsAdetailer">
-                      <label class="block text-xs text-muted-foreground">
+                      <label class="block text-sm text-muted-foreground">
                         Detector
                         <Select
                           class="mt-1 w-full"
@@ -1865,7 +1920,7 @@ onActivated(() => {
                           "
                         />
                       </label>
-                      <label class="block text-xs text-muted-foreground">
+                      <label class="block text-sm text-muted-foreground">
                         AD prompt
                         <input
                           v-model="config.adetailerPrompt"
@@ -1874,7 +1929,7 @@ onActivated(() => {
                           class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none"
                         />
                       </label>
-                      <label class="block text-xs text-muted-foreground">
+                      <label class="block text-sm text-muted-foreground">
                         AD negative
                         <input
                           v-model="config.adetailerNegativePrompt"
@@ -1884,7 +1939,7 @@ onActivated(() => {
                         />
                       </label>
                       <div class="grid grid-cols-2 gap-2">
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Confidence
                           <input
                             v-model.number="config.adetailerConfidence"
@@ -1895,7 +1950,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Denoise
                           <input
                             v-model.number="config.adetailerDenoisingStrength"
@@ -1906,7 +1961,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Inpaint W
                           <input
                             v-model.number="config.adetailerInpaintWidth"
@@ -1916,7 +1971,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Inpaint H
                           <input
                             v-model.number="config.adetailerInpaintHeight"
@@ -1926,7 +1981,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Padding
                           <input
                             v-model.number="config.adetailerInpaintPadding"
@@ -1936,7 +1991,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Mask blur
                           <input
                             v-model.number="config.adetailerMaskBlur"
@@ -1946,7 +2001,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Largest K
                           <input
                             v-model.number="config.adetailerMaskKLargest"
@@ -1957,7 +2012,7 @@ onActivated(() => {
                             class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none"
                           />
                         </label>
-                        <label class="block text-xs text-muted-foreground">
+                        <label class="block text-sm text-muted-foreground">
                           Mask mode
                           <Select
                             class="mt-1 w-full"
@@ -1970,13 +2025,13 @@ onActivated(() => {
                           />
                         </label>
                       </div>
-                      <label class="block text-xs text-muted-foreground">
+                      <label class="block text-sm text-muted-foreground">
                         Extra args
                         <input
                           v-model="config.adetailerExtraArgs"
                           type="text"
                           placeholder="input_size=640,nms=0.45"
-                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground outline-none"
+                          class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none"
                         />
                       </label>
                     </template>
@@ -1984,7 +2039,7 @@ onActivated(() => {
 
                   <div class="mt-3">
                     <div class="mb-1 flex items-center justify-between gap-2">
-                      <span class="text-[10px] font-medium text-muted-foreground">Seed</span>
+                      <span class="text-xs font-medium text-muted-foreground">Seed</span>
                       <div class="flex items-center gap-0.5">
                         <Tooltip
                           :text="
@@ -1996,7 +2051,12 @@ onActivated(() => {
                         >
                           <button
                             type="button"
-                            class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            class="aui-icon-button inline-flex size-7 items-center justify-center rounded-md transition-colors"
+                            :class="
+                              config.seedLocked
+                                ? 'bg-foreground text-background hover:bg-foreground/90'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            "
                             :aria-label="config.seedLocked ? 'Unlock seed' : 'Lock seed'"
                             :aria-pressed="config.seedLocked"
                             @click="toggleSeedLock"
@@ -2039,7 +2099,7 @@ onActivated(() => {
                         }
                       "
                     />
-                    <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
+                    <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                       {{
                         config.seedLocked
                           ? 'Locked — same seed on every generate.'
@@ -2052,7 +2112,7 @@ onActivated(() => {
                   </div>
 
                   <div class="mt-3 space-y-2">
-                    <label class="block text-[10px] font-medium text-muted-foreground">
+                    <label class="block text-sm font-medium text-muted-foreground">
                       Scheduler
                       <Select
                         v-model="config.scheduler"
@@ -2062,7 +2122,7 @@ onActivated(() => {
                         :options="schedulerOptions"
                       />
                     </label>
-                    <label class="block text-[10px] font-medium text-muted-foreground">
+                    <label class="block text-sm font-medium text-muted-foreground">
                       Sampler
                       <Select
                         v-model="config.sampler"

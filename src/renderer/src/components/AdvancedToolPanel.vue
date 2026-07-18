@@ -430,7 +430,7 @@ onUnmounted(() => {
             </div>
             <p class="text-sm leading-5 text-muted-foreground">
               Guide style/subject (Flux Kontext, Anima edit LoRA, Qwen edit, …). Uses
-              <span class="font-mono text-[11px]">-r</span> — not denoise img2img.
+              <span class="font-mono text-xs">-r</span> — not denoise img2img.
             </p>
             <div>
               <p class="mb-1.5 text-sm font-medium text-foreground">Reference processing</p>
@@ -444,12 +444,12 @@ onUnmounted(() => {
               />
               <p
                 v-if="!supportsRefImageArgs"
-                class="mt-1.5 text-[11px] leading-4 text-muted-foreground"
+                class="mt-1.5 text-sm leading-relaxed text-muted-foreground"
               >
                 Needs post-#1780 sd-cli for
                 <span class="font-mono">--ref-image-args</span>. Flag omitted; -r still works.
               </p>
-              <p v-else class="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+              <p v-else class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                 Auto suggests from model (e.g. Anima → cosmos_reference). Off = CLI architecture
                 default (no override).
               </p>

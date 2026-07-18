@@ -88,7 +88,7 @@ const barWidth = computed(() => {
           <Tooltip v-if="jobPrompt" :text="jobPrompt" position="top" :delay="80">
             <button
               type="button"
-              class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground underline decoration-border underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
+              class="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground underline decoration-border underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
               aria-label="Show prompt"
             >
               Prompt

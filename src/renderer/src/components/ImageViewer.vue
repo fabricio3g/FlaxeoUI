@@ -414,7 +414,7 @@ onUnmounted(() => {
         <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div class="min-w-0">
             <p class="text-sm font-medium tracking-tight text-zinc-100">Image details</p>
-            <p class="mt-0.5 text-[10px] text-zinc-500">Generation metadata</p>
+            <p class="mt-0.5 text-xs text-zinc-500">Generation metadata</p>
           </div>
           <button
             type="button"
@@ -456,7 +456,7 @@ onUnmounted(() => {
               <Info class="size-4" />
             </div>
             <p class="text-xs font-medium text-zinc-300">No metadata found</p>
-            <p class="mt-1 text-[11px] leading-4 text-zinc-500">
+            <p class="mt-1 text-xs leading-4 text-zinc-500">
               This image does not include generation parameters. You can still copy or save the
               image.
             </p>
@@ -465,7 +465,7 @@ onUnmounted(() => {
           <div v-else class="flex-1 space-y-5 overflow-y-auto p-4">
             <section v-if="metadata.prompt">
               <label
-                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                class="aui-label mb-1.5 block text-sm font-medium uppercase tracking-wider text-zinc-500"
                 >Prompt</label
               >
               <p
@@ -477,7 +477,7 @@ onUnmounted(() => {
 
             <section v-if="metadata.negative_prompt">
               <label
-                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                class="aui-label mb-1.5 block text-sm font-medium uppercase tracking-wider text-zinc-500"
                 >Negative prompt</label
               >
               <p
@@ -489,19 +489,19 @@ onUnmounted(() => {
 
             <section>
               <label
-                class="aui-label mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                class="aui-label mb-1.5 block text-sm font-medium uppercase tracking-wider text-zinc-500"
                 >Parameters</label
               >
               <dl class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
                 <div class="grid grid-cols-2 border-b border-white/10">
                   <div class="border-r border-white/10 px-3 py-2.5">
-                    <dt class="text-[10px] text-zinc-500">Steps</dt>
+                    <dt class="text-xs text-zinc-500">Steps</dt>
                     <dd class="mt-0.5 font-mono text-xs text-zinc-200">
                       {{ metadata.steps ?? '—' }}
                     </dd>
                   </div>
                   <div class="px-3 py-2.5">
-                    <dt class="text-[10px] text-zinc-500">CFG scale</dt>
+                    <dt class="text-xs text-zinc-500">CFG scale</dt>
                     <dd class="mt-0.5 font-mono text-xs text-zinc-200">
                       {{ metadata.cfg_scale ?? metadata.cfgScale ?? '—' }}
                     </dd>
@@ -509,13 +509,13 @@ onUnmounted(() => {
                 </div>
                 <div class="grid grid-cols-2 border-b border-white/10">
                   <div class="border-r border-white/10 px-3 py-2.5">
-                    <dt class="text-[10px] text-zinc-500">Seed</dt>
+                    <dt class="text-xs text-zinc-500">Seed</dt>
                     <dd class="mt-0.5 truncate font-mono text-xs text-zinc-200">
                       {{ metadata.seed ?? '—' }}
                     </dd>
                   </div>
                   <div class="px-3 py-2.5">
-                    <dt class="text-[10px] text-zinc-500">Size</dt>
+                    <dt class="text-xs text-zinc-500">Size</dt>
                     <dd class="mt-0.5 font-mono text-xs text-zinc-200">
                       <template v-if="metadata.width && metadata.height">
                         {{ metadata.width }} x {{ metadata.height }}
@@ -525,7 +525,7 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="px-3 py-2.5">
-                  <dt class="text-[10px] text-zinc-500">Model</dt>
+                  <dt class="text-xs text-zinc-500">Model</dt>
                   <dd
                     class="mt-0.5 truncate font-mono text-xs text-zinc-200"
                     :title="metadata.model || metadata.diffusionModel"

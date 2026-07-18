@@ -478,7 +478,7 @@ onUnmounted(() => {
             <component :is="section.icon" class="w-4 h-4" />
             <span
               v-if="section.id === 'warnings' && configWarnings.length > 0"
-              class="aui-status-badge absolute -right-0.5 -top-0.5 min-w-3.5 rounded-full bg-amber-500 px-1 text-[9px] font-bold text-black shadow-sm"
+              class="aui-status-badge absolute -right-0.5 -top-0.5 min-w-3.5 rounded-full bg-amber-500 px-1 text-xs font-bold text-black shadow-sm"
               >{{ configWarnings.length }}</span
             >
           </button>
@@ -487,7 +487,7 @@ onUnmounted(() => {
 
       <div class="mt-auto h-px w-5 bg-sidebar-border/80"></div>
 
-      <div class="flex flex-col items-center gap-1 text-[9px] text-muted-foreground">
+      <div class="flex flex-col items-center gap-1 text-xs text-muted-foreground">
         <span class="font-semibold">{{ config.steps }}</span>
         <span>{{ config.width }}</span>
       </div>
@@ -507,7 +507,7 @@ onUnmounted(() => {
             />
             <div class="min-w-0">
               <h3 class="truncate text-sm font-medium">{{ activeCollapsedMeta?.label }}</h3>
-              <p class="truncate text-[11px] text-muted-foreground">
+              <p class="truncate text-xs text-muted-foreground">
                 {{ collapsedSectionSummary(activeCollapsedSection) }}
               </p>
             </div>
@@ -819,7 +819,7 @@ onUnmounted(() => {
           </template>
           <div
             v-if="activeModelSummary.length"
-            class="space-y-1 pt-1 text-[11px] text-muted-foreground"
+            class="space-y-1 pt-1 text-xs text-muted-foreground"
           >
             <div v-for="item in activeModelSummary" :key="item" class="truncate">{{ item }}</div>
           </div>
@@ -1028,7 +1028,7 @@ onUnmounted(() => {
             />
 
             <div class="flex items-center justify-between gap-2 pt-1">
-              <span class="text-[11px] text-muted-foreground">Config density</span>
+              <span class="text-xs text-muted-foreground">Config density</span>
               <SegmentedControl
                 :model-value="configDensity"
                 :options="densityOptions"
@@ -1044,7 +1044,7 @@ onUnmounted(() => {
         <section v-if="props.focus === 'all' || props.focus === 'model'" class="space-y-2.5">
           <div class="flex items-baseline justify-between gap-2">
             <h3 class="text-sm font-medium text-foreground">Presets</h3>
-            <span class="text-[11px] tabular-nums text-muted-foreground">{{ presets.length }}</span>
+            <span class="text-xs tabular-nums text-muted-foreground">{{ presets.length }}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <Select
@@ -1108,7 +1108,7 @@ onUnmounted(() => {
           <div class="space-y-3">
             <!-- Core: main model -->
             <div v-if="config.loadMode === 'standard'">
-              <label class="mb-1.5 block text-xs text-muted-foreground">Checkpoint</label>
+              <label class="mb-1.5 block text-sm text-muted-foreground">Checkpoint</label>
               <Select
                 v-model="config.standardModel"
                 size="md"
@@ -1121,7 +1121,7 @@ onUnmounted(() => {
             </div>
             <div v-else class="space-y-3">
               <div>
-                <label class="mb-1.5 block text-xs text-muted-foreground">Diffusion</label>
+                <label class="mb-1.5 block text-sm text-muted-foreground">Diffusion</label>
                 <Select
                   v-model="config.diffusionModel"
                   size="md"
@@ -1134,7 +1134,7 @@ onUnmounted(() => {
               </div>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1.5 block text-xs text-muted-foreground">T5 / UMT5</label>
+                  <label class="mb-1.5 block text-sm text-muted-foreground">T5 / UMT5</label>
                   <Select
                     v-model="config.t5xxlModel"
                     size="md"
@@ -1146,7 +1146,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs text-muted-foreground">LLM</label>
+                  <label class="mb-1.5 block text-sm text-muted-foreground">LLM</label>
                   <Select
                     v-model="config.llmModel"
                     size="md"
@@ -1162,7 +1162,7 @@ onUnmounted(() => {
 
             <!-- Core: VAE -->
             <div>
-              <label class="mb-1.5 block text-xs text-muted-foreground">VAE</label>
+              <label class="mb-1.5 block text-sm text-muted-foreground">VAE</label>
               <Select
                 v-model="config.vaeModel"
                 size="md"
@@ -1199,7 +1199,7 @@ onUnmounted(() => {
               <template v-if="config.loadMode === 'split'">
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >High noise</label
                     >
                     <Select
@@ -1213,7 +1213,7 @@ onUnmounted(() => {
                     />
                   </div>
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >Uncond diffusion</label
                     >
                     <Select
@@ -1229,7 +1229,7 @@ onUnmounted(() => {
                 </div>
                 <div v-if="!config.videoMode" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >CLIP-L</label
                     >
                     <Select
@@ -1243,7 +1243,7 @@ onUnmounted(() => {
                     />
                   </div>
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >CLIP-G</label
                     >
                     <Select
@@ -1258,7 +1258,7 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div v-if="!config.videoMode">
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >CLIP Vision</label
                   >
                   <Select
@@ -1273,7 +1273,7 @@ onUnmounted(() => {
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >LLM Vision</label
                     >
                     <Select
@@ -1287,7 +1287,7 @@ onUnmounted(() => {
                     />
                   </div>
                   <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                       >Emb. connectors</label
                     >
                     <Select
@@ -1305,7 +1305,7 @@ onUnmounted(() => {
 
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >VAE tile</label
                   >
                   <input
@@ -1316,7 +1316,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >VAE format</label
                   >
                   <Select
@@ -1334,7 +1334,7 @@ onUnmounted(() => {
               </div>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >Audio VAE</label
                   >
                   <Select
@@ -1348,7 +1348,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <div v-if="!config.videoMode">
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >ControlNet</label
                   >
                   <Select
@@ -1364,7 +1364,7 @@ onUnmounted(() => {
               </div>
               <div v-if="!config.videoMode" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >PhotoMaker</label
                   >
                   <Select
@@ -1378,7 +1378,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >Upscale</label
                   >
                   <Select
@@ -1392,7 +1392,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                  <label class="mb-1.5 block text-sm font-medium text-muted-foreground"
                     >ADetailer detector</label
                   >
                   <Select
@@ -1407,7 +1407,7 @@ onUnmounted(() => {
                 </div>
               </div>
               <div v-if="!config.videoMode">
-                <label class="mb-1.5 block text-xs font-medium text-muted-foreground">TAESD</label>
+                <label class="mb-1.5 block text-sm font-medium text-muted-foreground">TAESD</label>
                 <Select
                   v-model="config.taesdModel"
                   size="md"
@@ -1473,7 +1473,7 @@ onUnmounted(() => {
             <div>
               <label class="text-sm text-muted-foreground block mb-1">
                 Live preview
-                <span v-if="!supportsLivePreview" class="text-[10px] text-muted-foreground">
+                <span v-if="!supportsLivePreview" class="text-xs text-muted-foreground">
                   (unsupported)
                 </span>
               </label>
@@ -1707,7 +1707,7 @@ onUnmounted(() => {
               <div class="flex items-center gap-3">
                 <div class="min-w-0 flex-1">
                   <label
-                    class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    class="mb-1.5 block text-sm font-semibold uppercase tracking-wide text-muted-foreground"
                     >LoRA {{ index + 1 }}</label
                   >
                   <Select
@@ -1718,7 +1718,7 @@ onUnmounted(() => {
                 </div>
                 <div class="shrink-0">
                   <label
-                    class="mb-1.5 block text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    class="mb-1.5 block text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground"
                     >Strength</label
                   >
                   <input
@@ -1740,7 +1740,7 @@ onUnmounted(() => {
                 </button>
               </div>
               <div>
-                <label class="mb-1 block text-[10px] font-medium text-muted-foreground"
+                <label class="mb-1 block text-sm font-medium text-muted-foreground"
                   >Branch target (Wan MoE)</label
                 >
                 <Select
@@ -1756,7 +1756,7 @@ onUnmounted(() => {
                     }
                   "
                 />
-                <p class="mt-1 text-[10px] leading-4 text-muted-foreground">
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
                   High noise emits
                   <code class="text-foreground/80">&lt;lora:|high_noise|name:s&gt;</code>
                   for Wan2.2 dual-branch LoRAs.
@@ -1829,7 +1829,7 @@ onUnmounted(() => {
             >
               <div class="flex-1 flex items-center gap-3 overflow-hidden">
                 <span
-                  class="aui-status-badge shrink-0 rounded-md bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  class="aui-status-badge shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                   >TI</span
                 >
                 <Select
@@ -1965,7 +1965,7 @@ onUnmounted(() => {
                 Cache preset
                 <span
                   v-if="!supportsCacheMode"
-                  class="text-[10px] font-normal text-muted-foreground"
+                  class="text-xs font-normal text-muted-foreground"
                 >
                   (unsupported by backend)
                 </span>
@@ -1978,11 +1978,11 @@ onUnmounted(() => {
               />
               <p
                 v-if="activeCachePreset"
-                class="mt-1.5 text-[11px] leading-4 text-muted-foreground"
+                class="mt-1.5 text-sm leading-relaxed text-muted-foreground"
               >
                 {{ activeCachePreset.description }}
               </p>
-              <p v-else class="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+              <p v-else class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                 Manual fields below do not match a built-in recipe.
               </p>
             </div>
@@ -2198,11 +2198,11 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <p class="text-[10px] text-muted-foreground leading-tight">
+            <p class="text-xs text-muted-foreground leading-tight">
               Backend names depend on the active stable-diffusion.cpp release: CPU, CUDA, Vulkan,
               ROCm, Metal, OpenCL, or SYCL builds expose different devices.
             </p>
-            <p v-if="config.autoFit" class="text-[10px] text-muted-foreground leading-tight">
+            <p v-if="config.autoFit" class="text-xs text-muted-foreground leading-tight">
               Auto Fit ignores explicit runtime and parameter backend assignments.
             </p>
 
@@ -2219,7 +2219,7 @@ onUnmounted(() => {
               <div>
                 <label class="text-sm text-muted-foreground block mb-1">
                   Max VRAM GiB
-                  <span v-if="!supportsMaxVram" class="text-[10px] text-muted-foreground">
+                  <span v-if="!supportsMaxVram" class="text-xs text-muted-foreground">
                     (unsupported)
                   </span>
                 </label>
@@ -2331,7 +2331,7 @@ onUnmounted(() => {
                 />
               </div>
             </template>
-            <p v-else class="text-[11px] leading-4 text-muted-foreground">
+            <p v-else class="text-xs leading-relaxed text-muted-foreground">
               Switch density to <strong>Advanced</strong> for quantization overrides, prediction
               type, circular padding, and Chroma/Qwen flags.
             </p>
@@ -2345,7 +2345,7 @@ onUnmounted(() => {
         >
           <h3 class="mb-2 text-sm font-medium text-foreground">Logs</h3>
           <div
-            class="h-32 overflow-y-auto rounded-xl border border-border/70 bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-foreground"
+            class="h-32 overflow-y-auto rounded-xl border border-border/70 bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground"
           >
             <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
             <div v-if="logs.length === 0" class="text-muted-foreground">No logs yet...</div>

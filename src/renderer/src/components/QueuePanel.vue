@@ -114,7 +114,7 @@ watch(
         >
           <div class="min-w-0">
             <h2 class="text-sm font-semibold tracking-tight text-foreground">Queue</h2>
-            <p class="mt-0.5 text-xs leading-4 text-muted-foreground">
+            <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               <template v-if="current">Running</template>
               <template v-else>Idle</template>
               <template v-if="pendingCount"> · {{ pendingCount }} waiting</template>
@@ -161,7 +161,7 @@ watch(
 
         <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
           <section v-if="current">
-            <p class="mb-1.5 text-[11px] font-medium text-muted-foreground">Now running</p>
+            <p class="mb-1.5 text-xs font-medium text-muted-foreground">Now running</p>
             <div
               class="flex items-center gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5"
             >
@@ -186,7 +186,7 @@ watch(
 
           <section>
             <div class="mb-1.5 flex items-center justify-between gap-2">
-              <p class="text-[11px] font-medium text-muted-foreground">Waiting</p>
+              <p class="text-xs font-medium text-muted-foreground">Waiting</p>
               <button
                 v-if="pending.length"
                 type="button"
@@ -209,7 +209,7 @@ watch(
                 class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2 py-2"
               >
                 <span
-                  class="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted/60 text-[11px] font-medium tabular-nums text-muted-foreground"
+                  class="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted/60 text-xs font-medium tabular-nums text-muted-foreground"
                 >
                   {{ index + 1 }}
                 </span>
@@ -251,7 +251,7 @@ watch(
 
           <section v-if="recentDone.length">
             <div class="mb-1.5 flex items-center justify-between gap-2">
-              <p class="text-[11px] font-medium text-muted-foreground">Recent</p>
+              <p class="text-xs font-medium text-muted-foreground">Recent</p>
               <button
                 type="button"
                 class="text-xs text-muted-foreground transition-colors hover:text-foreground"

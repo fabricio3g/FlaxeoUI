@@ -1146,12 +1146,6 @@ onUnmounted(() => {
               class="h-full max-h-full w-full max-w-full rounded-2xl object-contain"
               :alt="isLivePreview ? 'Live preview' : 'Edit result preview'"
             />
-            <div
-              v-if="isLivePreview"
-              class="aui-status-badge absolute left-3 top-3 rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur-xl"
-            >
-              Live preview
-            </div>
           </div>
 
           <div
@@ -1310,7 +1304,7 @@ onUnmounted(() => {
               </button>
             </Tooltip>
             <span class="mx-0.5 h-4 w-px bg-border" aria-hidden="true"></span>
-            <span class="px-1 text-[11px] tabular-nums text-muted-foreground"
+            <span class="px-1 text-xs tabular-nums text-muted-foreground"
               >{{ Math.round(zoom * 100) }}%</span
             >
             <button
@@ -1336,7 +1330,7 @@ onUnmounted(() => {
         <div v-if="editImages.length > 0" class="mt-3 w-full shrink-0">
           <div class="mb-1.5 flex items-center justify-between px-2">
             <h3
-              class="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground"
+              class="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground"
             >
               <Images class="h-3.5 w-3.5" /> Recent edits ({{ editImages.length }})
             </h3>
@@ -1466,7 +1460,7 @@ onUnmounted(() => {
           </div>
           <p
             v-if="showQwenZeroCondTip"
-            class="w-full text-[10px] text-muted-foreground md:w-auto"
+            class="w-full text-xs text-muted-foreground md:w-auto"
             title="Required for Qwen Image Edit 2511 quality"
           >
             Qwen zero-cond-t is on (Edit 2511)
@@ -1512,7 +1506,7 @@ onUnmounted(() => {
             </button>
           </div>
           <label
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:text-foreground"
+            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:text-foreground"
           >
             <Plus class="h-3.5 w-3.5" />
             Add ref
@@ -1553,7 +1547,7 @@ onUnmounted(() => {
           </div>
           <p
             v-if="!supportsRefImageArgs"
-            class="w-full text-[10px] leading-4 text-muted-foreground"
+            class="w-full text-xs leading-relaxed text-muted-foreground"
           >
             Reference presets need a post-#1780 sd-cli. Flag omitted; refs still use -r.
           </p>
@@ -1637,12 +1631,12 @@ onUnmounted(() => {
               @click.stop
             >
               <div class="mb-2 px-1">
-                <p class="text-[11px] font-medium text-foreground">Output size</p>
-                <p class="text-[10px] text-muted-foreground">
+                <p class="text-xs font-medium text-foreground">Output size</p>
+                <p class="text-xs text-muted-foreground">
                   Ref Edit and Img2Img. Inpaint always follows the source (mask alignment).
                 </p>
               </div>
-              <div class="mb-2 flex rounded-lg border border-border/70 p-0.5 text-[11px]">
+              <div class="mb-2 flex rounded-lg border border-border/70 p-0.5 text-xs">
                 <button
                   type="button"
                   class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
@@ -1676,7 +1670,7 @@ onUnmounted(() => {
               </div>
               <div
                 v-if="refEditSizeMode === 'match_ref'"
-                class="mb-2 rounded-lg bg-muted/50 px-2 py-1.5 text-[10px] text-muted-foreground"
+                class="mb-2 rounded-lg bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground"
               >
                 {{ editMode === 'img2img' ? 'Following source' : 'Following first ref' }}
                 <span v-if="effectiveMatchRefSize" class="font-mono text-foreground">
@@ -1708,7 +1702,7 @@ onUnmounted(() => {
                         :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
                       ></span>
                     </span>
-                    <span class="font-mono text-[10px] tracking-tight"
+                    <span class="font-mono text-xs tracking-tight"
                       >{{ preset.width }}×{{ preset.height }}</span
                     >
                   </button>
@@ -1721,7 +1715,7 @@ onUnmounted(() => {
                       min="64"
                       step="64"
                       aria-label="Custom width"
-                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     />
                     <span class="text-muted-foreground">×</span>
                     <input
@@ -1730,7 +1724,7 @@ onUnmounted(() => {
                       min="64"
                       step="64"
                       aria-label="Custom height"
-                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                      class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     />
                     <button
                       type="button"
@@ -1806,13 +1800,13 @@ onUnmounted(() => {
               <PopoverContent side="top" align="end" :side-offset="8" class="w-72 p-3">
                 <div class="mb-3">
                   <p class="text-sm font-medium">Generation settings</p>
-                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  <p class="mt-0.5 text-xs text-muted-foreground">
                     Shared with Image · steps, CFG, seed, sampling
                   </p>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-sm font-medium text-muted-foreground">
                     Steps
                     <input
                       v-model.number="config.steps"
@@ -1822,7 +1816,7 @@ onUnmounted(() => {
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-sm font-medium text-muted-foreground">
                     CFG
                     <input
                       v-model.number="config.cfgScale"
@@ -1833,7 +1827,7 @@ onUnmounted(() => {
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-sm font-medium text-muted-foreground">
                     Seed
                     <input
                       v-model.number="config.seed"
@@ -1846,10 +1840,10 @@ onUnmounted(() => {
                 </div>
 
                 <div v-if="freeSizeMode" class="mt-3 space-y-2 border-t border-border/60 pt-3">
-                  <p class="text-[10px] font-medium text-muted-foreground">
+                  <p class="text-xs font-medium text-muted-foreground">
                     Output size ({{ editMode === 'img2img' ? 'Img2Img' : 'Ref Edit' }})
                   </p>
-                  <div class="flex rounded-lg border border-border/70 p-0.5 text-[11px]">
+                  <div class="flex rounded-lg border border-border/70 p-0.5 text-xs">
                     <button
                       type="button"
                       class="flex-1 rounded-md px-2 py-1.5 font-medium transition-colors"
@@ -1876,7 +1870,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <div v-if="refEditSizeMode === 'studio'" class="grid grid-cols-2 gap-2">
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       Width
                       <input
                         v-model.number="config.width"
@@ -1886,7 +1880,7 @@ onUnmounted(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                       />
                     </label>
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       Height
                       <input
                         v-model.number="config.height"
@@ -1897,7 +1891,7 @@ onUnmounted(() => {
                       />
                     </label>
                   </div>
-                  <p v-else class="text-[10px] text-muted-foreground">
+                  <p v-else class="text-xs text-muted-foreground">
                     Using
                     {{ editMode === 'img2img' ? 'source' : 'first ref' }} natural size
                     <span v-if="effectiveMatchRefSize" class="font-mono">
@@ -1907,13 +1901,13 @@ onUnmounted(() => {
                 </div>
                 <p
                   v-else
-                  class="mt-3 border-t border-border/60 pt-3 text-[10px] text-muted-foreground"
+                  class="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground"
                 >
                   Output size follows the source image in Inpaint (no resolution selector).
                 </p>
 
                 <div class="mt-3 space-y-2">
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     Scheduler
                     <Select
                       v-model="config.scheduler"
@@ -1923,7 +1917,7 @@ onUnmounted(() => {
                       :options="schedulerOptions"
                     />
                   </label>
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     Sampler
                     <Select
                       v-model="config.sampler"

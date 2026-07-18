@@ -258,13 +258,13 @@ onUnmounted(() => {
         <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           <!-- Target size -->
           <div>
-            <p class="mb-1.5 text-[11px] font-medium text-muted-foreground">Target size</p>
+            <p class="mb-1.5 text-xs font-medium text-muted-foreground">Target size</p>
             <div class="mb-2 flex flex-wrap gap-1">
               <button
                 v-for="p in resolutionPresets.slice(0, 6)"
                 :key="p.label"
                 type="button"
-                class="rounded-md border border-border/70 px-2 py-1 font-mono text-[10px] transition-colors hover:bg-muted"
+                class="rounded-md border border-border/70 px-2 py-1 font-mono text-xs transition-colors hover:bg-muted"
                 :class="
                   targetW === p.width && targetH === p.height
                     ? 'border-foreground bg-muted text-foreground'
@@ -282,7 +282,7 @@ onUnmounted(() => {
                 min="64"
                 step="64"
                 aria-label="Target width"
-                class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px]"
+                class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs"
               />
               <span class="text-muted-foreground">×</span>
               <input
@@ -291,11 +291,11 @@ onUnmounted(() => {
                 min="64"
                 step="64"
                 aria-label="Target height"
-                class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px]"
+                class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs"
               />
               <button
                 type="button"
-                class="ml-auto inline-flex h-8 items-center rounded-md border border-border/70 px-2 text-[11px] font-medium hover:bg-muted"
+                class="ml-auto inline-flex h-8 items-center rounded-md border border-border/70 px-2 text-xs font-medium hover:bg-muted"
                 title="Use the source image’s natural resolution as the target"
                 @click="setTargetFromImage"
               >
@@ -306,7 +306,7 @@ onUnmounted(() => {
 
           <!-- Fit mode + zoom -->
           <div class="flex flex-wrap items-center gap-3">
-            <div class="flex rounded-lg border border-border/70 p-0.5 text-[11px]">
+            <div class="flex rounded-lg border border-border/70 p-0.5 text-xs">
               <button
                 type="button"
                 class="rounded-md px-2.5 py-1 font-medium transition-colors"
@@ -328,7 +328,7 @@ onUnmounted(() => {
                 Contain
               </button>
             </div>
-            <label class="flex flex-1 items-center gap-2 text-[11px] text-muted-foreground">
+            <label class="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
               Zoom
               <input
                 v-model.number="zoom"

@@ -610,7 +610,7 @@ onUnmounted(() => {
             >
               <span
                 v-if="modelsError"
-                class="max-w-[12rem] truncate text-[10px] text-destructive"
+                class="max-w-[12rem] truncate text-xs text-destructive"
                 :title="modelsError"
               >
                 {{ modelsError }}
@@ -638,7 +638,7 @@ onUnmounted(() => {
                   <span>History</span>
                   <span
                     v-if="historyCount"
-                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground"
+                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-xs font-medium tabular-nums text-muted-foreground"
                   >
                     {{ historyCount > 99 ? '99+' : historyCount }}
                   </span>
@@ -668,7 +668,7 @@ onUnmounted(() => {
                   @click="openConfigPanel('lora')"
                 >
                   <span>LoRA</span>
-                  <span v-if="config.loras.length" class="font-mono text-[10px]">
+                  <span v-if="config.loras.length" class="font-mono text-xs">
                     {{ config.loras.length }}
                   </span>
                 </button>
@@ -687,7 +687,7 @@ onUnmounted(() => {
                   @click="openConfigPanel('embedding')"
                 >
                   <span>Embedding</span>
-                  <span v-if="config.embeddings.length" class="font-mono text-[10px]">
+                  <span v-if="config.embeddings.length" class="font-mono text-xs">
                     {{ config.embeddings.length }}
                   </span>
                 </button>

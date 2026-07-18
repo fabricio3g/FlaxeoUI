@@ -115,7 +115,7 @@ function openGalleryFolder(): void {
         <Search class="size-4 shrink-0" />
         <span class="min-w-0 flex-1 truncate text-left">Search</span>
         <kbd
-          class="shrink-0 rounded border border-border/60 bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+          class="shrink-0 rounded border border-border/60 bg-background/80 px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
           >{{ searchShortcutLabel }}</kbd
         >
       </button>

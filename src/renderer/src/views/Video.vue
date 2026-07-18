@@ -508,7 +508,7 @@ onUnmounted(() => {
 
         <div v-if="generatedVideos.length > 0" class="mt-3 w-full shrink-0">
           <div class="mb-1.5 flex items-center justify-between px-2">
-            <h3 class="text-[11px] font-medium tracking-wide text-muted-foreground">
+            <h3 class="text-xs font-medium tracking-wide text-muted-foreground">
               Recent videos ({{ generatedVideos.length }})
             </h3>
           </div>
@@ -534,7 +534,7 @@ onUnmounted(() => {
                   preload="metadata"
                 ></video>
                 <span
-                  class="aui-status-badge absolute bottom-1 left-1 rounded-full bg-foreground/75 px-1.5 py-0.5 text-[9px] font-medium text-background backdrop-blur"
+                  class="aui-status-badge absolute bottom-1 left-1 rounded-full bg-foreground/75 px-1.5 py-0.5 text-xs font-medium text-background backdrop-blur"
                   >Video</span
                 >
               </button>
@@ -613,7 +613,7 @@ onUnmounted(() => {
             >
               <img :src="referenceImage" class="h-full w-full object-cover" />
             </div>
-            <div class="min-w-0 text-xs font-medium text-muted-foreground">
+            <div class="min-w-0 text-sm font-medium text-muted-foreground">
               {{ videoMode === 'flf2v' ? 'Start frame' : 'Reference' }}
             </div>
             <button
@@ -634,7 +634,7 @@ onUnmounted(() => {
             >
               <img :src="endImage" class="h-full w-full object-cover" />
             </div>
-            <div class="min-w-0 text-xs font-medium text-muted-foreground">End frame</div>
+            <div class="min-w-0 text-sm font-medium text-muted-foreground">End frame</div>
             <button
               type="button"
               @click="clearEndImage"
@@ -700,7 +700,7 @@ onUnmounted(() => {
                       :style="{ aspectRatio: `${preset.width} / ${preset.height}` }"
                     ></span>
                   </span>
-                  <span class="font-mono text-[10px] tracking-tight"
+                  <span class="font-mono text-xs tracking-tight"
                     >{{ preset.width }}×{{ preset.height }}</span
                   >
                 </button>
@@ -713,7 +713,7 @@ onUnmounted(() => {
                     min="64"
                     step="16"
                     aria-label="Custom width"
-                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <span class="text-muted-foreground">×</span>
                   <input
@@ -722,7 +722,7 @@ onUnmounted(() => {
                     min="64"
                     step="16"
                     aria-label="Custom height"
-                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    class="aui-field h-8 w-[4.5rem] rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   />
                   <button
                     type="button"
@@ -767,7 +767,7 @@ onUnmounted(() => {
 
           <label
             v-if="videoMode === 'i2v' || videoMode === 'flf2v'"
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
             :title="videoMode === 'flf2v' ? 'Upload start frame' : 'Upload reference image'"
           >
             <Upload class="h-3.5 w-3.5" />
@@ -779,7 +779,7 @@ onUnmounted(() => {
 
           <label
             v-if="videoMode === 'flf2v'"
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all duration-150 hover:border-foreground/20 hover:bg-background hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
             title="Upload end frame"
           >
             <Upload class="h-3.5 w-3.5" />
@@ -814,14 +814,14 @@ onUnmounted(() => {
               >
                 <div class="mb-3">
                   <p class="text-sm font-medium">Video settings</p>
-                  <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  <p class="mt-0.5 text-xs text-muted-foreground">
                     <template v-if="isAnimateDiff">AnimateDiff (SD1.5 + motion module)</template>
                     <template v-else>Sampling, high-noise MoE, and VACE controls</template>
                   </p>
                 </div>
 
                 <label
-                  class="mb-3 block text-[10px] font-medium text-muted-foreground"
+                  class="mb-3 block text-sm font-medium text-muted-foreground"
                   :class="!supportsMotionModule ? 'opacity-60' : ''"
                 >
                   AnimateDiff motion module
@@ -836,13 +836,13 @@ onUnmounted(() => {
                   />
                   <span
                     v-if="!supportsMotionModule"
-                    class="mt-1 block text-[10px] text-muted-foreground"
+                    class="mt-1 block text-sm text-muted-foreground"
                   >
                     Backend lacks --motion-module — upgrade stable-diffusion.cpp
                   </span>
                   <span
                     v-else-if="isAnimateDiff"
-                    class="mt-1 block text-[10px] text-muted-foreground"
+                    class="mt-1 block text-sm text-muted-foreground"
                   >
                     Uses standard SD1.5 checkpoint + CFG 8 / euler. I2V = img2video with strength.
                   </span>
@@ -850,7 +850,7 @@ onUnmounted(() => {
 
                 <label
                   v-if="isAnimateDiff && (videoMode === 'i2v' || videoMode === 'flf2v')"
-                  class="mb-3 block text-[10px] font-medium text-muted-foreground"
+                  class="mb-3 block text-sm font-medium text-muted-foreground"
                 >
                   Img2video strength
                   <input
@@ -866,7 +866,7 @@ onUnmounted(() => {
                 <div class="grid grid-cols-3 gap-2">
                   <label
                     v-if="!isAnimateDiff"
-                    class="text-[10px] font-medium text-muted-foreground"
+                    class="text-sm font-medium text-muted-foreground"
                   >
                     Flow
                     <input
@@ -878,7 +878,7 @@ onUnmounted(() => {
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-sm font-medium text-muted-foreground">
                     Steps
                     <input
                       v-model.number="config.steps"
@@ -888,7 +888,7 @@ onUnmounted(() => {
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
                     />
                   </label>
-                  <label class="text-[10px] font-medium text-muted-foreground">
+                  <label class="text-sm font-medium text-muted-foreground">
                     CFG
                     <input
                       v-model.number="config.cfgScale"
@@ -902,7 +902,7 @@ onUnmounted(() => {
                 </div>
 
                 <div class="mt-3 space-y-2">
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     Scheduler
                     <Select
                       v-model="config.scheduler"
@@ -912,7 +912,7 @@ onUnmounted(() => {
                       :options="schedulerOptions"
                     />
                   </label>
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     Sampler
                     <Select
                       v-model="config.sampler"
@@ -931,15 +931,15 @@ onUnmounted(() => {
                     @click="showHighNoise = !showHighNoise"
                   >
                     High noise (Wan2.2 MoE)
-                    <span class="text-[10px] text-muted-foreground">{{
+                    <span class="text-xs text-muted-foreground">{{
                       showHighNoise || hasHighNoiseModel ? '▼' : '▶'
                     }}</span>
                   </button>
-                  <p v-if="hasHighNoiseModel" class="mb-2 text-[10px] text-muted-foreground">
+                  <p v-if="hasHighNoiseModel" class="mb-2 text-xs text-muted-foreground">
                     High-noise model is selected in config.
                   </p>
                   <div v-if="showHighNoise || hasHighNoiseModel" class="grid grid-cols-2 gap-2">
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       HN steps
                       <input
                         v-model.number="highNoiseSteps"
@@ -949,7 +949,7 @@ onUnmounted(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                       />
                     </label>
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       HN CFG
                       <input
                         v-model.number="highNoiseCfg"
@@ -960,7 +960,7 @@ onUnmounted(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                       />
                     </label>
-                    <label class="col-span-2 text-[10px] font-medium text-muted-foreground">
+                    <label class="col-span-2 text-sm font-medium text-muted-foreground">
                       HN sampler
                       <Select
                         v-model="highNoiseSampler"
@@ -969,7 +969,7 @@ onUnmounted(() => {
                         :options="samplerOptions"
                       />
                     </label>
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       HN guidance
                       <input
                         v-model.number="highNoiseGuidance"
@@ -980,7 +980,7 @@ onUnmounted(() => {
                         class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                       />
                     </label>
-                    <label class="text-[10px] font-medium text-muted-foreground">
+                    <label class="text-sm font-medium text-muted-foreground">
                       MoE boundary
                       <input
                         v-model.number="moeBoundary"
@@ -996,11 +996,11 @@ onUnmounted(() => {
 
                 <div v-if="!isAnimateDiff" class="mt-4 space-y-2 border-t border-border/60 pt-3">
                   <p class="text-xs font-medium text-foreground">VACE / control video</p>
-                  <p class="text-[10px] leading-4 text-muted-foreground">
+                  <p class="text-xs leading-relaxed text-muted-foreground">
                     Directory of frames in lexicographic order (e.g. 00.png, 01.png). Maps to
                     <code class="text-foreground/80">--control-video</code>.
                   </p>
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     Control video path
                     <input
                       v-model="controlVideoPath"
@@ -1009,7 +1009,7 @@ onUnmounted(() => {
                       class="aui-field mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
                     />
                   </label>
-                  <label class="block text-[10px] font-medium text-muted-foreground">
+                  <label class="block text-sm font-medium text-muted-foreground">
                     VACE strength
                     <input
                       v-model.number="vaceStrength"

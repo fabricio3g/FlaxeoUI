@@ -308,12 +308,12 @@ watch(selectedRelease, (release) => {
             <div class="flex items-center gap-2">
               <h2 class="truncate text-sm font-semibold tracking-tight">Setup Wizard</h2>
               <span
-                class="aui-status-badge rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                class="aui-status-badge rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground"
               >
                 {{ stepIndex + 1 }} / 4
               </span>
             </div>
-            <p class="mt-0.5 text-[11px] text-muted-foreground">Configure your local workspace</p>
+            <p class="mt-0.5 text-xs text-muted-foreground">Configure your local workspace</p>
           </div>
           <div class="ml-auto hidden items-center gap-1.5 sm:flex" aria-hidden="true">
             <div
@@ -398,7 +398,7 @@ watch(selectedRelease, (release) => {
           <div v-else-if="step === 'runtime'" class="space-y-5">
             <div>
               <p
-                class="aui-label text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                class="aui-label text-sm font-medium uppercase tracking-wider text-muted-foreground"
               >
                 Runtime
               </p>
@@ -478,7 +478,7 @@ watch(selectedRelease, (release) => {
                     </button>
                   </div>
                 </div>
-                <p class="truncate pl-11 text-[11px] text-muted-foreground">
+                <p class="truncate pl-11 text-xs text-muted-foreground">
                   <template v-if="selectedRelease">
                     {{ selectedRelease.tag }}
                     <span v-if="releaseDate"> · {{ releaseDate }}</span>
@@ -489,7 +489,7 @@ watch(selectedRelease, (release) => {
               </div>
 
               <div v-if="runtimeDownloading || backendValid" class="mt-4">
-                <div class="mb-2 flex items-center justify-between text-[11px]">
+                <div class="mb-2 flex items-center justify-between text-xs">
                   <span class="text-muted-foreground">{{
                     backendValid ? 'Ready' : 'Downloading & verifying...'
                   }}</span>
@@ -526,9 +526,9 @@ watch(selectedRelease, (release) => {
               </div>
               <p class="text-xs leading-5 text-muted-foreground">
                 Place
-                <code class="rounded bg-muted/60 px-1 py-0.5 text-[11px]">sd-cli</code>
+                <code class="rounded bg-muted/60 px-1 py-0.5 text-xs">sd-cli</code>
                 and
-                <code class="rounded bg-muted/60 px-1 py-0.5 text-[11px]">sd-server</code>
+                <code class="rounded bg-muted/60 px-1 py-0.5 text-xs">sd-server</code>
                 in the custom folder, then continue. The wizard will detect them automatically.
               </p>
             </div>
@@ -553,7 +553,7 @@ watch(selectedRelease, (release) => {
           <div v-else-if="step === 'model'" class="space-y-5">
             <div>
               <p
-                class="aui-label text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                class="aui-label text-sm font-medium uppercase tracking-wider text-muted-foreground"
               >
                 Model preset
               </p>
@@ -563,13 +563,13 @@ watch(selectedRelease, (release) => {
               </p>
               <p
                 v-if="packRecommendReason"
-                class="mt-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground"
+                class="mt-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
               >
                 {{ packRecommendReason }}
               </p>
             </div>
 
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <input v-model="optimizeLowVram" type="checkbox" class="rounded" />
               Optimize for Low VRAM (offload, stream layers, flash attention)
             </label>
@@ -589,7 +589,7 @@ watch(selectedRelease, (release) => {
               >
                 <span
                   v-if="STARTER_PACK_META[packId].recommended"
-                  class="aui-status-badge absolute right-3 top-3 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  class="aui-status-badge absolute right-3 top-3 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground"
                 >
                   Recommended
                 </span>
@@ -628,7 +628,7 @@ watch(selectedRelease, (release) => {
                 >
                   <span class="truncate">{{ file.label }}</span>
                   <span
-                    class="aui-status-badge shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                    class="aui-status-badge shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium"
                     :class="
                       file.required
                         ? 'border-foreground/15 bg-muted text-foreground'
@@ -641,7 +641,7 @@ watch(selectedRelease, (release) => {
               </div>
 
               <div v-if="modelDownloading" class="mt-4">
-                <div class="mb-2 flex items-center justify-between text-[11px]">
+                <div class="mb-2 flex items-center justify-between text-xs">
                   <span class="text-muted-foreground">Downloading pack...</span>
                   <span class="text-muted-foreground">in progress</span>
                 </div>
@@ -679,7 +679,7 @@ watch(selectedRelease, (release) => {
                   Skip download
                 </button>
               </div>
-              <p class="mt-2 text-[11px] text-muted-foreground">
+              <p class="mt-2 text-xs text-muted-foreground">
                 Skip if you already have weights, or plan to use Model Hub / manual folders later.
               </p>
             </div>
@@ -728,7 +728,7 @@ watch(selectedRelease, (release) => {
                 </span>
               </li>
             </ul>
-            <p class="text-[11px] text-muted-foreground">
+            <p class="text-xs text-muted-foreground">
               Generate once to complete the checklist — then you are fully ready.
             </p>
 

@@ -198,7 +198,7 @@ function handleClose(): void {
             </div>
           </div>
           <p
-            class="mt-2.5 border-t border-border/70 pt-2.5 text-[11px] leading-4 text-muted-foreground"
+            class="mt-2.5 border-t border-border/70 pt-2.5 text-xs leading-relaxed text-muted-foreground"
           >
             {{ statusHint }}
           </p>
@@ -247,7 +247,7 @@ function handleClose(): void {
           <span>Queue</span>
           <span
             v-if="queueBadgeLabel"
-            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-[10px] font-medium tabular-nums text-background"
+            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-xs font-medium tabular-nums text-background"
           >
             {{ queueBadgeLabel }}
           </span>
@@ -309,7 +309,7 @@ function handleClose(): void {
           <Download class="h-4 w-4 shrink-0" />
           <span
             v-if="downloadBadgeLabel"
-            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-[10px] font-medium tabular-nums text-background"
+            class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-xs font-medium tabular-nums text-background"
           >
             {{ downloadBadgeLabel }}
           </span>
