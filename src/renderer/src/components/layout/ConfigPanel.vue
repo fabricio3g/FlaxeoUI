@@ -542,6 +542,13 @@ onUnmounted(() => {
             size="sm"
             @update:model-value="handleBackendMode"
           />
+          <p
+            v-if="config.backendMode === 'server'"
+            class="text-xs leading-relaxed text-muted-foreground"
+          >
+            Warm Text2Image only. Model loads at Start — change model or stack, then Stop → Start.
+            Edit / Video / ADetailer / batch still use CLI.
+          </p>
           <div v-if="config.backendMode === 'server' && canControl" class="flex gap-2">
             <button
               @click="startServer"

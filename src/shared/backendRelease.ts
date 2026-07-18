@@ -105,8 +105,7 @@ export function pickBestBackendAsset(
 
   if (hintL.includes('cuda')) {
     const hit =
-      prefer((n) => n.includes('cuda12') || n.includes('cu12')) ||
-      prefer((n) => n.includes('cuda'))
+      prefer((n) => n.includes('cuda12') || n.includes('cu12')) || prefer((n) => n.includes('cuda'))
     if (hit) return hit
   }
   if (hintL.includes('rocm') || hintL.includes('hip')) {

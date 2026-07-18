@@ -1,5 +1,9 @@
-stable-diffusion.cpp version unknown, commit cc73429
-Usage: D:\FlaxeoUI\backend\releases\master-769-cc73429\sd-cli.exe [options]
+# Captured from stable-diffusion.cpp master-782-b290693 (commit b290693)
+# Binary dir: backend/releases/master-782-b290693
+# Date: 2026-07-17
+# Command: --help
+stable-diffusion.cpp version unknown, commit b290693
+Usage: C:\test\FlaxeoUI\backend\releases\master-782-b290693\sd-cli.exe [options]
 
 CLI Options:
   -o, --output <string>         path to write result image to. you can use printf-style %d format specifiers for image
@@ -23,7 +27,8 @@ CLI Options:
   --metadata-raw                include raw hex previews for unparsed metadata payloads
   --metadata-brief              truncate long metadata text values in text output
   --metadata-all                include structural/container entries such as IHDR, IDAT, and non-metadata JPEG segments
-  -M, --mode                    run mode, one of [img_gen, vid_gen, upscale, convert, metadata], default: img_gen
+  -M, --mode                    run mode, one of [img_gen, adetailer, vid_gen, upscale, convert, metadata], default:
+                                img_gen
   --preview                     preview method. must be one of the following [none, proj, tae, vae] (default is none)
   -h, --help                    show this help message and exit
   --imat-in                     load an imatrix file for quantization or continued collection; can be specified multiple
@@ -46,11 +51,13 @@ Context Options:
                                            Ideogram4 CFG
   --embeddings-connectors <string>         path to LTXAV embeddings connectors
   --vae <string>                           path to standalone vae model
-  --vae-format <string>                    VAE latent format override: auto, flux, sd3, or flux2 (default: auto)
+  --vae-format <string>                    VAE latent format override: auto, flux, sd3, flux2, or wan (default: auto)
   --audio-vae <string>                     path to standalone LTX audio vae model
   --taesd <string>                         path to taesd. Using Tiny AutoEncoder for fast decoding (low quality)
   --tae <string>                           alias of --taesd
   --control-net <string>                   path to control net model
+  --motion-module <string>                 path to AnimateDiff motion module (SD 1.5); enables video generation on
+                                           --video-frames > 1
   --embd-dir <string>                      embeddings directory
   --lora-model-dir <string>                lora model directory
   --hires-upscalers-dir <string>           highres fix upscaler model directory
@@ -113,6 +120,16 @@ Context Options:
 Generation Options:
   -p, --prompt <string>                    the prompt to render
   -n, --negative-prompt <string>           the negative prompt (default: "")
+  --ad-model <string>                      path to a converted YOLOv8 detection model for ADetailer
+  --ad-prompt <string>                     ADetailer prompt; empty inherits the main prompt, supports [PROMPT], [SEP],
+                                           and [SKIP]
+  --ad-negative-prompt <string>            ADetailer negative prompt; empty inherits the main negative prompt, supports
+                                           [PROMPT] and [SEP]
+  --extra-ad-args <string>                 extra ADetailer args, key=value list. Supports input_size, confidence, nms,
+                                           max_detections, mask_k_largest, mask_min_ratio, mask_max_ratio, dilate_erode,
+                                           x_offset, y_offset, mask_mode, merge_masks, invert_mask, mask_blur,
+                                           inpaint_padding, inpaint_width, inpaint_height, denoising_strength, steps,
+                                           cfg_scale, sample_method, scheduler, sort_by
   -i, --init-img <string>                  path to the init image
   --end-img <string>                       path to the end image, required by flf2v
   --mask <string>                          path to the mask image
@@ -136,6 +153,8 @@ Generation Options:
                                            resolution_aware
   --extra-tiling-args <string>             extra VAE tiling args, key=value list. LTX video VAE supports
                                            temporal_tile_frames (default: 4), temporal_tile_overlap (default: 1)
+  --ref-image-args <string>                Key-value list to set up the way the reference images are processed (empty =
+                                           auto-detect from model weigths)
   -H, --height <int>                       image height, in pixel space (default: 512)
   -W, --width <int>                        image width, in pixel space (default: 512)
   --steps <int>                            number of sample steps (default: 20)
@@ -235,3 +254,4 @@ Generation Options:
                                            if < 1, in number of tiles per dim if >=1 (overrides --vae-tile-size)
   --prompt-file                            path to the file containing the prompt to render
   --negative-prompt-file                   path to the file containing the negative prompt
+

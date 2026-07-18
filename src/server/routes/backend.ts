@@ -6,7 +6,7 @@ import AdmZip from 'adm-zip'
 import * as tar from 'tar'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import { backendHasBinaries, getSdCliPath } from '../sd'
+import { backendHasBinaries, getSdCliPath, getSdServerPath } from '../sd'
 import { downloadFile, fetchJson } from '../utils'
 import {
   isRecommendedBackendTag,
@@ -113,32 +113,40 @@ function flattenNestedRelease(versionDir: string): void {
 export function registerBackendRoutes(app: Express, ctx: AppContext): void {
   app.get('/api/backend/capabilities', async (_req, res) => {
     try {
+      const cwd = ctx.getActiveBackendPath()
       const cliPath = getSdCliPath(ctx)
+      const serverPath = getSdServerPath(ctx)
+
+      async function runHelp(binPath: string): Promise<string> {
+        try {
+          const { stdout, stderr } = await execFileAsync(binPath, ['--help'], {
+            cwd,
+            timeout: 15000,
+            windowsHide: true,
+            maxBuffer: 2 * 1024 * 1024
+          })
+          return `${stdout || ''}\n${stderr || ''}`
+        } catch (error: unknown) {
+          // Many tools print help to stderr and exit non-zero
+          const err = error as { stdout?: string; stderr?: string; message?: string }
+          return `${err?.stdout || ''}\n${err?.stderr || ''}\n${err?.message || ''}`
+        }
+      }
+
       if (!fs.existsSync(cliPath)) {
         return res.json({
           probed: true,
           flags: [],
           modes: [],
-          error: 'sd-cli binary not found'
+          error: 'sd-cli binary not found',
+          server: fs.existsSync(serverPath)
+            ? { present: true }
+            : { present: false, error: 'sd-server binary not found' }
         })
       }
 
-      let helpText = ''
-      try {
-        const { stdout, stderr } = await execFileAsync(cliPath, ['--help'], {
-          cwd: ctx.getActiveBackendPath(),
-          timeout: 15000,
-          windowsHide: true,
-          maxBuffer: 2 * 1024 * 1024
-        })
-        helpText = `${stdout || ''}\n${stderr || ''}`
-      } catch (error: unknown) {
-        // Many CLI tools print help to stderr and exit non-zero
-        const err = error as { stdout?: string; stderr?: string; message?: string }
-        helpText = `${err?.stdout || ''}\n${err?.stderr || ''}\n${err?.message || ''}`
-      }
-
-      if (!helpText.trim()) {
+      const cliHelp = await runHelp(cliPath)
+      if (!cliHelp.trim()) {
         return res.json({
           probed: true,
           flags: [],
@@ -147,19 +155,54 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
         })
       }
 
-      const parsed = parseCliHelp(helpText)
+      const cliParsed = parseCliHelp(cliHelp)
+
+      let serverBlock:
+        | {
+            present: boolean
+            versionLine?: string
+            flags?: string[]
+            modes?: string[]
+            error?: string
+          }
+        | undefined
+
+      if (fs.existsSync(serverPath)) {
+        const serverHelp = await runHelp(serverPath)
+        if (serverHelp.trim()) {
+          const serverParsed = parseCliHelp(serverHelp)
+          serverBlock = {
+            present: true,
+            versionLine: serverParsed.versionLine,
+            flags: serverParsed.flags,
+            modes: serverParsed.modes
+          }
+        } else {
+          serverBlock = { present: true, error: 'Empty help output from sd-server' }
+        }
+      } else {
+        serverBlock = { present: false, error: 'sd-server binary not found' }
+      }
+
+      // Flat flags/modes remain CLI so soft-gates stay correct for generate-cli paths
       res.json({
         probed: true,
-        versionLine: parsed.versionLine,
-        flags: parsed.flags,
-        modes: parsed.modes
+        versionLine: cliParsed.versionLine,
+        flags: cliParsed.flags,
+        modes: cliParsed.modes,
+        cli: {
+          versionLine: cliParsed.versionLine,
+          flags: cliParsed.flags,
+          modes: cliParsed.modes
+        },
+        server: serverBlock
       })
     } catch (error: unknown) {
       res.json({
         probed: true,
         flags: [],
         modes: [],
-        error: error instanceof Error ? error.message : 'Failed to probe sd-cli'
+        error: error instanceof Error ? error.message : 'Failed to probe backend help'
       })
     }
   })

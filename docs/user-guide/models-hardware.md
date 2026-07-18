@@ -73,4 +73,6 @@ Select each file from the dropdowns (diffusion, VAE, CLIP, T5, LLM, LoRAs). Hub 
 
 ## Capabilities
 
-Flaxeo probes `sd-cli --help` and soft-gates unsupported controls so the UI matches your backend build.
+Flaxeo probes **`sd-cli --help`** (and reports **`sd-server --help`**) so soft-gates match your install. Soft-gates use **CLI** flags/modes — server mode is a warm HTTP path for core Text2Image only.
+
+See in-app Help → **CLI vs Server**. Repo dumps for the recommended runtime: `sd-cli-help.txt`, `sd-server-help.txt`.

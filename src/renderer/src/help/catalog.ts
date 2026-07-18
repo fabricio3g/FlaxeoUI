@@ -385,6 +385,61 @@ This chapter will expand when the feature ships. See the product roadmap in the 
 `
   },
   {
+    id: 'cli-vs-server',
+    title: 'CLI vs Server',
+    section: 'Models & hardware',
+    keywords: [
+      'cli',
+      'server',
+      'sd-server',
+      'sd-cli',
+      'backend',
+      'warm',
+      'mode',
+      'runtime',
+      'start',
+      'stop',
+      't2i'
+    ],
+    body: `# CLI vs Server
+
+Flaxeo can drive **stable-diffusion.cpp** two ways. The install zip must include **both** \`sd-cli\` and \`sd-server\`.
+
+Recommended tested build: **master-782** (see Settings → Installation).
+
+## CLI mode (default)
+
+- Runs \`sd-cli\` **per job** (cold or warm process lifecycle managed by Flaxeo).
+- **Full studio:** Image, Edit, Video, ADetailer, batch, PhotoMaker, ControlNet, init/ref uploads, upscale.
+- Use this unless you specifically want a warm HTTP server.
+
+## Server mode
+
+- Starts **\`sd-server\`** once (\`POST /api/start\`) with the **current model stack** and hardware flags.
+- Flaxeo then posts simple T2I to \`http://localhost:1234/v1/images/generations\`.
+- **Best for:** repeated Text2Image with the same loaded model (less load churn).
+- **Limits (by design today):**
+  - Core **text-to-image** only (batch 1, no PM / ControlNet / init / multi-ref form path).
+  - Advanced jobs **automatically fall back to CLI** with a toast.
+  - **Changing model or many settings requires Stop → Start** so the server reloads args.
+
+## Controls
+
+- Titlebar or Config → **CLI | Server**
+- When Server is selected: **Start** / **Stop** for \`sd-server\`
+- Runtime probe: Settings uses \`sd-cli --help\` (and reports \`sd-server --help\`) so soft-gates match your build
+
+## Docs / help dumps
+
+Checked into the repo for the recommended backend:
+
+- \`sd-cli-help.txt\`
+- \`sd-server-help.txt\`
+
+Refresh those when you bump the recommended runtime tag.
+`
+  },
+  {
     id: 'models-hardware',
     title: 'Models & hardware',
     section: 'Models & hardware',

@@ -1,12 +1,24 @@
 import { computed, ref } from 'vue'
 import { apiGet, isRemoteBrowser } from '@/services/api'
 
+export interface BackendProbeSlice {
+  present?: boolean
+  versionLine?: string
+  flags?: string[]
+  modes?: string[]
+  error?: string
+}
+
 export interface BackendCapabilities {
   probed: boolean
   versionLine?: string
   flags: string[]
   modes: string[]
   error?: string
+  /** CLI probe (same as flat flags/modes; soft-gates use CLI) */
+  cli?: BackendProbeSlice
+  /** sd-server --help probe (informational; generate path is still thin HTTP) */
+  server?: BackendProbeSlice
 }
 
 const capabilities = ref<BackendCapabilities>({
@@ -18,8 +30,8 @@ const capabilities = ref<BackendCapabilities>({
 const isProbing = ref(false)
 
 /**
- * useBackendCapabilities() - Runtime sd-cli --help probe cache
- * Soft-gates UI controls when the active binary lacks a flag/mode.
+ * useBackendCapabilities() - Runtime sd-cli / sd-server --help probe cache
+ * Soft-gates UI controls from CLI help; server slice is extra visibility.
  */
 export function useBackendCapabilities() {
   const hasFlag = (flag: string): boolean => {
@@ -91,7 +103,9 @@ export function useBackendCapabilities() {
         versionLine: data.versionLine,
         flags: Array.isArray(data.flags) ? data.flags : [],
         modes: Array.isArray(data.modes) ? data.modes : [],
-        error: data.error
+        error: data.error,
+        cli: data.cli,
+        server: data.server
       }
     } catch (e) {
       capabilities.value = {
