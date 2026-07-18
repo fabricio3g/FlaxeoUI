@@ -24,6 +24,12 @@ import {
   type StorageSettings
 } from '../../../shared/storage'
 import {
+  filterAssetsForPlatform,
+  pickBestBackendAsset,
+  pickRecommendedRelease,
+  RECOMMENDED_BACKEND_TAG
+} from '../../../shared/backendRelease'
+import {
   buildLanPairingUrl,
   type LanAccessLevel,
   type LanSharingStatus,
@@ -164,6 +170,7 @@ interface Release {
   tag: string
   name: string
   published: string
+  recommended?: boolean
   assets: ReleaseAsset[]
 }
 
@@ -171,6 +178,8 @@ interface SystemInfo {
   platform: string
   arch: string
   note: string
+  /** Detect hint e.g. win-cuda12-x64 */
+  variant?: string | null
 }
 
 // Backend state
@@ -211,11 +220,81 @@ const lanQrSvg = computed(() =>
   lanPairingUrl.value ? renderSVG(lanPairingUrl.value, { ecc: 'M', border: 2 }) : ''
 )
 
-// Get variants for selected release
+const recommendedRelease = computed(() => pickRecommendedRelease(releases.value))
+
+const otherReleases = computed(() => releases.value.filter((r) => !r.recommended))
+
+const isSelectedRecommended = computed(() => {
+  const r = releases.value.find((x) => x.tag === selectedRelease.value)
+  return !!r?.recommended
+})
+
+/** OS-filtered assets for the currently selected release tag */
 const selectedReleaseAssets = computed(() => {
   const release = releases.value.find((r) => r.tag === selectedRelease.value)
-  return release?.assets || []
+  if (!release) return []
+  return filterAssetsForPlatform(release.assets, systemInfo.value.platform || 'win32')
 })
+
+/** Recommended card: natural GitHub zip names for this OS */
+const recommendedVariantOptions = computed(() => {
+  const release = recommendedRelease.value
+  if (!release) return []
+  return filterAssetsForPlatform(release.assets, systemInfo.value.platform || 'win32').map(
+    (a) => ({
+      label: a.name,
+      value: a.name
+    })
+  )
+})
+
+/** Other-version card: natural zip names for the selected non-recommended tag */
+const otherVariantOptions = computed(() => {
+  if (isSelectedRecommended.value) return []
+  return selectedReleaseAssets.value.map((a) => ({
+    label: a.name,
+    value: a.name
+  }))
+})
+
+const otherReleaseOptions = computed(() =>
+  otherReleases.value.map((r) => ({
+    label: r.tag,
+    value: r.tag
+  }))
+)
+
+/** Value shown in recommended variant select (empty when another tag is active) */
+const recommendedVariantModel = computed(() =>
+  isSelectedRecommended.value ? selectedVariant.value : ''
+)
+
+/** Value shown in other-version variant select */
+const otherVariantModel = computed(() =>
+  isSelectedRecommended.value ? '' : selectedVariant.value
+)
+
+function selectRecommendedRelease(): void {
+  const rec = recommendedRelease.value
+  if (!rec) return
+  selectedRelease.value = rec.tag
+}
+
+function selectOtherRelease(tag: string): void {
+  if (!tag) return
+  selectedRelease.value = tag
+}
+
+function onRecommendedVariantPick(value: string): void {
+  if (!value) return
+  selectRecommendedRelease()
+  selectedVariant.value = value
+}
+
+function onOtherVariantPick(value: string): void {
+  if (!value) return
+  selectedVariant.value = value
+}
 
 async function setStoreImageFormat(format: 'png' | 'avif'): Promise<void> {
   if (outputFormatBusy.value || outputImageFormat.value === format) return
@@ -249,14 +328,16 @@ async function fetchConfig(): Promise<void> {
 
 /**
  * fetchReleases() - Fetches available releases from GitHub API
+ * API returns the Flaxeo-tested build first when present.
  */
 async function fetchReleases(): Promise<void> {
   try {
     const data = await apiGet<Release[]>('/api/backend/releases')
     releases.value = data
-    // Auto-select first release
+    // Prefer recommended/tested tag; fall back to first in list
     if (data.length > 0 && !selectedRelease.value) {
-      selectedRelease.value = data[0].tag
+      const recommended = data.find((r) => r.recommended) || data[0]
+      selectedRelease.value = recommended.tag
     }
   } catch (e) {
     console.error('Failed to fetch releases:', e)
@@ -278,30 +359,26 @@ async function detectSystem(): Promise<void> {
 }
 
 /**
- * autoSelectVariant() - Auto select best variant based on system
+ * autoSelectVariant() - Best zip for this OS + GPU detect hint
  */
 function autoSelectVariant(): void {
-  if (selectedReleaseAssets.value.length === 0) return
-
-  const platform = systemInfo.value.platform
-
-  // Find matching variant
-  let best = selectedReleaseAssets.value[0]
-  for (const asset of selectedReleaseAssets.value) {
-    const name = asset.name.toLowerCase()
-    if (platform === 'win32' && name.includes('win')) {
-      if (name.includes('cuda') || name.includes('vulkan')) {
-        best = asset
-        break
-      }
-      best = asset
-    } else if (platform === 'darwin' && name.includes('macos')) {
-      best = asset
-    } else if (platform === 'linux' && name.includes('ubuntu')) {
-      best = asset
-    }
+  const release = releases.value.find((r) => r.tag === selectedRelease.value)
+  if (!release?.assets?.length) {
+    selectedVariant.value = ''
+    return
   }
-  selectedVariant.value = best.name
+  const platform = systemInfo.value.platform || 'win32'
+  const best = pickBestBackendAsset(
+    release.assets,
+    platform,
+    systemInfo.value.variant
+  )
+  // Keep current pick if still valid for this release+OS
+  const pool = filterAssetsForPlatform(release.assets, platform)
+  if (selectedVariant.value && pool.some((a) => a.name === selectedVariant.value)) {
+    return
+  }
+  selectedVariant.value = best || pool[0]?.name || ''
 }
 
 // Watch for release change to update variants
@@ -746,67 +823,178 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
             class="aui-dialog-surface overflow-hidden rounded-lg border border-border/70 bg-card"
           >
             <div class="space-y-4 p-4">
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label
-                    class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
-                    >Release version</label
-                  >
-                  <Select
-                    v-model="selectedRelease"
-                    size="md"
-                    class="aui-field"
-                    placeholder="Select version..."
-                    :options="
-                      releases.map((r) => ({ label: `${r.tag} - ${r.name}`, value: r.tag }))
-                    "
-                  />
-                </div>
-                <div>
-                  <label
-                    class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
-                    >Binary variant</label
-                  >
-                  <Select
-                    v-model="selectedVariant"
-                    size="md"
-                    class="aui-field"
-                    placeholder="Select variant..."
-                    :options="selectedReleaseAssets.map((a) => ({ label: a.name, value: a.name }))"
-                  />
-                </div>
-              </div>
-
-              <div
-                v-if="downloadStatus"
-                class="aui-alert rounded-lg border px-3 py-2.5 text-xs"
-                :class="
-                  downloadStatus.includes('failed')
-                    ? 'border-destructive/25 bg-destructive/10 text-destructive'
-                    : 'border-border bg-muted/30 text-foreground'
-                "
-              >
-                {{ downloadStatus }}
-              </div>
-
-              <button
-                type="button"
-                @click="downloadAndInstall"
-                :disabled="!selectedRelease || !selectedVariant || isDownloading"
-                class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
-                <Download v-else class="size-4" />
-                {{ isDownloading ? 'Downloading...' : 'Download & Install' }}
-              </button>
-
               <div
                 v-if="releases.length === 0"
-                class="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground"
+                class="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground"
               >
                 <Loader2 class="size-3.5 animate-spin" />
                 <span>Loading releases...</span>
               </div>
+
+              <template v-else>
+                <!-- Recommended / tested build first -->
+                <div
+                  class="rounded-lg border border-foreground/15 bg-muted/20 p-3.5"
+                  :class="isSelectedRecommended ? 'ring-1 ring-foreground/10' : ''"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-sm font-medium text-foreground">Recommended runtime</p>
+                        <span
+                          class="rounded-full bg-foreground px-2 py-0.5 text-xs font-medium text-background"
+                        >
+                          Tested with Flaxeo
+                        </span>
+                      </div>
+                      <p class="mt-1 font-mono text-xs text-muted-foreground">
+                        {{ recommendedRelease?.tag || RECOMMENDED_BACKEND_TAG }}
+                      </p>
+                      <p class="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                        Flaxeo is developed against this stable-diffusion.cpp build. Pick a binary
+                        by its published name, then install.
+                      </p>
+                    </div>
+                    <button
+                      v-if="recommendedRelease && !isSelectedRecommended"
+                      type="button"
+                      class="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                      @click="selectRecommendedRelease"
+                    >
+                      Use this version
+                    </button>
+                  </div>
+
+                  <div v-if="recommendedRelease" class="mt-3 space-y-2">
+                    <label class="aui-label block text-sm font-medium text-muted-foreground">
+                      Binary
+                    </label>
+                    <Select
+                      :model-value="recommendedVariantModel"
+                      size="md"
+                      class="aui-field"
+                      placeholder="Select binary…"
+                      :options="recommendedVariantOptions"
+                      @update:model-value="(v) => onRecommendedVariantPick(String(v || ''))"
+                    />
+                    <p
+                      v-if="systemInfo.note && isSelectedRecommended"
+                      class="text-xs text-muted-foreground"
+                    >
+                      {{ systemInfo.note }}
+                    </p>
+                    <button
+                      type="button"
+                      :disabled="
+                        !isSelectedRecommended || !selectedVariant || isDownloading
+                      "
+                      class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                      @click="downloadAndInstall"
+                    >
+                      <Loader2 v-if="isDownloading && isSelectedRecommended" class="size-4 animate-spin" />
+                      <Download v-else class="size-4" />
+                      {{
+                        isDownloading && isSelectedRecommended
+                          ? 'Downloading...'
+                          : 'Download recommended'
+                      }}
+                    </button>
+                  </div>
+                  <p
+                    v-else
+                    class="mt-3 text-xs leading-relaxed text-muted-foreground"
+                  >
+                    Could not find
+                    <code class="rounded bg-muted px-1 font-mono">{{ RECOMMENDED_BACKEND_TAG }}</code>
+                    in the release list (offline or rate-limited). Try again later, or use another
+                    version below at your own risk.
+                  </p>
+                </div>
+
+                <!-- Other versions optional -->
+                <div class="space-y-3 border-t border-border/60 pt-4">
+                  <div>
+                    <p class="text-sm font-medium text-foreground">Other versions</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">Optional — not the Flaxeo-tested build</p>
+                  </div>
+
+                  <div
+                    class="aui-alert flex items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground"
+                  >
+                    <AlertTriangle class="mt-0.5 size-3.5 shrink-0 text-foreground" />
+                    <span>
+                      Newer or older sd.cpp releases may miss flags Flaxeo expects (ADetailer,
+                      AnimateDiff, batch, …) or behave differently. Prefer the recommended runtime
+                      unless you know you need another tag.
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground">
+                        Release tag
+                      </label>
+                      <Select
+                        :model-value="isSelectedRecommended ? '' : selectedRelease"
+                        size="md"
+                        class="aui-field"
+                        placeholder="Select other version…"
+                        :options="otherReleaseOptions"
+                        @update:model-value="(v) => selectOtherRelease(String(v || ''))"
+                      />
+                    </div>
+                    <div>
+                      <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground">
+                        Binary
+                      </label>
+                      <Select
+                        :model-value="otherVariantModel"
+                        size="md"
+                        class="aui-field"
+                        placeholder="Select binary…"
+                        :disabled="isSelectedRecommended || !selectedRelease"
+                        :options="otherVariantOptions"
+                        @update:model-value="(v) => onOtherVariantPick(String(v || ''))"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    :disabled="
+                      isSelectedRecommended ||
+                      !selectedRelease ||
+                      !selectedVariant ||
+                      isDownloading
+                    "
+                    class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border/70 bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                    @click="downloadAndInstall"
+                  >
+                    <Loader2
+                      v-if="isDownloading && !isSelectedRecommended"
+                      class="size-4 animate-spin"
+                    />
+                    <Download v-else class="size-4" />
+                    {{
+                      isDownloading && !isSelectedRecommended
+                        ? 'Downloading...'
+                        : 'Download other version'
+                    }}
+                  </button>
+                </div>
+
+                <div
+                  v-if="downloadStatus"
+                  class="aui-alert rounded-lg border px-3 py-2.5 text-xs"
+                  :class="
+                    downloadStatus.includes('failed')
+                      ? 'border-destructive/25 bg-destructive/10 text-destructive'
+                      : 'border-border bg-muted/30 text-foreground'
+                  "
+                >
+                  {{ downloadStatus }}
+                </div>
+              </template>
             </div>
           </section>
 

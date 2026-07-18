@@ -8,6 +8,11 @@ import type { Express } from 'express'
 import type { AppContext } from '../types'
 import { backendHasBinaries, getSdCliPath } from '../sd'
 import { downloadFile, fetchJson } from '../utils'
+import {
+  isRecommendedBackendTag,
+  RECOMMENDED_BACKEND_TAG,
+  sortReleasesRecommendedFirst
+} from '../../shared/backendRelease'
 
 const execFileAsync = promisify(execFile)
 
@@ -54,6 +59,8 @@ function parseCliHelp(helpText: string): {
 
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/leejet/stable-diffusion.cpp/releases'
 const CACHE_TTL = 5 * 60 * 1000
+/** Pull enough tags that the recommended build still appears when not the absolute latest. */
+const RELEASES_FETCH_LIMIT = 25
 
 interface GithubReleaseAsset {
   name: string
@@ -72,6 +79,7 @@ interface ProcessedRelease {
   tag: string
   name: string
   published: string
+  recommended: boolean
   assets: { name: string; size: number; url: string }[]
 }
 
@@ -161,18 +169,21 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       if (releasesCache && Date.now() - releasesCacheTime < CACHE_TTL)
         return res.json(releasesCache)
       const releases = await fetchJson<GithubRelease[]>(GITHUB_RELEASES_URL)
-      const processed: ProcessedRelease[] = releases.slice(0, 10).map((release) => ({
-        tag: release.tag_name,
-        name: release.name,
-        published: release.published_at,
-        assets: release.assets
-          .map((asset) => ({
-            name: asset.name,
-            size: asset.size,
-            url: asset.browser_download_url
-          }))
-          .filter((asset) => asset.name.endsWith('.zip'))
-      }))
+      const processed: ProcessedRelease[] = sortReleasesRecommendedFirst(
+        releases.slice(0, RELEASES_FETCH_LIMIT).map((release) => ({
+          tag: release.tag_name,
+          name: release.name,
+          published: release.published_at,
+          recommended: isRecommendedBackendTag(release.tag_name),
+          assets: release.assets
+            .map((asset) => ({
+              name: asset.name,
+              size: asset.size,
+              url: asset.browser_download_url
+            }))
+            .filter((asset) => asset.name.endsWith('.zip'))
+        }))
+      )
       releasesCache = processed
       releasesCacheTime = Date.now()
       res.json(processed)
@@ -180,6 +191,10 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       console.error('Releases fetch error:', error)
       res.status(500).json({ error: 'Failed to fetch releases' })
     }
+  })
+
+  app.get('/api/backend/recommended-release', (_req, res) => {
+    res.json({ tag: RECOMMENDED_BACKEND_TAG })
   })
 
   app.get('/api/backend/detect', (_req, res) => {

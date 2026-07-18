@@ -29,6 +29,12 @@ import {
 } from '@/lib/starterPacks'
 import Select from '@/components/ui/Select.vue'
 import type { Release, ReleaseAsset } from '@/composables/useBackend'
+import {
+  filterAssetsForPlatform,
+  pickBestBackendAsset,
+  pickRecommendedRelease,
+  RECOMMENDED_BACKEND_TAG
+} from '../../../shared/backendRelease'
 
 type Step = 'welcome' | 'runtime' | 'model' | 'finish'
 
@@ -67,19 +73,51 @@ const selectedRelease = computed<Release | null>(() => {
   return backend.releases.value.find((r) => r.tag === selectedReleaseTag.value) || null
 })
 
+const recommendedRelease = computed(() => pickRecommendedRelease(backend.releases.value))
+
+const detectedPlatform = ref<string>(
+  typeof navigator !== 'undefined' && /Win/i.test(navigator.platform)
+    ? 'win32'
+    : typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+      ? 'darwin'
+      : 'linux'
+)
+const detectHint = ref<string | null>(null)
+
 const releaseOptions = computed(() =>
   backend.releases.value.map((r) => ({
-    label: `${r.name || r.tag}`,
+    label: r.recommended
+      ? `${r.tag} · Recommended (tested)`
+      : r.tag,
     value: r.tag
   }))
 )
 
-const assetOptions = computed(() =>
-  (selectedRelease.value?.assets || []).map((asset) => ({
+const assetOptions = computed(() => {
+  const assets = selectedRelease.value?.assets || []
+  return filterAssetsForPlatform(assets, detectedPlatform.value).map((asset) => ({
     label: asset.name,
     value: asset.name
   }))
-)
+})
+
+const selectedIsRecommended = computed(() => !!selectedRelease.value?.recommended)
+
+function syncAssetForRelease(): void {
+  const release = selectedRelease.value
+  if (!release) {
+    selectedAssetName.value = ''
+    return
+  }
+  const pool = filterAssetsForPlatform(release.assets, detectedPlatform.value)
+  if (selectedAssetName.value && pool.some((a) => a.name === selectedAssetName.value)) {
+    return
+  }
+  selectedAssetName.value =
+    pickBestBackendAsset(release.assets, detectedPlatform.value, detectHint.value) ||
+    pool[0]?.name ||
+    ''
+}
 
 const selectedAsset = computed<ReleaseAsset | null>(() => {
   const assets = selectedRelease.value?.assets || []
@@ -122,8 +160,10 @@ async function loadReleases(): Promise<void> {
     if (backend.releases.value.length === 0) {
       runtimeError.value = 'No releases found. You may be rate-limited by GitHub or offline.'
     } else if (!selectedReleaseTag.value) {
-      selectedReleaseTag.value = backend.releases.value[0]?.tag || ''
-      selectedAssetName.value = backend.releases.value[0]?.assets[0]?.name || ''
+      const rec = pickRecommendedRelease(backend.releases.value)
+      const pick = rec || backend.releases.value[0]
+      selectedReleaseTag.value = pick?.tag || ''
+      syncAssetForRelease()
     }
   } catch (e) {
     runtimeError.value = e instanceof Error ? e.message : 'Failed to fetch releases.'
@@ -225,6 +265,9 @@ async function recommendPackFromDetect(): Promise<void> {
       variant?: string | null
       note?: string | null
     }>('/api/backend/detect')
+    if (data.platform) detectedPlatform.value = data.platform
+    detectHint.value = data.variant || null
+    syncAssetForRelease()
     const note = `${data.variant || ''} ${data.note || ''}`.toLowerCase()
     const hasNvidia = /cuda|nvidia/.test(note)
     // Smaller pack for non-CUDA; FLUX when NVIDIA is advertised
@@ -287,8 +330,8 @@ watch(backendValid, async (valid) => {
   }
 })
 
-watch(selectedRelease, (release) => {
-  selectedAssetName.value = release?.assets[0]?.name || ''
+watch(selectedRelease, () => {
+  syncAssetForRelease()
 })
 </script>
 
@@ -363,7 +406,7 @@ watch(selectedRelease, (release) => {
                 <div class="min-w-0">
                   <p class="text-sm font-medium">Install the runtime</p>
                   <p class="text-xs text-muted-foreground">
-                    Downloads the latest sd-cli backend for your platform.
+                    Installs the Flaxeo-tested sd-cli build for your GPU (CUDA, Vulkan, …).
                   </p>
                 </div>
               </div>
@@ -414,7 +457,36 @@ watch(selectedRelease, (release) => {
             </div>
 
             <div class="rounded-xl border border-border/80 bg-muted/15 p-4 shadow-sm">
-              <div class="space-y-2">
+              <div class="space-y-3">
+                <div
+                  v-if="recommendedRelease"
+                  class="rounded-lg border border-foreground/10 bg-background/60 px-3 py-2.5"
+                >
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="text-sm font-medium">Recommended</p>
+                    <span
+                      class="rounded-full bg-foreground px-2 py-0.5 text-xs font-medium text-background"
+                    >
+                      Tested with Flaxeo
+                    </span>
+                  </div>
+                  <p class="mt-1 font-mono text-xs text-muted-foreground">
+                    {{ recommendedRelease.tag }}
+                  </p>
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    Pick the binary for this tested release (filename as published on GitHub).
+                  </p>
+                </div>
+                <div
+                  v-if="selectedRelease && !selectedIsRecommended"
+                  class="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+                >
+                  <span>
+                    This release is not the Flaxeo-tested build
+                    (<code class="font-mono">{{ RECOMMENDED_BACKEND_TAG }}</code
+                    >). Features may not work as expected.
+                  </span>
+                </div>
                 <div class="flex items-start gap-3 sm:items-center">
                   <div
                     class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
@@ -440,7 +512,7 @@ watch(selectedRelease, (release) => {
                     <Select
                       v-model="selectedAssetName"
                       :options="assetOptions"
-                      placeholder="Select variant"
+                      placeholder="Select binary…"
                       size="sm"
                       class="aui-field h-8"
                       :disabled="
