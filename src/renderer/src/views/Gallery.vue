@@ -25,7 +25,6 @@ import { useOutputPreferences } from '@/composables/useOutputPreferences'
 import { requestConfirm } from '@/composables/useConfirm'
 import { useRouter } from 'vue-router'
 import ImageViewer from '@/components/ImageViewer.vue'
-import BrandMark from '@/components/BrandMark.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -816,8 +815,10 @@ onUnmounted(() => {
         class="flex h-full min-h-80 items-center justify-center rounded-3xl px-8 text-center"
       >
         <div class="content-item flex max-w-sm flex-col items-center">
-          <BrandMark size="lg" class="text-foreground" />
-          <p class="mt-5 text-base font-medium tracking-tight text-foreground">
+          <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Gallery
+          </p>
+          <p class="mt-2 text-base font-medium tracking-tight text-foreground">
             {{ images.length === 0 ? 'Your gallery is empty' : 'No matches for this filter' }}
           </p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">

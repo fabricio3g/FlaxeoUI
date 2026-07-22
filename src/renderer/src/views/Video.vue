@@ -20,7 +20,6 @@ import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
-import BrandMark from '@/components/BrandMark.vue'
 import {
   isAnyGenerationBusy,
   toastGenerationError,
@@ -473,8 +472,10 @@ onUnmounted(() => {
 
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
             <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
-              <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-base font-medium tracking-tight text-foreground">
+              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Video workspace
+              </p>
+              <h2 class="mt-2 text-base font-medium tracking-tight text-foreground">
                 What will you move?
               </h2>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -1040,7 +1041,7 @@ onUnmounted(() => {
                   type="button"
                   @click="handleGenerate"
                   :disabled="!prompt.trim()"
-                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-[#103e31] text-[#f2f7f3] transition-colors hover:bg-[#0a241c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 dark:bg-[#b8d5ad] dark:text-[#07140c] dark:hover:bg-[#dfead9] focus-visible:outline-none"
                   :aria-label="isGenerating ? 'Add to queue' : 'Generate video'"
                 >
                   <ArrowUp class="size-4 stroke-[2.5]" />

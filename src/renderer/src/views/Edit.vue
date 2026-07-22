@@ -15,7 +15,6 @@ import {
   Eraser,
   Images,
   Loader2,
-  Plus,
   SlidersHorizontal,
   Square,
   Trash2,
@@ -27,7 +26,6 @@ import PromptPresetControls from '@/components/PromptPresetControls.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
-import BrandMark from '@/components/BrandMark.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import RefSizePrompt from '@/components/RefSizePrompt.vue'
 import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
@@ -651,10 +649,14 @@ async function handleImageUpload(event: Event): Promise<void> {
   const file = target.files?.[0]
   if (!file) return
 
+  target.value = ''
+  stopPreviewPolling({ clearFrame: true })
+  const previousBaseImage = baseImage.value
   baseImageFile.value = file
   currentEditFilename.value = null
   const url = URL.createObjectURL(file)
   loadImage(url)
+  if (previousBaseImage?.startsWith('blob:')) URL.revokeObjectURL(previousBaseImage)
   await refreshMatchRefSize()
   // Size prompt only for Img2Img (Inpaint always follows source; no resolution UI)
   if (editMode.value === 'img2img') {
@@ -1153,8 +1155,10 @@ onUnmounted(() => {
             class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
           >
             <div class="content-item flex max-w-sm flex-col items-center">
-              <BrandMark size="lg" class="text-foreground" />
-              <h2 class="mt-5 text-base font-medium tracking-tight text-foreground">
+              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Edit workspace
+              </p>
+              <h2 class="mt-2 text-base font-medium tracking-tight text-foreground">
                 {{
                   editMode === 'ref'
                     ? 'Add reference images'
@@ -1376,6 +1380,31 @@ onUnmounted(() => {
             aria-label="Edit mode"
             @update:model-value="setEditMode"
           />
+          <label
+            class="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:bg-accent hover:text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/40"
+            :class="isGenerating ? 'pointer-events-none opacity-50' : ''"
+            :aria-disabled="isGenerating"
+          >
+            <Upload class="h-3.5 w-3.5" />
+            <span>
+              {{
+                editMode === 'ref'
+                  ? 'Add references'
+                  : baseImage
+                    ? 'Replace image'
+                    : 'Upload image'
+              }}
+            </span>
+            <input
+              :key="editMode"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              :multiple="editMode === 'ref'"
+              :disabled="isGenerating"
+              @change="editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)"
+            />
+          </label>
           <SegmentedControl
             :model-value="promptMode"
             :options="promptModeOptions"
@@ -1505,13 +1534,6 @@ onUnmounted(() => {
               <X class="h-3.5 w-3.5" />
             </button>
           </div>
-          <label
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:text-foreground"
-          >
-            <Plus class="h-3.5 w-3.5" />
-            Add ref
-            <input type="file" accept="image/*" multiple class="hidden" @change="handleRefUpload" />
-          </label>
           <button
             v-if="baseImageFile"
             type="button"
@@ -1958,7 +1980,7 @@ onUnmounted(() => {
                   type="button"
                   @click="handleGenerate"
                   :disabled="!canSubmitEdit"
-                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-[#103e31] text-[#f2f7f3] transition-colors hover:bg-[#0a241c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 dark:bg-[#b8d5ad] dark:text-[#07140c] dark:hover:bg-[#dfead9] focus-visible:outline-none"
                   :aria-label="isGenerating ? 'Add to queue' : 'Generate edit'"
                 >
                   <ArrowUp class="size-4 stroke-[2.5]" />

@@ -253,7 +253,7 @@ onUnmounted(() => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="model-hub-title"
-            class="aui-dialog-surface relative flex h-[min(92vh,880px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
+            class="aui-dialog-surface relative flex h-[min(92vh,880px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:border-white/10 dark:shadow-black/40"
             @pointerdown.stop
           >
             <!-- Top bar -->
@@ -292,7 +292,7 @@ onUnmounted(() => {
 
               <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
                 <div
-                  class="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-muted/40 px-3.5 dark:bg-muted/70"
+                  class="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-muted/40 px-3.5 dark:bg-[#1c1c1c]"
                 >
                   <Search class="size-5 shrink-0 text-muted-foreground" />
                   <input
@@ -317,8 +317,8 @@ onUnmounted(() => {
                     class="inline-flex h-10 shrink-0 items-center rounded-full px-4 text-base font-medium transition-colors"
                     :class="
                       filter === chip.id
-                        ? 'bg-foreground text-background'
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted/80 hover:text-foreground dark:bg-muted/80 dark:hover:bg-muted'
+                        ? 'bg-foreground text-background dark:bg-[#333333] dark:text-white'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted/80 hover:text-foreground dark:bg-[#1c1c1c] dark:hover:bg-[#292929]'
                     "
                     :aria-selected="filter === chip.id"
                     @click="filter = chip.id"
@@ -355,8 +355,8 @@ onUnmounted(() => {
                           class="rounded-2xl p-4 text-left transition-colors"
                           :class="
                             activeModelId === model.id
-                              ? 'bg-accent text-accent-foreground dark:bg-card dark:text-card-foreground dark:ring-1 dark:ring-foreground/20'
-                              : 'bg-muted/40 hover:bg-muted/60 dark:bg-card dark:hover:bg-white/[0.08]'
+                              ? 'bg-accent text-accent-foreground dark:bg-[#1c1c1c] dark:text-card-foreground dark:ring-1 dark:ring-foreground/20'
+                              : 'bg-muted/40 hover:bg-muted/60 dark:bg-[#1c1c1c] dark:hover:bg-[#292929]'
                           "
                           @click="selectPack(model.id)"
                         >
@@ -413,8 +413,8 @@ onUnmounted(() => {
                         class="rounded-2xl p-4 text-left transition-colors"
                         :class="
                           activeModelId === model.id
-                            ? 'bg-accent text-accent-foreground dark:bg-card dark:text-card-foreground dark:ring-1 dark:ring-foreground/20'
-                            : 'bg-muted/35 hover:bg-muted/55 dark:bg-card dark:hover:bg-white/[0.08]'
+                            ? 'bg-accent text-accent-foreground dark:bg-[#1c1c1c] dark:text-card-foreground dark:ring-1 dark:ring-foreground/20'
+                            : 'bg-muted/35 hover:bg-muted/55 dark:bg-[#1c1c1c] dark:hover:bg-[#292929]'
                         "
                         @click="selectPack(model.id)"
                       >
@@ -475,7 +475,7 @@ onUnmounted(() => {
                 <div class="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-5 sm:px-6">
                   <div
                     v-if="activeModel"
-                    class="space-y-5 rounded-2xl bg-muted/40 p-4 dark:bg-card sm:p-5"
+                    class="space-y-5 rounded-2xl bg-muted/40 p-4 dark:bg-[#1c1c1c] sm:p-5"
                   >
                     <div>
                       <div class="flex flex-wrap items-center gap-2">

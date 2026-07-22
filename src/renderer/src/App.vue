@@ -598,7 +598,9 @@ onUnmounted(() => {
           @first-image="onStripFirstImage"
         />
 
-        <div class="relative flex min-h-0 flex-1 overflow-hidden">
+        <div
+          class="aui-workspace-surface relative flex min-h-0 flex-1 overflow-hidden rounded-tl-xl border-l border-t border-border/70 bg-background dark:border-white/10"
+        >
           <div
             class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
             :class="{ 'bg-background': !showWorkspaceControls }"

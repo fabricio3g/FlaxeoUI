@@ -37,7 +37,6 @@ import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import AdvancedToolPanel, { type AdvancedToolTab } from '@/components/AdvancedToolPanel.vue'
 import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
-import BrandMark from '@/components/BrandMark.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -1335,7 +1334,12 @@ onActivated(() => {
           <!-- Empty hero until a live frame or final image exists -->
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
             <div class="flex max-w-2xl flex-col items-center px-6 text-center">
-              <BrandMark size="xl" class="text-foreground" />
+              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Image workspace
+              </p>
+              <h1 class="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                What will you create?
+              </h1>
               <div
                 v-if="!isGenerating"
                 class="mt-5 flex flex-wrap justify-center gap-2"
@@ -2154,7 +2158,7 @@ onActivated(() => {
                   type="button"
                   @click="handleGenerate"
                   :disabled="!prompt.trim()"
-                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:opacity-85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none"
+                  class="aui-icon-button inline-flex size-10 items-center justify-center rounded-full bg-[#103e31] text-[#f2f7f3] transition-colors hover:bg-[#0a241c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 dark:bg-[#b8d5ad] dark:text-[#07140c] dark:hover:bg-[#dfead9] focus-visible:outline-none"
                   :aria-label="isGenerating ? 'Add to queue' : 'Generate image'"
                 >
                   <ArrowUp class="size-4 stroke-[2.5]" />
