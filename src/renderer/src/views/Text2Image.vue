@@ -1679,7 +1679,7 @@ onActivated(() => {
             </button>
             <div
               v-if="showResolutionMenu"
-              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-0 z-[100] mb-2 w-[min(16rem,calc(100vw-1.5rem))] max-h-[min(60vh,22rem)] overflow-y-auto rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150 md:left-auto md:right-0"
+              class="resolution-menu fade-in slide-in-from-bottom-1 animate-in absolute bottom-full left-[calc(50vw-1.5rem)] z-[100] mb-2 w-[min(16rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-xl border border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-lg backdrop-blur-xl duration-150 md:left-0 md:translate-x-0"
               @click.stop
             >
               <div class="grid grid-cols-2 gap-1">
