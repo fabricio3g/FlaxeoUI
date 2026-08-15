@@ -9,6 +9,7 @@ import {
   FolderOpen,
   ImageIcon,
   Images,
+  Info,
   Scale,
   Settings,
   Video
@@ -139,6 +140,15 @@ export const COMMAND_PALETTE_ITEMS: CommandItem[] = [
     group: 'Settings',
     icon: Settings,
     action: { type: 'settings', category: 'appearance' }
+  },
+  {
+    id: 'settings-about',
+    label: 'About',
+    subtitle: 'Settings · Version and build',
+    keywords: ['version', 'build', 'release', 'update', 'changelog'],
+    group: 'Settings',
+    icon: Info,
+    action: { type: 'settings', category: 'about' }
   },
   {
     id: 'action-models-folder',

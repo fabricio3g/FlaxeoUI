@@ -36,6 +36,14 @@ export interface HubPackMeta {
 
 /** Card/filter metadata layered onto hub packs (keeps download defs lean). */
 export const HUB_PACK_META: Record<string, HubPackMeta> = {
+  sd15: {
+    kind: 'image',
+    tags: ['sd15', 'checkpoint', 'starter'],
+    blurb: 'Classic SD 1.5 checkpoint + VAE. The smallest pack.',
+    sizeGb: 5,
+    minVramGb: 4,
+    featured: true
+  },
   sdxl: {
     kind: 'image',
     tags: ['sdxl', 'checkpoint', 'starter'],
@@ -223,6 +231,30 @@ export function filterHubModels(
 }
 
 export const hubModels: HubModel[] = [
+  {
+    id: 'sd15',
+    name: 'SD 1.5',
+    description:
+      'Smallest classic checkpoint. Runs on low-VRAM cards; downloads the v1.5 checkpoint plus the improved MSE VAE.',
+    presetId: 'builtin-sd15',
+    docsUrl: 'https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md',
+    files: [
+      {
+        label: 'SD 1.5 checkpoint',
+        category: 'diffusion',
+        filename: 'v1-5-pruned-emaonly.safetensors',
+        required: true,
+        url: 'https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors'
+      },
+      {
+        label: 'VAE ft-MSE',
+        category: 'vae',
+        filename: 'vae-ft-mse-840000-ema-pruned.safetensors',
+        required: false,
+        url: 'https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors'
+      }
+    ]
+  },
   {
     id: 'sdxl',
     name: 'SDXL',
@@ -893,9 +925,9 @@ export const hubModels: HubModel[] = [
   }
 ]
 
-export type StarterPackId = 'sdxl' | 'flux1-dev' | 'wan21'
+export type StarterPackId = 'sd15' | 'sdxl' | 'flux1-dev' | 'wan21'
 
-export const STARTER_PACK_IDS: StarterPackId[] = ['sdxl', 'flux1-dev', 'wan21']
+export const STARTER_PACK_IDS: StarterPackId[] = ['sd15', 'sdxl', 'flux1-dev', 'wan21']
 
 export interface StarterPackMeta {
   sizeGb: number
@@ -905,10 +937,15 @@ export interface StarterPackMeta {
 }
 
 export const STARTER_PACK_META: Record<StarterPackId, StarterPackMeta> = {
+  sd15: {
+    sizeGb: 5,
+    minVramGb: 4,
+    blurb: 'Smallest download. Runs on almost anything.'
+  },
   sdxl: {
     sizeGb: 7,
     minVramGb: 8,
-    blurb: 'The smallest starter pack. Works on most GPUs.'
+    blurb: 'Sharper stills than 1.5, still modest.'
   },
   'flux1-dev': {
     sizeGb: 24,
@@ -919,6 +956,6 @@ export const STARTER_PACK_META: Record<StarterPackId, StarterPackMeta> = {
   wan21: {
     sizeGb: 14,
     minVramGb: 12,
-    blurb: 'Generate short videos. Larger download, more VRAM.'
+    blurb: 'Short video clips.'
   }
 }

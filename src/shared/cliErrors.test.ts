@@ -25,6 +25,28 @@ describe('humanizeCliError', () => {
     assert.equal(result.title, 'Cancelled')
   })
 
+  it('names a rejected flag', () => {
+    const result = humanizeCliError(
+      'CLI exited with code 1\nerror: unknown argument: --chroma-enable-t5-mask'
+    )
+    assert.equal(result.title, 'Backend rejected an option')
+    assert.match(result.detail, /--chroma-enable-t5-mask/)
+  })
+
+  it('classifies a bare usage dump', () => {
+    const result = humanizeCliError(
+      'CLI exited with code 1\nusage: sd-cli [arguments]\n  -M, --mode [MODE]  run mode\n  --diffusion-model  path'
+    )
+    assert.equal(result.title, 'Backend rejected an option')
+  })
+
+  it('still classifies OOM ahead of the new branches', () => {
+    const result = humanizeCliError(
+      'error: CUDA out of memory while allocating buffer\nusage: sd-cli [arguments]\n  -M, --mode [MODE]'
+    )
+    assert.equal(result.title, 'Out of memory')
+  })
+
   it('formats with hint', () => {
     const text = formatHumanizedError(humanizeCliError('MODEL_REQUIRED'))
     assert.match(text, /No model selected/)

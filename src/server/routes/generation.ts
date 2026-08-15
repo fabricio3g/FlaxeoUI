@@ -41,6 +41,7 @@ import {
   pushArg
 } from '../sd'
 import { resolveInpaintStrength } from '../../shared/sdArgHelpers'
+import { getCapabilities } from '../capabilitiesCache'
 import {
   planCliImageOutput,
   publishCliImageOutputs,
@@ -126,6 +127,19 @@ function ensureCliIdle(ctx: AppContext, res: Response): boolean {
   return true
 }
 
+/**
+ * Populate the capability cache before argv is built — the arg builders are sync,
+ * so they read it via hasFlagCached(). Failure is non-fatal: the builders fall back
+ * to the legacy flag spellings.
+ */
+async function warmCapabilities(ctx: AppContext): Promise<void> {
+  try {
+    await getCapabilities(getSdCliPath(ctx))
+  } catch {
+    /* probe failures fall back to legacy spellings */
+  }
+}
+
 async function runCli(
   ctx: AppContext,
   args: string[],
@@ -170,10 +184,20 @@ async function runCli(
     cwd: activeBackend
   })
 
+  // sd-cli answers a bad flag with its full usage block, which pushes the actual
+  // error out of the 24-line tail below — so keep the first one we see.
+  let firstErrorLine = ''
+
   const onChunk = (data: Buffer): void => {
     const text = data.toString()
     const lines = text.split('\n')
     for (const line of lines) {
+      if (
+        !firstErrorLine &&
+        /(unknown|unrecognized|invalid|unsupported)\s+(argument|option|flag)|^\s*error:/i.test(line)
+      ) {
+        firstErrorLine = line.trim()
+      }
       const nextPhase = advancePhase(phase, detectPhaseFromLine(line))
       if (nextPhase !== phase) {
         phase = nextPhase
@@ -206,7 +230,8 @@ async function runCli(
       .slice(-24)
       .join('\n')
     const base = errorMessage(error) || 'CLI failed'
-    throw new Error(tail ? `${base}\n${tail}` : base)
+    const parts = [base, firstErrorLine, tail].filter(Boolean)
+    throw new Error(parts.join('\n'))
   } finally {
     ctx.state.cliProcess = null
     ctx.state.progress = null
@@ -629,6 +654,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/generate-cli', uploadMiddleware(ctx), async (req: UploadRequest, res) => {
     if (!ensureCliIdle(ctx, res)) return
     ctx.state.cliCancelRequested = false
+    await warmCapabilities(ctx)
 
     const body = req.body || {}
     const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
@@ -773,6 +799,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     async (req: UploadRequest, res) => {
       if (!ensureCliIdle(ctx, res)) return
       ctx.state.cliCancelRequested = false
+      await warmCapabilities(ctx)
 
       const body = req.body || {}
       const initImg =
@@ -832,6 +859,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
     async (req: UploadRequest, res) => {
       if (!ensureCliIdle(ctx, res)) return
       ctx.state.cliCancelRequested = false
+      await warmCapabilities(ctx)
 
       const body = req.body || {}
       const filename = `video_${Date.now()}.mp4`
@@ -955,6 +983,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/upscale', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
     ctx.state.cliCancelRequested = false
+    await warmCapabilities(ctx)
 
     const body = (req.body || {}) as JsonObject
     const sourceFilename = firstString(body.filename, body.source, body.image)
@@ -1008,6 +1037,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/adetailer', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
     ctx.state.cliCancelRequested = false
+    await warmCapabilities(ctx)
 
     const body = (req.body || {}) as JsonObject
     const sourceFilename = firstString(body.filename, body.source, body.image)

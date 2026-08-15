@@ -67,7 +67,7 @@ const showSettings = ref(false)
 const showCommandPalette = ref(false)
 /** Deep-link into Settings category from command palette */
 const settingsInitialCategory = ref<
-  'backend' | 'installation' | 'network' | 'storage' | 'appearance' | null
+  'backend' | 'installation' | 'network' | 'storage' | 'appearance' | 'about' | null
 >(null)
 const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
 const stripDismissed = ref(
@@ -196,7 +196,7 @@ const modelOptions = computed(() => [
       ? 'Models unavailable'
       : models.value.diffusion.length
         ? 'No model'
-        : 'No diffusion models on host',
+        : 'No models',
     value: ''
   },
   ...models.value.diffusion.map((model) => ({
@@ -263,7 +263,7 @@ function closeCommandPalette(): void {
 }
 
 function openSettingsCategory(
-  category?: 'backend' | 'installation' | 'network' | 'storage' | 'appearance' | null
+  category?: 'backend' | 'installation' | 'network' | 'storage' | 'appearance' | 'about' | null
 ): void {
   closeConfigPanel()
   settingsInitialCategory.value = category ?? null
@@ -282,6 +282,7 @@ function runCommand(item: CommandItem): void {
         | 'network'
         | 'storage'
         | 'appearance'
+        | 'about'
         | undefined) ?? null
     )
   } else if (action.type === 'folder') {

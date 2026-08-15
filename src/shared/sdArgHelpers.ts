@@ -202,7 +202,47 @@ function firstNonEmpty(...values: unknown[]): string | undefined {
   return undefined
 }
 
-export function addHardwareArgs(args: string[], body: Record<string, unknown>, prompt = ''): void {
+/**
+ * Build the comma-separated `--model-args` list.
+ *
+ * Newer sd.cpp folded the individual --chroma-* / --qwen-image-zero-cond-t flags into
+ * `--model-args key=value,...` (see sd-cli-help.txt: "Supports chroma_use_dit_mask,
+ * chroma_use_t5_mask, chroma_t5_mask_pad, qwen_image_zero_cond_t"). Note the dit-mask
+ * key is inverted: the old flag *disabled* the mask, the key *enables* it.
+ */
+export function buildModelArgs(body: Record<string, unknown>): string | undefined {
+  const parts: string[] = []
+
+  if (asBool(body.chromaEnableT5Mask)) parts.push('chroma_use_t5_mask=1')
+  if (asBool(body.chromaDisableDitMask)) parts.push('chroma_use_dit_mask=0')
+  if (asBool(body.qwenImageZeroCondT)) parts.push('qwen_image_zero_cond_t=1')
+
+  const pad = Number(body.chromaT5MaskPad)
+  if (Number.isFinite(pad) && pad > 0) parts.push(`chroma_t5_mask_pad=${pad}`)
+
+  // Free-form tail, deduped against the keys above (same contract as --extra-ad-args)
+  const extra = String(body.modelArgs ?? body.model_args ?? '').trim()
+  if (extra) {
+    const existingKeys = new Set(parts.map((p) => p.split('=')[0]))
+    for (const chunk of extra.split(',')) {
+      const piece = chunk.trim()
+      if (!piece) continue
+      const key = piece.includes('=') ? piece.slice(0, piece.indexOf('=')).trim() : piece
+      if (!key || existingKeys.has(key)) continue
+      parts.push(piece)
+      existingKeys.add(key)
+    }
+  }
+
+  return parts.length ? parts.join(',') : undefined
+}
+
+export function addHardwareArgs(
+  args: string[],
+  body: Record<string, unknown>,
+  prompt = '',
+  options?: { modelArgsSupported?: boolean }
+): void {
   // Flash attention stays enabled with LoRA (critical for Anima/Vulkan iGPU).
   // Default true when UI leaves diffusionFa unset.
   const diffusionFa =
@@ -223,9 +263,12 @@ export function addHardwareArgs(args: string[], body: Record<string, unknown>, p
   pushBoolArg(args, '--circular', body.circular)
   pushBoolArg(args, '--circularx', body.circularX)
   pushBoolArg(args, '--circulary', body.circularY)
-  pushBoolArg(args, '--qwen-image-zero-cond-t', body.qwenImageZeroCondT)
-  pushBoolArg(args, '--chroma-enable-t5-mask', body.chromaEnableT5Mask)
-  pushBoolArg(args, '--chroma-disable-dit-mask', body.chromaDisableDitMask)
+  if (!options?.modelArgsSupported) {
+    // Legacy spelling — binaries older than the --model-args consolidation
+    pushBoolArg(args, '--qwen-image-zero-cond-t', body.qwenImageZeroCondT)
+    pushBoolArg(args, '--chroma-enable-t5-mask', body.chromaEnableT5Mask)
+    pushBoolArg(args, '--chroma-disable-dit-mask', body.chromaDisableDitMask)
+  }
   pushBoolArg(args, '--disable-image-metadata', body.disableImageMetadata)
   if (!asBool(body.autoFit)) {
     pushArg(args, '--backend', body.backendAssignment)
@@ -235,6 +278,11 @@ export function addHardwareArgs(args: string[], body: Record<string, unknown>, p
   // --split-mode is llama.cpp-only; do not pass to sd-cli
   pushNumericArg(args, '--threads', body.threads, (value) => value > 0)
   pushNumericArg(args, '--max-vram', body.maxVram, (value) => value !== 0)
-  pushNumericArg(args, '--chroma-t5-mask-pad', body.chromaT5MaskPad, (value) => value > 0)
+  if (options?.modelArgsSupported) {
+    const modelArgs = buildModelArgs(body)
+    if (modelArgs) args.push('--model-args', modelArgs)
+  } else {
+    pushNumericArg(args, '--chroma-t5-mask-pad', body.chromaT5MaskPad, (value) => value > 0)
+  }
   void prompt
 }

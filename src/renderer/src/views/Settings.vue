@@ -10,6 +10,7 @@ import {
   Database,
   Download,
   FolderOpen,
+  Info,
   Loader2,
   RefreshCw,
   Sun
@@ -24,10 +25,9 @@ import {
   type StorageSettings
 } from '../../../shared/storage'
 import {
-  filterAssetsForPlatform,
-  pickBestBackendAsset,
-  pickRecommendedRelease,
-  RECOMMENDED_BACKEND_TAG
+  assetMatchesPlatform,
+  backendVariantLabel,
+  pickBestBackendAsset
 } from '../../../shared/backendRelease'
 import {
   buildLanPairingUrl,
@@ -45,7 +45,7 @@ const { isRemote, accessLevel } = useRemoteSession()
 const { defaultSaveFormat, autoDownloadGenerated, setDefaultSaveFormat, setAutoDownloadGenerated } =
   useOutputPreferences()
 
-type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance'
+type SettingsCategory = 'backend' | 'installation' | 'network' | 'storage' | 'appearance' | 'about'
 
 const props = defineProps<{
   /** Deep-link from command palette (null = default category) */
@@ -99,12 +99,20 @@ const allSettingsCategories: Array<{
     label: 'Appearance',
     description: 'Choose how Flaxeo follows light and dark mode.',
     icon: Sun
+  },
+  {
+    id: 'about',
+    label: 'About',
+    description: 'Version and build details for this installation.',
+    icon: Info
   }
 ]
 const settingsCategories = computed(() =>
   desktopSettingsAvailable
     ? allSettingsCategories
-    : allSettingsCategories.filter((category) => category.id === 'appearance')
+    : allSettingsCategories.filter(
+        (category) => category.id === 'appearance' || category.id === 'about'
+      )
 )
 
 const activeCategoryDetails = computed(
@@ -157,6 +165,9 @@ interface BackendConfig {
   installedVersions: string[]
   activeBackendPath: string
   activeBackendValid: boolean
+  /** Binaries present but built for another OS (e.g. sd-cli.exe on Linux) */
+  activeBackendPlatformMismatch?: boolean
+  hostPlatform?: string
   outputImageFormat?: 'png' | 'avif'
 }
 
@@ -170,7 +181,6 @@ interface Release {
   tag: string
   name: string
   published: string
-  recommended?: boolean
   assets: ReleaseAsset[]
 }
 
@@ -220,78 +230,67 @@ const lanQrSvg = computed(() =>
   lanPairingUrl.value ? renderSVG(lanPairingUrl.value, { ecc: 'M', border: 2 }) : ''
 )
 
-const recommendedRelease = computed(() => pickRecommendedRelease(releases.value))
-
-const otherReleases = computed(() => releases.value.filter((r) => !r.recommended))
-
-const isSelectedRecommended = computed(() => {
-  const r = releases.value.find((x) => x.tag === selectedRelease.value)
-  return !!r?.recommended
-})
-
 /** OS-filtered assets for the currently selected release tag */
 const selectedReleaseAssets = computed(() => {
   const release = releases.value.find((r) => r.tag === selectedRelease.value)
-  if (!release) return []
-  return filterAssetsForPlatform(release.assets, systemInfo.value.platform || 'win32')
+  return release?.assets ?? []
 })
 
-/** Recommended card: natural GitHub zip names for this OS */
-const recommendedVariantOptions = computed(() => {
-  const release = recommendedRelease.value
-  if (!release) return []
-  return filterAssetsForPlatform(release.assets, systemInfo.value.platform || 'win32').map(
-    (a) => ({
-      label: a.name,
-      value: a.name
-    })
-  )
-})
-
-/** Other-version card: natural zip names for the selected non-recommended tag */
-const otherVariantOptions = computed(() => {
-  if (isSelectedRecommended.value) return []
-  return selectedReleaseAssets.value.map((a) => ({
-    label: a.name,
-    value: a.name
-  }))
-})
-
-const otherReleaseOptions = computed(() =>
-  otherReleases.value.map((r) => ({
+const releaseOptions = computed(() =>
+  releases.value.map((r) => ({
     label: r.tag,
     value: r.tag
   }))
 )
 
-/** Value shown in recommended variant select (empty when another tag is active) */
-const recommendedVariantModel = computed(() =>
-  isSelectedRecommended.value ? selectedVariant.value : ''
-)
-
-/** Value shown in other-version variant select */
-const otherVariantModel = computed(() =>
-  isSelectedRecommended.value ? '' : selectedVariant.value
-)
-
-function selectRecommendedRelease(): void {
-  const rec = recommendedRelease.value
-  if (!rec) return
-  selectedRelease.value = rec.tag
+/**
+ * Every published binary stays listed; the label says what each one is and calls out
+ * the ones that cannot run here, so a Windows zip on Linux is obvious before install.
+ */
+function variantLabel(assetName: string): string {
+  const platform = systemInfo.value.platform || 'win32'
+  const suffix = assetMatchesPlatform(assetName, platform) ? '' : ' · not for your OS'
+  return `${backendVariantLabel(assetName)}${suffix} — ${assetName}`
 }
 
-function selectOtherRelease(tag: string): void {
+function variantIsForeign(assetName: string): boolean {
+  return !assetMatchesPlatform(assetName, systemInfo.value.platform || 'win32')
+}
+
+const variantOptions = computed(() =>
+  selectedReleaseAssets.value.map((a) => ({
+    label: variantLabel(a.name),
+    value: a.name
+  }))
+)
+
+/** Newest published release — the version we steer people to; the binary is their call */
+const recommendedRelease = computed(() => releases.value[0] ?? null)
+
+const recommendedVariant = ref('')
+
+const recommendedVariantOptions = computed(() =>
+  (recommendedRelease.value?.assets ?? []).map((a) => ({
+    label: variantLabel(a.name),
+    value: a.name
+  }))
+)
+
+/** Warn before installing binaries that cannot execute on this machine */
+const selectedVariantIsForeign = computed(
+  () => !!selectedVariant.value && variantIsForeign(selectedVariant.value)
+)
+const recommendedVariantIsForeign = computed(
+  () => !!recommendedVariant.value && variantIsForeign(recommendedVariant.value)
+)
+
+/** Tag change re-runs autoSelectVariant() through the selectedRelease watcher */
+function selectRelease(tag: string): void {
   if (!tag) return
   selectedRelease.value = tag
 }
 
-function onRecommendedVariantPick(value: string): void {
-  if (!value) return
-  selectRecommendedRelease()
-  selectedVariant.value = value
-}
-
-function onOtherVariantPick(value: string): void {
+function onVariantPick(value: string): void {
   if (!value) return
   selectedVariant.value = value
 }
@@ -327,17 +326,14 @@ async function fetchConfig(): Promise<void> {
 }
 
 /**
- * fetchReleases() - Fetches available releases from GitHub API
- * API returns the Flaxeo-tested build first when present.
+ * fetchReleases() - Fetches available releases from GitHub API (newest first)
  */
 async function fetchReleases(): Promise<void> {
   try {
     const data = await apiGet<Release[]>('/api/backend/releases')
     releases.value = data
-    // Prefer recommended/tested tag; fall back to first in list
     if (data.length > 0 && !selectedRelease.value) {
-      const recommended = data.find((r) => r.recommended) || data[0]
-      selectedRelease.value = recommended.tag
+      selectedRelease.value = data[0].tag
     }
   } catch (e) {
     console.error('Failed to fetch releases:', e)
@@ -359,7 +355,8 @@ async function detectSystem(): Promise<void> {
 }
 
 /**
- * autoSelectVariant() - Best zip for this OS + GPU detect hint
+ * autoSelectVariant() - Default pick for this OS + GPU detect hint.
+ * Every binary stays listed; this only seeds the select.
  */
 function autoSelectVariant(): void {
   const release = releases.value.find((r) => r.tag === selectedRelease.value)
@@ -368,17 +365,10 @@ function autoSelectVariant(): void {
     return
   }
   const platform = systemInfo.value.platform || 'win32'
-  const best = pickBestBackendAsset(
-    release.assets,
-    platform,
-    systemInfo.value.variant
-  )
-  // Keep current pick if still valid for this release+OS
-  const pool = filterAssetsForPlatform(release.assets, platform)
-  if (selectedVariant.value && pool.some((a) => a.name === selectedVariant.value)) {
-    return
-  }
-  selectedVariant.value = best || pool[0]?.name || ''
+  // Keep current pick if it exists in this release
+  if (release.assets.some((a) => a.name === selectedVariant.value)) return
+  const best = pickBestBackendAsset(release.assets, platform, systemInfo.value.variant)
+  selectedVariant.value = best || release.assets[0]?.name || ''
 }
 
 // Watch for release change to update variants
@@ -504,22 +494,19 @@ function pairedDeviceLabel(userAgent: string): string {
 }
 
 /**
- * downloadAndInstall() - Downloads and installs selected release variant
+ * installRelease() - Downloads and installs one release asset
  */
-async function downloadAndInstall(): Promise<void> {
-  if (!selectedRelease.value || !selectedVariant.value || isDownloading.value) return
-
-  const asset = selectedReleaseAssets.value.find((a) => a.name === selectedVariant.value)
-  if (!asset) return
+async function installRelease(tag: string, asset: ReleaseAsset): Promise<void> {
+  if (isDownloading.value) return
 
   isDownloading.value = true
-  downloadStatus.value = 'Downloading...'
+  downloadStatus.value = 'Downloading…'
 
   try {
     await apiPost('/api/backend/download', {
       url: asset.url,
       variant: asset.name,
-      version: selectedRelease.value
+      version: tag
     })
 
     downloadStatus.value = 'Installation complete!'
@@ -533,6 +520,21 @@ async function downloadAndInstall(): Promise<void> {
   } finally {
     isDownloading.value = false
   }
+}
+
+/** Install the recommended version with the binary the user picked for it */
+async function installRecommended(): Promise<void> {
+  const release = recommendedRelease.value
+  const asset = release?.assets.find((a) => a.name === recommendedVariant.value)
+  if (!release || !asset) return
+  await installRelease(release.tag, asset)
+}
+
+/** Install whatever the tag + binary selects currently hold */
+async function downloadAndInstall(): Promise<void> {
+  const asset = selectedReleaseAssets.value.find((a) => a.name === selectedVariant.value)
+  if (!selectedRelease.value || !asset) return
+  await installRelease(selectedRelease.value, asset)
 }
 
 /**
@@ -648,6 +650,60 @@ async function openStorageDirectory(id: StorageDirectoryId): Promise<void> {
   }
 }
 
+/**
+ * Build identity - values are injected at build time from package.json
+ * (see electron.vite.config.ts), so they match the installed build exactly.
+ */
+const appVersion = __APP_VERSION__
+const buildDate = new Date(__BUILD_DATE__)
+const buildLabel = Number.isNaN(buildDate.getTime())
+  ? ''
+  : buildDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+const runtimeVersions = window.electron?.process.versions
+
+/** Single line with everything worth pasting into a bug report */
+const versionSummary = computed(() => {
+  const parts = [`Flaxeo Image v${appVersion}`]
+  if (buildLabel) parts.push(`build ${buildLabel}`)
+  if (runtimeVersions) {
+    parts.push(`Electron ${runtimeVersions.electron}`, `Chromium ${runtimeVersions.chrome}`)
+  }
+  if (config.value.activeVersion) parts.push(`backend ${config.value.activeVersion}`)
+  return parts.join(' · ')
+})
+
+const aboutRows = computed(() => {
+  const rows: Array<{ label: string; value: string }> = [
+    { label: 'App version', value: `v${appVersion}` }
+  ]
+  if (buildLabel) rows.push({ label: 'Build date', value: buildLabel })
+  if (desktopSettingsAvailable) {
+    rows.push({ label: 'Backend', value: config.value.activeVersion || 'Not configured' })
+  }
+  if (runtimeVersions) {
+    rows.push(
+      { label: 'Electron', value: runtimeVersions.electron },
+      { label: 'Chromium', value: runtimeVersions.chrome },
+      { label: 'Node', value: runtimeVersions.node }
+    )
+  }
+  rows.push({
+    label: 'Session',
+    value: isRemote.value ? 'Remote' : desktopSettingsAvailable ? 'Desktop' : 'Browser'
+  })
+  return rows
+})
+
+const versionCopied = ref(false)
+let versionCopiedTimer = 0
+
+async function copyVersionInfo(): Promise<void> {
+  await copyUrl(versionSummary.value)
+  versionCopied.value = true
+  window.clearTimeout(versionCopiedTimer)
+  versionCopiedTimer = window.setTimeout(() => (versionCopied.value = false), 1500)
+}
+
 onMounted(async () => {
   if (!desktopSettingsAvailable) return
   await loadStorageSettings()
@@ -662,7 +718,10 @@ const lanStatusTimer = window.setInterval(() => {
   if (lanStatus.value?.enabled) void refreshLanStatus()
 }, 5000)
 
-onUnmounted(() => window.clearInterval(lanStatusTimer))
+onUnmounted(() => {
+  window.clearInterval(lanStatusTimer)
+  window.clearTimeout(versionCopiedTimer)
+})
 </script>
 
 <template>
@@ -710,111 +769,156 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
         <div class="mx-auto w-full max-w-2xl space-y-4">
           <section
             v-if="activeCategory === 'backend'"
-            class="fade-in animate-in overflow-hidden duration-200"
+            class="aui-dialog-surface fade-in animate-in overflow-hidden rounded-lg border border-border/70 bg-card duration-200"
           >
-            <div class="flex flex-wrap items-center justify-end gap-3 px-1 pb-4">
-              <button
-                type="button"
-                @click="reopenSetup"
-                title="Run setup wizard"
-                class="inline-flex h-8 items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <RefreshCw class="size-3.5" />
-                Setup wizard
-              </button>
-              <button
-                type="button"
-                @click="openCustomFolder"
-                title="Open custom folder"
-                class="inline-flex h-8 items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <FolderOpen class="size-3.5" />
-                Custom folder
-              </button>
-            </div>
-
-            <div
-              class="flex flex-col gap-3 px-1 py-2 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div class="min-w-0">
-                <p class="aui-label text-sm font-medium text-muted-foreground">
-                  Active version
-                </p>
-                <p class="mt-1 truncate text-sm font-medium">
-                  {{ config.activeVersion || 'Not configured' }}
-                </p>
-              </div>
-              <span
-                class="aui-status-badge inline-flex w-fit items-center gap-1.5 text-xs font-medium"
-                :class="config.activeBackendValid ? 'text-foreground' : 'text-destructive'"
-              >
-                <span
-                  class="size-1.5 rounded-full"
-                  :class="config.activeBackendValid ? 'bg-foreground' : 'bg-destructive'"
-                ></span>
-                {{ config.activeBackendValid ? 'Valid binary' : 'Binary not found' }}
-              </span>
-            </div>
-
-            <div
-              v-if="config.installedVersions.length > 0 || config.customBinaryExists"
-              class="mt-4 px-1 pt-2"
-            >
-              <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground"
-                >Switch version</label
-              >
-              <Select
-                :model-value="config.activeVersion"
-                @update:model-value="(val) => setActiveVersion(val)"
-                size="md"
-                class="aui-field sm:max-w-sm"
-                :options="[
-                  {
-                    label: `Custom ${config.customBinaryExists ? '(Found)' : '(Not Found)'}`,
-                    value: 'custom'
-                  },
-                  ...config.installedVersions.map((v) => ({ label: v, value: v }))
-                ]"
-              />
-            </div>
-
-            <div v-if="!config.activeBackendValid" class="mt-4">
-              <div
-                class="aui-alert flex items-start gap-2 bg-linear-to-r from-muted/50 to-transparent px-3 py-2.5 text-xs leading-5 text-muted-foreground"
-              >
-                <AlertTriangle class="mt-0.5 size-3.5 shrink-0 text-foreground" />
-                <span
-                  >Place sd-cli and sd-server binaries in the custom folder, or download a release
-                  below.</span
+            <div class="p-4">
+              <dl>
+                <div
+                  class="flex items-center justify-between gap-4 border-b border-border/50 py-3 first:pt-0"
                 >
-              </div>
-            </div>
+                  <dt class="shrink-0 text-sm text-muted-foreground">Active version</dt>
+                  <dd class="flex min-w-0 items-center gap-2.5">
+                    <span class="truncate text-sm font-medium">
+                      {{ config.activeVersion || 'None installed' }}
+                    </span>
+                    <span
+                      v-if="config.activeVersion"
+                      class="aui-status-badge inline-flex shrink-0 items-center gap-1.5 text-xs font-medium"
+                      :class="config.activeBackendValid ? 'text-foreground' : 'text-destructive'"
+                    >
+                      <span
+                        class="size-1.5 rounded-full"
+                        :class="config.activeBackendValid ? 'bg-foreground' : 'bg-destructive'"
+                      ></span>
+                      {{ config.activeBackendValid ? 'Valid binary' : 'Binary not found' }}
+                    </span>
+                  </dd>
+                </div>
 
-            <div
-              v-if="systemInfo.platform"
-              class="mt-4 flex flex-col gap-1 px-1 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p class="aui-label text-sm font-medium text-muted-foreground">
-                  Detected system
-                </p>
-                <p class="mt-0.5 text-xs font-medium">
+                <div
+                  class="flex items-center justify-between gap-4 border-b border-border/50 py-2.5"
+                >
+                  <dt class="shrink-0 text-sm text-muted-foreground">Express server</dt>
+                  <dd class="flex items-center gap-1">
+                    <span
+                      class="aui-status-badge inline-flex items-center gap-1.5 text-sm font-medium"
+                      :class="serverOnline ? 'text-foreground' : 'text-muted-foreground'"
+                    >
+                      <span
+                        class="size-1.5 rounded-full"
+                        :class="serverOnline ? 'bg-foreground' : 'bg-destructive'"
+                      ></span>
+                      {{ serverOnline ? 'Online' : 'Offline' }}
+                    </span>
+                    <button
+                      type="button"
+                      @click="checkServerStatus"
+                      class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
+                      aria-label="Refresh server status"
+                    >
+                      <RefreshCw class="size-3.5" />
+                    </button>
+                  </dd>
+                </div>
+
+                <div
+                  v-if="systemInfo.platform"
+                  class="flex items-center justify-between gap-4 border-b border-border/50 py-3"
+                >
+                  <dt class="shrink-0 text-sm text-muted-foreground">Detected system</dt>
+                  <dd class="truncate text-sm font-medium">
+                    {{
+                      systemInfo.platform === 'win32'
+                        ? 'Windows'
+                        : systemInfo.platform === 'darwin'
+                          ? 'macOS'
+                          : 'Linux'
+                    }}
+                    <span class="font-normal text-muted-foreground">({{ systemInfo.arch }})</span>
+                  </dd>
+                </div>
+              </dl>
+
+              <p v-if="systemInfo.note" class="mt-3 text-xs leading-5 text-muted-foreground">
+                {{ systemInfo.note }}
+              </p>
+
+              <div
+                v-if="config.installedVersions.length > 0 || config.customBinaryExists"
+                class="mt-5"
+              >
+                <label class="mb-1.5 block text-sm font-medium">Switch version</label>
+                <Select
+                  :model-value="config.activeVersion"
+                  @update:model-value="(val) => setActiveVersion(val)"
+                  size="md"
+                  class="aui-field sm:max-w-sm"
+                  :options="[
+                    ...(config.customBinaryExists
+                      ? [{ label: 'Custom folder', value: 'custom' }]
+                      : []),
+                    ...config.installedVersions.map((v) => ({ label: v, value: v }))
+                  ]"
+                />
+              </div>
+
+              <div
+                v-if="config.activeBackendPlatformMismatch"
+                class="aui-alert mt-4 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm leading-relaxed text-destructive"
+              >
+                <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+                <span>
+                  These binaries were built for another operating system and cannot run here.
+                  Install a build that matches
                   {{
-                    systemInfo.platform === 'win32'
+                    config.hostPlatform === 'win32'
                       ? 'Windows'
-                      : systemInfo.platform === 'darwin'
+                      : config.hostPlatform === 'darwin'
                         ? 'macOS'
                         : 'Linux'
                   }}
-                  <span class="font-normal text-muted-foreground">({{ systemInfo.arch }})</span>
-                </p>
+                  from the Installation tab.
+                </span>
               </div>
-              <p
-                v-if="systemInfo.note"
-                class="max-w-md text-xs text-muted-foreground sm:text-right"
+
+              <div
+                v-else-if="!config.activeBackendValid"
+                class="aui-alert mt-4 flex items-start gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-3 py-3 text-sm leading-relaxed text-muted-foreground"
               >
-                {{ systemInfo.note }}
-              </p>
+                <AlertTriangle class="mt-0.5 size-4 shrink-0 text-foreground" />
+                <span>
+                  No runtime is installed yet. Install a release from the Installation tab, or drop
+                  sd-cli and sd-server binaries into the custom folder.
+                </span>
+              </div>
+
+              <div class="mt-5 flex flex-wrap gap-2 border-t border-border/50 pt-4">
+                <button
+                  v-if="!config.activeBackendValid || config.activeBackendPlatformMismatch"
+                  type="button"
+                  @click="activeCategory = 'installation'"
+                  class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                >
+                  <Download class="size-4" />
+                  Install a runtime
+                </button>
+                <button
+                  type="button"
+                  @click="reopenSetup"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                >
+                  <RefreshCw class="size-4" />
+                  Setup wizard
+                </button>
+                <button
+                  type="button"
+                  @click="openCustomFolder"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                >
+                  <FolderOpen class="size-4" />
+                  Custom folder
+                </button>
+              </div>
             </div>
           </section>
 
@@ -825,167 +929,131 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
             <div class="space-y-4 p-4">
               <div
                 v-if="releases.length === 0"
-                class="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground"
+                class="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
               >
-                <Loader2 class="size-3.5 animate-spin" />
-                <span>Loading releases...</span>
+                <Loader2 class="size-4 animate-spin" />
+                <span>Loading releases…</span>
               </div>
 
               <template v-else>
-                <!-- Recommended / tested build first -->
                 <div
-                  class="rounded-lg border border-foreground/15 bg-muted/20 p-3.5"
-                  :class="isSelectedRecommended ? 'ring-1 ring-foreground/10' : ''"
+                  v-if="recommendedRelease"
+                  class="rounded-lg border border-border/70 bg-muted/25 p-4"
                 >
-                  <div class="flex flex-wrap items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <p class="text-sm font-medium text-foreground">Recommended runtime</p>
-                        <span
-                          class="rounded-full bg-foreground px-2 py-0.5 text-xs font-medium text-background"
-                        >
-                          Tested with Flaxeo
-                        </span>
-                      </div>
-                      <p class="mt-1 font-mono text-xs text-muted-foreground">
-                        {{ recommendedRelease?.tag || RECOMMENDED_BACKEND_TAG }}
-                      </p>
-                      <p class="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                        Flaxeo is developed against this stable-diffusion.cpp build. Pick a binary
-                        by its published name, then install.
-                      </p>
-                    </div>
-                    <button
-                      v-if="recommendedRelease && !isSelectedRecommended"
-                      type="button"
-                      class="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                      @click="selectRecommendedRelease"
-                    >
-                      Use this version
-                    </button>
+                  <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <p class="text-sm font-medium">Recommended version</p>
+                    <p class="text-sm font-medium">{{ recommendedRelease.tag }}</p>
                   </div>
+                  <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Newest published sd.cpp release. Pick the binary that matches your hardware.
+                  </p>
 
-                  <div v-if="recommendedRelease" class="mt-3 space-y-2">
-                    <label class="aui-label block text-sm font-medium text-muted-foreground">
-                      Binary
-                    </label>
+                  <div class="mt-3">
+                    <label class="mb-1.5 block text-sm font-medium">Binary</label>
                     <Select
-                      :model-value="recommendedVariantModel"
+                      v-model="recommendedVariant"
                       size="md"
                       class="aui-field"
                       placeholder="Select binary…"
                       :options="recommendedVariantOptions"
-                      @update:model-value="(v) => onRecommendedVariantPick(String(v || ''))"
                     />
-                    <p
-                      v-if="systemInfo.note && isSelectedRecommended"
-                      class="text-xs text-muted-foreground"
-                    >
-                      {{ systemInfo.note }}
-                    </p>
-                    <button
-                      type="button"
-                      :disabled="
-                        !isSelectedRecommended || !selectedVariant || isDownloading
-                      "
-                      class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                      @click="downloadAndInstall"
-                    >
-                      <Loader2 v-if="isDownloading && isSelectedRecommended" class="size-4 animate-spin" />
-                      <Download v-else class="size-4" />
-                      {{
-                        isDownloading && isSelectedRecommended
-                          ? 'Downloading...'
-                          : 'Download recommended'
-                      }}
-                    </button>
-                  </div>
-                  <p
-                    v-else
-                    class="mt-3 text-xs leading-relaxed text-muted-foreground"
-                  >
-                    Could not find
-                    <code class="rounded bg-muted px-1 font-mono">{{ RECOMMENDED_BACKEND_TAG }}</code>
-                    in the release list (offline or rate-limited). Try again later, or use another
-                    version below at your own risk.
-                  </p>
-                </div>
-
-                <!-- Other versions optional -->
-                <div class="space-y-3 border-t border-border/60 pt-4">
-                  <div>
-                    <p class="text-sm font-medium text-foreground">Other versions</p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">Optional — not the Flaxeo-tested build</p>
                   </div>
 
                   <div
-                    class="aui-alert flex items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground"
+                    v-if="recommendedVariantIsForeign"
+                    class="aui-alert mt-3 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm leading-relaxed text-destructive"
                   >
-                    <AlertTriangle class="mt-0.5 size-3.5 shrink-0 text-foreground" />
-                    <span>
-                      Newer or older sd.cpp releases may miss flags Flaxeo expects (ADetailer,
-                      AnimateDiff, batch, …) or behave differently. Prefer the recommended runtime
-                      unless you know you need another tag.
-                    </span>
+                    <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+                    <span
+                      >This binary is built for another operating system and will not run
+                      here.</span
+                    >
                   </div>
+
+                  <p
+                    v-if="systemInfo.note"
+                    class="mt-3 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    {{ systemInfo.note }}
+                  </p>
+
+                  <button
+                    type="button"
+                    :disabled="!recommendedVariant || isDownloading"
+                    class="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                    @click="installRecommended"
+                  >
+                    <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
+                    <Download v-else class="size-4" />
+                    {{ isDownloading ? 'Downloading…' : 'Download and install' }}
+                  </button>
+                </div>
+
+                <div class="space-y-3 border-t border-border/60 pt-4">
+                  <p class="text-sm font-medium">Choose a specific build</p>
 
                   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground">
-                        Release tag
-                      </label>
+                      <label class="mb-1.5 block text-sm font-medium">Release tag</label>
                       <Select
-                        :model-value="isSelectedRecommended ? '' : selectedRelease"
+                        :model-value="selectedRelease"
                         size="md"
                         class="aui-field"
-                        placeholder="Select other version…"
-                        :options="otherReleaseOptions"
-                        @update:model-value="(v) => selectOtherRelease(String(v || ''))"
+                        placeholder="Select version…"
+                        :options="releaseOptions"
+                        @update:model-value="(v) => selectRelease(String(v || ''))"
                       />
                     </div>
                     <div>
-                      <label class="aui-label mb-1.5 block text-sm font-medium text-muted-foreground">
-                        Binary
-                      </label>
+                      <label class="mb-1.5 block text-sm font-medium">Binary</label>
                       <Select
-                        :model-value="otherVariantModel"
+                        :model-value="selectedVariant"
                         size="md"
                         class="aui-field"
                         placeholder="Select binary…"
-                        :disabled="isSelectedRecommended || !selectedRelease"
-                        :options="otherVariantOptions"
-                        @update:model-value="(v) => onOtherVariantPick(String(v || ''))"
+                        :disabled="!selectedRelease"
+                        :options="variantOptions"
+                        @update:model-value="(v) => onVariantPick(String(v || ''))"
                       />
                     </div>
+                  </div>
+
+                  <div
+                    v-if="selectedVariantIsForeign"
+                    class="aui-alert flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm leading-relaxed text-destructive"
+                  >
+                    <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+                    <span
+                      >This binary is built for another operating system and will not run
+                      here.</span
+                    >
                   </div>
 
                   <button
                     type="button"
-                    :disabled="
-                      isSelectedRecommended ||
-                      !selectedRelease ||
-                      !selectedVariant ||
-                      isDownloading
-                    "
-                    class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border/70 bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                    :disabled="!selectedRelease || !selectedVariant || isDownloading"
+                    class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border/70 bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                     @click="downloadAndInstall"
                   >
-                    <Loader2
-                      v-if="isDownloading && !isSelectedRecommended"
-                      class="size-4 animate-spin"
-                    />
+                    <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
                     <Download v-else class="size-4" />
-                    {{
-                      isDownloading && !isSelectedRecommended
-                        ? 'Downloading...'
-                        : 'Download other version'
-                    }}
+                    Install selected build
                   </button>
+
+                  <div
+                    class="aui-alert flex items-start gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-3 py-3 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    <AlertTriangle class="mt-0.5 size-4 shrink-0 text-foreground" />
+                    <span>
+                      sd.cpp releases differ in the flags they support (ADetailer, AnimateDiff,
+                      batch, …). If a feature stops working after switching, try another tag.
+                    </span>
+                  </div>
                 </div>
 
                 <div
                   v-if="downloadStatus"
-                  class="aui-alert rounded-lg border px-3 py-2.5 text-xs"
+                  class="aui-alert rounded-lg border px-3 py-3 text-sm leading-relaxed"
                   :class="
                     downloadStatus.includes('failed')
                       ? 'border-destructive/25 bg-destructive/10 text-destructive'
@@ -1129,12 +1197,14 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     <button
                       type="button"
                       @click="copyUrl(lanPairingUrl)"
-                      class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 font-mono text-xs hover:bg-muted/40"
+                      class="aui-field mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-muted/40"
                     >
                       <span class="truncate">{{ lanStatus.url }}</span>
                       <Copy class="size-3.5 shrink-0" />
                     </button>
-                    <p class="mt-2 font-mono text-foreground">Code: {{ lanStatus.pairingCode }}</p>
+                    <p class="mt-2 font-medium tracking-wide text-foreground tabular-nums">
+                      Code: {{ lanStatus.pairingCode }}
+                    </p>
                     <p v-if="lanStatus.pairingExpiresAt" class="mt-1">
                       Expires {{ new Date(lanStatus.pairingExpiresAt).toLocaleTimeString() }}
                     </p>
@@ -1146,7 +1216,9 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                   class="mt-4 rounded-md bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground"
                 >
                   <p class="font-medium text-foreground">Certificate SHA-256 fingerprint</p>
-                  <p class="mt-1 break-all font-mono">{{ lanStatus.certificateFingerprint }}</p>
+                  <p class="mt-1 break-all tracking-wide tabular-nums">
+                    {{ lanStatus.certificateFingerprint }}
+                  </p>
                   <p class="mt-2">
                     Export and install the Flaxeo local CA certificate as trusted on the client
                     device, then reopen this address. Do not continue through a certificate warning.
@@ -1276,7 +1348,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       >
                     </div>
                     <p
-                      class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
+                      class="mt-1 truncate text-sm leading-relaxed text-muted-foreground"
                       :title="storagePath(location.id)"
                     >
                       {{ storagePath(location.id) }}
@@ -1424,7 +1496,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                     >
                   </div>
                   <p
-                    class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
+                    class="mt-1 truncate text-sm leading-relaxed text-muted-foreground"
                     :title="storagePath('modelsRoot')"
                   >
                     {{ storagePath('modelsRoot') }}
@@ -1469,7 +1541,7 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
                       >
                     </div>
                     <p
-                      class="mt-1 truncate font-mono text-xs leading-relaxed text-muted-foreground"
+                      class="mt-1 truncate text-sm leading-relaxed text-muted-foreground"
                       :title="storagePath(location.id)"
                     >
                       {{ storagePath(location.id) }}
@@ -1591,32 +1663,50 @@ onUnmounted(() => window.clearInterval(lanStatusTimer))
           </section>
 
           <section
-            v-if="activeCategory === 'backend'"
-            class="fade-in animate-in flex items-center justify-between gap-4 px-1 py-3 duration-200"
+            v-if="activeCategory === 'about'"
+            class="aui-dialog-surface fade-in animate-in overflow-hidden rounded-lg border border-border/70 bg-card duration-200"
           >
-            <div>
-              <h2 class="text-sm font-medium">Express server</h2>
-              <p class="mt-0.5 text-xs text-muted-foreground">Backend API connection status</p>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span
-                class="aui-status-badge inline-flex items-center gap-1.5 text-xs font-medium"
-                :class="serverOnline ? 'text-foreground' : 'text-muted-foreground'"
-              >
-                <span
-                  class="size-1.5 rounded-full"
-                  :class="serverOnline ? 'bg-foreground' : 'bg-destructive'"
-                ></span>
-                {{ serverOnline ? 'Online' : 'Offline' }}
-              </span>
-              <button
-                type="button"
-                @click="checkServerStatus"
-                class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                aria-label="Refresh server status"
-              >
-                <RefreshCw class="size-3.5" />
-              </button>
+            <div class="p-4">
+              <div class="flex flex-wrap items-end justify-between gap-3 pb-4">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium">Flaxeo Image</p>
+                  <p class="mt-1 text-2xl font-semibold tracking-[-0.02em] tabular-nums">
+                    v{{ appVersion }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  @click="copyVersionInfo"
+                  :title="versionSummary"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                >
+                  <Check v-if="versionCopied" class="size-4" />
+                  <Copy v-else class="size-4" />
+                  {{ versionCopied ? 'Copied' : 'Copy version info' }}
+                </button>
+              </div>
+
+              <dl class="border-t border-border/50">
+                <div
+                  v-for="row in aboutRows"
+                  :key="row.label"
+                  class="flex items-center justify-between gap-4 border-b border-border/50 py-2.5"
+                >
+                  <dt class="shrink-0 text-sm text-muted-foreground">{{ row.label }}</dt>
+                  <dd class="truncate text-sm font-medium tabular-nums">{{ row.value }}</dd>
+                </div>
+              </dl>
+
+              <p class="mt-4 text-xs leading-5 text-muted-foreground">
+                Include these details when reporting an issue on
+                <a
+                  href="https://github.com/fabricio3g/FlaxeoUI"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="font-medium text-foreground underline-offset-2 hover:underline"
+                  >GitHub</a
+                >.
+              </p>
             </div>
           </section>
         </div>

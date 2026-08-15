@@ -1,9 +1,9 @@
-# Captured from stable-diffusion.cpp master-782-b290693 (commit b290693)
-# Binary dir: backend/releases/master-782-b290693
-# Date: 2026-07-17
+# Captured from stable-diffusion.cpp master-820-de298c2 (commit de298c2)
+# Binary dir: backend/releases/master-820-de298c2
+# Date: 2026-08-15
 # Command: --help
-stable-diffusion.cpp version unknown, commit b290693
-Usage: C:\test\FlaxeoUI\backend\releases\master-782-b290693\sd-server.exe [options]
+stable-diffusion.cpp version unknown, commit de298c2
+Usage: ./sd-server [options]
 
 Svr Options:
   -l, --listen-ip <string>      server listen ip (default: 127.0.0.1)
@@ -35,6 +35,7 @@ Context Options:
   --taesd <string>                         path to taesd. Using Tiny AutoEncoder for fast decoding (low quality)
   --tae <string>                           alias of --taesd
   --control-net <string>                   path to control net model
+  --ip-adapter <string>                    path to IP-Adapter model (requires --clip_vision)
   --motion-module <string>                 path to AnimateDiff motion module (SD 1.5); enables video generation on
                                            --video-frames > 1
   --embd-dir <string>                      embeddings directory
@@ -113,6 +114,7 @@ Default Generation Options:
   --end-img <string>                       path to the end image, required by flf2v
   --mask <string>                          path to the mask image
   --control-image <string>                 path to control image, control net
+  --ip-adapter-image <string>              path to the IP-Adapter reference image
   --control-video <string>                 path to control video frames, It must be a directory path. The video frames
                                            inside should be stored as images in lexicographical (character) order. For
                                            example, if the control video path is `frames`, the directory contain images
@@ -128,8 +130,8 @@ Default Generation Options:
                                            apg_norm_threshold_smoothing; SLG supports slg_uncond; lcm supports
                                            noise_clip_std, noise_scale_start, noise_scale_end; flux supports base_shift,
                                            max_shift; ltx2 supports max_shift, base_shift, stretch, terminal; euler_ge
-                                           supports gamma;; logit_normal supports mu, std, logsnr_min, logsnr_max,
-                                           resolution_aware
+                                           supports gamma; beta scheduler supports alpha, beta; logit_normal supports
+                                           mu, std, logsnr_min, logsnr_max, resolution_aware; lms supports lms_divisions
   --extra-tiling-args <string>             extra VAE tiling args, key=value list. LTX video VAE supports
                                            temporal_tile_frames (default: 4), temporal_tile_overlap (default: 1)
   --ref-image-args <string>                Key-value list to set up the way the reference images are processed (empty =
@@ -182,6 +184,7 @@ Default Generation Options:
   --pulid-id-weight <float>                strength of PuLID identity injection
   --control-strength <float>               strength to apply Control Net (default: 0.9). 1.0 corresponds to full
                                            destruction of information in init image
+  --ip-adapter-strength <float>            strength to apply IP-Adapter (default: 1.0)
   --moe-boundary <float>                   timestep boundary for Wan2.2 MoE model. (default: 0.875). Only enabled if
                                            `--high-noise-steps` is set to -1
   --vace-strength <float>                  wan vace strength
@@ -201,12 +204,12 @@ Default Generation Options:
   -s, --seed                               RNG seed (default: 42, use random seed for < 0)
   --sampling-method                        sampling method, one of [euler, euler_a, heun, dpm2, dpm++2s_a, dpm++2m,
                                            dpm++2mv2, dpm++2m_sde, dpm++2m_sde_bt, ipndm, ipndm_v, lcm, ddim_trailing,
-                                           tcd, res_multistep, res_2s, er_sde, euler_cfg_pp, euler_a_cfg_pp](default:
-                                           euler for Flux/SD3/Wan, euler_a otherwise)
+                                           tcd, res_multistep, res_2s, er_sde, euler_cfg_pp, euler_a_cfg_pp,
+                                           lms](default: euler for Flux/SD3/Wan, euler_a otherwise)
   --high-noise-sampling-method             (high noise) sampling method, one of [euler, euler_a, heun, dpm2, dpm++2s_a,
                                            dpm++2m, dpm++2mv2, dpm++2m_sde, dpm++2m_sde_bt, ipndm, ipndm_v, lcm,
                                            ddim_trailing, tcd, res_multistep, res_2s, er_sde, euler_cfg_pp,
-                                           euler_a_cfg_pp] default: euler for Flux/SD3/Wan, euler_a otherwise
+                                           euler_a_cfg_pp, lms] default: euler for Flux/SD3/Wan, euler_a otherwise
   --scheduler                              denoiser sigma scheduler, one of [discrete, karras, exponential, ays, gits,
                                            smoothstep, sgm_uniform, simple, kl_optimal, lcm, bong_tangent, ltx2,
                                            logit_normal, flux2, flux, beta], alias: normal=discrete, default:
@@ -217,7 +220,12 @@ Default Generation Options:
                                            "0.85,0.725,0.421875,0.0").
   --skip-layers                            layers to skip for SLG steps (default: [7,8,9])
   --high-noise-skip-layers                 (high noise) layers to skip for SLG steps (default: [7,8,9])
-  -r, --ref-image                          reference image for Flux Kontext models (can be used multiple times)
+  -r, --ref-image                          reference image for Flux Kontext or MiniMax-H3 Ref2VA (can be used multiple
+                                           times)
+  --ref-video                              MiniMax-H3 Ref2VA reference video frame directory at 24 fps (can be used
+                                           multiple times)
+  --ref-video-audio                        WAV soundtrack paired by index with --ref-video (can be used multiple times)
+  --ref-audio                              standalone WAV reference for MiniMax-H3 Ref2VA (can be used multiple times)
   --cache-mode                             caching method: 'easycache' (DiT), 'ucache' (UNET),
                                            'dbcache'/'taylorseer'/'cache-dit' (DiT block-level), 'spectrum' (UNET/DiT
                                            Chebyshev+Taylor forecasting)
@@ -233,4 +241,3 @@ Default Generation Options:
                                            if < 1, in number of tiles per dim if >=1 (overrides --vae-tile-size)
   --prompt-file                            path to the file containing the prompt to render
   --negative-prompt-file                   path to the file containing the negative prompt
-

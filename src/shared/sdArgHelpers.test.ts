@@ -121,6 +121,55 @@ describe('addHardwareArgs', () => {
     assert.equal(args.includes('--split-mode'), false)
   })
 
+  it('emits legacy chroma/qwen flags when --model-args is unsupported', () => {
+    const args: string[] = []
+    addHardwareArgs(args, {
+      chromaEnableT5Mask: true,
+      chromaDisableDitMask: true,
+      chromaT5MaskPad: 2,
+      qwenImageZeroCondT: true
+    })
+    assert.ok(args.includes('--chroma-enable-t5-mask'))
+    assert.ok(args.includes('--chroma-disable-dit-mask'))
+    assert.ok(args.includes('--qwen-image-zero-cond-t'))
+    assert.ok(args.includes('--chroma-t5-mask-pad'))
+    assert.equal(args.includes('--model-args'), false)
+  })
+
+  it('folds chroma/qwen options into --model-args when supported', () => {
+    const args: string[] = []
+    addHardwareArgs(
+      args,
+      {
+        chromaEnableT5Mask: true,
+        chromaDisableDitMask: true,
+        chromaT5MaskPad: 2,
+        qwenImageZeroCondT: true
+      },
+      '',
+      { modelArgsSupported: true }
+    )
+    const value = args[args.indexOf('--model-args') + 1]
+    assert.ok(value.includes('chroma_use_t5_mask=1'))
+    assert.ok(value.includes('chroma_use_dit_mask=0'))
+    assert.ok(value.includes('qwen_image_zero_cond_t=1'))
+    assert.ok(value.includes('chroma_t5_mask_pad=2'))
+    for (const legacy of [
+      '--chroma-enable-t5-mask',
+      '--chroma-disable-dit-mask',
+      '--qwen-image-zero-cond-t',
+      '--chroma-t5-mask-pad'
+    ]) {
+      assert.equal(args.includes(legacy), false, `${legacy} should not be emitted`)
+    }
+  })
+
+  it('emits no --model-args when nothing is set', () => {
+    const args: string[] = []
+    addHardwareArgs(args, { diffusionFa: true }, '', { modelArgsSupported: true })
+    assert.equal(args.includes('--model-args'), false)
+  })
+
   it('skips backend assignment when autoFit is on', () => {
     const args: string[] = []
     addHardwareArgs(args, {

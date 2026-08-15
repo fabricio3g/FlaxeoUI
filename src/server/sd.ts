@@ -10,6 +10,8 @@ import {
   pushArg as pushArgPure
 } from '../shared/sdArgHelpers'
 import { listLoraFiles, loraLookupNames, normalizeLoraName } from '../shared/loraFiles'
+import { backendPlatformMismatch } from '../shared/backendRelease'
+import { hasFlagCached } from './capabilitiesCache'
 
 export function getSdCliPath(ctx: AppContext): string {
   return getBackendBinaryPath(ctx, 'sd-cli')
@@ -21,6 +23,18 @@ export function getSdServerPath(ctx: AppContext): string {
 
 function getBackendBinaryPath(ctx: AppContext, name: string): string {
   return path.join(ctx.getActiveBackendPath(), process.platform === 'win32' ? `${name}.exe` : name)
+}
+
+/**
+ * True when a backend folder holds binaries built for another OS — they satisfy
+ * backendHasBinaries() but cannot execute, so the UI must say so explicitly.
+ */
+export function backendDirPlatformMismatch(dir: string): boolean {
+  try {
+    return backendPlatformMismatch(fs.readdirSync(dir), process.platform)
+  } catch {
+    return false
+  }
 }
 
 export function backendHasBinaries(dir: string): boolean {
@@ -102,8 +116,15 @@ export function addOptionalArgs(args: string[], body: JsonObject): void {
   addOptionalArgsPure(args, body)
 }
 
+/**
+ * Picks the flag spelling the active binary advertises. Route handlers warm the
+ * capability cache (see warmBackendCapabilities) before argv is built; a cold
+ * cache falls back to the legacy --chroma-* flags.
+ */
 export function addHardwareArgs(args: string[], body: JsonObject, prompt = ''): void {
-  addHardwareArgsPure(args, body, prompt)
+  addHardwareArgsPure(args, body, prompt, {
+    modelArgsSupported: hasFlagCached('--model-args')
+  })
 }
 
 /**

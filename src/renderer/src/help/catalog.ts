@@ -431,12 +431,12 @@ Recommended tested build: **master-782** (see Settings → Installation).
 
 ## Docs / help dumps
 
-Checked into the repo for the recommended backend:
+Checked into the repo as a reference for the sd.cpp CLI surface:
 
 - \`sd-cli-help.txt\`
 - \`sd-server-help.txt\`
 
-Refresh those when you bump the recommended runtime tag.
+Refresh those after installing a newer runtime.
 `
   },
   {

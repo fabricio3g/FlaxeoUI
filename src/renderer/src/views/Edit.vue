@@ -29,6 +29,7 @@ import Tooltip from '@/components/ui/Tooltip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import RefSizePrompt from '@/components/RefSizePrompt.vue'
 import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
+import WorkspaceHero from '@/components/WorkspaceHero.vue'
 import {
   isAnyGenerationBusy,
   toastGenerationError,
@@ -1152,55 +1153,45 @@ onUnmounted(() => {
 
           <div
             v-else-if="!baseImage && !(editMode === 'ref' && refChips.length)"
-            class="fade-in slide-in-from-bottom-1 animate-in absolute inset-0 flex flex-col items-center justify-center px-6 text-center duration-200"
+            class="absolute inset-0 flex flex-col items-center justify-center"
           >
-            <div class="content-item flex max-w-sm flex-col items-center">
-              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Edit workspace
-              </p>
-              <h2 class="mt-2 text-base font-medium tracking-tight text-foreground">
-                {{
-                  editMode === 'ref'
-                    ? 'Add reference images'
-                    : editMode === 'img2img'
-                      ? 'Start with a source image'
-                      : 'Start with an image'
-                }}
-              </h2>
-              <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                {{
-                  editMode === 'ref'
-                    ? 'Kontext / Qwen Image Edit use one or more reference images with your prompt.'
-                    : editMode === 'img2img'
-                      ? 'Upload a source image, set strength, and describe the transformation.'
-                      : 'Choose a source image, then paint the area you want to transform.'
-                }}
-              </p>
-              <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <label
-                  class="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-[#0d0d0d] shadow-sm transition-all duration-150 hover:bg-white/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-white/40"
-                >
-                  {{ editMode === 'ref' ? 'Upload references' : 'Upload Image' }}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    :multiple="editMode === 'ref'"
-                    @change="
-                      editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)
-                    "
-                  />
-                </label>
-                <button
-                  type="button"
-                  @click="goToGallery"
-                  class="inline-flex h-9 items-center gap-1.5 rounded-full border border-input bg-background px-4 text-sm font-medium transition-all duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                >
-                  <Images class="h-3.5 w-3.5" />
-                  Select from Gallery
-                </button>
-              </div>
-            </div>
+            <WorkspaceHero
+              :title="
+                editMode === 'ref'
+                  ? 'Add reference images'
+                  : editMode === 'img2img'
+                    ? 'Start with a source image'
+                    : 'Start with an image'
+              "
+              :description="
+                editMode === 'ref'
+                  ? 'Kontext / Qwen Image Edit use one or more reference images with your prompt.'
+                  : editMode === 'img2img'
+                    ? 'Upload a source image, set strength, and describe the transformation.'
+                    : 'Choose a source image, then paint the area you want to transform.'
+              "
+            >
+              <label
+                class="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring/30"
+              >
+                {{ editMode === 'ref' ? 'Upload references' : 'Upload image' }}
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  :multiple="editMode === 'ref'"
+                  @change="editMode === 'ref' ? handleRefUpload($event) : handleImageUpload($event)"
+                />
+              </label>
+              <button
+                type="button"
+                @click="goToGallery"
+                class="inline-flex h-9 items-center gap-1.5 rounded-full border border-input bg-background px-4 text-sm font-medium transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                <Images class="size-4" />
+                Select from Gallery
+              </button>
+            </WorkspaceHero>
           </div>
 
           <div
@@ -1388,11 +1379,7 @@ onUnmounted(() => {
             <Upload class="h-3.5 w-3.5" />
             <span>
               {{
-                editMode === 'ref'
-                  ? 'Add references'
-                  : baseImage
-                    ? 'Replace image'
-                    : 'Upload image'
+                editMode === 'ref' ? 'Add references' : baseImage ? 'Replace image' : 'Upload image'
               }}
             </span>
             <input
@@ -1567,12 +1554,6 @@ onUnmounted(() => {
               :options="refImagePresetOptions"
             />
           </div>
-          <p
-            v-if="!supportsRefImageArgs"
-            class="w-full text-xs leading-relaxed text-muted-foreground"
-          >
-            Reference presets need a post-#1780 sd-cli. Flag omitted; refs still use -r.
-          </p>
         </div>
 
         <!-- Textarea + send/cancel -->
@@ -1921,10 +1902,7 @@ onUnmounted(() => {
                     </span>
                   </p>
                 </div>
-                <p
-                  v-else
-                  class="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground"
-                >
+                <p v-else class="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                   Output size follows the source image in Inpaint (no resolution selector).
                 </p>
 

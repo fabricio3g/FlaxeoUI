@@ -46,6 +46,22 @@ export function isModelDirectoryKey(value: string): value is ModelDirectoryKey {
   return MODEL_DIRECTORY_KEYS.includes(value as ModelDirectoryKey)
 }
 
+/**
+ * Hub packs label CLIP-G files `clipG` / `clip_g`, but both live in `models/clip`
+ * (sd-cli reads --clip_l and --clip_g from the same directory). Keep this in sync
+ * with CATEGORY_MAP in src/renderer/src/lib/hubInstall.ts.
+ */
+const MODEL_DIRECTORY_ALIASES: Record<string, ModelDirectoryKey> = {
+  clipG: 'clip',
+  clip_g: 'clip'
+}
+
+/** Resolve a hub file category to the directory it downloads into, or null. */
+export function resolveModelDirectoryKey(value: string): ModelDirectoryKey | null {
+  if (isModelDirectoryKey(value)) return value
+  return MODEL_DIRECTORY_ALIASES[value] ?? null
+}
+
 export function isStorageDirectoryId(value: string): value is StorageDirectoryId {
   return (
     value === 'modelsRoot' || value === 'output' || value === 'temp' || isModelDirectoryKey(value)

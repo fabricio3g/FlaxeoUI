@@ -1,20 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  ArrowRight,
-  Check,
-  ChevronLeft,
-  Download,
-  ExternalLink,
-  Film,
-  FolderOpen,
-  ImageIcon,
-  Loader2,
-  Sparkles,
-  Video,
-  Wand2,
-  X
-} from '@/lib/icons'
+import { ArrowRight, Check, ChevronLeft, Download, FolderOpen, Loader2, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { useBackend } from '@/composables/useBackend'
 import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
@@ -30,10 +16,9 @@ import {
 import Select from '@/components/ui/Select.vue'
 import type { Release, ReleaseAsset } from '@/composables/useBackend'
 import {
-  filterAssetsForPlatform,
-  pickBestBackendAsset,
-  pickRecommendedRelease,
-  RECOMMENDED_BACKEND_TAG
+  assetMatchesPlatform,
+  backendVariantLabel,
+  pickBestBackendAsset
 } from '../../../shared/backendRelease'
 
 type Step = 'welcome' | 'runtime' | 'model' | 'finish'
@@ -47,6 +32,11 @@ const configStore = useConfigStore()
 const backend = useBackend()
 const { backendValid } = useRuntimeStatus()
 const { checklist } = useSetup()
+
+const welcomeSteps = [
+  'Install the sd-cli runtime for your GPU.',
+  'Download a starter model — SD 1.5, SDXL, FLUX.1 Dev, or Wan2.1.'
+]
 
 const step = ref<Step>('welcome')
 const selectedPackId = ref<string>('flux1-dev')
@@ -68,12 +58,20 @@ const selectedPack = computed(
   () => hubModels.find((model) => model.id === selectedPackId.value) || hubModels[0]
 )
 
+/** One-line stand-in for the old file table: required labels + optional count */
+const packFileSummary = computed(() => {
+  const files = selectedPack.value.files
+  const required = files.filter((file) => file.required)
+  const optional = files.length - required.length
+  const head = (required.length > 0 ? required : files).map((file) => file.label).join(', ')
+  if (optional === 0) return head
+  return `${head} + ${optional} optional file${optional > 1 ? 's' : ''}`
+})
+
 const selectedRelease = computed<Release | null>(() => {
   if (!selectedReleaseTag.value) return backend.releases.value[0] || null
   return backend.releases.value.find((r) => r.tag === selectedReleaseTag.value) || null
 })
-
-const recommendedRelease = computed(() => pickRecommendedRelease(backend.releases.value))
 
 const detectedPlatform = ref<string>(
   typeof navigator !== 'undefined' && /Win/i.test(navigator.platform)
@@ -86,22 +84,26 @@ const detectHint = ref<string | null>(null)
 
 const releaseOptions = computed(() =>
   backend.releases.value.map((r) => ({
-    label: r.recommended
-      ? `${r.tag} · Recommended (tested)`
-      : r.tag,
+    label: r.tag,
     value: r.tag
   }))
 )
 
-const assetOptions = computed(() => {
-  const assets = selectedRelease.value?.assets || []
-  return filterAssetsForPlatform(assets, detectedPlatform.value).map((asset) => ({
-    label: asset.name,
+/** Every published binary for the tag — OS detection only seeds the default pick */
+const assetOptions = computed(() =>
+  (selectedRelease.value?.assets || []).map((asset) => ({
+    label: `${backendVariantLabel(asset.name)}${
+      assetMatchesPlatform(asset.name, detectedPlatform.value) ? '' : ' · not for your OS'
+    } — ${asset.name}`,
     value: asset.name
   }))
-})
+)
 
-const selectedIsRecommended = computed(() => !!selectedRelease.value?.recommended)
+/** Installing a foreign binary leaves a runtime that can never start */
+const selectedAssetIsForeign = computed(
+  () =>
+    !!selectedAsset.value && !assetMatchesPlatform(selectedAsset.value.name, detectedPlatform.value)
+)
 
 function syncAssetForRelease(): void {
   const release = selectedRelease.value
@@ -109,13 +111,10 @@ function syncAssetForRelease(): void {
     selectedAssetName.value = ''
     return
   }
-  const pool = filterAssetsForPlatform(release.assets, detectedPlatform.value)
-  if (selectedAssetName.value && pool.some((a) => a.name === selectedAssetName.value)) {
-    return
-  }
+  if (release.assets.some((a) => a.name === selectedAssetName.value)) return
   selectedAssetName.value =
     pickBestBackendAsset(release.assets, detectedPlatform.value, detectHint.value) ||
-    pool[0]?.name ||
+    release.assets[0]?.name ||
     ''
 }
 
@@ -160,9 +159,7 @@ async function loadReleases(): Promise<void> {
     if (backend.releases.value.length === 0) {
       runtimeError.value = 'No releases found. You may be rate-limited by GitHub or offline.'
     } else if (!selectedReleaseTag.value) {
-      const rec = pickRecommendedRelease(backend.releases.value)
-      const pick = rec || backend.releases.value[0]
-      selectedReleaseTag.value = pick?.tag || ''
+      selectedReleaseTag.value = backend.releases.value[0]?.tag || ''
       syncAssetForRelease()
     }
   } catch (e) {
@@ -273,16 +270,16 @@ async function recommendPackFromDetect(): Promise<void> {
     // Smaller pack for non-CUDA; FLUX when NVIDIA is advertised
     if (hasNvidia) {
       selectedPackId.value = 'flux1-dev'
-      packRecommendReason.value = 'Recommended for NVIDIA / CUDA — best still-image quality starter'
+      packRecommendReason.value = 'FLUX.1 Dev is preselected for NVIDIA — best still-image quality.'
     } else {
-      selectedPackId.value = 'sdxl'
+      selectedPackId.value = 'sd15'
       packRecommendReason.value =
-        'Recommended for your GPU — smallest starter pack (works on most cards)'
+        'SD 1.5 is preselected for your GPU — smallest, runs almost anywhere.'
       optimizeLowVram.value = true
     }
   } catch {
-    selectedPackId.value = 'sdxl'
-    packRecommendReason.value = 'Defaulting to SDXL — smallest reliable starter pack'
+    selectedPackId.value = 'sd15'
+    packRecommendReason.value = 'SD 1.5 is preselected — the smallest starter pack.'
     optimizeLowVram.value = true
   }
 }
@@ -380,190 +377,113 @@ watch(selectedRelease, () => {
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-5 sm:p-6 md:p-7">
           <!-- Welcome -->
-          <div v-if="step === 'welcome'" class="space-y-6 text-center">
-            <div
-              class="mx-auto flex size-14 items-center justify-center rounded-2xl border border-border bg-muted/40 text-foreground shadow-sm"
-            >
-              <Wand2 class="h-6 w-6" />
-            </div>
+          <div v-if="step === 'welcome'" class="mx-auto max-w-md space-y-6">
             <div>
-              <h3 class="text-2xl font-semibold tracking-tight">Welcome to Flaxeo</h3>
-              <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Let's get you ready to generate. The wizard will install the runtime, download a
-                starter model, and configure the app for you.
+              <h3 class="text-2xl font-semibold tracking-[-0.02em]">Welcome to Flaxeo</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Two steps and you're generating.
               </p>
             </div>
 
-            <div
-              class="mx-auto max-w-lg overflow-hidden rounded-xl border border-border/80 bg-muted/15 text-left shadow-sm"
-            >
-              <div class="flex items-center gap-3 px-4 py-3.5">
-                <div
-                  class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
-                >
-                  <Download class="h-4 w-4" />
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium">Install the runtime</p>
-                  <p class="text-xs text-muted-foreground">
-                    Installs the Flaxeo-tested sd-cli build for your GPU (CUDA, Vulkan, …).
-                  </p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3 border-t border-border/70 px-4 py-3.5">
-                <div
-                  class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
-                >
-                  <ImageIcon class="h-4 w-4" />
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium">Pick a starter model</p>
-                  <p class="text-xs text-muted-foreground">SDXL, FLUX.1 Dev, or Wan2.1 video.</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3 border-t border-border/70 px-4 py-3.5">
-                <div
-                  class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
-                >
-                  <Check class="h-4 w-4" />
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium">Start generating</p>
-                  <p class="text-xs text-muted-foreground">
-                    Preset applied automatically. You're set.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <ol class="space-y-3">
+              <li
+                v-for="(item, i) in welcomeSteps"
+                :key="item"
+                class="flex items-baseline gap-3 text-sm"
+              >
+                <span class="w-4 shrink-0 font-medium text-muted-foreground tabular-nums">
+                  {{ i + 1 }}
+                </span>
+                <span class="leading-relaxed">{{ item }}</span>
+              </li>
+            </ol>
           </div>
 
           <!-- Runtime -->
-          <div v-else-if="step === 'runtime'" class="space-y-5">
+          <div v-else-if="step === 'runtime'" class="space-y-6">
             <div>
-              <p
-                class="aui-label text-sm font-medium uppercase tracking-wider text-muted-foreground"
-              >
-                Runtime
-              </p>
-              <h3 class="mt-1 text-xl font-semibold tracking-tight">Install the runtime</h3>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Flaxeo needs the
-                <code class="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs"
-                  >sd-cli</code
-                >
-                backend to run inference. Install a release below, or drop binaries into the custom
-                folder.
+              <h3 class="text-xl font-semibold tracking-[-0.02em]">Install the runtime</h3>
+              <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Flaxeo runs inference through the sd-cli backend. Install a release below, or drop
+                your own binaries into the custom folder.
               </p>
             </div>
 
-            <div class="rounded-xl border border-border/80 bg-muted/15 p-4 shadow-sm">
-              <div class="space-y-3">
-                <div
-                  v-if="recommendedRelease"
-                  class="rounded-lg border border-foreground/10 bg-background/60 px-3 py-2.5"
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-sm font-medium">Recommended</p>
-                    <span
-                      class="rounded-full bg-foreground px-2 py-0.5 text-xs font-medium text-background"
-                    >
-                      Tested with Flaxeo
-                    </span>
-                  </div>
-                  <p class="mt-1 font-mono text-xs text-muted-foreground">
-                    {{ recommendedRelease.tag }}
-                  </p>
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    Pick the binary for this tested release (filename as published on GitHub).
-                  </p>
+            <div class="rounded-xl border border-border/70 bg-muted/20 p-4">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium">Release tag</label>
+                  <Select
+                    v-model="selectedReleaseTag"
+                    :options="releaseOptions"
+                    placeholder="No release available"
+                    size="md"
+                    class="aui-field"
+                    :disabled="
+                      runtimeDownloading ||
+                      backend.isDownloading.value ||
+                      backendValid ||
+                      backend.releases.value.length === 0
+                    "
+                  />
                 </div>
-                <div
-                  v-if="selectedRelease && !selectedIsRecommended"
-                  class="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
-                >
-                  <span>
-                    This release is not the Flaxeo-tested build
-                    (<code class="font-mono">{{ RECOMMENDED_BACKEND_TAG }}</code
-                    >). Features may not work as expected.
-                  </span>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium">Binary</label>
+                  <Select
+                    v-model="selectedAssetName"
+                    :options="assetOptions"
+                    placeholder="Select binary…"
+                    size="md"
+                    class="aui-field"
+                    :disabled="
+                      runtimeDownloading ||
+                      backend.isDownloading.value ||
+                      backendValid ||
+                      assetOptions.length === 0
+                    "
+                  />
                 </div>
-                <div class="flex items-start gap-3 sm:items-center">
-                  <div
-                    class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
-                  >
-                    <Download class="h-4 w-4" />
-                  </div>
-                  <div
-                    class="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-                  >
-                    <Select
-                      v-model="selectedReleaseTag"
-                      :options="releaseOptions"
-                      placeholder="No release available"
-                      size="sm"
-                      class="aui-field h-8"
-                      :disabled="
-                        runtimeDownloading ||
-                        backend.isDownloading.value ||
-                        backendValid ||
-                        backend.releases.value.length === 0
-                      "
-                    />
-                    <Select
-                      v-model="selectedAssetName"
-                      :options="assetOptions"
-                      placeholder="Select binary…"
-                      size="sm"
-                      class="aui-field h-8"
-                      :disabled="
-                        runtimeDownloading ||
-                        backend.isDownloading.value ||
-                        backendValid ||
-                        assetOptions.length === 0
-                      "
-                    />
-                    <button
-                      type="button"
-                      class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                      :disabled="
-                        runtimeDownloading ||
-                        backend.isDownloading.value ||
-                        backendValid ||
-                        !selectedRelease ||
-                        !selectedAsset
-                      "
-                      @click="startRuntimeInstall"
-                    >
-                      <Loader2
-                        v-if="runtimeDownloading || backend.isDownloading.value"
-                        class="h-3.5 w-3.5 animate-spin"
-                      />
-                      <Check v-else-if="backendValid" class="h-3.5 w-3.5" />
-                      <Download v-else class="h-3.5 w-3.5" />
-                      {{
-                        backendValid
-                          ? 'Installed'
-                          : runtimeDownloading
-                            ? 'Installing...'
-                            : 'Install'
-                      }}
-                    </button>
-                  </div>
-                </div>
-                <p class="truncate pl-11 text-xs text-muted-foreground">
-                  <template v-if="selectedRelease">
-                    {{ selectedRelease.tag }}
-                    <span v-if="releaseDate"> · {{ releaseDate }}</span>
-                    <span v-if="selectedAsset"> · {{ selectedAsset.name }}</span>
-                  </template>
-                  <template v-else>fetching...</template>
-                </p>
               </div>
 
+              <p class="mt-2.5 truncate text-sm text-muted-foreground">
+                <template v-if="selectedRelease">
+                  Published {{ releaseDate || 'recently' }}
+                </template>
+                <template v-else>Fetching releases…</template>
+              </p>
+
+              <p
+                v-if="selectedAssetIsForeign"
+                class="mt-2.5 text-sm leading-relaxed text-destructive"
+              >
+                This binary is built for another operating system and will not run here.
+              </p>
+
+              <button
+                type="button"
+                class="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                :disabled="
+                  runtimeDownloading ||
+                  backend.isDownloading.value ||
+                  backendValid ||
+                  !selectedRelease ||
+                  !selectedAsset
+                "
+                @click="startRuntimeInstall"
+              >
+                <Loader2
+                  v-if="runtimeDownloading || backend.isDownloading.value"
+                  class="size-4 animate-spin"
+                />
+                <Check v-else-if="backendValid" class="size-4" />
+                <Download v-else class="size-4" />
+                {{ backendValid ? 'Installed' : runtimeDownloading ? 'Installing…' : 'Install' }}
+              </button>
+
               <div v-if="runtimeDownloading || backendValid" class="mt-4">
-                <div class="mb-2 flex items-center justify-between text-xs">
+                <div class="mb-2 flex items-center justify-between text-sm">
                   <span class="text-muted-foreground">{{
-                    backendValid ? 'Ready' : 'Downloading & verifying...'
+                    backendValid ? 'Ready' : 'Downloading and verifying…'
                   }}</span>
                   <span class="text-muted-foreground">{{
                     backendValid ? '100%' : 'in progress'
@@ -583,189 +503,137 @@ watch(selectedRelease, () => {
             </div>
 
             <!-- Manual install path (same as Settings → Custom folder) -->
-            <div class="space-y-2">
+            <div class="space-y-1.5 border-t border-border/60 pt-4">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <p class="text-sm font-medium text-foreground">Or use your own binaries</p>
                 <button
                   type="button"
-                  class="inline-flex h-8 items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:underline"
+                  class="inline-flex h-8 items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline"
                   title="Open backend/custom folder"
                   @click="openCustomFolder"
                 >
-                  <FolderOpen class="h-3.5 w-3.5" />
+                  <FolderOpen class="size-4" />
                   Custom folder
                 </button>
               </div>
-              <p class="text-xs leading-5 text-muted-foreground">
-                Place
-                <code class="rounded bg-muted/60 px-1 py-0.5 text-xs">sd-cli</code>
-                and
-                <code class="rounded bg-muted/60 px-1 py-0.5 text-xs">sd-server</code>
-                in the custom folder, then continue. The wizard will detect them automatically.
+              <p class="text-sm leading-relaxed text-muted-foreground">
+                Place sd-cli and sd-server in the custom folder, then continue — the wizard detects
+                them automatically. You can also skip this step and finish from Settings later.
               </p>
             </div>
 
             <div
               v-if="runtimeError"
-              class="aui-alert rounded-xl border border-destructive/25 border-l-2 border-l-destructive bg-destructive/5 px-3.5 py-3 text-xs text-destructive"
+              class="aui-alert rounded-xl border border-destructive/25 border-l-2 border-l-destructive bg-destructive/5 px-3.5 py-3 text-sm leading-relaxed text-destructive"
             >
               {{ runtimeError }}
-            </div>
-
-            <div
-              v-else-if="!backendValid && !runtimeDownloading"
-              class="aui-alert rounded-xl border border-amber-500/25 border-l-2 border-l-amber-500 bg-amber-500/5 px-3.5 py-3 text-xs text-amber-700 dark:text-amber-300"
-            >
-              If the download is taking a while, open Custom folder and drop in binaries, or skip
-              and finish later from Settings.
             </div>
           </div>
 
           <!-- Model -->
-          <div v-else-if="step === 'model'" class="space-y-5">
+          <div v-else-if="step === 'model'" class="space-y-6">
             <div>
-              <p
-                class="aui-label text-sm font-medium uppercase tracking-wider text-muted-foreground"
-              >
-                Model preset
-              </p>
-              <h3 class="mt-1 text-xl font-semibold tracking-tight">Choose a starter model</h3>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Pick one pack to download now, or skip and add models later (Hub or your own files).
-              </p>
-              <p
-                v-if="packRecommendReason"
-                class="mt-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
-              >
-                {{ packRecommendReason }}
+              <h3 class="text-xl font-semibold tracking-[-0.02em]">Choose a starter model</h3>
+              <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                {{
+                  packRecommendReason ||
+                  'Pick one pack to download now, or skip and add models later.'
+                }}
               </p>
             </div>
 
-            <label class="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-              <input v-model="optimizeLowVram" type="checkbox" class="rounded" />
-              Optimize for Low VRAM (offload, stream layers, flash attention)
-            </label>
-
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 v-for="packId in STARTER_PACK_IDS"
                 :key="packId"
                 type="button"
-                class="relative flex flex-col items-start gap-2 rounded-xl border border-border/80 bg-background p-4 text-left transition-all duration-150 hover:border-foreground/25 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="rounded-lg border p-3.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 :class="
                   selectedPackId === packId
-                    ? 'border-foreground/30 bg-muted/40 shadow-sm ring-1 ring-foreground/10'
-                    : ''
+                    ? 'border-foreground/30 bg-muted/40'
+                    : 'border-border/70 bg-background hover:bg-muted/25'
                 "
                 @click="selectedPackId = packId"
               >
-                <span
-                  v-if="STARTER_PACK_META[packId].recommended"
-                  class="aui-status-badge absolute right-3 top-3 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                >
-                  Recommended
-                </span>
-                <div
-                  class="flex size-9 items-center justify-center rounded-lg border border-border bg-muted/35 text-muted-foreground"
-                >
-                  <component
-                    :is="packId === 'wan21' ? Video : packId === 'flux1-dev' ? Sparkles : ImageIcon"
-                    class="h-5 w-5"
-                  />
-                </div>
-                <div>
-                  <p class="text-sm font-semibold">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="truncate text-sm font-medium">
                     {{ hubModels.find((m) => m.id === packId)?.name }}
                   </p>
-                  <p class="text-xs text-muted-foreground">
-                    {{ STARTER_PACK_META[packId].blurb }}
-                  </p>
+                  <Check v-if="selectedPackId === packId" class="size-4 shrink-0 text-foreground" />
                 </div>
-                <div
-                  class="mt-auto flex w-full items-center justify-between pt-3 text-xs text-muted-foreground"
-                >
-                  <span>≈ {{ STARTER_PACK_META[packId].sizeGb }} GB</span>
-                  <span>≥ {{ STARTER_PACK_META[packId].minVramGb }} GB VRAM</span>
-                </div>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {{ STARTER_PACK_META[packId].blurb }}
+                </p>
+                <p class="mt-2 text-sm text-muted-foreground tabular-nums">
+                  ≈{{ STARTER_PACK_META[packId].sizeGb }} GB ·
+                  {{ STARTER_PACK_META[packId].minVramGb }} GB VRAM
+                </p>
               </button>
             </div>
 
-            <div class="rounded-xl border border-border/80 bg-muted/15 p-4 shadow-sm">
-              <p class="mb-3 text-sm font-medium">Files to download</p>
-              <div class="overflow-hidden rounded-lg border border-border/70 bg-background">
-                <div
-                  v-for="file in selectedPack.files"
-                  :key="fileKey(file)"
-                  class="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-2.5 text-xs last:border-b-0"
-                >
-                  <span class="truncate">{{ file.label }}</span>
-                  <span
-                    class="aui-status-badge shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium"
-                    :class="
-                      file.required
-                        ? 'border-foreground/15 bg-muted text-foreground'
-                        : 'border-border bg-background text-muted-foreground'
-                    "
-                  >
-                    {{ file.required ? 'Required' : 'Optional' }}
-                  </span>
-                </div>
-              </div>
+            <div class="space-y-3">
+              <label class="flex cursor-pointer items-center gap-2.5 text-sm">
+                <input
+                  v-model="optimizeLowVram"
+                  type="checkbox"
+                  class="size-4 rounded border-border accent-foreground"
+                />
+                Optimize for low VRAM
+              </label>
 
-              <div v-if="modelDownloading" class="mt-4">
-                <div class="mb-2 flex items-center justify-between text-xs">
-                  <span class="text-muted-foreground">Downloading pack...</span>
-                  <span class="text-muted-foreground">in progress</span>
-                </div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div class="h-full w-2/3 animate-pulse rounded-full bg-foreground/70"></div>
-                </div>
-              </div>
-
-              <div class="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  :disabled="modelDownloading"
-                  @click="startModelDownload"
-                >
-                  <Loader2 v-if="modelDownloading" class="h-3.5 w-3.5 animate-spin" />
-                  <Download v-else class="h-3.5 w-3.5" />
-                  {{ modelDownloading ? 'Downloading...' : 'Download selected pack' }}
-                </button>
-                <button
-                  v-if="modelDownloading"
-                  type="button"
-                  class="inline-flex h-8 items-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  @click="cancelModelDownload"
-                >
-                  Cancel
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  title="Continue without downloading — install from Hub or place files under models/"
-                  @click="skipModelDownload"
-                >
-                  Skip download
-                </button>
-              </div>
-              <p class="mt-2 text-xs text-muted-foreground">
-                Skip if you already have weights, or plan to use Model Hub / manual folders later.
+              <p class="text-sm leading-relaxed text-muted-foreground">
+                Downloads
+                <span class="text-foreground">{{ packFileSummary }}</span>
+                into your models folder. Skip if you already have weights or plan to use the Model
+                Hub.
               </p>
+            </div>
+
+            <div v-if="modelDownloading">
+              <div class="mb-2 flex items-center justify-between text-sm text-muted-foreground">
+                <span>Downloading pack…</span>
+                <span>in progress</span>
+              </div>
+              <div class="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div class="h-full w-2/3 animate-pulse rounded-full bg-foreground/70"></div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                :disabled="modelDownloading"
+                @click="startModelDownload"
+              >
+                <Loader2 v-if="modelDownloading" class="size-4 animate-spin" />
+                <Download v-else class="size-4" />
+                {{ modelDownloading ? 'Downloading…' : 'Download selected pack' }}
+              </button>
+              <button
+                v-if="modelDownloading"
+                type="button"
+                class="inline-flex h-9 items-center rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                @click="cancelModelDownload"
+              >
+                Cancel
+              </button>
+              <button
+                v-else
+                type="button"
+                class="inline-flex h-9 items-center justify-center rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                title="Continue without downloading — install from Hub or place files under models/"
+                @click="skipModelDownload"
+              >
+                Skip download
+              </button>
             </div>
           </div>
 
           <!-- Finish -->
           <div v-else-if="step === 'finish'" class="space-y-6 text-center">
-            <div
-              class="mx-auto flex size-14 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-600 shadow-sm dark:text-emerald-400"
-            >
-              <Check class="h-6 w-6" />
-            </div>
             <div>
-              <h3 class="text-2xl font-semibold tracking-tight">You're all set</h3>
+              <h3 class="text-2xl font-semibold tracking-[-0.02em]">You're all set</h3>
               <p
                 v-if="skippedModelDownload"
                 class="mx-auto mt-2 max-w-md text-sm text-muted-foreground"
@@ -785,10 +653,10 @@ watch(selectedRelease, () => {
               <li
                 v-for="item in checklist"
                 :key="item.id"
-                class="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/25 px-3 py-2 text-xs"
+                class="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/25 px-3 py-2 text-sm"
               >
                 <Check
-                  class="size-3.5 shrink-0"
+                  class="size-4 shrink-0"
                   :class="
                     item.done
                       ? 'text-emerald-600 dark:text-emerald-400'
@@ -800,29 +668,29 @@ watch(selectedRelease, () => {
                 </span>
               </li>
             </ul>
-            <p class="text-xs text-muted-foreground">
+            <p class="text-sm text-muted-foreground">
               Generate once to complete the checklist — then you are fully ready.
             </p>
 
             <div class="mx-auto flex max-w-xs flex-col gap-2">
               <button
                 type="button"
-                class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 @click="finish('sample')"
               >
                 Generate sample
-                <ArrowRight class="h-4 w-4" />
+                <ArrowRight class="size-4" />
               </button>
               <button
                 type="button"
-                class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex h-9 items-center justify-center rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 @click="finish('done')"
               >
                 Start generating
               </button>
               <button
                 type="button"
-                class="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="inline-flex h-9 items-center justify-center rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 @click="finish('hub')"
               >
                 Open Model Hub
@@ -838,11 +706,11 @@ watch(selectedRelease, () => {
           <button
             v-if="step !== 'welcome' && step !== 'finish'"
             type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             :disabled="modelDownloading || runtimeDownloading"
             @click="back"
           >
-            <ChevronLeft class="h-3.5 w-3.5" />
+            <ChevronLeft class="size-4" />
             Back
           </button>
           <div v-else></div>
@@ -851,7 +719,7 @@ watch(selectedRelease, () => {
             <button
               v-if="step === 'welcome'"
               type="button"
-              class="inline-flex h-8 items-center rounded-lg border border-input bg-background px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               @click="skip"
             >
               Skip for now
@@ -859,11 +727,22 @@ watch(selectedRelease, () => {
             <button
               v-if="step === 'welcome'"
               type="button"
-              class="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               @click="next"
             >
               Get started
-              <ArrowRight class="h-3.5 w-3.5" />
+              <ArrowRight class="size-4" />
+            </button>
+
+            <button
+              v-if="step === 'runtime'"
+              type="button"
+              class="inline-flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-3 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              :disabled="runtimeDownloading || backend.isDownloading.value"
+              @click="next"
+            >
+              {{ backendValid ? 'Continue' : 'Skip the download' }}
+              <ArrowRight class="size-4" />
             </button>
           </div>
         </footer>
