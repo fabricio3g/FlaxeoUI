@@ -37,6 +37,7 @@ import GenerationProgressPill from '@/components/GenerationProgressPill.vue'
 import AdvancedToolPanel, { type AdvancedToolTab } from '@/components/AdvancedToolPanel.vue'
 import ImageCropResizeDialog from '@/components/ImageCropResizeDialog.vue'
 import ImageViewer from '@/components/ImageViewer.vue'
+import WorkspaceHero from '@/components/WorkspaceHero.vue'
 import Select from '@/components/ui/Select.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -156,9 +157,7 @@ const adetailerMaskModeOptions = [
 
 /** Seed lock or ADetailer armed — drives composer settings button chrome. */
 const genSettingsActive = computed(
-  () =>
-    config.value.seedLocked ||
-    (config.value.adetailerEnabled && supportsAdetailer.value)
+  () => config.value.seedLocked || (config.value.adetailerEnabled && supportsAdetailer.value)
 )
 
 const genSettingsAdetailerOn = computed(
@@ -1333,30 +1332,23 @@ onActivated(() => {
           </button>
           <!-- Empty hero until a live frame or final image exists -->
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center">
-            <div class="flex max-w-2xl flex-col items-center px-6 text-center">
-              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Image workspace
-              </p>
-              <h1 class="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                What will you create?
-              </h1>
-              <div
-                v-if="!isGenerating"
-                class="mt-5 flex flex-wrap justify-center gap-2"
-                aria-label="Prompt ideas"
-              >
+            <WorkspaceHero
+              title="What will you create?"
+              description="Describe an image below, or start from one of these."
+            >
+              <template v-if="!isGenerating">
                 <button
                   v-for="(suggestion, index) in promptSuggestions"
                   :key="suggestion.label"
                   type="button"
-                  class="content-item inline-flex h-8 items-center rounded-lg border border-input bg-background px-3.5 text-xs font-medium transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="inline-flex h-9 items-center rounded-full border border-input bg-background px-4 text-sm font-medium transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                   :style="{ animationDelay: `${40 + index * 40}ms` }"
                   @click="usePromptSuggestion(suggestion.prompt)"
                 >
                   {{ suggestion.label }}
                 </button>
-              </div>
-            </div>
+              </template>
+            </WorkspaceHero>
           </div>
           <div
             v-if="previewImage && galleryImages.length > 1 && !isGenerating"
@@ -1775,10 +1767,7 @@ onActivated(() => {
                     class="absolute right-1 top-1 flex gap-0.5"
                     aria-hidden="true"
                   >
-                    <span
-                      v-if="config.seedLocked"
-                      class="size-1.5 rounded-full bg-foreground"
-                    />
+                    <span v-if="config.seedLocked" class="size-1.5 rounded-full bg-foreground" />
                     <span
                       v-if="genSettingsAdetailerOn"
                       class="size-1.5 rounded-full bg-foreground"

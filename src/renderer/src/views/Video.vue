@@ -17,6 +17,7 @@ import {
   X
 } from '@/lib/icons'
 import PromptPresetControls from '@/components/PromptPresetControls.vue'
+import WorkspaceHero from '@/components/WorkspaceHero.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Select from '@/components/ui/Select.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -471,17 +472,11 @@ onUnmounted(() => {
           ></video>
 
           <div v-else class="flex flex-col items-center justify-center px-6 text-center">
-            <div v-if="!isGenerating" class="content-item flex max-w-md flex-col items-center">
-              <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Video workspace
-              </p>
-              <h2 class="mt-2 text-base font-medium tracking-tight text-foreground">
-                What will you move?
-              </h2>
-              <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                Describe a scene or add a reference frame to direct the motion.
-              </p>
-            </div>
+            <WorkspaceHero
+              v-if="!isGenerating"
+              title="What will you move?"
+              description="Describe a scene or add a reference frame to direct the motion."
+            />
             <div v-else class="fade-in flex max-w-sm flex-col items-center gap-2 px-4 text-center">
               <Loader2 class="size-5 animate-spin text-muted-foreground" />
               <p class="text-sm font-medium text-foreground">
@@ -841,10 +836,7 @@ onUnmounted(() => {
                   >
                     Backend lacks --motion-module — upgrade stable-diffusion.cpp
                   </span>
-                  <span
-                    v-else-if="isAnimateDiff"
-                    class="mt-1 block text-sm text-muted-foreground"
-                  >
+                  <span v-else-if="isAnimateDiff" class="mt-1 block text-sm text-muted-foreground">
                     Uses standard SD1.5 checkpoint + CFG 8 / euler. I2V = img2video with strength.
                   </span>
                 </label>
@@ -865,10 +857,7 @@ onUnmounted(() => {
                 </label>
 
                 <div class="grid grid-cols-3 gap-2">
-                  <label
-                    v-if="!isAnimateDiff"
-                    class="text-sm font-medium text-muted-foreground"
-                  >
+                  <label v-if="!isAnimateDiff" class="text-sm font-medium text-muted-foreground">
                     Flow
                     <input
                       v-model.number="flowShift"

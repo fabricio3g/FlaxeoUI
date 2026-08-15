@@ -1,30 +1,30 @@
 /**
- * stable-diffusion.cpp release tag Flaxeo is developed and tested against.
- * GitHub: leejet/stable-diffusion.cpp
+ * Which OS a backend folder holds binaries for, from a plain file listing.
  *
- * Bump this when CI / manual QA moves to a newer sd.cpp master build.
+ * The picker deliberately offers every published asset, so a Windows zip can end up
+ * installed on Linux — where sd-cli.exe still satisfies "binaries present" but can
+ * never run. Pure over the listing so custom folders are covered too.
  */
-export const RECOMMENDED_BACKEND_TAG = 'master-782-b290693'
+export function detectBackendDirPlatform(fileNames: readonly string[]): 'win32' | 'posix' | null {
+  let sawWindows = false
+  let sawPosix = false
 
-/** Prefix match so minor hash renames under the same master build still count. */
-export const RECOMMENDED_BACKEND_PREFIX = 'master-782'
+  for (const name of fileNames) {
+    const n = name.toLowerCase()
+    if (n === 'sd-cli.exe' || n === 'sd-server.exe' || n.endsWith('.dll')) sawWindows = true
+    if (n === 'sd-cli' || n === 'sd-server' || n === 'sd') sawPosix = true
+  }
 
-export function isRecommendedBackendTag(tag: string): boolean {
-  if (!tag) return false
-  if (tag === RECOMMENDED_BACKEND_TAG) return true
-  return tag.startsWith(`${RECOMMENDED_BACKEND_PREFIX}-`) || tag === RECOMMENDED_BACKEND_PREFIX
+  if (sawPosix) return 'posix'
+  if (sawWindows) return 'win32'
+  return null
 }
 
-export function sortReleasesRecommendedFirst<T extends { tag: string }>(releases: T[]): T[] {
-  return [...releases].sort((a, b) => {
-    const ar = isRecommendedBackendTag(a.tag) ? 0 : 1
-    const br = isRecommendedBackendTag(b.tag) ? 0 : 1
-    return ar - br
-  })
-}
-
-export function pickRecommendedRelease<T extends { tag: string }>(releases: T[]): T | undefined {
-  return releases.find((r) => isRecommendedBackendTag(r.tag)) ?? undefined
+/** True when the folder's binaries cannot run on `platform` (process.platform). */
+export function backendPlatformMismatch(fileNames: readonly string[], platform: string): boolean {
+  const dirPlatform = detectBackendDirPlatform(fileNames)
+  if (!dirPlatform) return false
+  return dirPlatform === 'win32' ? platform !== 'win32' : platform === 'win32'
 }
 
 /** Keep zip assets that match the current OS (win / macos / linux). */

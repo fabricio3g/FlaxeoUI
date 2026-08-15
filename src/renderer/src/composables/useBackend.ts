@@ -13,8 +13,6 @@ export interface Release {
   tag: string
   name: string
   published: string
-  /** True when this matches Flaxeo’s tested sd.cpp build */
-  recommended?: boolean
   assets: ReleaseAsset[]
 }
 

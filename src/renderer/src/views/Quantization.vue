@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useModels } from '@/composables/useModels'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
@@ -75,20 +75,28 @@ const sourceModelOptions = computed(() => [
 const sourceModelCategory = computed(() => sourceModel.value.split('/')[0] || '')
 const sourceModelFilename = computed(() => sourceModel.value.split('/').slice(1).join('/'))
 
-function autoOutputName(): string {
+const autoOutputName = computed(() => {
   if (!sourceModelFilename.value || !targetFormat.value) return ''
   const base = sourceModelFilename.value.replace(/\.[^.]+$/, '')
   return `${base}.${targetFormat.value}.gguf`
+})
+
+/** Set once the user types their own name — auto-naming then stops overwriting it */
+const outputNameEdited = ref(false)
+
+// Source or format change re-derives the name unless the user renamed it
+watch(autoOutputName, (name) => {
+  if (!outputNameEdited.value) outputName.value = name
+})
+
+function handleOutputNameInput(): void {
+  // Clearing the field hands naming back to the source + format selects
+  outputNameEdited.value = outputName.value.trim() !== ''
 }
 
-function handleFormatChange(): void {
-  if (!outputName.value || outputName.value === autoOutputName()) {
-    outputName.value = autoOutputName()
-  }
-}
-
-function handleSourceChange(): void {
-  outputName.value = autoOutputName()
+/** Don't leave the user with an empty name (and a disabled Convert button) */
+function handleOutputNameBlur(): void {
+  if (outputName.value.trim() === '') outputName.value = autoOutputName.value
 }
 
 async function handleConvert(): Promise<void> {
@@ -154,6 +162,7 @@ function resetForm(): void {
   sourceModel.value = ''
   targetFormat.value = 'q8_0'
   outputName.value = ''
+  outputNameEdited.value = false
   conversionResult.value = null
 }
 
@@ -239,7 +248,6 @@ onMounted(() => {
             placeholder="Select model…"
             :options="sourceModelOptions"
             :disabled="isConverting"
-            @update:model-value="handleSourceChange"
           />
         </div>
 
@@ -253,7 +261,6 @@ onMounted(() => {
               placeholder="Select format…"
               :options="formatOptions"
               :disabled="isConverting"
-              @update:model-value="handleFormatChange"
             />
           </div>
           <div>
@@ -261,8 +268,10 @@ onMounted(() => {
             <input
               v-model="outputName"
               type="text"
-              placeholder="model.q8_0.gguf"
+              :placeholder="autoOutputName || 'model.q8_0.gguf'"
               :disabled="isConverting"
+              @input="handleOutputNameInput"
+              @blur="handleOutputNameBlur"
               class="aui-field h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
             />
           </div>

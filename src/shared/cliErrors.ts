@@ -12,6 +12,18 @@ export interface HumanizedError {
 export function humanizeCliError(raw: unknown): HumanizedError {
   const text = normalizeErrorText(raw)
 
+  // Ahead of the ENOENT branch, which would otherwise swallow "unknown argument: --x"
+  const rejectedFlag = text.match(
+    /(?:unknown|unrecognized|invalid|unsupported)\s+(?:argument|option|flag)[:\s]+(--?[\w-]+)/i
+  )
+  if (rejectedFlag) {
+    return {
+      title: 'Backend rejected an option',
+      detail: `The active sd-cli does not support ${rejectedFlag[1]}.`,
+      hint: 'Install a newer stable-diffusion.cpp release from Settings → Installation, or turn that option off.'
+    }
+  }
+
   if (/GENERATION_BUSY|already running|CLI busy/i.test(text)) {
     return {
       title: 'Already generating',
@@ -85,6 +97,17 @@ export function humanizeCliError(raw: unknown): HumanizedError {
     return {
       title: 'Cancelled',
       detail: 'Generation was stopped before completion.'
+    }
+  }
+
+  // An arg-parse failure prints the whole usage block and no error line. Sits below the
+  // specific classifiers (a mid-run crash can echo usage too) but above "backend not
+  // ready", which matches on the word sd-cli and would otherwise swallow it.
+  if (/usage:/i.test(text) && /-M, --mode|--diffusion-model/.test(text)) {
+    return {
+      title: 'Backend rejected an option',
+      detail: 'sd-cli exited with its usage message, which means it did not accept a flag.',
+      hint: 'Install a newer stable-diffusion.cpp release from Settings → Installation, then retry. Open Logs for the rejected argument.'
     }
   }
 

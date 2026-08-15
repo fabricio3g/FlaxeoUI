@@ -10,7 +10,7 @@ import {
   modelPath,
   spawnLoggedProcess
 } from '../utils'
-import { MODEL_DIRECTORY_KEYS } from '../../shared/storage'
+import { MODEL_DIRECTORY_KEYS, resolveModelDirectoryKey } from '../../shared/storage'
 import {
   addHardwareArgs,
   addModelArgs,
@@ -104,7 +104,9 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const { url, category, filename, label } = req.body || {}
     if (typeof url !== 'string' || !url.startsWith('https://'))
       return res.status(400).json({ error: 'HTTPS model URL required' })
-    if (typeof category !== 'string' || !MODEL_DOWNLOAD_DIRS.has(category))
+    // Aliases (clipG → clip) resolve here so hub packs and the server agree
+    const categoryKey = typeof category === 'string' ? resolveModelDirectoryKey(category) : null
+    if (!categoryKey)
       return res.status(400).json({
         error: `Invalid model category: ${category}. Allowed: ${[...MODEL_DOWNLOAD_DIRS].join(', ')}`
       })
@@ -112,7 +114,7 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const safeFilename = path.basename(
       typeof filename === 'string' && filename.trim() ? filename : filenameFromUrl(url)
     )
-    const targetDir = modelDirectory(ctx, category)
+    const targetDir = modelDirectory(ctx, categoryKey)
     const targetPath = path.join(targetDir, safeFilename)
 
     try {
