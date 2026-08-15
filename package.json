@@ -45,7 +45,6 @@
     "motion-v": "^2.3.0",
     "multer": "^2.2.0",
     "pinia": "^3.0.4",
-    "radix-vue": "^1.9.17",
     "reka-ui": "^2.10.1",
     "selfsigned": "^5.5.0",
     "sharp": "^0.35.3",
