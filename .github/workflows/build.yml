@@ -129,7 +129,11 @@ jobs:
           files: |
             ./artifacts/**/*
           draft: false
-          prerelease: false
+          # Any semver prerelease suffix (v0.7.7-debug, v0.8.0-rc1) ships as a
+          # GitHub Pre-release so test builds are never offered as stable.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          name: >-
+            ${{ github.ref_name }}${{ contains(github.ref_name, '-debug') && ' (debug build — for testing only)' || '' }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
