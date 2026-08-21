@@ -2,37 +2,7 @@
 
 All notable changes to Flaxeo Image are documented in this file.
 
-## 0.7.7-debug — 2026-08-15
-
-**Debug build for testing. Not a stable release** — published as a GitHub Pre-release.
-
-### stable-diffusion.cpp compatibility
-
-- Emit `--model-args` instead of the `--chroma-*` / `--qwen-image-zero-cond-t` flags that current
-  sd.cpp no longer accepts; the legacy spelling is kept for older binaries and chosen per run from a
-  capability probe
-- Classify "unknown argument" failures instead of a generic error, naming the rejected flag
-- Detect backend folders built for another OS (for example `sd-cli.exe` on Linux), which previously
-  reported as a valid install
-- Fix the SD3 / SD3.5 pack's CLIP-G download, which failed with HTTP 400
-- Refreshed `sd-cli-help.txt` / `sd-server-help.txt` to `master-820-de298c2` and made them a test fixture
-
-### Settings and setup
-
-- **About** panel with app version, build date, and runtime details
-- Installation now recommends the newest release and lists every published binary, labelled with OS
-  and accelerator; the pinned "recommended runtime" tag is gone
-- Backend shows "None installed" instead of a version that is not on disk
-- Setup wizard restyled, with a way to skip the runtime download
-- **SD 1.5** starter pack (smallest)
-- Quantization output filename now follows the target format
-
-### Removed
-
-- Untracked `backend-config.json`, deleted `components.json`, the unused `ui/button`, `ui/card`,
-  `ui/input`, `ui/progress` components, and the `radix-vue` dependency
-
-## Unreleased
+## 0.7.8 — 2026-08-21
 
 ### Recipes
 
@@ -113,6 +83,36 @@ All notable changes to Flaxeo Image are documented in this file.
 - Restrict generation, upscale, model, and file-serving paths to configured storage roots with canonical path checks.
 - Updated Electron, Electron Builder, Multer, tar, and Vite to patched releases; multipart uploads now have explicit resource limits.
 - Added a configurable models root while preserving per-category folder overrides, and fixed nested/custom LoRA validation.
+
+## 0.7.7-debug — 2026-08-15
+
+**Debug build for testing. Not a stable release** — published as a GitHub Pre-release.
+
+### stable-diffusion.cpp compatibility
+
+- Emit `--model-args` instead of the `--chroma-*` / `--qwen-image-zero-cond-t` flags that current
+  sd.cpp no longer accepts; the legacy spelling is kept for older binaries and chosen per run from a
+  capability probe
+- Classify "unknown argument" failures instead of a generic error, naming the rejected flag
+- Detect backend folders built for another OS (for example `sd-cli.exe` on Linux), which previously
+  reported as a valid install
+- Fix the SD3 / SD3.5 pack's CLIP-G download, which failed with HTTP 400
+- Refreshed `sd-cli-help.txt` / `sd-server-help.txt` to `master-820-de298c2` and made them a test fixture
+
+### Settings and setup
+
+- **About** panel with app version, build date, and runtime details
+- Installation now recommends the newest release and lists every published binary, labelled with OS
+  and accelerator; the pinned "recommended runtime" tag is gone
+- Backend shows "None installed" instead of a version that is not on disk
+- Setup wizard restyled, with a way to skip the runtime download
+- **SD 1.5** starter pack (smallest)
+- Quantization output filename now follows the target format
+
+### Removed
+
+- Untracked `backend-config.json`, deleted `components.json`, the unused `ui/button`, `ui/card`,
+  `ui/input`, `ui/progress` components, and the `radix-vue` dependency
 
 ## 0.7.6 — 2026-07-12
 
