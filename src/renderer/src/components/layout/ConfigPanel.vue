@@ -28,6 +28,8 @@ import {
 } from '@/lib/icons'
 import type { Component } from 'vue'
 import Select from '@/components/ui/Select.vue'
+import Field from '@/components/ui/Field.vue'
+import Input from '@/components/ui/Input.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
@@ -836,39 +838,21 @@ onUnmounted(() => {
           v-else-if="activeCollapsedSection === 'generation'"
           class="grid grid-cols-1 md:grid-cols-2 gap-2"
         >
-          <label class="text-sm text-muted-foreground"
-            >Steps<input
-              v-model.number="config.steps"
-              type="number"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
-          <label class="text-sm text-muted-foreground"
-            >CFG<input
-              v-model.number="config.cfgScale"
-              type="number"
-              step="0.5"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
-          <label class="text-sm text-muted-foreground"
-            >Width<input
-              v-model.number="config.width"
-              type="number"
-              step="64"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
-          <label class="text-sm text-muted-foreground"
-            >Height<input
-              v-model.number="config.height"
-              type="number"
-              step="64"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
-          <label class="col-span-2 text-sm text-muted-foreground"
-            >Seed<input
-              v-model.number="config.seed"
-              type="number"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
+          <Field label="Steps">
+            <Input v-model.number="config.steps" type="number" />
+          </Field>
+          <Field label="CFG">
+            <Input v-model.number="config.cfgScale" type="number" step="0.5" />
+          </Field>
+          <Field label="Width">
+            <Input v-model.number="config.width" type="number" step="64" />
+          </Field>
+          <Field label="Height">
+            <Input v-model.number="config.height" type="number" step="64" />
+          </Field>
+          <Field label="Seed (-1 random)" class="col-span-2">
+            <Input v-model.number="config.seed" type="number" />
+          </Field>
         </div>
 
         <div v-else-if="activeCollapsedSection === 'hardware'" class="space-y-3">
@@ -909,25 +893,21 @@ onUnmounted(() => {
               Offload</label
             >
           </div>
-          <input
+          <Input
             v-model="config.backendAssignment"
             type="text"
+            size="sm"
             placeholder="Backend: cuda0, vulkan0, cpu"
-            class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm"
           />
-          <input
+          <Input
             v-model="config.paramsBackendAssignment"
             type="text"
+            size="sm"
             placeholder="Params backend"
-            class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm"
           />
-          <label class="text-sm text-muted-foreground"
-            >Max VRAM GiB<input
-              v-model.number="config.maxVram"
-              type="number"
-              step="0.1"
-              class="mt-1 w-full rounded-md bg-muted/50 px-3 py-2 text-foreground"
-          /></label>
+          <Field label="Max VRAM GiB">
+            <Input v-model.number="config.maxVram" type="number" step="0.1" />
+          </Field>
         </div>
 
         <div v-else-if="activeCollapsedSection === 'warnings'" class="space-y-2">
@@ -1440,42 +1420,15 @@ onUnmounted(() => {
             class="space-y-5"
           >
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Batch</label
-                >
-                <input
-                  v-model.number="config.batchCount"
-                  type="number"
-                  min="1"
-                  max="16"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Width</label
-                >
-                <input
-                  v-model.number="config.width"
-                  type="number"
-                  min="64"
-                  step="64"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Height</label
-                >
-                <input
-                  v-model.number="config.height"
-                  type="number"
-                  min="64"
-                  step="64"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              <Field label="Batch">
+                <Input v-model.number="config.batchCount" type="number" min="1" max="16" />
+              </Field>
+              <Field label="Width">
+                <Input v-model.number="config.width" type="number" min="64" step="64" />
+              </Field>
+              <Field label="Height">
+                <Input v-model.number="config.height" type="number" min="64" step="64" />
+              </Field>
             </div>
             <div>
               <label class="text-sm text-muted-foreground block mb-1">
@@ -1498,169 +1451,70 @@ onUnmounted(() => {
               />
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Steps</label
-                >
-                <input
-                  v-model.number="config.steps"
-                  type="number"
-                  min="1"
-                  max="150"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >CFG Scale</label
-                >
-                <input
-                  v-model.number="config.cfgScale"
-                  type="number"
-                  step="0.5"
-                  min="1"
-                  max="30"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              <Field label="Steps">
+                <Input v-model.number="config.steps" type="number" min="1" max="150" />
+              </Field>
+              <Field label="CFG Scale">
+                <Input v-model.number="config.cfgScale" type="number" step="0.5" min="1" max="30" />
+              </Field>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Guidance</label
-                >
-                <input
-                  v-model.number="config.guidance"
-                  type="number"
-                  step="0.1"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Clip Skip</label
-                >
-                <input
-                  v-model.number="config.clipSkip"
-                  type="number"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              <Field label="Guidance">
+                <Input v-model.number="config.guidance" type="number" step="0.1" />
+              </Field>
+              <Field label="Clip Skip">
+                <Input v-model.number="config.clipSkip" type="number" />
+              </Field>
             </div>
-            <div>
-              <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                >Seed (-1 random)</label
-              >
-              <input
-                v-model.number="config.seed"
-                type="number"
-                class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-              />
-            </div>
+            <Field label="Seed (-1 random)">
+              <Input v-model.number="config.seed" type="number" />
+            </Field>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Flow Shift</label
-                >
-                <input
+              <Field label="Flow Shift">
+                <Input
                   v-model.number="config.flowShift"
                   type="number"
                   step="0.1"
                   placeholder="Auto"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >ETA</label
-                >
-                <input
-                  v-model.number="config.eta"
-                  type="number"
-                  step="0.1"
-                  placeholder="Auto"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              </Field>
+              <Field label="ETA">
+                <Input v-model.number="config.eta" type="number" step="0.1" placeholder="Auto" />
+              </Field>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >SLG Scale</label
-                >
-                <input
-                  v-model.number="config.slgScale"
-                  type="number"
-                  step="0.1"
-                  placeholder="0"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Img CFG</label
-                >
-                <input
+              <Field label="SLG Scale">
+                <Input v-model.number="config.slgScale" type="number" step="0.1" placeholder="0" />
+              </Field>
+              <Field label="Img CFG">
+                <Input
                   v-model.number="config.imgCfgScale"
                   type="number"
                   step="0.1"
                   placeholder="CFG"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
-              </div>
+              </Field>
             </div>
 
             <template v-if="showAdvancedConfig">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >SLG Start</label
-                  >
-                  <input
-                    v-model.number="config.skipLayerStart"
-                    type="number"
-                    step="0.01"
-                    class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                  />
-                </div>
-                <div>
-                  <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                    >SLG End</label
-                  >
-                  <input
-                    v-model.number="config.skipLayerEnd"
-                    type="number"
-                    step="0.01"
-                    class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                  />
-                </div>
+                <Field label="SLG Start">
+                  <Input v-model.number="config.skipLayerStart" type="number" step="0.01" />
+                </Field>
+                <Field label="SLG End">
+                  <Input v-model.number="config.skipLayerEnd" type="number" step="0.01" />
+                </Field>
               </div>
 
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Skip Layers</label
-                >
-                <input
-                  v-model="config.skipLayers"
-                  type="text"
-                  placeholder="7,8,9"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              <Field label="Skip Layers">
+                <Input v-model="config.skipLayers" type="text" placeholder="7,8,9" />
+              </Field>
 
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Sigmas</label
-                >
-                <input
-                  v-model="config.sigmas"
-                  type="text"
-                  placeholder="14.61,7.8,3.5,0.0"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-              </div>
+              <Field label="Sigmas">
+                <Input v-model="config.sigmas" type="text" placeholder="14.61,7.8,3.5,0.0" />
+              </Field>
 
               <div>
                 <label class="text-sm text-muted-foreground block mb-1">Extra Sample Args</label>
@@ -1672,17 +1526,13 @@ onUnmounted(() => {
                 />
               </div>
 
-              <div>
-                <label class="text-base text-muted-foreground block mb-1.5 font-semibold"
-                  >Extra Tiling Args</label
-                >
-                <input
+              <Field label="Extra Tiling Args">
+                <Input
                   v-model="config.extraTilingArgs"
                   type="text"
                   placeholder="temporal_tile_frames=4"
-                  class="w-full px-3 py-2 text-sm rounded-md bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
-              </div>
+              </Field>
             </template>
           </div>
         </section>
@@ -1970,10 +1820,7 @@ onUnmounted(() => {
             <div>
               <label class="mb-1.5 block text-base font-semibold text-muted-foreground">
                 Cache preset
-                <span
-                  v-if="!supportsCacheMode"
-                  class="text-xs font-normal text-muted-foreground"
-                >
+                <span v-if="!supportsCacheMode" class="text-xs font-normal text-muted-foreground">
                   (unsupported by backend)
                 </span>
               </label>
@@ -2033,29 +1880,18 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
-                  >Cache Options</label
-                >
-                <input
+              <Field label="Cache Options">
+                <Input
                   v-model="config.cacheOption"
                   type="text"
+                  size="sm"
                   placeholder="threshold=0.25,warmup=4"
-                  class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label class="mb-1.5 block text-base font-semibold text-muted-foreground"
-                  >SCM Mask</label
-                >
-                <input
-                  v-model="config.scmMask"
-                  type="text"
-                  placeholder="1,1,1,0,0,1"
-                  class="w-full rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
+              <Field label="SCM Mask">
+                <Input v-model="config.scmMask" type="text" size="sm" placeholder="1,1,1,0,0,1" />
+              </Field>
             </template>
           </div>
         </section>

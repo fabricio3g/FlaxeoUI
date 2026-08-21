@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Check, X } from '@/lib/icons'
 import { useSetup } from '@/composables/useSetup'
+import IconButton from '@/components/ui/IconButton.vue'
 
 const emit = defineEmits<{
   dismiss: []
@@ -45,7 +46,7 @@ function onItemClick(id: string): void {
         >
           <Check
             class="size-3"
-            :class="item.done ? 'text-emerald-600 dark:text-emerald-400' : 'opacity-30'"
+            :class="item.done ? 'text-success' : 'opacity-30'"
           />
           {{ item.label }}
         </button>
@@ -59,14 +60,13 @@ function onItemClick(id: string): void {
     >
       Try sample
     </button>
-    <button
-      type="button"
-      class="aui-icon-button inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+    <IconButton
+      class="shrink-0"
       aria-label="Dismiss getting started"
       title="Dismiss (won't show again)"
       @click="emit('dismiss')"
     >
       <X class="size-3.5" />
-    </button>
+    </IconButton>
   </div>
 </template>

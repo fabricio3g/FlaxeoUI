@@ -3,6 +3,8 @@ import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChevronDown, ChevronUp, CircleHelp, Square, X } from '@/lib/icons'
 import { useJobQueue } from '@/composables/useJobQueue'
+import IconButton from '@/components/ui/IconButton.vue'
+import Button from '@/components/ui/Button.vue'
 
 const props = defineProps<{
   open: boolean
@@ -65,7 +67,7 @@ function statusLabel(status: string): string {
 }
 
 function statusClass(status: string): string {
-  if (status === 'success') return 'text-emerald-600 dark:text-emerald-400'
+  if (status === 'success') return 'text-success'
   if (status === 'failed') return 'text-destructive'
   if (status === 'cancelled') return 'text-muted-foreground'
   if (status === 'running') return 'text-foreground font-medium'
@@ -122,39 +124,31 @@ watch(
             </p>
           </div>
           <div class="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            <IconButton
               title="Help: Queue"
               aria-label="Help about the queue"
               @click="openQueueHelp"
             >
               <CircleHelp class="size-4" />
-            </button>
-            <button
+            </IconButton>
+            <Button
               v-if="!paused"
-              type="button"
-              class="rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              size="sm"
               @click="pause"
             >
               Pause
-            </button>
-            <button
+            </Button>
+            <Button
               v-else
-              type="button"
-              class="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              size="sm"
+              class="font-medium text-foreground"
               @click="resume"
             >
               Resume
-            </button>
-            <button
-              type="button"
-              class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Close"
-              @click="emit('close')"
-            >
+            </Button>
+            <IconButton aria-label="Close" @click="emit('close')">
               <X class="size-4" />
-            </button>
+            </IconButton>
           </div>
           <div class="aui-scroll-header__fade" aria-hidden="true" />
         </header>
@@ -173,14 +167,13 @@ watch(
                   {{ surfaceLabel(current.surface) }}
                 </p>
               </div>
-              <button
-                type="button"
-                class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              <IconButton
+                class="shrink-0 hover:bg-destructive/10 hover:text-destructive"
                 title="Cancel current"
                 @click="cancelCurrent"
               >
                 <Square class="size-3.5 fill-current" />
-              </button>
+              </IconButton>
             </div>
           </section>
 
@@ -219,32 +212,30 @@ watch(
                   </p>
                   <p class="text-xs text-muted-foreground">{{ surfaceLabel(job.surface) }}</p>
                 </div>
-                <button
-                  type="button"
-                  class="aui-icon-button size-7 rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30"
+                <IconButton
+                  size="sm"
                   :disabled="index === 0"
                   title="Move up"
                   @click="move(job.id, index - 1)"
                 >
                   <ChevronUp class="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  class="aui-icon-button size-7 rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30"
+                </IconButton>
+                <IconButton
+                  size="sm"
                   :disabled="index >= pending.length - 1"
                   title="Move down"
                   @click="move(job.id, index + 1)"
                 >
                   <ChevronDown class="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  class="aui-icon-button size-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  class="hover:bg-destructive/10 hover:text-destructive"
                   title="Remove"
                   @click="remove(job.id)"
                 >
                   <X class="size-3.5" />
-                </button>
+                </IconButton>
               </li>
             </ul>
           </section>

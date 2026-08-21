@@ -25,6 +25,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -49,7 +51,7 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   /* Pure white shell — black type/icons for contrast (composer keeps its own surface) */
   --background: #ffffff;
@@ -70,16 +72,21 @@
   --muted: #f5f5f5;
   --muted-foreground: #525252;
 
-  --accent: #f5f5f5;
+  /* Ghost hover: quiet alpha overlay, no color swap */
+  --accent: rgb(0 0 0 / 0.04);
   --accent-foreground: #000000;
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
 
-  --border: #e5e5e5;
-  --input: #e5e5e5;
+  --success: oklch(0.55 0.12 150);
+  --warning: oklch(0.62 0.13 75);
 
-  --ring: #d0d0d0;
+  /* Hairline borders: low-alpha ink instead of solid grays */
+  --border: rgb(0 0 0 / 0.08);
+  --input: rgb(0 0 0 / 0.1);
+
+  --ring: rgb(0 0 0 / 0.14);
 
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -91,10 +98,10 @@
   --sidebar-foreground: #000000;
   --sidebar-primary: #000000;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
+  --sidebar-accent: rgb(0 0 0 / 0.04);
   --sidebar-accent-foreground: #000000;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #d0d0d0;
+  --sidebar-border: rgb(0 0 0 / 0.08);
+  --sidebar-ring: rgb(0 0 0 / 0.14);
   --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   --surface-shadow-focus: 0 1px 3px rgb(0 0 0 / 0.08);
   --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -120,16 +127,21 @@
   --muted: #111111;
   --muted-foreground: #b3b3b3;
 
-  --accent: #1a1a1a;
+  /* Ghost hover: quiet alpha overlay, no color swap */
+  --accent: rgb(255 255 255 / 0.06);
   --accent-foreground: #ffffff;
 
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
 
-  --border: #222222;
-  --input: #222222;
+  --success: oklch(0.75 0.13 155);
+  --warning: oklch(0.82 0.12 85);
 
-  --ring: #3a3a3a;
+  /* Hairline borders: low-alpha ink instead of solid grays */
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.1);
+
+  --ring: rgb(255 255 255 / 0.16);
 
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -141,10 +153,10 @@
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #111111;
+  --sidebar-accent: rgb(255 255 255 / 0.06);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #222222;
-  --sidebar-ring: #3a3a3a;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: rgb(255 255 255 / 0.16);
   --surface-shadow: none;
   --surface-shadow-focus: none;
 }
@@ -449,17 +461,17 @@
 .flaxeo-composer {
   overflow: visible;
   border: 0;
-  border-radius: 2rem;
+  border-radius: 1.5rem;
   background: #f8f8f8;
   box-shadow:
-    inset 0 0 0 1px #e5e5e5,
+    inset 0 0 0 1px rgb(0 0 0 / 0.08),
     0 1px 2px rgb(0 0 0 / 0.05);
   transition: box-shadow 150ms ease;
 }
 
 .flaxeo-composer:focus-within {
   box-shadow:
-    inset 0 0 0 1px #d0d0d0,
+    inset 0 0 0 1px rgb(0 0 0 / 0.14),
     0 1px 3px rgb(0 0 0 / 0.08);
 }
 
@@ -467,19 +479,19 @@
   --foreground: #ffffff;
   --muted: #292929;
   --muted-foreground: #b3b3b3;
-  --accent: #292929;
+  --accent: rgb(255 255 255 / 0.06);
   --accent-foreground: #ffffff;
   --background: #141414;
-  --border: #333333;
-  --input: #333333;
-  --ring: #4a4a4a;
+  --border: rgb(255 255 255 / 0.1);
+  --input: rgb(255 255 255 / 0.1);
+  --ring: rgb(255 255 255 / 0.18);
   background: #1c1c1c;
   color: #ffffff;
-  box-shadow: inset 0 0 0 1px #333333;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
 }
 
 .dark .flaxeo-composer:focus-within {
-  box-shadow: inset 0 0 0 1px #4a4a4a;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
 }
 
 @keyframes content-enter {

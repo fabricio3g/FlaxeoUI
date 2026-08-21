@@ -34,6 +34,39 @@ All notable changes to Flaxeo Image are documented in this file.
 
 ## Unreleased
 
+### Bug fixes
+
+- Gallery → Image view: "reuse parameters" now restores only the generation recipe (prompt,
+  steps, CFG, seed, sampler) via a conservative `recipe` mode — canvas size and model are no
+  longer clobbered by metadata (a 4096×4096 source no longer resizes the canvas, and models that
+  are not installed are never auto-selected); the init image lands in the img2img panel with the
+  prompt and parameters restored
+- Post-generation display: the batch grid tracks the exact filenames of the latest generation
+  instead of slicing the accumulated session list by batch size, so toggling Grid/Single or
+  generating single images no longer regroups unrelated images into one "batch"; the Grid toggle
+  now disappears as soon as the latest generation is a single image
+
+### Composer sizing
+
+- The prompt composer shell is ~20% shorter in all three views (Image / Edit / Video): resting
+  textarea 56px (48px mobile), tighter row paddings and outer spacing; long prompts still grow
+  to a 180px cap (132px mobile)
+
+### UI alignment and renderer cleanup
+
+- Design tokens realigned against a minimal monochrome reference system: hairline alpha borders
+  and rings (4–16% ink instead of solid grays), ghost hover surfaces as low-alpha overlays, base
+  radius 8px, composer radius 24px, muted semantic `--success` / `--warning` status tokens
+- New shared primitives `ui/Button`, `ui/IconButton`, `ui/Field`, `ui/Input`; migrated Sidebar,
+  Titlebar, QueuePanel, OnboardingStrip and the ConfigPanel form fields to them
+- ConfigPanel: replaced ~22 repeated label+input blocks with `Field`/`Input`, unifying three
+  inconsistent label styles into one
+- Removed the animated brand-texture gradient from the sidebar (flat monochrome brand chip),
+  the unused Electron-Vite template assets (`assets/base.css`, template `main.css`, SVGs, wallpaper),
+  and two leftover `console.log` calls
+- Status indicators (runtime dot, queue states, onboarding checks) now use semantic tokens instead
+  of hardcoded emerald/amber/red palette classes
+
 ### AnimateDiff (stable-diffusion.cpp)
 
 - Video: `--motion-module` from `models/animatediff/`; standard SD1.5 load (`-m`) for AnimateDiff stacks

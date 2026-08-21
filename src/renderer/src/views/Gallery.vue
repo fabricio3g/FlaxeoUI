@@ -14,7 +14,7 @@ import {
   Copy,
   Sparkles,
   Video,
-  Scale,
+  Expand,
   X,
   History,
   Wand2
@@ -225,7 +225,7 @@ function sendToEdit(): void {
 
 function sendToText2Image(): void {
   if (!selectedImage.value) return
-  sessionStorage.setItem('text2imageParams', getOutputUrl(selectedImage.value))
+  sessionStorage.setItem('text2imageInitImage', getOutputUrl(selectedImage.value))
   toast.success('Sent to Text2Image')
   router.push({ name: 'Text2Image' })
 }
@@ -606,7 +606,7 @@ onUnmounted(() => {
               aria-label="Queue upscale"
               :disabled="!supportsUpscale || !models.upscale.length"
             >
-              <Scale class="size-4" />
+              <Expand class="size-4" />
             </button>
           </Tooltip>
           <Tooltip text="Queue ADetailer (face/object repair)" position="bottom">
@@ -730,7 +730,6 @@ onUnmounted(() => {
               :disabled="isUpscaling || !upscaleModel"
               @click="runUpscale"
             >
-              <Scale class="size-4" :class="isUpscaling && 'animate-pulse'" />
               {{ isUpscaling ? 'Upscaling…' : 'Run upscale' }}
             </button>
           </div>
@@ -780,7 +779,7 @@ onUnmounted(() => {
               class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               aria-label="Reload gallery"
             >
-              <RefreshCw class="size-4" :class="isLoading && 'animate-spin'" />
+              <RefreshCw class="size-4" />
             </button>
           </Tooltip>
 

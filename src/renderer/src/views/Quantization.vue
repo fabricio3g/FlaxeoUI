@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useModels } from '@/composables/useModels'
 import { apiPost } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { Scale, ArrowUp, X, CheckCircle2, RefreshCw } from '@/lib/icons'
+import { Binary, ArrowUp, X, CheckCircle2, RefreshCw } from '@/lib/icons'
 import Select from '@/components/ui/Select.vue'
 
 const toast = useToast()
@@ -186,7 +186,7 @@ onMounted(() => {
       <!-- Header -->
       <header class="mb-8">
         <div class="flex items-center gap-2.5">
-          <Scale class="size-5 text-muted-foreground" />
+          <Binary class="size-5 text-muted-foreground" />
           <h1 class="text-xl font-semibold tracking-tight text-foreground">Quantize</h1>
         </div>
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -196,7 +196,7 @@ onMounted(() => {
 
       <!-- Status (idle / progress / result) — flat, no nested cards -->
       <section v-if="isConverting" class="mb-8 flex items-start gap-3">
-        <RefreshCw class="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground" />
+        <RefreshCw class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div>
           <p class="text-base font-medium text-foreground">Converting…</p>
           <p class="mt-1 text-sm leading-5 text-muted-foreground">
@@ -334,7 +334,7 @@ onMounted(() => {
             class="inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             @click="handleCancel"
           >
-            <RefreshCw v-if="isCancelling" class="size-4 animate-spin" />
+            <RefreshCw v-if="isCancelling" class="size-4" />
             <X v-else class="size-4" />
             Cancel
           </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageIcon, Brush, Video, Images, Settings, Scale, BookOpen } from '@/lib/icons'
+import { ImageIcon, Brush, Video, Images, Settings, Binary, BookOpen } from '@/lib/icons'
 import type { Component } from 'vue'
 
 interface NavItem {
@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { id: 'gallery', label: 'Gallery', icon: Images },
   { id: 'help', label: 'Help', icon: BookOpen },
   { id: 'settings', label: 'Settings', icon: Settings },
-  { id: 'quantization', label: 'Quantize', icon: Scale }
+  { id: 'quantization', label: 'Quantize', icon: Binary }
 ]
 
 function handleNavClick(id: string): void {
