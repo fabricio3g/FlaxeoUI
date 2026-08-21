@@ -478,8 +478,8 @@ onMounted(async () => {
     if (state?.port) {
       initializeApi(state.port, state.desktopApiToken)
     }
-  } catch (e) {
-    console.log('Running outside Electron or getInitState not available')
+  } catch {
+    /* ignore */
   }
 
   if (!(await ensureRemoteAuthentication())) return

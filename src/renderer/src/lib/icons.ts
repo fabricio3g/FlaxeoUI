@@ -1,172 +1,150 @@
-import { defineComponent, h, type Component } from 'vue'
+/**
+ * Central icon registry — static lucide-vue-next icons only (no hover/tap motion).
+ * Keep app-wide imports pointing here so icon choices stay auditable.
+ */
 import {
-  Activity as MotionActivity,
-  ArrowRight as MotionArrowRight,
-  ArrowUp as MotionArrowUp,
-  Bookmark as MotionBookmark,
-  BookText as MotionBookText,
-  Brush as MotionBrush,
-  Check as MotionCheck,
-  ChevronDown as MotionChevronDown,
-  ChevronLeft as MotionChevronLeft,
-  ChevronRight as MotionChevronRight,
-  ChevronUp as MotionChevronUp,
-  Clapperboard as MotionClapperboard,
-  Copy as MotionCopy,
-  Cpu as MotionCpu,
-  DatabaseBackup as MotionDatabaseBackup,
-  Download as MotionDownload,
-  FileText as MotionFileText,
-  FolderOpen as MotionFolderOpen,
-  Frame as MotionFrame,
-  GalleryVertical as MotionGalleryVertical,
-  GripHorizontal as MotionGripHorizontal,
-  History as MotionHistory,
-  LayoutGrid as MotionLayoutGrid,
-  Maximize2 as MotionMaximize2,
-  Moon as MotionMoon,
-  Play as MotionPlay,
-  Plus as MotionPlus,
-  RefreshCw as MotionRefreshCw,
-  Search as MotionSearch,
-  Settings as MotionSettings,
-  CircleHelp as MotionCircleHelp,
-  SlidersHorizontal as MotionSlidersHorizontal,
-  Shrink as MotionShrink,
-  Sparkles as MotionSparkles,
-  Sun as MotionSun,
-  Terminal as MotionTerminal,
-  Upload as MotionUpload,
-  User as MotionUser,
-  WandSparkles as MotionWandSparkles,
-  X as MotionX,
-  Zap as MotionZap
-} from '@respeak/lucide-motion-vue'
-import {
-  AlertTriangle as StaticAlertTriangle,
-  CheckCircle as StaticCheckCircle,
-  CheckCircle2 as StaticCheckCircle2,
-  Crop as StaticCrop,
-  Eraser as StaticEraser,
-  ExternalLink as StaticExternalLink,
-  FileCode as StaticFileCode,
-  Film as StaticFilm,
-  Grid as StaticGrid,
-  Image as StaticImage,
-  ImagePlus as StaticImagePlus,
-  Info as StaticInfo,
-  Loader2 as StaticLoader2,
-  Lock as StaticLock,
-  LockOpen as StaticLockOpen,
-  Minus as StaticMinus,
-  Dices as StaticDices,
-  Save as StaticSave,
-  Server as StaticServer,
-  Square as StaticSquare,
-  Trash2 as StaticTrash2,
-  XCircle as StaticXCircle
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ArrowUp,
+  Binary,
+  Bookmark,
+  BookOpen,
+  Brush,
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  CircleHelp,
+  Clapperboard,
+  Copy,
+  Cpu,
+  Crop,
+  Database,
+  Dices,
+  Download,
+  Eraser,
+  Expand,
+  ExternalLink,
+  FileCode,
+  FileText,
+  Film,
+  FolderOpen,
+  Frame,
+  Grid,
+  GripHorizontal,
+  History,
+  Image,
+  ImagePlus,
+  Images,
+  Info,
+  LayoutGrid,
+  Loader2,
+  Lock,
+  LockOpen,
+  Maximize2,
+  Minus,
+  Moon,
+  Paperclip,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  ScanFace,
+  Search,
+  Server,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  Spline,
+  Square,
+  Sun,
+  Terminal,
+  Trash2,
+  Upload,
+  User,
+  WandSparkles,
+  X,
+  XCircle,
+  Zap
 } from 'lucide-vue-next'
 
-function animatedIcon(icon: Component, animation?: string): Component {
-  return defineComponent({
-    inheritAttrs: false,
-    setup(_props, { attrs }) {
-      // animateOnTap can leave a visible focus/stroke chrome on click in Electron —
-      // hover is enough for polish; keep SVG non-interactive so the button owns focus.
-      return () =>
-        h(icon, {
-          ...attrs,
-          animateOnHover: true,
-          animateOnTap: false,
-          triggerTarget: 'parent',
-          ...(animation ? { animation } : {})
-        })
-    }
-  })
+export {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ArrowUp,
+  Binary,
+  Bookmark,
+  BookOpen,
+  Brush,
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  CircleHelp,
+  Clapperboard,
+  Copy,
+  Cpu,
+  Crop,
+  Database,
+  Dices,
+  Download,
+  Eraser,
+  Expand,
+  ExternalLink,
+  FileCode,
+  FileText,
+  Film,
+  FolderOpen,
+  Grid,
+  GripHorizontal,
+  History,
+  Image,
+  ImagePlus,
+  Images,
+  Info,
+  LayoutGrid,
+  Loader2,
+  Lock,
+  LockOpen,
+  Maximize2,
+  Minus,
+  Moon,
+  Paperclip,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  ScanFace,
+  Search,
+  Server,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  Spline,
+  Square,
+  Sun,
+  Terminal,
+  Trash2,
+  Upload,
+  User,
+  WandSparkles,
+  X,
+  XCircle,
+  Zap
 }
 
-function fallbackIcon(icon: Component): Component {
-  return defineComponent({
-    inheritAttrs: false,
-    setup(_props, { attrs }) {
-      // Always pass explicit size so lucide SVGs paint even without Tailwind size classes
-      return () =>
-        h(icon, {
-          size: 24,
-          strokeWidth: 2,
-          absoluteStrokeWidth: false,
-          ...attrs
-        })
-    }
-  })
-}
-
-export const Activity = animatedIcon(MotionActivity, 'lucide-animated')
-export const AlertTriangle = fallbackIcon(StaticAlertTriangle)
-export const ArrowRight = animatedIcon(MotionArrowRight, 'lucide-animated')
-export const ArrowUp = animatedIcon(MotionArrowUp, 'lucide-animated')
-/** Recipes / saved looks */
-export const Bookmark = animatedIcon(MotionBookmark, 'lucide-animated')
-/** Help center (BookText animated; BookOpen static alias for lucide naming) */
-export const BookOpen = animatedIcon(MotionBookText, 'lucide-animated')
+/** Nav alias for the Image workspace (Frame glyph distinguishes it from raw Image) */
+export const ImageIcon = Frame
+/** Help nav alias */
 export const BookText = BookOpen
-export const Brush = animatedIcon(MotionBrush, 'lucide-animated')
-export const Check = animatedIcon(MotionCheck, 'lucide-animated')
-export const CheckCircle = fallbackIcon(StaticCheckCircle)
-export const CheckCircle2 = fallbackIcon(StaticCheckCircle2)
-export const ChevronDown = animatedIcon(MotionChevronDown, 'lucide-animated')
-export const ChevronLeft = animatedIcon(MotionChevronLeft, 'lucide-animated')
-export const ChevronRight = animatedIcon(MotionChevronRight, 'lucide-animated')
-export const ChevronUp = animatedIcon(MotionChevronUp, 'lucide-animated')
-export const CircleHelp = animatedIcon(MotionCircleHelp, 'lucide-animated')
-export const Copy = animatedIcon(MotionCopy, 'lucide-animated')
-export const Crop = fallbackIcon(StaticCrop)
-export const Cpu = animatedIcon(MotionCpu)
-export const Dices = fallbackIcon(StaticDices)
-export const Database = animatedIcon(MotionDatabaseBackup)
-export const Download = animatedIcon(MotionDownload, 'lucide-animated')
-export const Eraser = fallbackIcon(StaticEraser)
-export const ExternalLink = fallbackIcon(StaticExternalLink)
-export const FileCode = fallbackIcon(StaticFileCode)
-/** Prompt text presets (distinct from Recipes Bookmark) */
-export const FileText = animatedIcon(MotionFileText, 'lucide-animated')
-export const Film = fallbackIcon(StaticFilm)
-export const FolderOpen = animatedIcon(MotionFolderOpen)
-export const Grid = fallbackIcon(StaticGrid)
-export const GripHorizontal = animatedIcon(MotionGripHorizontal)
-/** Alias: Help nav uses BookOpen; CircleHelp for inline context */
 export const HelpCircle = CircleHelp
-export const History = animatedIcon(MotionHistory, 'lucide-animated')
-export const Image = fallbackIcon(StaticImage)
-export const ImageIcon = animatedIcon(MotionFrame, 'lucide-animated')
-export const ImagePlus = fallbackIcon(StaticImagePlus)
-export const Images = animatedIcon(MotionGalleryVertical, 'lucide-animated')
-export const Info = fallbackIcon(StaticInfo)
-export const LayoutGrid = animatedIcon(MotionLayoutGrid)
-export const Loader2 = fallbackIcon(StaticLoader2)
-export const Lock = fallbackIcon(StaticLock)
-export const LockOpen = fallbackIcon(StaticLockOpen)
-export const Maximize2 = animatedIcon(MotionMaximize2)
-export const Minus = fallbackIcon(StaticMinus)
-export const Moon = animatedIcon(MotionMoon, 'alt')
-export const Play = animatedIcon(MotionPlay, 'lucide-animated')
-export const Plus = animatedIcon(MotionPlus, 'alt')
-export const RefreshCw = animatedIcon(MotionRefreshCw, 'lucide-animated')
-export const Save = fallbackIcon(StaticSave)
-export const Scale = animatedIcon(MotionShrink, 'lucide-animated')
-export const Search = animatedIcon(MotionSearch, 'lucide-animated')
-export const Server = fallbackIcon(StaticServer)
-export const Settings = animatedIcon(MotionSettings, 'lucide-animated')
-export const SlidersHorizontal = animatedIcon(MotionSlidersHorizontal, 'lucide-animated')
-export const Sparkles = animatedIcon(MotionSparkles, 'lucide-animated')
-export const Square = fallbackIcon(StaticSquare)
-export const Sun = animatedIcon(MotionSun, 'alt')
-export const Terminal = animatedIcon(MotionTerminal, 'alt')
-export const Trash2 = fallbackIcon(StaticTrash2)
-export const Upload = animatedIcon(MotionUpload, 'lucide-animated')
-export const User = animatedIcon(MotionUser, 'lucide-animated')
-export const Video = animatedIcon(MotionClapperboard, 'lucide-animated')
-export const Wand2 = animatedIcon(MotionWandSparkles)
-export const X = animatedIcon(MotionX, 'alt')
-export const XCircle = fallbackIcon(StaticXCircle)
-export const Zap = animatedIcon(MotionZap)
+export const Video = Clapperboard
+export const Wand2 = WandSparkles

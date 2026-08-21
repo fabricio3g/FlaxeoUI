@@ -14,7 +14,6 @@ let desktopApiToken = ''
 export function initializeApi(port: number, token = ''): void {
   serverPort = port
   desktopApiToken = token
-  console.log('[API] Initialized with port:', port)
 }
 
 /**

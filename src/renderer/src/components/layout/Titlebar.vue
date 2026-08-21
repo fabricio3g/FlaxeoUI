@@ -12,6 +12,8 @@ import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
 import ModelHubModal from '@/components/ModelHubModal.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+import IconButton from '@/components/ui/IconButton.vue'
+import Button from '@/components/ui/Button.vue'
 
 export type PanelAnchor = {
   top: number
@@ -40,7 +42,7 @@ const emit = defineEmits<{
 const isElectron = ref(false)
 const showModelHub = ref(false)
 const showDownloadManager = ref(false)
-const queueBtnRef = ref<HTMLElement | null>(null)
+const queueBtnRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const configStore = useConfigStore()
 const { config } = storeToRefs(configStore)
 const {
@@ -77,9 +79,9 @@ const queueBadgeLabel = computed(() => {
 })
 
 const statusDotClass = computed(() => {
-  if (runtimeState.value === 'online') return 'bg-emerald-500'
-  if (runtimeState.value === 'offline') return 'bg-amber-500'
-  return 'bg-red-500'
+  if (runtimeState.value === 'online') return 'bg-success'
+  if (runtimeState.value === 'offline') return 'bg-warning'
+  return 'bg-destructive'
 })
 
 const statusHint = computed(() => {
@@ -105,7 +107,10 @@ function rectFromEl(el: HTMLElement | null): PanelAnchor | null {
 }
 
 function handleToggleQueue(): void {
-  emit('toggleQueue', rectFromEl(queueBtnRef.value))
+  // Ref may be a component wrapper; resolve its root element
+  const el = queueBtnRef.value
+  const target = el instanceof HTMLElement ? el : ((el as { $el?: HTMLElement } | null)?.$el ?? null)
+  emit('toggleQueue', rectFromEl(target))
 }
 
 function handleBackendMode(value: string): void {
@@ -153,13 +158,12 @@ function handleClose(): void {
   >
     <div class="flex h-full min-w-0 items-center gap-1.5 px-2 titlebar-no-drag">
       <div class="group relative hidden h-8 items-center justify-center titlebar-no-drag md:flex">
-        <button
-          class="aui-icon-button inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          type="button"
+        <IconButton
+          shape="pill"
           :aria-label="runtimeLabel"
         >
           <span class="h-2.5 w-2.5 rounded-full" :class="statusDotClass"></span>
-        </button>
+        </IconButton>
 
         <div
           class="pointer-events-none absolute left-0 top-full z-[60] mt-2 w-64 -translate-y-1 rounded-xl border border-border/80 bg-popover p-3.5 text-xs text-popover-foreground opacity-0 shadow-xl shadow-black/10 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:shadow-black/30"
@@ -173,11 +177,7 @@ function handleClose(): void {
               <span>Server</span>
               <span
                 class="font-medium"
-                :class="
-                  sdServerRunning
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-amber-600 dark:text-amber-400'
-                "
+                :class="sdServerRunning ? 'text-success' : 'text-warning'"
                 >{{ sdServerRunning ? 'Online' : 'Offline' }}</span
               >
             </div>
@@ -185,7 +185,7 @@ function handleClose(): void {
               <span>Backend</span>
               <span
                 class="max-w-36 truncate font-medium"
-                :class="backendValid ? 'text-foreground' : 'text-red-500'"
+                :class="backendValid ? 'text-foreground' : 'text-destructive'"
                 :title="backendVersion"
                 >{{ backendVersion }}</span
               >
@@ -220,13 +220,14 @@ function handleClose(): void {
       v-if="isElectron"
       class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 titlebar-no-drag md:flex"
     >
-      <button
-        class="inline-flex h-7 items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
+        class="h-7 rounded-md px-3"
         @click="showModelHub = true"
       >
         Model Hub
-      </button>
+      </Button>
     </div>
 
     <!-- Drag region between left tools and right actions -->
@@ -235,10 +236,11 @@ function handleClose(): void {
     <div class="flex h-full items-center gap-0.5 titlebar-no-drag">
       <!-- Queue -->
       <Tooltip text="Job queue — reorder, pause, or cancel runs" position="bottom">
-        <button
+        <Button
           ref="queueBtnRef"
-          type="button"
-          class="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          variant="ghost"
+          size="sm"
+          class="h-8 px-2"
           :class="props.queueOpen || queueBadge ? 'bg-accent/80 text-foreground' : ''"
           :aria-expanded="props.queueOpen"
           aria-label="Job queue"
@@ -251,38 +253,37 @@ function handleClose(): void {
           >
             {{ queueBadgeLabel }}
           </span>
-        </button>
+        </Button>
       </Tooltip>
 
       <Tooltip v-if="showMobileConfig" text="Model & settings" position="bottom">
-        <button
-          @click="emit('toggleMobileConfig')"
-          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:hidden"
-          type="button"
+        <IconButton
+          class="mr-0.5 md:hidden"
           aria-label="Open mobile settings"
+          @click="emit('toggleMobileConfig')"
         >
           <SlidersHorizontal class="h-4 w-4" />
-        </button>
+        </IconButton>
       </Tooltip>
 
       <button
         v-if="props.setupNeeded"
-        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:hidden"
+        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-md bg-warning/10 px-2 text-xs font-medium text-warning transition-colors duration-150 hover:bg-warning/15 titlebar-no-drag md:hidden"
         type="button"
         title="Open setup wizard"
         @click="emit('openSetup')"
       >
-        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+        <span class="h-1.5 w-1.5 rounded-full bg-warning"></span>
         Setup
       </button>
 
       <button
         v-if="props.setupNeeded"
-        class="aui-status-badge mr-0.5 hidden h-7 items-center gap-1.5 rounded-md bg-amber-500/10 px-2 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-500/15 dark:text-amber-400 titlebar-no-drag md:inline-flex"
+        class="aui-status-badge mr-0.5 hidden h-7 items-center gap-1.5 rounded-md bg-warning/10 px-2 text-xs font-medium text-warning transition-colors duration-150 hover:bg-warning/15 titlebar-no-drag md:inline-flex"
         type="button"
         @click="emit('openSetup')"
       >
-        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+        <span class="h-1.5 w-1.5 rounded-full bg-warning"></span>
         Setup
       </button>
 
@@ -296,15 +297,14 @@ function handleClose(): void {
         "
         position="bottom"
       >
-        <button
-          @click="showDownloadManager = !showDownloadManager"
-          class="aui-icon-button relative mr-0.5 inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-1.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-          type="button"
+        <IconButton
+          class="mr-0.5 w-auto min-w-8 px-1.5"
           :aria-label="
             activeCount ? `Open download manager, ${activeCount} active` : 'Open download manager'
           "
           :class="showDownloadManager || activeCount ? 'bg-accent/80 text-foreground' : ''"
           :aria-expanded="showDownloadManager"
+          @click="showDownloadManager = !showDownloadManager"
         >
           <Download class="h-4 w-4 shrink-0" />
           <span
@@ -313,30 +313,24 @@ function handleClose(): void {
           >
             {{ downloadBadgeLabel }}
           </span>
-        </button>
+        </IconButton>
       </Tooltip>
 
       <Tooltip v-if="canControl" text="Terminal — server / generation logs" position="bottom">
-        <button
-          @click="emit('toggleLogs')"
-          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          type="button"
-          aria-label="Open server logs"
-        >
+        <IconButton class="mr-0.5" aria-label="Open server logs" @click="emit('toggleLogs')">
           <Terminal class="h-4 w-4" />
-        </button>
+        </IconButton>
       </Tooltip>
 
       <Tooltip :text="isDark ? 'Switch to light theme' : 'Switch to dark theme'" position="bottom">
-        <button
-          @click="toggleTheme"
-          class="aui-icon-button mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          type="button"
+        <IconButton
+          class="mr-0.5"
           :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
         >
           <Sun v-if="isDark" class="h-4 w-4" />
           <Moon v-else class="h-4 w-4" />
-        </button>
+        </IconButton>
       </Tooltip>
 
       <template v-if="isElectron">

@@ -10,12 +10,12 @@ import {
   Download,
   Trash2,
   X,
-  User,
-  Activity,
-  ImagePlus,
+  ScanFace,
+  Spline,
+  Paperclip,
   ChevronLeft,
   ChevronRight,
-  Image,
+  Images,
   Lock,
   LockOpen,
   SlidersHorizontal,
@@ -44,7 +44,7 @@ import Tooltip from '@/components/ui/Tooltip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { samplerOptions, schedulerOptions } from '@/lib/generationOptions'
 import { useGenerationHistory } from '@/composables/useGenerationHistory'
-import { normalizeImageParams } from '@/lib/imageParams'
+import { hasUsableImageParams, normalizeImageParams } from '@/lib/imageParams'
 import { buildGenerationPayload, type GenerationPayload } from '@/lib/generationPayload'
 import { pickConfigSnapshot } from '@/lib/configSnapshot'
 import { useSetup } from '@/composables/useSetup'
@@ -190,8 +190,8 @@ const showImageViewer = ref(false)
 /** Fullscreen modal — separate from stage so browsing never steals live preview */
 const viewerSrc = ref<string | null>(null)
 const viewerFilename = ref<string | null>(null)
-/** Last successful batch size — drives multi-tile grid layout */
-const lastBatchSize = ref(1)
+/** Filenames of the most recent generation — drives the multi-tile batch grid */
+const lastBatchFilenames = ref<string[]>([])
 const showBatchGrid = ref(false)
 
 interface AdvancedUploadSnapshot {
@@ -384,7 +384,7 @@ function autoResize(): void {
   const el = promptInput.value
   if (el) {
     el.style.height = 'auto'
-    const limit = isMobile.value ? 160 : 360
+    const limit = isMobile.value ? 132 : 180
     el.style.height = Math.min(el.scrollHeight, limit) + 'px'
   }
 }
@@ -581,31 +581,74 @@ function onImageToolCropApply(payload: { file: File; width: number; height: numb
   )
 }
 
-// Helper to get params from image
-async function sendToParams(imagePath: string) {
+// Gallery → Text2Image handoff: load the image itself as the img2img init image
+// (so "Send to Text2Image" always uses the picture), then restore the embedded
+// generation recipe. Canvas size is only taken from metadata when sane, and a
+// model is only selected when it exists locally — never clobber the setup.
+async function consumeGalleryHandoff(imagePath: string) {
   try {
-    let relativePath = imagePath
-    if (imagePath.startsWith('http')) {
+    const res = await authenticatedFetch(imagePath)
+    const blob = await res.blob()
+    if (config.value.initImagePath?.startsWith('blob:')) {
+      URL.revokeObjectURL(config.value.initImagePath)
+    }
+    initImageFile.value = new File([blob], 'image.png', { type: blob.type || 'image/png' })
+    config.value.initImagePath = URL.createObjectURL(blob)
+    activeTab.value = 'img2img'
+  } catch (e) {
+    console.error('Failed to load image from gallery:', e)
+    toast.error('Could not load image from Gallery')
+    return
+  }
+
+  let relativePath = imagePath
+  if (imagePath.startsWith('http')) {
+    try {
       const url = new URL(imagePath)
       relativePath = decodeURIComponent(url.pathname.replace(/^\/output\//, ''))
-    } else if (imagePath.includes('/output/')) {
-      relativePath = imagePath.split('/output/').pop() || imagePath
+    } catch {
+      relativePath = imagePath
     }
+  } else if (imagePath.includes('/output/')) {
+    relativePath = imagePath.split('/output/').pop() || imagePath
+  }
 
+  try {
     const data = await apiPost<Record<string, unknown>>('/api/image/params', {
       path: relativePath
     })
     const params = normalizeImageParams(data)
-
+    if (!hasUsableImageParams(params)) {
+      toast.info('Image loaded for img2img — no embedded parameters found')
+      return
+    }
     if (params.prompt) prompt.value = params.prompt
     if (params.negativePrompt || params.negative_prompt) {
       negativePrompt.value = params.negativePrompt || params.negative_prompt || ''
     }
-    configStore.applyImageParams(params, 'all')
-    toast.success('Parameters restored from image')
-  } catch (e) {
-    console.error('Failed to restore params:', e)
-    toast.error('Could not read parameters from image')
+    configStore.applyImageParams(params, 'recipe')
+    // Keep the canvas usable: skip dimensions from upscaled images.
+    const width = params.width
+    const height = params.height
+    if (width != null && height != null && width >= 64 && width <= 2048 && height >= 64 && height <= 2048) {
+      configStore.setDimensions(width, height)
+    }
+    // Only select the metadata model when it is actually installed.
+    const modelName = params.diffusionModel || params.model
+    if (modelName) {
+      const base = modelName.split(/[\\/]/).pop() || modelName
+      if (models.value.diffusion.includes(base)) {
+        configStore.updateConfig(
+          config.value.loadMode === 'standard'
+            ? { standardModel: base }
+            : { diffusionModel: base }
+        )
+      }
+    }
+    toast.success('Image loaded for img2img · parameters restored')
+  } catch {
+    // Metadata is optional — the init image alone is a useful handoff.
+    toast.info('Image loaded for img2img — no embedded parameters found')
   }
 }
 
@@ -798,7 +841,7 @@ async function handleGenerate(opts?: {
           URL.revokeObjectURL(blobUrl)
           previewObjectUrl.value = null
         }
-        lastBatchSize.value = names.length
+        lastBatchFilenames.value = names
         showBatchGrid.value = names.length > 1
         toast.success(
           names.length > 1 ? `Batch complete — ${names.length} images` : 'Generation complete!'
@@ -984,7 +1027,7 @@ async function clearSessionScreen(): Promise<void> {
   currentImageFilename.value = null
   previewImage.value = null
   showBatchGrid.value = false
-  lastBatchSize.value = 1
+  lastBatchFilenames.value = []
   discardLivePreview()
   closeImageViewer()
   toast.success('Screen cleared')
@@ -1029,8 +1072,7 @@ async function autoDownloadOutputs(names: string[]): Promise<void> {
 }
 
 function openBatchGrid(): void {
-  if (galleryImages.value.length > 1) {
-    lastBatchSize.value = Math.max(lastBatchSize.value, Math.min(galleryImages.value.length, 16))
+  if (lastBatchFilenames.value.length > 1) {
     showBatchGrid.value = true
   }
 }
@@ -1059,6 +1101,8 @@ async function deletePreview(): Promise<void> {
     const idx = galleryImages.value.indexOf(deletedFilename)
 
     galleryImages.value = galleryImages.value.filter((f) => f !== deletedFilename)
+    lastBatchFilenames.value = lastBatchFilenames.value.filter((f) => f !== deletedFilename)
+    if (lastBatchFilenames.value.length < 2) showBatchGrid.value = false
 
     if (galleryImages.value.length > 0) {
       const nextIdx = Math.min(idx, galleryImages.value.length - 1)
@@ -1219,13 +1263,13 @@ onMounted(() => {
   document.addEventListener('click', handleResolutionMenuClick)
   unsubStarterPrompt = onStarterPrompt(applyStarterPromptLive)
 
-  // Check for params from Gallery
-  const paramsImage = sessionStorage.getItem('text2imageParams')
+  // Check for handoff from Gallery (image + embedded params)
+  const paramsImage = sessionStorage.getItem('text2imageInitImage')
   if (paramsImage) {
-    sessionStorage.removeItem('text2imageParams')
+    sessionStorage.removeItem('text2imageInitImage')
     // Small delay to ensure toast container is ready
     setTimeout(() => {
-      sendToParams(paramsImage)
+      void consumeGalleryHandoff(paramsImage)
     }, 500)
   }
 
@@ -1286,16 +1330,18 @@ onActivated(() => {
           class="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           :class="{ 'rounded-3xl': !previewImage && !isGenerating }"
         >
-          <!-- Multi-result batch grid (2+ images) -->
+          <!-- Multi-result batch grid (latest generation with 2+ images) -->
           <div
-            v-if="!isGenerating && galleryImages.length > 1 && lastBatchSize > 1 && showBatchGrid"
+            v-if="!isGenerating && lastBatchFilenames.length > 1 && showBatchGrid"
             class="fade-in slide-in-from-bottom-1 animate-in fill-mode-both grid h-full w-full gap-2 overflow-y-auto p-2 duration-200 md:p-4"
             :class="
-              lastBatchSize >= 4 ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2' : 'grid-cols-2'
+              lastBatchFilenames.length >= 5
+                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+                : 'grid-cols-2'
             "
           >
             <button
-              v-for="img in galleryImages.slice(0, lastBatchSize)"
+              v-for="img in lastBatchFilenames"
               :key="img"
               type="button"
               class="aui-icon-button group relative aspect-square overflow-hidden rounded-2xl border border-border/60 bg-muted/20 transition-all hover:border-foreground/25 focus:outline-none"
@@ -1351,7 +1397,7 @@ onActivated(() => {
             </WorkspaceHero>
           </div>
           <div
-            v-if="previewImage && galleryImages.length > 1 && !isGenerating"
+            v-if="previewImage && galleryImages.length > 1 && !isGenerating && !showBatchGrid"
             class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-3"
           >
             <Tooltip text="Previous image" position="right">
@@ -1451,7 +1497,7 @@ onActivated(() => {
             </span>
             <div class="ml-auto flex items-center gap-2">
               <button
-                v-if="galleryImages.length > 1"
+                v-if="lastBatchFilenames.length > 1"
                 type="button"
                 class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 @click="showBatchGrid ? (showBatchGrid = false) : openBatchGrid()"
@@ -1518,8 +1564,8 @@ onActivated(() => {
       </div>
     </div>
 
-    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
-      <div class="mx-auto mb-2 flex w-full max-w-4xl justify-end px-1">
+    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-4 md:pt-3">
+      <div class="mx-auto mb-1.5 flex w-full max-w-4xl justify-end px-1">
         <div
           ref="advancedToolbarRef"
           data-slot="advanced-toolbar"
@@ -1534,7 +1580,7 @@ onActivated(() => {
               :aria-expanded="activeTab === 'photomaker'"
               @click="toggleAdvancedTab('photomaker')"
             >
-              <User class="size-4" />
+              <ScanFace class="size-4" />
             </button>
           </Tooltip>
           <Tooltip text="ControlNet — guide structure with a control image" position="top">
@@ -1546,7 +1592,7 @@ onActivated(() => {
               :aria-expanded="activeTab === 'controlnet'"
               @click="toggleAdvancedTab('controlnet')"
             >
-              <Activity class="size-4" />
+              <Spline class="size-4" />
             </button>
           </Tooltip>
           <Tooltip text="Image to image — denoise from an init image" position="top">
@@ -1558,7 +1604,7 @@ onActivated(() => {
               :aria-expanded="activeTab === 'img2img'"
               @click="toggleAdvancedTab('img2img')"
             >
-              <Image class="size-4" />
+              <Images class="size-4" />
             </button>
           </Tooltip>
           <Tooltip text="Reference — multi-ref for Kontext / Anima / Qwen edit (-r)" position="top">
@@ -1570,7 +1616,7 @@ onActivated(() => {
               :aria-expanded="activeTab === 'kontext'"
               @click="toggleAdvancedTab('kontext')"
             >
-              <ImagePlus class="size-4" />
+              <Paperclip class="size-4" />
             </button>
           </Tooltip>
         </div>
@@ -1579,7 +1625,7 @@ onActivated(() => {
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
         <!-- Prompt mode -->
-        <div class="flex flex-wrap items-center gap-2 px-3 pt-3 text-sm md:px-4">
+        <div class="flex flex-wrap items-center gap-2 px-3 pt-2.5 text-sm md:px-4">
           <div role="tablist" aria-label="Prompt mode">
             <SegmentedControl
               :model-value="promptMode"
@@ -1606,7 +1652,7 @@ onActivated(() => {
         </div>
 
         <!-- Textarea -->
-        <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
+        <div class="flex items-end gap-2 px-3 pb-1.5 pt-0.5 md:px-4">
           <div class="relative flex-1">
             <textarea
               v-model="activePrompt"
@@ -1617,17 +1663,17 @@ onActivated(() => {
                   ? 'Describe the image you want to generate...'
                   : 'Describe what should stay out of the image...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5 md:text-[17px] md:leading-7"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-2.5 text-base leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3"
               :style="{
-                minHeight: isMobile ? '72px' : '88px',
-                maxHeight: isMobile ? '160px' : '220px'
+                minHeight: isMobile ? '48px' : '56px',
+                maxHeight: isMobile ? '132px' : '180px'
               }"
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
             <span
               v-if="!activePrompt || activePrompt.trim().length === 0"
-              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-2.5 text-base leading-6 md:py-3"
               aria-hidden="true"
               >{{
                 promptMode === 'positive'
@@ -1644,7 +1690,7 @@ onActivated(() => {
         </div>
 
         <!-- Quick controls: Resolution + advanced popover -->
-        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
+        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-1.5 text-xs md:px-4">
           <div class="relative shrink-0">
             <button
               type="button"

@@ -183,7 +183,7 @@ function autoResize(): void {
   if (!el) return
 
   el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, isMobile.value ? 160 : 360) + 'px'
+  el.style.height = Math.min(el.scrollHeight, isMobile.value ? 132 : 180) + 'px'
 }
 
 function onPromptKeydown(e: KeyboardEvent): void {
@@ -540,7 +540,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-6 md:pt-3">
+    <div class="shrink-0 px-3 pb-3 pt-2 md:px-8 md:pb-4 md:pt-3">
       <div
         class="aui-composer flaxeo-composer relative mx-auto flex w-full max-w-4xl flex-col overflow-visible"
       >
@@ -563,7 +563,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Textarea + send/cancel -->
-        <div class="flex items-end gap-2 px-3 pb-2 pt-1 md:px-4">
+        <div class="flex items-end gap-2 px-3 pb-1.5 pt-0.5 md:px-4">
           <div class="relative flex-1">
             <textarea
               v-model="activePrompt"
@@ -574,17 +574,17 @@ onUnmounted(() => {
                   ? 'Describe the motion, subject, and visual direction...'
                   : 'Describe motion or visual details to avoid...'
               "
-              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3.5 md:text-[17px] md:leading-7"
+              class="flex w-full resize-none overflow-y-auto rounded-2xl border-0 bg-transparent px-1 py-2.5 text-base leading-6 text-foreground outline-none transition-colors placeholder:text-transparent focus:outline-none focus-visible:outline-none md:py-3"
               :style="{
-                minHeight: isMobile ? '72px' : '88px',
-                maxHeight: isMobile ? '160px' : '220px'
+                minHeight: isMobile ? '48px' : '56px',
+                maxHeight: isMobile ? '132px' : '180px'
               }"
               @keydown="onPromptKeydown"
               @input="autoResize"
             ></textarea>
             <span
               v-if="!activePrompt || activePrompt.trim().length === 0"
-              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-3 text-base leading-7 md:py-3.5 md:text-[17px] md:leading-7"
+              class="shimmer-text pointer-events-none absolute inset-0 px-1 py-2.5 text-base leading-6 md:py-3"
               aria-hidden="true"
               >{{
                 promptMode === 'positive'
@@ -643,7 +643,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Quick controls -->
-        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-2 text-xs md:px-4">
+        <div class="flex items-center gap-1 rounded-b-[2rem] px-3 py-1.5 text-xs md:px-4">
           <div class="relative shrink-0">
             <button
               type="button"

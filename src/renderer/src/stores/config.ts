@@ -995,20 +995,26 @@ export const useConfigStore = defineStore('config', () => {
     if (params.steps != null && Number.isFinite(params.steps)) next.steps = params.steps
     const cfg = params.cfgScale ?? params.cfg_scale
     if (cfg != null && Number.isFinite(cfg)) next.cfgScale = cfg
-    if (params.width != null && Number.isFinite(params.width)) next.width = params.width
-    if (params.height != null && Number.isFinite(params.height)) next.height = params.height
+    // 'recipe' restores the generation recipe only — canvas size and model are
+    // the caller's decision (metadata dims can be upscaled, models may be absent).
+    if (mode === 'all') {
+      if (params.width != null && Number.isFinite(params.width)) next.width = params.width
+      if (params.height != null && Number.isFinite(params.height)) next.height = params.height
+    }
     if (params.sampler) next.sampler = params.sampler
     if (params.scheduler) next.scheduler = params.scheduler
     if (params.guidance != null && Number.isFinite(params.guidance)) next.guidance = params.guidance
     const clipSkip = params.clipSkip ?? params.clip_skip
     if (clipSkip != null && Number.isFinite(clipSkip)) next.clipSkip = clipSkip
 
-    const modelName = params.diffusionModel || params.model
-    if (modelName) {
-      // Metadata often stores basename only; assign to both load modes for convenience.
-      const base = modelName.split(/[\\/]/).pop() || modelName
-      if (config.value.loadMode === 'standard') next.standardModel = base
-      else next.diffusionModel = base
+    if (mode === 'all') {
+      const modelName = params.diffusionModel || params.model
+      if (modelName) {
+        // Metadata often stores basename only; assign to both load modes for convenience.
+        const base = modelName.split(/[\\/]/).pop() || modelName
+        if (config.value.loadMode === 'standard') next.standardModel = base
+        else next.diffusionModel = base
+      }
     }
 
     updateConfig(next)

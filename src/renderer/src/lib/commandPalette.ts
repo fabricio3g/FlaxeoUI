@@ -3,6 +3,7 @@
  */
 import type { Component } from 'vue'
 import {
+  Binary,
   BookOpen,
   Brush,
   Database,
@@ -10,7 +11,6 @@ import {
   ImageIcon,
   Images,
   Info,
-  Scale,
   Settings,
   Video
 } from '@/lib/icons'
@@ -75,7 +75,7 @@ export const COMMAND_PALETTE_ITEMS: CommandItem[] = [
     subtitle: 'Convert models',
     keywords: ['gguf', 'quantize', 'convert'],
     group: 'Navigate',
-    icon: Scale,
+    icon: Binary,
     action: { type: 'tab', tab: 'quantization' }
   },
   {

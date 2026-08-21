@@ -134,7 +134,7 @@ onUnmounted(() => {
           aria-label="Toggle log streaming"
           @click="togglePolling"
         >
-          <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': isStreaming }" />
+          <RefreshCw class="h-3 w-3" />
           <span class="hidden sm:inline">{{ isPolling ? 'Live' : 'Paused' }}</span>
         </button>
 

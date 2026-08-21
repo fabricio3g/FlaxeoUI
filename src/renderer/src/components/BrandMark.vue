@@ -45,7 +45,7 @@ const sizeClass = computed(() => {
 
 <template>
   <span
-    class="brand-mark relative inline-flex select-none items-baseline justify-center text-foreground"
+    class="brand-mark relative inline-flex select-none items-baseline justify-center"
     :class="[sizeClass, showAmbient && 'brand-mark--ambient']"
     aria-label="Flaxeo Image"
   >

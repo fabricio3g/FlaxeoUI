@@ -21,7 +21,7 @@ export interface ImageGenerationParams {
   clipSkip?: number
 }
 
-export type ImageParamsReuseMode = 'seed' | 'all'
+export type ImageParamsReuseMode = 'seed' | 'recipe' | 'all'
 
 export function galleryFilenameFromUrlOrPath(imagePath: string): string {
   if (!imagePath) return ''
