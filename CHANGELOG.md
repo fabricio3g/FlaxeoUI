@@ -34,7 +34,31 @@ All notable changes to Flaxeo Image are documented in this file.
 
 ## Unreleased
 
+### Recipes
+
+- Rebuilt the Recipes popover on the Image view: wider panel with card-style rows — name, setting
+  chips (model · size · sampler · steps) and a two-line prompt preview; the applied recipe stays
+  marked with a check, sections show counts, and Import JSON moved to a footer action
+- Export now writes a single `.flaxeo-recipe.json` that embeds the human-readable model/settings
+  guide (no second Markdown download); the guide travels with the file through import
+- Applying a recipe reports what it restored (`Applied "…" — model · size · sampler · steps`) and
+  only overwrites prompts the recipe actually defines
+- Recipes trigger moved next to the Generation settings button; Presets and Recipes subtitles now
+  state the split: prompt text only vs full look (settings + prompts)
+
+### Help
+
+- Removed help content for features that don't exist yet: the "Prompt Assistant (coming soon)"
+  topic and the planned "Extensions" / "Coming later" notes in Community
+- Replaced the stale pinned-build reference — Settings → Installation recommends the newest
+  published release
+- Synced `docs/user-guide` and `docs/schemas/recipe.schema.json` with the single-file recipe
+  export (`guide` field)
+
 ### Bug fixes
+
+- Confirm dialogs now stack above composer popovers; they previously rendered underneath, which
+  made in-popover confirms (e.g. deleting a recipe) impossible to click
 
 - Gallery → Image view: "reuse parameters" now restores only the generation recipe (prompt,
   steps, CFG, seed, sampler) via a conservative `recipe` mode — canvas size and model are no

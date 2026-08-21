@@ -149,13 +149,14 @@ Built-ins are starting points; change anything after apply.
 ## Save a recipe
 
 1. Dial in models, size, steps, prompt, etc.
-2. Open Recipes → name it → **Save current**.
-3. Recipes are stored locally in the app.
+2. Open Recipes → name it → **Save**.
+3. Recipes are stored locally in the app. The applied recipe stays marked in the list.
 
 ## Share
 
-- **Export** writes a \`.flaxeo-recipe.json\` file you can send offline.
-- **Import** loads a recipe file into your library.
+- **Export** writes a single \`.flaxeo-recipe.json\` file with the settings **and** a
+  human-readable guide (models + combination) embedded inside — one file to send offline.
+- **Import JSON** loads a recipe file into your library.
 
 ## Prompt presets vs recipes
 
@@ -163,6 +164,8 @@ Built-ins are starting points; change anything after apply.
 |--|----------------|---------|
 | Stores | Positive / negative text | Full config snapshot + prompts |
 | Best for | Reusing wording | Reusing a whole look |
+
+Recipes only overwrite the prompts they actually contain; applying never clears your current text.
 
 ## Built-in families
 
@@ -369,22 +372,6 @@ See also: full guide in the repo \`docs/user-guide/adetailer.md\`.
 `
   },
   {
-    id: 'prompt-assistant',
-    title: 'Prompt Assistant (coming soon)',
-    section: 'Power tools',
-    keywords: ['llm', 'llama', 'assistant', 'expand', 'rewrite', 'complete'],
-    body: `# Prompt Assistant (coming soon)
-
-A dedicated **local** helper powered by **llama.cpp** (\`llama-server\`) will expand, rewrite, and complete prompts using GGUF models in \`models/llm/\`.
-
-- Separate process from image generation (can pause when VRAM is needed)
-- No cloud key required for the core path
-- Apply is always explicit — never silent overwrite
-
-This chapter will expand when the feature ships. See the product roadmap in the repo.
-`
-  },
-  {
     id: 'cli-vs-server',
     title: 'CLI vs Server',
     section: 'Models & hardware',
@@ -405,7 +392,7 @@ This chapter will expand when the feature ships. See the product roadmap in the 
 
 Flaxeo can drive **stable-diffusion.cpp** two ways. The install zip must include **both** \`sd-cli\` and \`sd-server\`.
 
-Recommended tested build: **master-782** (see Settings → Installation).
+**Settings → Installation** recommends the newest published release and lists every binary variant.
 
 ## CLI mode (default)
 
@@ -585,14 +572,14 @@ Files only show up if they sit in the matching subfolder (e.g. LoRAs in \`models
     id: 'community',
     title: 'Community',
     section: 'Community',
-    keywords: ['share', 'contribute', 'github', 'export', 'extension'],
+    keywords: ['share', 'contribute', 'github', 'export'],
     body: `# Community
 
 Flaxeo grows through **shareable data**, not random code plugins (for trust and safety).
 
 ## Share recipes
 
-1. Export a \`.flaxeo-recipe.json\` from Recipes.
+1. Export a \`.flaxeo-recipe.json\` from Recipes — one file with settings and guide.
 2. Send the file or open a PR with a recipe contribution.
 3. Others **Import** the file — no install scripts.
 
@@ -603,10 +590,6 @@ Model Hub packs list downloadable files. Suggest new packs via GitHub issues.
 ## Report bugs
 
 Use GitHub Issues with: OS, GPU, backend tag (\`master-*\`), steps, and a log snippet.
-
-## Extensions (planned)
-
-Data-only packs (recipes + models + theme variables) — **no arbitrary code** in v1.
 `
   }
 ]

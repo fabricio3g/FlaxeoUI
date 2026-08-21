@@ -28,8 +28,8 @@ function diffusionName(snap: Record<string, unknown>, recipe?: FlaxeoRecipe): st
   return ''
 }
 
-/** One-line combo for list rows: `model · euler · 512×512` */
-export function formatRecipeComboLine(recipe: FlaxeoRecipe): string {
+/** Chip parts for list rows: `[model, sampler, WxH, steps]` */
+export function formatRecipeComboParts(recipe: FlaxeoRecipe): string[] {
   const snap = recipe.configSnapshot || {}
   const parts: string[] = []
   const model = diffusionName(snap, recipe)
@@ -44,7 +44,12 @@ export function formatRecipeComboLine(recipe: FlaxeoRecipe): string {
   if (w && h) parts.push(`${w}×${h}`)
   const steps = num(snap, 'steps')
   if (steps) parts.push(`${steps} steps`)
-  return parts.join(' · ')
+  return parts
+}
+
+/** One-line combo for compact contexts: `model · euler · 512×512` */
+export function formatRecipeComboLine(recipe: FlaxeoRecipe): string {
+  return formatRecipeComboParts(recipe).join(' · ')
 }
 
 function loraLines(snap: Record<string, unknown>): string[] {
@@ -91,7 +96,7 @@ export function formatRecipeInstructions(recipe: FlaxeoRecipe): string {
   )
   lines.push('2. Open Flaxeo → **Image** (or matching surface).')
   lines.push(
-    '3. **Recipes** → **Import** the companion `.flaxeo-recipe.json` file, then **Apply**.'
+    '3. **Recipes** → **Import JSON** and pick this same `.flaxeo-recipe.json` file — the guide travels inside it — then **Apply**.'
   )
   lines.push('4. Or set models and generation settings manually from the combination section.')
   lines.push('')
@@ -181,7 +186,7 @@ export function formatRecipeInstructions(recipe: FlaxeoRecipe): string {
   lines.push('---')
   lines.push('')
   lines.push(
-    '_Machine-readable twin: import the `.flaxeo-recipe.json` file in Flaxeo Recipes. This guide is for humans and other tools._'
+    '_This guide is embedded in the exported `.flaxeo-recipe.json` — one file carries everything. Import it in Flaxeo Recipes, then Apply._'
   )
   lines.push('')
 

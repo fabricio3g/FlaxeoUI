@@ -1780,17 +1780,16 @@ onActivated(() => {
           </div>
 
           <div class="ml-auto flex shrink-0 items-center gap-1">
-            <RecipeLibrary
-              v-model:prompt="prompt"
-              v-model:negative-prompt="negativePrompt"
-              surface="text2image"
-              compact
-              class="shrink-0"
-            />
             <PromptPresetControls
               v-model:prompt="prompt"
               v-model:negative-prompt="negativePrompt"
               compact
+              class="shrink-0"
+            />
+            <RecipeLibrary
+              v-model:prompt="prompt"
+              v-model:negative-prompt="negativePrompt"
+              surface="text2image"
               class="shrink-0"
             />
 

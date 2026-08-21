@@ -13,15 +13,15 @@ Built-ins are starting points; change anything after apply.
 ## Save a recipe
 
 1. Dial in models, size, steps, prompt, etc.
-2. Open Recipes → name it → **Save current**.
-3. Recipes are stored locally in the app.
+2. Open Recipes → name it → **Save**.
+3. Recipes are stored locally in the app. The applied recipe stays marked in the list.
 
 ## Share
 
-- **Export** (download icon on a saved recipe) writes:
-  1. `.flaxeo-recipe.json` — importable machine file
-  2. `.recipe-guide.md` — human guide with **model filenames** and **generation combination** (size, steps, sampler, LoRAs, etc.)
-- **Import** loads a `.flaxeo-recipe.json` into your library.
+- **Export** (download icon on a saved recipe) writes a single `.flaxeo-recipe.json` with the
+  settings **and** a human-readable guide embedded (`guide` field): model filenames, generation
+  combination (size, steps, sampler, LoRAs, …) and prompts.
+- **Import JSON** loads a `.flaxeo-recipe.json` into your library.
 
 See also [community.md](./community.md) and `docs/schemas/recipe.schema.json`.
 

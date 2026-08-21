@@ -34,7 +34,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <div
       v-if="state.open"
-      class="aui-dialog-backdrop fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm titlebar-no-drag"
+      class="aui-dialog-backdrop fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm titlebar-no-drag"
       role="presentation"
       @pointerdown.self="cancel"
     >

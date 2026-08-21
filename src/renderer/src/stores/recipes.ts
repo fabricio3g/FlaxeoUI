@@ -153,12 +153,18 @@ export const useRecipeStore = defineStore('recipes', () => {
     return withId
   }
 
-  function exportRecipeJson(id: string): { filename: string; json: string } | null {
+  function exportRecipeJson(
+    id: string,
+    /** Optional markdown guide embedded in the exported file */
+    guide?: string
+  ): { filename: string; json: string } | null {
     const r = getById(id)
     if (!r) return null
+    const trimmed = guide?.trim()
+    const payload = trimmed ? { ...r, guide: trimmed } : r
     return {
       filename: recipeFilename(r),
-      json: serializeRecipe(r, { stripBuiltin: true })
+      json: serializeRecipe(payload, { stripBuiltin: true })
     }
   }
 
