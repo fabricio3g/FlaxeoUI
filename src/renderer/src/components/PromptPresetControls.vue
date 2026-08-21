@@ -185,7 +185,7 @@ const selectedPreset = computed(() =>
       <div class="shrink-0 border-b border-border/60 px-3 py-2.5">
         <p class="text-sm font-semibold">Prompt presets</p>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          Save and reuse positive / negative prompts
+          Prompt text only — settings live in Recipes
         </p>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">

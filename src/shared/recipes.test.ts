@@ -63,4 +63,42 @@ describe('recipes', () => {
     assert.equal(parseRecipeJson('{'), null)
     assert.equal(parseRecipeJson('[]'), null)
   })
+
+  it('preserves an embedded guide through normalize, serialize and parse', () => {
+    const guide = '# Guide\n\nPlace models, then import this file and apply.'
+    const r = normalizeRecipe({
+      name: 'Guided',
+      surface: 'text2image',
+      configSnapshot: { steps: 10 },
+      guide
+    })
+    assert.ok(r)
+    assert.equal(r!.guide, guide)
+
+    const json = serializeRecipe(r!)
+    assert.ok(json.includes('"guide"'))
+    const parsed = parseRecipeJson(json)
+    assert.ok(parsed)
+    assert.equal(parsed!.guide, guide)
+  })
+
+  it('drops empty guides and caps oversized ones', () => {
+    const empty = normalizeRecipe({
+      name: 'Empty guide',
+      surface: 'text2image',
+      configSnapshot: {},
+      guide: '   '
+    })
+    assert.ok(empty)
+    assert.equal(empty!.guide, undefined)
+
+    const big = normalizeRecipe({
+      name: 'Big guide',
+      surface: 'text2image',
+      configSnapshot: {},
+      guide: 'x'.repeat(60000)
+    })
+    assert.ok(big)
+    assert.equal(big!.guide!.length, 40000)
+  })
 })

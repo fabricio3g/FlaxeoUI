@@ -56,6 +56,11 @@
         "vae": { "type": "string" }
       }
     },
+    "guide": {
+      "type": "string",
+      "maxLength": 40000,
+      "description": "Optional human-readable guide (markdown) embedded by Flaxeo on export"
+    },
     "createdAt": { "type": "number" },
     "updatedAt": { "type": "number" },
     "builtin": {

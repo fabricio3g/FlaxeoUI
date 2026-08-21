@@ -27,6 +27,8 @@ export interface FlaxeoRecipe {
   /** Compact config fields (same idea as history configSnapshot) */
   configSnapshot: Record<string, unknown>
   modelHints?: RecipeModelHints
+  /** Optional embedded human-readable guide (markdown); carried through export/import */
+  guide?: string
   createdAt: number
   updatedAt: number
   builtin?: boolean
@@ -102,6 +104,13 @@ export function normalizeRecipe(raw: unknown, opts?: { forceId?: string }): Flax
     if (!modelHints.packId && !modelHints.diffusion && !modelHints.vae) modelHints = undefined
   }
 
+  // Embedded human guide is metadata only — cap it so localStorage stays sane.
+  let guide: string | undefined
+  if (o.guide != null) {
+    const g = String(o.guide).trim()
+    if (g) guide = g.slice(0, 40000)
+  }
+
   return {
     version: RECIPE_VERSION,
     id: opts?.forceId || (typeof o.id === 'string' && o.id ? o.id : createRecipeId()),
@@ -114,6 +123,7 @@ export function normalizeRecipe(raw: unknown, opts?: { forceId?: string }): Flax
     negativePrompt: o.negativePrompt != null ? String(o.negativePrompt) : undefined,
     configSnapshot,
     modelHints,
+    guide,
     createdAt: Number(o.createdAt) || now,
     updatedAt: Number(o.updatedAt) || now,
     builtin: Boolean(o.builtin)
@@ -150,6 +160,7 @@ export function serializeRecipe(recipe: FlaxeoRecipe, opts?: { stripBuiltin?: bo
   if (recipe.prompt) out.prompt = recipe.prompt
   if (recipe.negativePrompt) out.negativePrompt = recipe.negativePrompt
   if (recipe.modelHints) out.modelHints = recipe.modelHints
+  if (recipe.guide) out.guide = recipe.guide
   if (recipe.builtin && !opts?.stripBuiltin) out.builtin = true
   return `${JSON.stringify(out, null, 2)}\n`
 }
