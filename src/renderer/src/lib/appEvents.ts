@@ -8,7 +8,7 @@ export const FLAXEO_OPEN_HISTORY = 'flaxeo-open-history'
 /** Composer popovers: recipes | prompt-presets — only one open at a time */
 export const FLAXEO_COMPOSER_POPOVER = 'flaxeo-composer-popover'
 
-export type ComposerPopoverId = 'recipes' | 'prompt-presets'
+export type ComposerPopoverId = 'prompt-presets'
 
 export function notifyComposerPopoverOpen(id: ComposerPopoverId): void {
   if (typeof window === 'undefined') return

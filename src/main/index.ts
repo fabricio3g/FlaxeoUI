@@ -37,6 +37,7 @@ import {
   type LanSharingStatus,
   type LanTransport
 } from '../shared/lan'
+import type { ServerStatusEvent } from '../shared/connection'
 
 // Fix Linux SUID sandbox helper issue (chrome-sandbox permissions)
 // This is a no-op on Windows/macOS, so it stays cross-platform safe
@@ -47,6 +48,8 @@ if (process.platform === 'linux') {
 let mainWindow: BrowserWindow | null = null
 let serverProcess: ChildProcess | null = null
 let serverPort = 3000
+let stoppingServer = false
+let serverRestarts = 0
 let activeStoragePaths: ResolvedStoragePaths | null = null
 const serverControlToken = randomBytes(32).toString('hex')
 const desktopApiToken = randomBytes(32).toString('hex')
@@ -582,17 +585,31 @@ async function startServer(): Promise<number> {
       return
     }
 
+    let settled = false
+    const settle = (error?: Error): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(startTimeout)
+      if (error) reject(error)
+      else resolve(serverPort)
+    }
+    // Give up instead of guessing a port: a stale port leaves the window talking to nothing.
+    const startTimeout = setTimeout(
+      () => settle(new Error('The local service did not report its port within 20 seconds.')),
+      20000
+    )
+
     serverProcess.stdout?.on('data', (data) => {
       const output = data.toString()
       // Write raw output directly to preserve progress bars
       process.stdout.write(output)
 
-      // Parse port from server output (matches "[Server] Running on port: 3000")
-      const portMatch = output.match(/port:\s*(\d+)/i)
+      // Only the first "[Server] Running on port: N" line decides the port.
+      const portMatch = settled ? null : output.match(/\[Server\] Running on port:\s*(\d+)/i)
       if (portMatch) {
         serverPort = parseInt(portMatch[1])
         console.log('[Main] Server started on port:', serverPort)
-        resolve(serverPort)
+        settle()
       }
     })
 
@@ -603,26 +620,47 @@ async function startServer(): Promise<number> {
 
     serverProcess.on('error', (err) => {
       console.error('[Main] Failed to start server:', err)
-      reject(err)
+      settle(err)
     })
 
-    serverProcess.on('exit', (code) => {
+    const child = serverProcess
+    child.on('exit', (code) => {
       console.log('[Main] Server exited with code:', code)
-      if (code !== 0 && code !== null) {
-        console.error('[Main] Server crashed or exited unexpectedly.')
-      }
-      serverProcess = null
+      if (serverProcess === child) serverProcess = null
+      settle(new Error(`The local service exited with code ${code}.`))
+      if (!stoppingServer) void recoverServer()
     })
-
-    // Fallback: resolve after timeout if no port detected
-    setTimeout(() => resolve(serverPort), 3000)
   })
+}
+
+/** Restart the local service once after an unexpected exit and tell the window where it is. */
+async function recoverServer(): Promise<void> {
+  sendServerStatus({ state: 'reconnecting' })
+  if (serverRestarts >= 1) {
+    sendServerStatus({ state: 'down', error: 'The local service stopped. Restart Flaxeo.' })
+    return
+  }
+  serverRestarts += 1
+  try {
+    const port = await startServer()
+    sendServerStatus({ state: 'connected', port, token: desktopApiToken })
+  } catch (error) {
+    sendServerStatus({
+      state: 'down',
+      error: error instanceof Error ? error.message : 'The local service could not restart.'
+    })
+  }
+}
+
+function sendServerStatus(status: ServerStatusEvent): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('server-status', status)
 }
 
 /**
  * stopServer() - Terminates the server process
  */
 function stopServer(): void {
+  stoppingServer = true
   if (serverProcess) {
     console.log('[Main] Stopping server...')
     serverProcess.kill('SIGTERM')

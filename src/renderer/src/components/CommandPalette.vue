@@ -143,11 +143,9 @@ function flatIndexOf(item: CommandItem): number {
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium">{{ item.label }}</span>
-                <span
-                  v-if="item.subtitle"
-                  class="block truncate text-xs text-muted-foreground"
-                  >{{ item.subtitle }}</span
-                >
+                <span v-if="item.subtitle" class="block truncate text-xs text-muted-foreground">{{
+                  item.subtitle
+                }}</span>
               </span>
             </button>
           </div>

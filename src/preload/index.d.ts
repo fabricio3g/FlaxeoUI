@@ -1,6 +1,7 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
 import type { LanSharingOptions, LanSharingStatus } from '../shared/lan'
+import type { ServerStatusEvent } from '../shared/connection'
 
 /**
  * Custom Electron API type definitions
@@ -39,6 +40,7 @@ interface CustomElectronAPI {
   setFirstRunComplete: () => Promise<boolean>
   reopenSetup: () => Promise<boolean>
   setSetupSkipped: () => Promise<boolean>
+  onServerStatus: (listener: (status: ServerStatusEvent) => void) => () => void
 }
 
 declare global {

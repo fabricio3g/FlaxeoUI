@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flaxeo Studio v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@200..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--fg:#000;--fg2:#1f1f1f;--card:#fafafa;--muted:#f5f5f5;--mfg:#525252;--line:rgba(0,0,0,.08);--line2:rgba(0,0,0,.15);--hov:rgba(0,0,0,.04);--act:rgba(0,0,0,.065);--comp:#f8f8f8;--pop:#fff;--segon:#fff;--trk:#8f8f8f;--chrome:#f2f2f3;
+--ok:oklch(.5 .12 150);--okbg:oklch(.55 .12 150 / .11);--warn:oklch(.5 .11 70);--warnbg:oklch(.62 .13 75 / .13);--bad:oklch(.577 .245 27.3);--badbg:oklch(.577 .245 27.3 / .09);
+--sh:0 16px 40px -12px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.08);--scrim:rgba(0,0,0,.32);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--fg2:#e5e5e5;--card:#0a0a0a;--muted:#141414;--mfg:#b3b3b3;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.17);--hov:rgba(255,255,255,.06);--act:rgba(255,255,255,.1);--comp:#1c1c1c;--pop:#111;--segon:#2a2a2a;--trk:#6b6b6b;--chrome:#0c0c0d;--ok:oklch(.75 .13 155);--okbg:oklch(.75 .13 155 / .13);--warn:oklch(.82 .12 85);--warnbg:oklch(.82 .12 85 / .12);--bad:oklch(.704 .191 22);--badbg:oklch(.704 .191 22 / .13);--sh:0 16px 40px -12px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.1);--scrim:rgba(0,0,0,.6);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--fg2:#e5e5e5;--card:#0a0a0a;--muted:#141414;--mfg:#b3b3b3;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.17);--hov:rgba(255,255,255,.06);--act:rgba(255,255,255,.1);--comp:#1c1c1c;--pop:#111;--segon:#2a2a2a;--trk:#6b6b6b;--chrome:#0c0c0d;--ok:oklch(.75 .13 155);--okbg:oklch(.75 .13 155 / .13);--warn:oklch(.82 .12 85);--warnbg:oklch(.82 .12 85 / .12);--bad:oklch(.704 .191 22);--badbg:oklch(.704 .191 22 / .13);--sh:0 16px 40px -12px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.1);--scrim:rgba(0,0,0,.6);color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--chrome);color:var(--fg);font:13px/1.45 Geist,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.i.s{width:14px;height:14px}.i.xs{width:12px;height:12px}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px}
+.mfg{color:var(--mfg)}.okc{color:var(--ok)}.wac{color:var(--warn)}.bac{color:var(--bad)}
+.sp{flex:1}.row{display:flex;align-items:center;gap:8px}.wrap{flex-wrap:wrap}
+.tr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* chrome */
+.mk{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;background:var(--chrome);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto}
+.mk-t{font-weight:600;white-space:nowrap;margin-right:8px}.mk-t span{color:var(--mfg);font-weight:400}
+.mk select{height:32px;min-width:250px;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px var(--line2);background:var(--bg);padding:0 30px 0 10px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23737373' stroke-width='1.5' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.mk .lbl{font-size:12px;color:var(--mfg);display:flex;align-items:center;gap:8px;white-space:nowrap}
+#stage{padding:16px;display:flex;justify-content:center;transition:padding .2s}
+body.notes #stage{padding-right:344px;justify-content:flex-start}body.notes .app{transform-origin:0 0;flex:none}
+/* app frame */
+.app{position:relative;width:min(1440px,100%);height:max(640px,calc(100vh - 84px));background:var(--bg);border-radius:12px;box-shadow:0 0 0 1px var(--line2),0 20px 50px -20px rgba(0,0,0,.25);overflow:hidden;display:flex}
+.app.mobile{width:390px;height:844px;border-radius:32px;flex-direction:column;flex:none}
+#shell{display:flex;flex:1;min-width:0;min-height:0}
+.mobile #shell{flex-direction:column}
+/* sidebar */
+.sb{width:224px;flex:none;display:flex;flex-direction:column;padding:12px 10px;background:var(--bg)}
+.sbh{display:flex;align-items:center;justify-content:space-between;height:32px;padding-left:6px;margin-bottom:14px}
+.bm{display:inline-flex;align-items:baseline;gap:.4em;background:var(--fg);color:var(--bg);border-radius:8px;padding:6px 8px;font-size:13px;line-height:1}
+.bm b{font-weight:600;letter-spacing:-.04em}.bm span{font-weight:200;letter-spacing:.06em;opacity:.85}
+.nvg{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}
+.gl{padding:0 8px 4px;font-size:12px;font-weight:500;color:var(--mfg)}
+.nv{display:flex;align-items:center;gap:10px;height:36px;padding:0 6px;border-radius:8px;color:var(--mfg);width:100%;font-size:13px}
+.nv:hover{background:var(--hov);color:var(--fg)}.nv[aria-current]{background:var(--act);color:var(--fg);font-weight:500}
+.tl{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.12)}.tl .i{width:14px;height:14px;stroke-width:1.75}
+.tl.lg{width:32px;height:32px;border-radius:8px}.tl.lg .i{width:16px;height:16px}
+.g-home{background:linear-gradient(135deg,#71717a,#3f3f46)}.g-img{background:linear-gradient(135deg,#38bdf8,#2563eb)}.g-edit{background:linear-gradient(135deg,#e879f9,#db2777)}.g-vid{background:linear-gradient(135deg,#fbbf24,#ea580c)}.g-rec{background:linear-gradient(135deg,#a78bfa,#4f46e5)}.g-game{background:linear-gradient(135deg,#34d399,#0d9488)}.g-gal{background:linear-gradient(135deg,#94a3b8,#475569)}.g-kit{background:linear-gradient(135deg,#facc15,#d97706)}.g-zinc{background:linear-gradient(135deg,#a1a1aa,#52525b)}
+.sbf{margin-top:auto;border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:2px}
+.sbf .nv{padding-left:10px}
+/* right column + titlebar */
+.rc{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:40px;flex:none;display:flex;align-items:center;position:relative;user-select:none}
+.tbx{display:flex;align-items:center;gap:6px;padding:0 8px;height:100%}
+.tbr{display:flex;align-items:center;gap:2px;height:100%;margin-left:auto}
+.ib{width:32px;height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:4px;color:var(--mfg);flex:none;position:relative}
+.ib:hover,.ib[aria-expanded="true"]{background:var(--hov);color:var(--fg)}.ib.pill{border-radius:999px}.ib.on{background:var(--act);color:var(--fg)}
+.ib.w{width:auto;min-width:32px;padding:0 6px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);display:inline-block;flex:none}.dot.wa{background:var(--warn)}.dot.ba{background:var(--bad)}.dot.sm{width:7px;height:7px}
+.seg{display:inline-flex;align-items:center;height:32px;padding:2px;border-radius:6px;background:var(--muted);box-shadow:inset 0 0 0 1px var(--line2);flex:none}
+.seg>button{height:26px;padding:0 10px;font-size:12px;font-weight:500;border-radius:4px;color:var(--mfg);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.seg>button:hover{color:var(--fg)}.seg>[aria-selected="true"],.seg>[aria-pressed="true"]{background:var(--segon);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg.lg{height:36px}.seg.lg>button{height:30px;padding:0 12px;font-size:13px}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:28px;padding:0 12px;border-radius:6px;font-weight:500;font-size:13px}
+.hub:hover{background:var(--hov)}
+.tq{height:32px;padding:0 8px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;font-weight:500;font-size:13px}
+.tq:hover,.tq.on{background:var(--act)}
+.bdg{min-width:16px;height:16px;padding:0 4px;border-radius:4px;background:var(--fg);color:var(--bg);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;line-height:1}
+.setup{height:28px;padding:0 8px;border-radius:6px;background:var(--warnbg);color:var(--warn);font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;margin:0 2px}
+.setup::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.wc{width:44px;height:40px;display:grid;place-items:center;color:var(--mfg)}.wc:hover{background:var(--hov);color:var(--fg)}.wc.x:hover{background:var(--bad);color:#fff}
+.ws{flex:1;min-height:0;min-width:0;position:relative;border-left:1px solid var(--line);border-top:1px solid var(--line);border-top-left-radius:12px;overflow:hidden;display:flex;background:var(--bg)}
+.mobile .ws{border:0;border-radius:0}
+/* buttons, inputs */
+.b{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:500;white-space:nowrap;flex:none;transition:background .15s,opacity .15s}
+.b.p{background:var(--fg);color:var(--bg)}.b.p:hover{opacity:.86}
+.b.s{box-shadow:inset 0 0 0 1px var(--line2)}.b.s:hover,.b.g:hover{background:var(--hov)}
+.b.sm{height:28px;padding:0 11px;font-size:12px}.b.d{color:var(--bad)}.b.d:hover{background:var(--badbg)}
+.b[disabled]{opacity:.4;pointer-events:none}
+.lk{font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2);white-space:nowrap}.lk:hover{text-decoration-color:currentColor}
+.in{height:32px;width:100%;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px var(--line2);background:transparent;padding:0 10px;font-size:13px;min-width:0}
+.in:focus{outline:2px solid var(--fg);outline-offset:-1px}
+textarea.in{height:auto;padding:8px 10px;resize:vertical;line-height:1.45}
+select.in{appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23737373' stroke-width='1.5' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer}
+select.in option{background:var(--pop);color:var(--fg)}
+.srch{position:relative}.srch .i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mfg)}.srch .in{padding-left:32px}
+input[type=checkbox],input[type=radio]{accent-color:var(--fg);width:16px;height:16px;margin:0;flex:none}
+.sw{position:relative;width:32px;height:18px;border-radius:999px;background:var(--trk);flex:none;transition:background .15s}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--fg)}.sw[aria-checked="true"]::after{left:16px;background:var(--bg)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--fg),var(--fg)) 0/var(--p,50%) 100% no-repeat,var(--line2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 1.5px var(--fg),0 1px 2px rgba(0,0,0,.2);margin-top:-5px}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line2)}input[type=range]::-moz-range-progress{height:4px;background:var(--fg);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--bg);border:1.5px solid var(--fg)}
+.tg{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:999px;background:var(--muted);color:var(--mfg);font-size:12px;font-weight:500;white-space:nowrap;flex:none;line-height:1}
+.tg.ok{background:var(--okbg);color:var(--ok)}.tg.wa{background:var(--warnbg);color:var(--warn)}.tg.o{background:none;box-shadow:inset 0 0 0 1px var(--line2)}.tg.f{background:var(--fg);color:var(--bg)}
+kbd{font:500 11px 'Geist Mono',monospace;padding:1px 5px;border-radius:4px;box-shadow:inset 0 0 0 1px var(--line2);color:var(--mfg)}
+[data-tip]{position:relative}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;z-index:60;left:50%;top:calc(100% + 6px);transform:translateX(-50%);background:var(--fg);color:var(--bg);font-size:12px;font-weight:500;padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none}
+[data-tip].tup:hover::after,[data-tip].tup:focus-visible::after{top:auto;bottom:calc(100% + 6px)}
+[data-tip].tl-:hover::after,[data-tip].tl-:focus-visible::after{left:auto;right:0;transform:none}
+/* page */
+.pg{flex:1;min-width:0;overflow:auto;padding:28px 36px 56px}
+.pgw{max-width:1120px;margin:0 auto}.pgn{max-width:760px}
+.ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.ph h1{font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.ph p{margin-top:3px;color:var(--mfg)}.ph .act{margin-left:auto;display:flex;gap:8px;align-items:center}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tabs>button{height:38px;font-weight:500;color:var(--mfg);box-shadow:inset 0 -2px 0 transparent;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.tabs>button:hover{color:var(--fg)}.tabs>[aria-selected="true"]{color:var(--fg);box-shadow:inset 0 -2px 0 var(--fg)}
+.h2{font-size:14px;font-weight:600;margin:30px 0 2px;display:flex;align-items:center;gap:8px}.h2:first-child{margin-top:0}
+.sub{color:var(--mfg);margin-bottom:10px}
+.lr{display:flex;align-items:center;gap:12px;min-height:52px;padding:9px 0;border-bottom:1px solid var(--line)}
+.lr:first-of-type{border-top:1px solid var(--line)}.h2+.lr,.sub+.lr{border-top:1px solid var(--line)}
+.lr .t{font-weight:500}.lr .d{color:var(--mfg);font-size:12px}
+.lr.cl{cursor:pointer;margin:0 -8px;padding:9px 8px;border-radius:0}.lr.cl:hover{background:var(--hov)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-weight:500;color:var(--mfg);font-size:12px;height:34px;border-bottom:1px solid var(--line);padding:0 14px 0 0;white-space:nowrap}
+.tbl td{height:44px;border-bottom:1px solid var(--line);padding:0 14px 0 0;white-space:nowrap}
+.tbl tr.cl{cursor:pointer}.tbl tr.cl:hover td{background:var(--hov)}.tbl tr.on td{background:var(--act)}
+.tbl td:first-child,.tbl th:first-child{padding-left:8px}.ftbl{table-layout:fixed}.pg{container-type:inline-size}.ftsel{display:none}@container (max-width:1000px){.ftypes{display:none}.ftsel{display:block}.frow>div{padding-left:0!important}}@container (max-width:720px){.fdet{display:none}}
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 14px}
+.fgrid label,.fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--mfg);min-width:0}
+.swr{display:flex;align-items:center;gap:12px;padding:9px 0;justify-content:space-between}
+.swr .d{font-size:12px;color:var(--mfg)}
+.split{display:flex;gap:0;min-height:0;flex:1}
+.col{border-right:1px solid var(--line);flex:none;overflow:auto}
+.ls{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:6px 10px;border-radius:8px;color:var(--mfg)}
+.ls:hover{background:var(--hov);color:var(--fg)}.ls.on{background:var(--act);color:var(--fg)}.ls .n{margin-left:auto;font-size:12px;font-variant-numeric:tabular-nums}
+.rr{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+.rr input{margin-top:2px}.rr .t{font-weight:500;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.rr .d{color:var(--mfg);font-size:12px;margin-top:2px}
+.rr.dis{cursor:not-allowed}.rr.dis .t,.rr.dis .d{opacity:.55}
+.hint{display:flex;gap:8px;align-items:flex-start;color:var(--warn);font-size:12px;padding:8px 0}
+.hint .i{margin-top:1px}
+.prog{height:4px;border-radius:2px;background:var(--line2);overflow:hidden}.prog>i{display:block;height:100%;background:var(--fg);border-radius:2px}
+.thumb{border-radius:8px;overflow:hidden;flex:none;display:block;background:var(--muted)}
+.art{display:block;width:100%;height:100%}
+/* studio */
+.studio{flex:1;display:flex;min-width:0;position:relative}
+.cvc{flex:1;min-width:0;display:flex;flex-direction:column}
+.cvtop{display:flex;justify-content:center;padding:10px 16px 0}
+.cv{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px 10px;gap:10px;position:relative}
+.cbox{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;container-type:size}
+.res{position:relative;width:min(100cqw,100cqh,620px);aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--muted)}
+.res.v{aspect-ratio:832/480;width:min(100cqw,calc(100cqh * 1.733),780px)}
+.cv.ed{padding-top:64px}
+.res .art{position:absolute;inset:0}
+.cap{font-size:12px;color:var(--mfg);display:flex;gap:10px;align-items:center;font-variant-numeric:tabular-nums}
+.itb{position:absolute;top:10px;right:10px;display:flex;gap:2px;padding:3px;border-radius:999px;background:rgba(10,10,10,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;transition:opacity .15s}
+.res:hover .itb,.res:focus-within .itb,.res.show .itb,.mobile .itb{opacity:1}
+@media (hover:none){.itb{opacity:1}}
+.itb .ib{color:#fff;width:30px;height:30px;border-radius:999px}.itb .ib:hover{background:rgba(255,255,255,.16)}
+.sugg{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.sugg h2{font-size:15px;font-weight:500;margin-bottom:10px}
+.sugg button{color:var(--mfg);padding:5px 10px;border-radius:999px}.sugg button:hover{background:var(--hov);color:var(--fg)}
+.strip{display:flex;align-items:center;gap:6px;padding:0 24px 8px;width:100%;max-width:944px;margin:0 auto}
+.fs{width:36px;height:36px;border-radius:7px;overflow:hidden;flex:none;opacity:.75}.fs:hover{opacity:1}
+.fs.on{opacity:1;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--fg)}
+.cmpw{padding:0 24px 18px}
+.cmp{max-width:896px;margin:0 auto;border-radius:24px;background:var(--comp);box-shadow:inset 0 0 0 1px var(--line),0 1px 2px rgba(0,0,0,.05);transition:box-shadow .15s}
+.cmp:focus-within{box-shadow:inset 0 0 0 1px var(--line2),0 1px 3px rgba(0,0,0,.08)}
+.pr{min-height:56px;max-height:160px;overflow:auto;padding:14px 20px 4px;font-size:15px;line-height:24px;outline:none;word-break:break-word}
+.pr:empty::before{content:attr(data-ph);color:var(--mfg)}
+.ltk{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line2);font-size:12px;font-weight:500;vertical-align:1px;margin:0 2px;cursor:pointer;white-space:nowrap}
+.ltk em{font-style:normal;color:var(--mfg);font-family:'Geist Mono';font-size:11px}
+.raw{font-family:'Geist Mono';font-size:13px;color:var(--mfg)}
+.crow{display:flex;align-items:center;gap:2px;padding:4px 10px 10px 10px;min-width:0}
+.cc{height:32px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:500;color:var(--mfg);white-space:nowrap;flex:none;max-width:220px}
+.cc:hover,.cc[aria-expanded="true"]{background:var(--hov);color:var(--fg)}.cc .tr{max-width:150px}
+.cc .src{width:20px;height:20px;border-radius:5px;overflow:hidden;flex:none}
+.asp{width:14px;height:14px;display:grid;place-items:center}.asp i{display:block;border:1.4px solid currentColor;border-radius:2px;opacity:.85}
+.mdot{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.gen{height:36px;padding:0 14px 0 16px;border-radius:999px;background:var(--fg);color:var(--bg);font-weight:500;display:inline-flex;align-items:center;gap:10px;position:relative;overflow:hidden;flex:none;margin-left:6px;min-width:118px;justify-content:center}
+.gen:hover{opacity:.88}.gen kbd{color:inherit;opacity:.7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bg) 35%,transparent)}
+.gen .fill{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--bg) 30%,transparent)}
+.gen .gt{position:relative;font-variant-numeric:tabular-nums}
+.gen.ic{min-width:0;width:36px;padding:0}
+.live{filter:blur(6px) saturate(.8);transform:scale(1.05)}
+.stepcap{position:absolute;left:12px;bottom:12px;background:rgba(10,10,10,.55);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px;backdrop-filter:blur(8px);display:flex;gap:8px;align-items:center}
+.spin{width:12px;height:12px;border-radius:50%;border:1.5px solid currentColor;border-right-color:transparent;animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.mtools{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:var(--pop);box-shadow:var(--sh);z-index:5}
+.mtools .ib{border-radius:999px}.mtools .sep{width:1px;height:18px;background:var(--line2);margin:0 4px}
+.mask{position:absolute;left:22%;top:38%;width:30%;height:44%;border-radius:40% 46% 38% 44%;background:rgba(255,255,255,.38);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9);mix-blend-mode:normal}
+.play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:rgba(10,10,10,.55);color:#fff;display:grid;place-items:center;backdrop-filter:blur(8px)}
+.play .i{width:22px;height:22px;fill:#fff;stroke:none}
+.scrub{width:min(100%,780px);display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mfg);font-variant-numeric:tabular-nums}
+.scrub .prog{flex:1}
+/* panel */
+.pnl{width:320px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;background:var(--bg);min-height:0}
+.pnh{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 16px;border-bottom:1px solid var(--line);min-height:52px}
+.pnh .pt{font-weight:600}.pnh .ps{font-size:12px;color:var(--mfg)}
+.modb{padding:10px 16px 12px;border-bottom:1px solid var(--line)}
+.modb .row{gap:6px}.modb .mt{font-size:12px;color:var(--mfg);margin:2px 0 8px 13px}
+.pnb{flex:1;overflow:auto;min-height:0}
+.sx{border-bottom:1px solid var(--line)}
+.sh{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:0 16px;font-weight:600}
+.sh .sm{margin-left:auto;color:var(--mfg);font-weight:400;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.sh .chev{color:var(--mfg);transition:transform .15s}.sx.open>.sh .chev{transform:rotate(180deg)}
+.sh:hover{background:var(--hov)}
+.sxb{display:none;padding:2px 16px 16px}.sx.open>.sxb{display:block}
+.fl{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mfg);margin:12px 0 5px;gap:8px}
+.fl:first-child{margin-top:4px}.fl b{color:var(--fg);font-weight:500;font-family:'Geist Mono';font-size:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lra{padding:10px 0;border-bottom:1px solid var(--line)}.lra:first-child{padding-top:4px}
+.lra .row{gap:8px}.lra .nm{font-weight:500;flex:1;min-width:0}.lra .num{width:52px;height:28px;text-align:right;padding:0 8px;font-family:'Geist Mono';font-size:12px}
+.lra .rg{display:flex;align-items:center;gap:10px;margin-top:6px}
+.more{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--mfg);margin-top:12px;font-weight:500}.more:hover{color:var(--fg)}
+.ft{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.ft:last-child{border-bottom:0}
+.ft .t{font-weight:500}.ft .d{font-size:12px;color:var(--mfg)}
+.slot{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;border-bottom:1px solid var(--line);text-align:left}
+.slot:hover .fn{text-decoration:underline;text-underline-offset:3px}
+.slot .lb{width:96px;flex:none;font-size:12px;color:var(--mfg)}.slot .fn{flex:1;min-width:0;font-size:12.5px}
+/* popover */
+#pop{position:absolute;z-index:80;background:var(--pop);border-radius:12px;box-shadow:var(--sh);padding:6px;min-width:220px;max-width:calc(100% - 16px)}
+#pop[hidden]{display:none}
+.mi{display:flex;align-items:center;gap:10px;width:100%;min-height:34px;padding:6px 10px;border-radius:8px;font-size:13px}
+.mi:hover,.mi:focus-visible{background:var(--hov)}.mi .d{font-size:12px;color:var(--mfg)}.mi.dg{color:var(--bad)}
+.msep{height:1px;background:var(--line);margin:6px -6px}
+.mh{font-size:12px;color:var(--mfg);font-weight:500;padding:8px 10px 4px}
+.fpl{max-height:250px;overflow:auto;margin:6px -6px 0;padding:0 6px}
+.fr{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:5px 10px;border-radius:8px}
+.fr:hover{background:var(--hov)}.fr.on{background:var(--act)}.fr .fn{font-weight:500;min-width:0}.fr .pth{color:var(--mfg);font-size:12px;min-width:0}.fr .sz{margin-left:auto;font-size:12px;color:var(--mfg);font-variant-numeric:tabular-nums;flex:none}
+/* overlays */
+.ovl{position:absolute;inset:0;background:var(--scrim);z-index:70;display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:var(--pop);border-radius:16px;box-shadow:var(--sh);width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.dlh{display:flex;align-items:flex-start;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.dlh h2{font-size:16px;font-weight:600}.dlh p{color:var(--mfg);margin-top:2px}
+.dlb{padding:4px 20px 16px;overflow:auto;flex:1;min-height:0}
+.dlf{display:flex;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--line)}
+.drop{border:1.5px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--mfg);margin:14px 0 6px}
+.steps{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mfg);flex-wrap:wrap}
+.steps .s{display:inline-flex;align-items:center;gap:6px}.steps .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--line2);font-weight:600;font-size:11px}
+.steps .s.on{color:var(--fg);font-weight:500}.steps .s.on .n{background:var(--fg);color:var(--bg);box-shadow:none}.steps .s.dn .n{background:var(--okbg);color:var(--ok);box-shadow:none}
+.steps .ln{width:24px;height:1px;background:var(--line2)}
+/* gallery */
+.gtool{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.gi{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;background:var(--muted)}
+.gi.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--fg)}
+.gi .ck{position:absolute;top:6px;left:6px;width:20px;height:20px;border-radius:6px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1.5px #fff;display:grid;place-items:center;color:#fff}
+.gi .ck.y{background:#fff;color:#000}
+.gi .vd{position:absolute;right:6px;bottom:6px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);border-radius:4px;padding:1px 5px}
+.gi .fv{position:absolute;right:6px;top:6px;color:#fff}.gi .fv .i{fill:#fff}
+.gday{font-size:12px;font-weight:500;color:var(--mfg);margin:18px 0 8px}.gday:first-of-type{margin-top:0}
+.det{width:340px;flex:none;border-left:1px solid var(--line);overflow:auto;padding:16px}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;font-size:12px;margin:12px 0}.kv dt{color:var(--mfg)}.kv dd{margin:0;min-width:0}
+.bulk{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--fg);color:var(--bg);margin-bottom:14px}
+.bulk .b.g:hover{background:color-mix(in srgb,var(--bg) 15%,transparent)}
+/* recipe cards */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.rc2{border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;text-align:left;transition:background .15s}
+.rc2:hover{background:var(--hov)}.rc2 .t{font-weight:600}.rc2 .d{color:var(--mfg);font-size:12px}
+/* home */
+.home{max-width:760px;margin:0 auto;padding-top:6vh}
+.home h1{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.rec6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.rec6 button{aspect-ratio:1;border-radius:10px;overflow:hidden}
+.rec6 button:hover{opacity:.9}
+/* notes */
+#pins{position:absolute;inset:0;pointer-events:none;z-index:90}
+.pin{position:absolute;width:22px;height:22px;border-radius:50%;background:#f43f5e;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;pointer-events:auto;box-shadow:0 0 0 2px #fff,0 2px 8px rgba(0,0,0,.3);cursor:help}
+.pin:hover::after,.pin:focus-visible::after{content:attr(data-n);position:absolute;top:28px;left:-8px;width:240px;background:#111;color:#fff;font-weight:400;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:8px;z-index:2}
+#legend{position:fixed;right:12px;top:64px;bottom:12px;width:320px;background:var(--bg);border-radius:12px;box-shadow:0 0 0 1px var(--line2);padding:16px;overflow:auto;display:none;z-index:95}
+body.notes #legend{display:block}
+#legend h3{font-size:13px;font-weight:600;margin-bottom:2px}#legend ol{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+#legend li{display:flex;gap:10px;font-size:12.5px;line-height:1.45}#legend li b{width:20px;height:20px;border-radius:50%;background:#f43f5e;color:#fff;font-size:11px;display:grid;place-items:center;flex:none}
+#toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-weight:500;z-index:99;display:none;white-space:nowrap}
+/* mobile */
+.mtb{height:44px;display:flex;align-items:center;gap:2px;padding:0 8px;flex:none;margin-top:10px}
+.bn{height:64px;flex:none;display:flex;border-top:1px solid var(--line);padding-bottom:6px;background:var(--bg)}
+.bn button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:500;color:var(--mfg)}
+.bn [aria-current]{color:var(--fg)}.bn [aria-current] .i{stroke-width:2}
+.mobile .pg{padding:18px 16px 40px}.mobile .ph h1{font-size:18px}
+.mobile .cmpw{padding:0 10px 10px}.mobile .cv{padding:12px 16px 8px}.mobile .strip{padding:0 12px 6px}
+.mobile .pr{padding:12px 16px 2px;min-height:48px}.mobile .crow{padding:2px 6px 8px}.mobile .cc{padding:0 8px}
+.mobile .pnl{position:absolute;left:0;right:0;bottom:0;height:80%;width:auto;border:0;border-radius:18px 18px 0 0;box-shadow:var(--sh);z-index:30}
+.mobile .pscrim{position:absolute;inset:0;background:var(--scrim);z-index:29}
+.mobile .det,.mobile .col.hm{display:none}.mobile .split{flex-direction:column}.mobile .col{width:auto!important;border-right:0;border-bottom:1px solid var(--line)}
+.mobile .ggrid{grid-template-columns:repeat(3,1fr);gap:4px}.mobile .gtool .srch{flex-basis:100%}
+.mobile .rec6{grid-template-columns:repeat(3,1fr)}.mobile .home{padding-top:8px}.mobile .home h1{font-size:20px}
+.mobile .fgrid{grid-template-columns:1fr 1fr}.mobile .dlg{border-radius:16px}.mobile .ovl{padding:10px}
+.mobile .tbl{display:block;overflow-x:auto}.mobile .hide-m{display:none!important}
+.mobile .ph .act{margin-left:0}
+[hidden]{display:none!important}
+.tb{z-index:50}.stw{position:relative;display:flex}
+.stp{position:absolute;left:0;top:calc(100% + 6px);width:264px;background:var(--pop);border-radius:12px;box-shadow:var(--sh);padding:14px;font-size:12px;z-index:85;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s}
+.stp::before{content:'';position:absolute;left:0;right:0;top:-10px;height:10px}
+.stw:hover .stp,.stw:focus-within .stp{opacity:1;pointer-events:auto;transform:none}
+.sdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--fg);box-shadow:0 0 0 2px var(--comp)}
+.fbtn{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;border-radius:10px;box-shadow:inset 0 0 0 1px var(--line2);text-align:left;width:100%}
+.fbtn:hover{background:var(--hov)}.fbtn.none{color:var(--mfg)}
+.fpk{width:480px;max-width:100%}#pop>div{max-width:100%}
+.pin.r::after{left:auto;right:-8px}.pin.b::after{top:auto;bottom:28px}
+.crow [data-tip]:hover::after,.crow [data-tip]:focus-visible::after,.strip [data-tip]:hover::after,.scrub [data-tip]:hover::after{top:auto;bottom:calc(100% + 6px)}
+.adv{border-top:1px solid var(--line);padding-top:18px;text-align:left}.adv .i{transition:transform .15s}.adv.open .i{transform:rotate(180deg)}
+.ls .i{flex:none}.lpl .lr:first-child{border-top:0}
+.mobile .prow,.mobile .frow{flex-direction:column;align-items:stretch!important}.mobile .plist{width:auto!important;border:0;padding:0!important}.mobile .ped{padding:20px 0 0!important}
+.mobile .fdet,.mobile .ftypes{display:none}.mobile .frow>div{padding-left:0!important}.mobile .fgrid{grid-template-columns:1fr 1fr!important}
+.mobile .dsc{flex-wrap:wrap}.mobile .snav{display:none}.split{min-width:0}
+.mobile .cc{padding:0 7px;gap:4px}.mobile .cc .tr{max-width:76px}.mobile .gen{min-width:0;margin-left:2px}.mobile .ped>.row:first-child,.mobile .pslot{flex-wrap:wrap}.mobile .pslot>div:first-child{width:100%!important}.mobile .seg{max-width:100%;overflow-x:auto}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></symbol>
+<symbol id="i-recipes" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M9 6h5a3 3 0 0 1 3 3v6"/></symbol>
+<symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-kits" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7h2A5.6 5.6 0 0 0 22 11c0-5-4.5-9-10-9z"/></symbol>
+<symbol id="i-models" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+<symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+<symbol id="i-ul" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+<symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h.01M16 16h.01M12 12h.01M16 8h.01M8 16h.01" stroke-width="2.4"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+<symbol id="i-brush" viewBox="0 0 24 24"><path d="m9.1 11.9 8-8a2.8 2.8 0 1 1 4 4l-8 8.1M7 15c-1.7 0-3 1.3-3 3 0 1.3-2.5 1.5-2 2 1.1 1.1 2.5 2 4 2 2.2 0 4-1.8 4-4a3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3a2.4 2.4 0 0 1 0-3.4l9.6-9.6a2.4 2.4 0 0 1 3.4 0l5.6 5.6a2.4 2.4 0 0 1 0 3.4L13 21M22 21H7M5 11l9 9"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-15-6.7L3 13"/></symbol>
+<symbol id="i-invert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+<symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3zM12 9v4M12 17h.01"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 3v4M21 5h-4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+<symbol id="i-hdd" viewBox="0 0 24 24"><path d="M22 12H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1zM6 16h.01M10 16h.01"/></symbol>
+<symbol id="i-gpu" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.6a11 11 0 0 1 14 0M1.4 9a16 16 0 0 1 21.2 0M8.5 16.1a6 6 0 0 1 7 0M12 20h.01"/></symbol>
+<symbol id="i-swap" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></symbol>
+<symbol id="i-game" viewBox="0 0 24 24"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><rect x="2" y="6" width="20" height="12" rx="4"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+<symbol id="i-chk" viewBox="0 0 24 24"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+<symbol id="i-wand" viewBox="0 0 24 24"><path d="m15 4 1-1M20 9l1-1M15 9l-12 12M18 2v2M22 6h-2M14.5 9.5 17 7"/></symbol>
+<symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 12h18M3 7.5h4M3 16.5h4M17 16.5h4M17 7.5h4"/></symbol>
+</defs></svg>
+<header class="mk" aria-label="Mockup controls">
+  <div class="mk-t">Flaxeo Image <span>redesign v3</span></div>
+  <button class="ib" id="prev" aria-label="Previous screen" data-tip="Previous ( [ )"><svg class="i"><use href="#i-left"/></svg></button>
+  <select id="scr" aria-label="Screen"></select>
+  <button class="ib" id="next" aria-label="Next screen" data-tip="Next ( ] )"><svg class="i"><use href="#i-right"/></svg></button>
+  <span class="sp"></span>
+  <div class="seg" id="mkTheme" role="group" aria-label="Theme"><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
+  <div class="seg" id="mkDev" role="group" aria-label="Device"><button data-d="0" aria-pressed="true">Desktop</button><button data-d="1">Mobile</button></div>
+  <label class="lbl"><button class="sw" role="switch" aria-checked="false" id="mkNotes" aria-label="Show UX notes"></button>Show UX notes</label>
+</header>
+<div id="stage"><div class="app" id="app"><div id="shell"></div><div id="pop" hidden></div><div id="pins"></div><div id="toast" role="status"></div></div></div>
+<aside id="legend" aria-label="UX notes"></aside>
+<script>
+'use strict';
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const app=$('#app'),shell=$('#shell'),pop=$('#pop');
+const st={scr:'img-result',mobile:false,notes:false,mode:'cli',server:false,panel:false,mod:false,modTxt:'',preset:0,strip:true,open:{},gsel:2,gmulti:false,gpick:new Set(),wiz:2,more:false,raw:false,lsel:new Set(['cozy-winter-flux']),fsel:22,ftype:'',lock:false,kit:0,topic:1,ins:false,np:0};
+const ROOT='D:\\FlaxeoUI\\models';
+/* ---------- helpers ---------- */
+const ic=(n,c='')=>`<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const tile=(g,n,c='')=>`<span class="tl ${g} ${c}">${ic(n)}</span>`;
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const tg=(t,c='')=>`<span class="tg ${c}">${t}</span>`;
+const sw=(on,l,x='')=>`<button class="sw" role="switch" aria-checked="${!!on}" aria-label="${esc(l)}" data-a="sw" ${x}></button>`;
+const swr=(t,d,on,x='')=>`<div class="swr"><div style="min-width:0"><div>${t}</div>${d?`<div class="d">${d}</div>`:''}</div>${sw(on,t,x)}</div>`;
+const pct=(v,a,b)=>((v-a)/(b-a)*100).toFixed(1)+'%';
+const rng=(v,a,b,s=1,l='')=>`<input type="range" min="${a}" max="${b}" step="${s}" value="${v}" style="--p:${pct(v,a,b)}" aria-label="${l}">`;
+const slider=(l,v,a,b,s=1)=>`<div class="fl"><span>${l}</span><b data-out>${v}</b></div>${rng(v,a,b,s,l)}`;
+const sel=(o,v,x='')=>`<select class="in" ${x}>${o.map(t=>`<option${t==v?' selected':''}>${t}</option>`).join('')}</select>`;
+const ib=(i,l,x='',c='')=>`<button class="ib ${c}" aria-label="${l}" data-tip="${l}" ${x}>${ic(i)}</button>`;
+const ph=(t,d,a='')=>`<div class="ph"><div><h1>${t}</h1>${d?`<p>${d}</p>`:''}</div><div class="act">${a}</div></div>`;
+const B=(t,c='s',x='',i='')=>`<button class="b ${c}" ${x}>${i?ic(i,'s'):''}${t}</button>`;
+const isOpen=id=>!!st.open[id];
+const sec=(id,t,sm,body,hlp)=>`<section class="sx${isOpen(id)?' open':''}" data-sx="${id}"><button class="sh" data-a="sx" aria-expanded="${isOpen(id)}">${t}<span class="sm">${sm}</span>${ic('down','s chev')}</button><div class="sxb">${body}</div></section>`;
+const asp=(w,h)=>{const m=12,ww=w>=h?m:Math.round(m*w/h),hh=h>=w?m:Math.round(m*h/w);return `<span class="asp" aria-hidden="true"><i style="width:${ww}px;height:${hh}px"></i></span>`};
+const more=(t,body)=>`<button class="more" data-a="mo" aria-expanded="false">${ic('plus','xs')}${t}</button><div class="mo" hidden>${body}</div>`;
+let gid=0;
+const PAL=[['#0b1d4d','#3b6fd8','#f5d0a9'],['#2a0f2e','#b4467a','#ffd1a1'],['#0c2b26','#2f8f74','#e9f5c9'],['#1f1147','#6d4ad8','#c9b8ff'],['#3b1406','#d0602a','#ffd27a'],['#0e1a24','#4b6b84','#dbe7f0'],['#241a05','#a77b1a','#ffe9a8'],['#101418','#33475b','#f0b37e']];
+function art(i,c=''){const p=PAL[i%8],id='g'+(gid++),v=i%4;
+return `<svg class="art ${c}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${p[0]}"/><stop offset="1" stop-color="${p[1]}"/></linearGradient></defs><rect width="100" height="100" fill="url(#${id})"/><circle cx="${28+(i*17)%46}" cy="${20+(i*7)%18}" r="${7+(i%3)*2}" fill="${p[2]}" opacity=".9"/><path d="M0 ${70-v*3}L${18+v*4} ${52-v*2}L38 64L${60-v*3} ${44+v}L82 60L100 ${50+v*2}V100H0Z" fill="${p[0]}" opacity=".72"/>${v==0||v==2?`<path d="M44 80l9-8 9 8v9H44z" fill="${p[2]}" opacity=".9"/><rect x="50" y="82" width="4" height="4" fill="${p[0]}"/>`:''}<path d="M0 86L25 74L50 82L75 72L100 80V100H0Z" fill="#000" opacity=".35"/></svg>`}
+/* ---------- data ---------- */
+const TY={checkpoints:'Checkpoints',diffusion_models:'Diffusion models',vae:'VAE',text_encoders:'Text encoders',clip_vision:'CLIP vision',loras:'LoRAs',embeddings:'Embeddings',controlnet:'ControlNet',upscale_models:'Upscalers',ultralytics:'Detectors',photomaker:'PhotoMaker',ipadapter:'IP-Adapter',pulid:'PuLID',animatediff_models:'Motion modules',vae_approx:'TAESD',audio_vae:'Audio VAE'};
+const F=[
+['flux1-dev-Q8_0.gguf','diffusion_models','GGUF Q8_0','12.7 GB','flux/','FLUX.1','FLUX.1 dev Q8'],
+['flux1-schnell-Q4_K.gguf','diffusion_models','GGUF Q4_K','6.8 GB','flux/','FLUX.1','FLUX.1 schnell fast'],
+['my-anime-flux-v3.safetensors','diffusion_models','safetensors bf16','23.8 GB','custom/','Unknown','My anime Flux v3'],
+['z_image_turbo-Q8_0.gguf','diffusion_models','GGUF Q8_0','6.7 GB','','Z-Image','Z-Image Turbo Q8'],
+['qwen-image-edit-2511-Q4_K.gguf','diffusion_models','GGUF Q4_K','11.9 GB','qwen/','Qwen-Image','Qwen Image Edit 2511'],
+['wan2.2_i2v_low_noise_14B_Q4_K.gguf','diffusion_models','GGUF Q4_K','9.6 GB','wan/','Wan2.2','Wan2.2 I2V A14B Q4'],
+['wan2.2_i2v_high_noise_14B_Q4_K.gguf','diffusion_models','GGUF Q4_K','9.6 GB','wan/','Wan2.2','Wan2.2 I2V A14B Q4'],
+['juggernautXL_v9.safetensors','checkpoints','safetensors fp16','6.9 GB','sdxl/','SDXL','SDXL Juggernaut'],
+['dreamshaper_8.safetensors','checkpoints','safetensors fp16','2.1 GB','','SD1.5','—'],
+['ae.safetensors','vae','safetensors','335 MB','','FLUX','4 presets'],
+['sdxl_vae-fp16-fix.safetensors','vae','safetensors fp16','335 MB','','SDXL','SDXL Juggernaut'],
+['wan_2.1_vae.safetensors','vae','safetensors','254 MB','','Wan','Wan2.2 I2V A14B Q4'],
+['qwen_image_vae.safetensors','vae','safetensors','254 MB','','Qwen-Image','Qwen Image Edit 2511'],
+['clip_l.safetensors','text_encoders','safetensors','246 MB','','CLIP-L','3 presets'],
+['t5xxl_fp16.safetensors','text_encoders','safetensors fp16','9.8 GB','','T5XXL','2 presets'],
+['umt5-xxl-encoder-Q8_0.gguf','text_encoders','GGUF Q8_0','6.3 GB','','UMT5','Wan2.2 I2V A14B Q4'],
+['Qwen3-4B-Q8_0.gguf','text_encoders','GGUF Q8_0','4.3 GB','llm/','LLM','Z-Image Turbo Q8'],
+['Qwen2.5-VL-7B-Instruct-Q4_K.gguf','text_encoders','GGUF Q4_K','4.7 GB','llm/','LLM','Qwen Image Edit 2511'],
+['mmproj-Qwen2.5-VL-7B-f16.gguf','text_encoders','GGUF f16','1.4 GB','llm/','LLM vision','Qwen Image Edit 2511'],
+['clip_vision_h.safetensors','clip_vision','safetensors','1.3 GB','','CLIP vision','—'],
+['flux-realism.safetensors','loras','LoRA','164 MB','flux/','FLUX','FLUX.1 dev Q8'],
+['cozy-winter-flux.safetensors','loras','LoRA','98 MB','flux/','FLUX','Cozy Winter kit'],
+['pixel-art-xl.safetensors','loras','LoRA','170 MB','sdxl/','SDXL','Pixel Quest kit'],
+['detail-tweaker-xl.safetensors','loras','LoRA','218 MB','sdxl/','SDXL','SDXL Juggernaut'],
+['anime-lineart-v2.safetensors','loras','LoRA','72 MB','flux/','FLUX','My anime Flux v3'],
+['wan22-orbit-cam-high.safetensors','loras','LoRA','306 MB','wan/','Wan2.2','Wan2.2 I2V A14B Q4'],
+['an4char-v1.safetensors','loras','LoRA','36 MB','custom/','Unknown','—'],
+['easynegative.safetensors','embeddings','Embedding','25 KB','','SD1.5','SDXL Juggernaut'],
+['control_canny-fp16.safetensors','controlnet','safetensors fp16','723 MB','','SDXL','—'],
+['4x-UltraSharp.pth','upscale_models','ESRGAN','67 MB','','—','3 presets'],
+['RealESRGAN_x4plus_anime_6B.pth','upscale_models','ESRGAN','18 MB','','—','My anime Flux v3'],
+['face_yolov8n.pt','ultralytics','YOLO','6 MB','bbox/','—','2 presets'],
+['photomaker-v2.safetensors','photomaker','safetensors','1.9 GB','','SDXL','—'],
+['ip-adapter_sdxl.safetensors','ipadapter','safetensors','703 MB','','SDXL','—'],
+['pulid_flux_v0.9.1.safetensors','pulid','safetensors','1.1 GB','','FLUX','—'],
+['mm_sd15_v3.safetensors','animatediff_models','safetensors','1.6 GB','','SD1.5','—'],
+['taef1.safetensors','vae_approx','TAESD','5 MB','','FLUX','FLUX.1 dev Q8'],
+['ltx2_audio_vae.safetensors','audio_vae','safetensors','212 MB','','LTX-2','—']];
+const SL={checkpoint:['Checkpoint','checkpoints'],diffusion:['Diffusion model','diffusion_models'],high:['High-noise model','diffusion_models'],uncond:['Uncond diffusion','diffusion_models'],vae:['VAE','vae'],taesd:['TAESD preview','vae_approx'],clip_l:['CLIP-L','text_encoders'],clip_g:['CLIP-G','text_encoders'],clip_vision:['CLIP vision','clip_vision'],t5:['T5XXL / UMT5','text_encoders'],llm:['LLM','text_encoders'],llm_vision:['LLM vision','text_encoders'],emb_conn:['Embeddings connectors','text_encoders'],audio_vae:['Audio VAE','audio_vae'],motion:['Motion module','animatediff_models'],controlnet:['ControlNet','controlnet'],photomaker:['PhotoMaker','photomaker'],ipadapter:['IP-Adapter','ipadapter'],pulid:['PuLID','pulid'],upscaler:['Upscaler (ESRGAN)','upscale_models'],hires:['Hires upscaler','upscale_models'],adetailer:['ADetailer detector','ultralytics']};
+const PR=[
+{n:'FLUX.1 dev Q8',f:'FLUX.1',k:'Image',m:'split',u:['diffusion','vae','clip_l','t5'],s:{diffusion:'flux1-dev-Q8_0.gguf',vae:'ae.safetensors',clip_l:'clip_l.safetensors',t5:'t5xxl_fp16.safetensors',taesd:'taef1.safetensors',upscaler:'4x-UltraSharp.pth',adetailer:'face_yolov8n.pt'},g:[28,'1.0','3.5','euler','discrete','1024 × 1024','—','—'],l:[['flux-realism',0.8]],last:'2 min ago',sz:'23.1 GB',hw:[0,0,1,0,1,0]},
+{n:'My anime Flux v3',f:'Custom',fh:'FLUX-like',k:'Image',m:'split',u:['diffusion','vae','clip_l','t5'],s:{diffusion:'my-anime-flux-v3.safetensors',vae:'ae.safetensors',clip_l:'clip_l.safetensors',upscaler:'RealESRGAN_x4plus_anime_6B.pth'},g:[24,'1.0','3.0','euler','beta','896 × 1152','—','—'],l:[['anime-lineart-v2',0.6]],last:'yesterday',sz:'24.4 GB',warn:'t5',hw:[1,1,1,0,1,0]},
+{n:'FLUX.1 schnell fast',f:'FLUX.1',k:'Image',m:'split',u:['diffusion','vae','clip_l','t5'],s:{diffusion:'flux1-schnell-Q4_K.gguf',vae:'ae.safetensors',clip_l:'clip_l.safetensors',t5:'t5xxl_fp16.safetensors'},g:[4,'1.0','3.5','euler','discrete','1024 × 1024','—','—'],l:[],last:'3 days ago',sz:'17.2 GB',hw:[0,0,1,0,1,0]},
+{n:'Z-Image Turbo Q8',f:'Z-Image',k:'Image',m:'split',u:['diffusion','vae','llm'],s:{diffusion:'z_image_turbo-Q8_0.gguf',vae:'ae.safetensors',llm:'Qwen3-4B-Q8_0.gguf'},g:[8,'1.0','—','euler','simple','1024 × 1024','3.0','—'],l:[],last:'last week',sz:'11.3 GB',hw:[0,0,0,0,1,0]},
+{n:'SDXL Juggernaut',f:'SDXL',k:'Image',m:'standard',u:['checkpoint','vae'],s:{checkpoint:'juggernautXL_v9.safetensors',vae:'sdxl_vae-fp16-fix.safetensors'},g:[30,'5.0','—','dpm++2m','karras','1024 × 1024','—','2'],l:[['detail-tweaker-xl',0.5]],last:'2 weeks ago',sz:'7.2 GB',hw:[1,0,0,0,1,0]},
+{n:'Qwen Image Edit 2511',f:'Qwen-Image',k:'Edit',m:'split',u:['diffusion','vae','llm','llm_vision'],s:{diffusion:'qwen-image-edit-2511-Q4_K.gguf',vae:'qwen_image_vae.safetensors',llm:'Qwen2.5-VL-7B-Instruct-Q4_K.gguf',llm_vision:'mmproj-Qwen2.5-VL-7B-f16.gguf'},g:[20,'2.5','—','euler','simple','Match source','3.0','—'],l:[],last:'today',sz:'18.3 GB',hw:[1,1,0,0,1,0]},
+{n:'Wan2.2 I2V A14B Q4',f:'Wan2.2',k:'Video',m:'split',u:['diffusion','high','vae','t5'],s:{diffusion:'wan2.2_i2v_low_noise_14B_Q4_K.gguf',high:'wan2.2_i2v_high_noise_14B_Q4_K.gguf',vae:'wan_2.1_vae.safetensors',t5:'umt5-xxl-encoder-Q8_0.gguf'},g:[10,'3.5','—','euler','discrete','832 × 480','3.0','—'],l:[['wan22-orbit-cam-high',1.0]],last:'today',sz:'25.8 GB',hw:[1,1,0,0,1,0]}];
+const TPL=[['SD 1.x / 2.x','Image','Checkpoint'],['SDXL','Image','Checkpoint · VAE'],['SD3 / SD3.5','Image','Diffusion · CLIP-L · CLIP-G · T5XXL'],['FLUX.1 Dev','Image','Diffusion · VAE · CLIP-L · T5XXL'],['FLUX.1 Schnell','Image','Diffusion · VAE · CLIP-L · T5XXL'],['FLUX.2 Dev','Image','Diffusion · VAE · LLM'],['FLUX Kontext','Edit','Diffusion · VAE · CLIP-L · T5XXL · reference'],['Chroma','Image','Diffusion · VAE · T5XXL'],['Qwen Image','Image','Diffusion · VAE · LLM'],['Qwen Image Edit 2511','Edit','Diffusion · VAE · LLM · LLM vision'],['Z-Image Turbo','Image','Diffusion · VAE · LLM'],['Krea2','Image','Diffusion · VAE · LLM'],['AnimateDiff v3 (SD1.5)','Video','Checkpoint · Motion module'],['Wan2.1 Video','Video','Diffusion · VAE · UMT5 · CLIP vision'],['Wan2.2 A14B Video','Video','Diffusion · High-noise · VAE · UMT5'],['LTX-2.3 Video','Video','Diffusion · VAE · LLM · Audio VAE']];
+const TPLX='FLUX.2 Klein, FLUX.3 Klein, Lens, Lens Turbo, Ideogram4, Anima, LingBot Video, MiniT2I';
+const LO=[['flux-realism','loras/flux/','FLUX','realism, photo','164 MB',0.8,1],['cozy-winter-flux','loras/flux/','FLUX','cozywinter','98 MB',0.7,1],['anime-lineart-v2','loras/flux/','FLUX','lineart','72 MB',0.6,0],['isometric-rooms-flux','loras/flux/','FLUX','isometric room','88 MB',0.75,0],['ghibli-style-flux','D:\\ComfyUI\\models\\loras\\','FLUX','ghibli style','151 MB',0.8,0],['pixel-art-xl','loras/sdxl/','SDXL','pixel art, 16-bit','170 MB',0.9,0],['detail-tweaker-xl','loras/sdxl/','SDXL','—','218 MB',0.5,0],['an4char-v1','loras/custom/','Unknown','an4char','36 MB',1.0,0],['wan22-orbit-cam-high','loras/wan/','Wan2.2','orbit shot','306 MB',1.0,0],['film-grain-sd15','D:\\ComfyUI\\models\\loras\\','SD1.5','film grain','37 MB',0.6,0]];
+const PROMPTS=['isometric cozy cabin in a snowy pine forest at dusk, warm window light','lighthouse on a cliff during a storm, oil painting','ceramic mug product shot, soft studio light, beige backdrop','neon alley in the rain, cinematic, 35mm','portrait of an old fisherman, natural window light','slow orbit around a desert temple at sunrise','watercolor map of a fantasy archipelago','pixel art knight sprite sheet, 16-bit'];
+const GAL=Array.from({length:30},(_,i)=>({a:(i*5+i%3)%8,p:PROMPTS[i%8],v:i%8==5,f:i%7==1,pr:i%8==5?'Wan2.2 I2V A14B Q4':i%8==7?'SDXL Juggernaut':i%4==3?'Z-Image Turbo Q8':'FLUX.1 dev Q8'}));
+const SAMP=['euler','euler_a','heun','dpm2','dpm++2s_a','dpm++2m','dpm++2mv2','ipndm','lcm','ddim_trailing','tcd'];
+const SCHED=['discrete','karras','exponential','ays','gits','simple','sgm_uniform','beta','smoothstep','lcm'];
+/* ---------- theme ---------- */
+const mq=matchMedia('(prefers-color-scheme: dark)');
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t=='dark':mq.matches};
+function setTheme(t){document.documentElement.dataset.theme=t;render()}
+/* ---------- shell ---------- */
+const NAVGO={home:'home',image:'img-result',edit:'edit',video:'video',recipes:'recipes',gallery:'gallery',kits:'kits',models:'m-presets'};
+function sidebar(nav){
+const it=(id,l,g,i)=>`<button class="nv" data-go="${NAVGO[id]}"${nav==id?' aria-current="page"':''}>${tile(g,i)}<span>${l}</span></button>`;
+return `<aside class="sb" aria-label="Sidebar"><div class="sbh"><span class="bm" aria-label="Flaxeo Image"><b>Flaxeo</b><span>Image</span></span>${ib('left','Collapse sidebar','','tl-')}</div>
+<nav aria-label="Primary" class="sbn"><div class="nvg">${it('home','Home','g-home','home')}</div>
+<div class="nvg"><div class="gl">Create</div>${it('image','Image','g-img','image')}${it('edit','Edit','g-edit','edit')}${it('video','Video','g-vid','video')}${it('recipes','Recipes','g-rec','recipes')}</div>
+<div class="nvg"><div class="gl">Library</div>${it('gallery','Gallery','g-gal','gallery')}${it('kits','Style kits','g-kit','kits')}</div>
+<div class="nvg">${it('models','Models','g-zinc','models')}</div></nav>
+<div class="sbf"><button class="nv" data-go="help"${nav=='help'?' aria-current="page"':''}>${ic('help')}<span>Help</span></button><button class="nv" data-go="s-backend"${nav=='settings'?' aria-current="page"':''}>${ic('gear')}<span>Settings</span></button></div></aside>`}
+function stPop(){const off=st.mode=='server'&&!st.server;
+const r=(a,b,c='')=>`<div class="row" style="justify-content:space-between"><span>${a}</span><b class="${c}" style="font-weight:500">${b}</b></div>`;
+return `<div class="stp" role="dialog" aria-label="Runtime status"><div class="row" style="padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px"><span class="dot sm ${off?'wa':''}"></span><b style="font-weight:500">Runtime status</b></div>
+<div style="display:flex;flex-direction:column;gap:6px;color:var(--mfg)">${r('Server',st.server?'Online':'Offline',st.server?'okc':'wac')}${r('Backend','master-982 · CUDA 12','')}${r('Mode',st.mode.toUpperCase())}${r('GPU','RTX 4070 · 12 GB')}</div>
+<p class="mfg" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12px">${off?'Server mode is selected but sd-server is offline.':st.mode=='server'?'Server mode active · FLUX.1 dev Q8 loaded.':'CLI mode active. Each job starts a fresh sd-cli process.'}</p>
+${off?`<button class="b p sm" style="margin-top:10px;width:100%" data-a="startsrv">${ic('play','s')}Start server</button>`:''}</div>`}
+function modeSeg(){return `<div class="seg" role="tablist" aria-label="Backend mode"><button role="tab" data-a="mode" data-v="cli" aria-selected="${st.mode=='cli'}">CLI</button><button role="tab" data-a="mode" data-v="server" aria-selected="${st.mode=='server'}">Server</button></div>`}
+function titlebar(s){const off=st.mode=='server'&&!st.server,q=s.q||0;
+return `<header class="tb"><div class="tbx"><div class="stw"><button class="ib pill" id="stDot" aria-label="Runtime status: ${off?'server offline':'ready'}"><span class="dot ${off?'wa':''}"></span></button>${stPop()}</div>${modeSeg()}</div>
+<button class="hub" data-go="m-discover">Model Hub</button>
+<div class="tbr"><button class="tq${q||s.qo?' on':''}" id="qBtn" data-a="queue" aria-label="Job queue" aria-expanded="${!!s.qo}" data-tip="Job queue — reorder, pause, or cancel runs">Queue${q?`<span class="bdg">${q}</span>`:''}</button>
+${s.setup?`<button class="setup" data-go="wizard">Setup</button>`:''}
+<button class="ib w on" data-go="m-downloads" aria-label="Open download manager, 1 active" data-tip="Downloads — 1 file transferring">${ic('dl')}<span class="bdg">1</span></button>
+<button class="ib" data-a="toast" data-t="Logs drawer opens over the workspace" aria-label="Open server logs" data-tip="Terminal — server / generation logs">${ic('term')}</button>
+<button class="ib tl-" data-a="theme" aria-label="${isDark()?'Switch to light mode':'Switch to dark mode'}" data-tip="${isDark()?'Switch to light theme':'Switch to dark theme'}">${ic(isDark()?'sun':'moon')}</button>
+<button class="wc" aria-label="Minimize">${ic('min','s')}</button><button class="wc" aria-label="Maximize">${ic('max','xs')}</button><button class="wc x" aria-label="Close">${ic('x')}</button></div></header>`}
+function mtitlebar(s){const q=s.q||0;
+return `<header class="mtb">${modeSeg()}<span class="sp"></span><button class="tq${q?' on':''}" id="qBtn" data-a="queue" aria-label="Job queue">Queue${q?`<span class="bdg">${q}</span>`:''}</button>${s.studio?`<button class="ib${st.panel?' on':''}" data-a="panel" aria-label="Model & settings">${ic('sliders')}</button>`:''}${s.setup?`<button class="setup" data-go="wizard">Setup</button>`:''}<button class="ib" aria-label="Open server logs">${ic('term')}</button><button class="ib" data-a="theme" aria-label="Switch theme">${ic(isDark()?'sun':'moon')}</button></header>`}
+function bnav(nav){const it=(g,l,i,on)=>`<button data-go="${g}"${on?' aria-current="page"':''}>${ic(i)}${l}</button>`;
+return `<nav class="bn" aria-label="Primary">${it('home','Home','home',nav=='home')}${it('img-result','Create','sparkle',['image','edit','video'].includes(nav))}${it('recipes','Recipes','recipes',nav=='recipes')}${it('gallery','Gallery','gallery',nav=='gallery')}${it('more','More','menu',['kits','models','settings','help','more'].includes(nav))}</nav>`}
+/* ---------- studio ---------- */
+const lt=(n,w)=>st.raw?`<span class="raw">&lt;lora:${n}:${w}&gt;</span> `:`<span class="ltk" contenteditable="false" data-a="ltok" role="button" tabindex="0" aria-label="LoRA ${n}, strength ${w}">${ic('layers','xs')}${n}<em>${w}</em></span> `;
+function kindP(k){return k=='edit'?PR[5]:k=='video'?PR[6]:PR[0]}
+function studio(s){const k=s.kind,P=kindP(k),m=st.mobile;
+const cv=k=='image'?(s.state=='empty'?cvEmpty(P):s.state=='gen'?cvGen():cvResult()):k=='edit'?cvEdit():cvVideo();
+return `<div class="studio"><div class="cvc">${m?`<div class="cvtop"><div class="seg" role="tablist" aria-label="Create mode"><button role="tab" data-go="img-result" aria-selected="${k=='image'}">Image</button><button role="tab" data-go="edit" aria-selected="${k=='edit'}">Edit</button><button role="tab" data-go="video" aria-selected="${k=='video'}">Video</button></div></div>`:''}
+<div class="cv${k=='edit'?' ed':''}">${cv}</div>${s.state=='empty'?'':strip(k)}<div class="cmpw">${composer(s,P)}</div></div>
+${st.panel?(m?'<div class="pscrim" data-a="panel"></div>':'')+panel(k,P):''}</div>`}
+function cvEmpty(P){return `<div class="sugg"><h2>What should we make?</h2>${['A lighthouse on a cliff in a storm, oil painting','Isometric cozy cabin in a snowy forest at dusk','Ceramic mug product shot, soft window light'].map(t=>`<button data-a="sugg">${t}</button>`).join('')}<p class="mfg" style="font-size:12px;margin-top:16px">${P.n} is ready · <kbd>Ctrl</kbd> <kbd>Enter</kbd> generates</p></div>`}
+const imgBar=()=>`<div class="itb" role="toolbar" aria-label="Image actions">${ib('dl','Download','data-a="toast" data-t="Saved to D:\\FlaxeoUI\\outputs"')}${ib('star','Favorite','data-a="toast" data-t="Added to favorites"')}${ib('edit','Send to Edit','data-go="edit"')}${ib('video','Animate in Video','data-go="video"')}${ib('more','More actions','data-a="imore" aria-haspopup="menu"','tl-')}</div>`;
+function cvResult(){return `<div class="cbox"><div class="res show" tabindex="0" aria-label="Result 1 of 4">${art(0)}${imgBar()}</div></div><div class="cap"><span>1 of 4</span><span>seed 482913077</span><span>28 steps · 14.2 s</span></div>`}
+function cvGen(){return `<div class="cbox"><div class="res" aria-label="Generating, live preview">${art(0,'live')}<div class="stepcap"><span class="spin"></span>Image 2 of 4 · step 17 / 28</div></div></div><div class="cap"><span>Live preview · TAE</span></div>`}
+function cvEdit(){return `<div class="mtools" role="toolbar" aria-label="Mask tools">${ib('brush','Brush (B)','aria-pressed="true"','on')}${ib('eraser','Eraser (E)')}<span class="sep"></span><span class="row" style="width:${st.mobile?70:120}px;padding:0 6px">${rng(48,4,200,1,'Brush size')}</span><span class="mono mfg hide-m" style="width:40px">48 px</span><span class="sep"></span>${ib('invert','Invert mask')}${ib('trash','Clear mask')}${ib('undo','Undo (Ctrl+Z)','','tl-')}</div>
+<div class="cbox"><div class="res" aria-label="Source image with mask">${art(0)}<div class="mask" aria-hidden="true"></div></div></div><div class="cap"><span>cabin.png · 1024 × 1024</span><span>Mask 18%</span></div>`}
+function cvVideo(){return `<div class="cbox"><div class="res v" aria-label="Video result">${art(4)}<button class="play" aria-label="Play">${ic('play')}</button></div></div>
+<div class="scrub">${ib('play','Play','','')}<span>0:01.2</span><div class="prog"><i style="width:38%"></i></div><span>0:03.1</span>${ib('more','Video actions','data-a="imore"','tl-')}</div>`}
+function strip(k){const n=st.mobile?5:8;
+if(!st.strip)return `<div class="strip"><span class="sp"></span><button class="b g sm" data-a="strip" aria-expanded="false">${ic('up','s')}Session · 8</button></div>`;
+return `<div class="strip" aria-label="Session history"><span class="mfg" style="font-size:12px;margin-right:6px">Session</span>${Array.from({length:n},(_,i)=>`<button class="fs${i==0?' on':''}" aria-label="Result ${i+1}">${art(k=='video'?(i+4)%8:i)}</button>`).join('')}<span class="sp"></span>${ib('down','Hide session history','data-a="strip" aria-expanded="true"','tl-')}</div>`}
+function composer(s,P){const k=s.kind,run=s.state=='gen',m=st.mobile;
+const pr=s.state=='empty'?'':k=='image'?`isometric cozy cabin in a snowy pine forest at dusk, warm window light, volumetric fog ${lt('flux-realism',0.8)}${st.scr=='img-panel'||st.scr=='lora'?lt('cozy-winter-flux',0.7):''}`:k=='edit'?'replace the wooden door with a red lacquered door, keep the snow on the roof':`slow orbit around the cabin, snow falling, chimney smoke drifting ${lt('wan22-orbit-cam-high',1.0)}`;
+const c=[`<button class="cc" id="ppc" data-a="pp" aria-haspopup="menu" aria-label="Preset ${P.n}${st.mod?', modified':''}">${ic('models','s')}<span class="tr">${P.n}</span>${st.mod?'<span class="mdot" aria-hidden="true"></span>':''}${ic('down','xs')}</button>`];
+if(k=='edit')c.push(`<button class="cc" id="emode" data-a="pmode" aria-haspopup="menu">Inpaint${ic('down','xs')}</button><button class="cc" id="esrc" aria-label="Source image cabin.png, click to replace" data-a="toast" data-t="Replace from disk, clipboard or Gallery"><span class="src">${art(0)}</span>${m?'':'cabin.png'}</button>`);
+else c.push(`<button class="cc" id="csz" data-a="psz" aria-haspopup="dialog" aria-label="Size">${k=='video'?asp(832,480):asp(1,1)}${m?(k=='video'?'16:9':'1:1'):(k=='video'?'832 × 480':'1024 × 1024')}</button>`);
+if(k=='video')c.push(`<button class="cc" id="cdur" data-a="pdur" aria-haspopup="dialog" aria-label="Duration">${ic('film','s')}${m?'3.1 s':'49 f · 16 fps · 3.1 s'}</button>`);
+else if(!(m&&k=='edit'))c.push(`<button class="cc" id="ccnt" data-a="pcnt" aria-haspopup="dialog" aria-label="Images per run">${ic('gallery','s')}${k=='edit'?1:4}</button>`);
+const dot=k!='edit'&&!st.panel;
+const set=`<button class="ib pill${st.panel?' on':''}" id="cset" data-a="panel" aria-expanded="${st.panel}" aria-label="Settings panel" data-tip="Settings" style="${dot?'':''}">${ic('sliders')}${dot?'<span class="sdot" aria-hidden="true"></span>':''}</button>`;
+const gen=run?`<button class="ib pill" data-a="stop" aria-label="Stop current run" data-tip="Stop">${ic('stop')}</button><button class="gen" id="cgen" data-a="toast" data-t="Queued another run · 2 pending" aria-label="62 percent, about 7 seconds left. Click to queue another run"><span class="fill" style="width:62%"></span><span class="gt">${m?'62%':'62% · 7 s left'}</span></button>`
+:`<button class="gen${m?' ic':''}" id="cgen" data-a="gen" aria-label="Generate (Ctrl+Enter)">${m?ic('arrow'):`Generate<kbd>Ctrl ↵</kbd>`}</button>`;
+return `<div class="cmp"><div class="pr" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Prompt" data-ph="${k=='edit'?'Describe the change…':k=='video'?'Describe the motion…':'Describe the image you want to generate…'}">${pr}</div><div class="crow">${c.join('')}<span class="sp"></span>${set}${gen}</div></div>`}
+/* ---------- settings panel ---------- */
+function modbar(){return `<div class="modb" role="status"><div class="row"><span class="mdot"></span><b style="font-weight:600">Modified</b><span class="mfg" style="font-size:12px">· not saved to the preset yet</span></div><div class="mt">${st.modTxt||'Steps 28 → 32 · added cozy-winter-flux'}</div><div class="row"><button class="b p sm" data-a="save">Save to preset</button><button class="b s sm" data-a="savenew">Save as new</button><button class="b g sm" data-a="revert">Revert</button></div></div>`}
+function panel(k,P){const S=[];const ip=st.scr=='img-panel'||st.scr=='lora';
+if(k=='video')S.push(sec('vid','Video','49 f · 16 fps',secVid()));
+if(k=='edit')S.push(sec('edit','Edit','Inpaint · 0.75',secEdit()));
+S.push(sec('gen','Generation',`${ip?32:P.g[0]} steps · ${P.g[3]}`,secGen(k,P,ip)));
+const ln=k=='image'?(ip?2:1):k=='video'?1:0;
+S.push(sec('lora','LoRAs & embeddings',ln?ln+' active':'None',secLora(k,ip)));
+if(k!='video')S.push(sec('guide','Guidance & references','Off',secGuide()));
+if(k=='image')S.push(sec('hires','Hires & upscale','Off',secHires()));
+S.push(sec('files','Model files',`${Object.keys(P.s).length} files`,secFiles(P)));
+S.push(sec('perf','Performance',k=='video'?'Tiling · offload':'Flash attn · CLIP on CPU',secPerf(k)));
+return `<aside class="pnl" aria-label="Settings panel"><div class="pnh"><div style="min-width:0"><div class="pt">Settings</div><div class="ps tr">Preset · ${P.n}</div></div><span class="sp"></span>${ib('help','Help for these settings','data-go="help"')}${ib('x','Close settings','data-a="panel"','tl-')}</div>${st.mod?modbar():''}<div class="pnb">${S.join('')}</div></aside>`}
+function secGen(k,P,ip){const o=(l,v,ph='')=>`<label class="fld">${l}<input class="in" value="${v}" placeholder="${ph}"></label>`;
+return `<label class="fld" style="margin-top:2px">Negative prompt<textarea class="in" rows="2" placeholder="What to keep out of the image">${k=='video'?'static, blurry, low motion':'blurry, lowres, watermark'}</textarea></label>
+${slider('Steps',ip?32:P.g[0],1,60)}${slider('CFG scale',+P.g[1],1,12,.5)}${k=='image'?slider('Guidance (distilled)',3.5,0,10,.5):''}${k=='video'?slider('Flow shift',3,0,12,.5):''}
+<div class="g2" style="margin-top:12px"><label class="fld">Sampler${sel(SAMP,P.g[3])}</label><label class="fld">Scheduler${sel(SCHED,P.g[4])}</label></div>
+<div class="fl"><span>Seed</span><span id="seedst">${st.lock?'Locked':'Random each run'}</span></div>
+<div class="row" style="gap:4px"><input class="in mono" value="482913077" aria-label="Seed">${ib(st.lock?'lock':'dice',st.lock?'Unlock seed':'Lock seed','data-a="lock" aria-pressed="'+st.lock+'"')}${ib('repeat','New random seed')}${ib('copy','Copy seed','data-a="toast" data-t="Seed copied"','tl-')}</div>
+${more('More sampling options',`<div class="g2" style="margin-top:8px">${o('Clip skip','','auto')}${o('Flow shift',k=='video'?'3.0':'','auto')}${o('ETA','0')}${o('Img CFG','','same as CFG')}${o('SLG scale','0')}${o('Skip layers','7,8,9')}${o('SLG start','0.01')}${o('SLG end','0.2')}${o('Timestep shift','','auto')}${o('Qwen layers','','auto')}</div>
+<label class="fld" style="margin-top:10px">Sigmas<input class="in mono" placeholder="custom schedule, comma separated"></label>
+<div class="g2" style="margin-top:10px"><label class="fld">RNG${sel(['cuda','std_default','cpu'],'cuda')}</label><label class="fld">Sampler RNG${sel(['same as RNG','cuda','cpu'])}</label><label class="fld">Cache mode${sel(['off','easycache','ucache','dbcache','taylorseer'])}</label><label class="fld">SCM policy${sel(['dynamic','static'])}</label></div>
+<label class="fld" style="margin-top:10px">Cache options<input class="in mono" placeholder="threshold=0.2,start=0.15"></label><label class="fld" style="margin-top:10px">SCM mask<input class="in mono" placeholder="1,1,0,1…"></label>
+<div class="g2" style="margin-top:10px"><label class="fld">Live preview${sel(['TAE','Proj','VAE','None'],'TAE')}</label><label class="fld">Prompt weighting${sel(['On','Off'])}</label></div>
+<label class="fld" style="margin-top:10px">Extra args<input class="in mono" placeholder="--vae-tile-overlap 0.5"></label>`)}`}
+function loraRow(n,w,tr,br){return `<div class="lra"><div class="row"><span class="thumb" style="width:28px;height:28px;border-radius:6px">${art(n.length)}</span><div class="nm"><div class="tr">${n}</div><div class="mfg tr" style="font-size:12px">${tr}</div></div><label class="row mfg" style="font-size:12px;gap:6px">Triggers${sw(true,'Insert trigger words for '+n)}</label>${ib('x','Remove '+n,'data-a="lrm"','tl-')}</div>
+<div class="rg">${rng(w,-2,2,.05,n+' strength')}<input class="in num" value="${w.toFixed(2)}" aria-label="${n} strength"></div>${br?`<div class="rg"><span class="mfg" style="font-size:12px;width:96px">Wan 2.2 branch</span>${sel(['High noise','Low noise','Both'],'High noise','style="height:28px"')}</div>`:''}</div>`}
+function secLora(k,ip){let r='';
+if(k=='image'){r+=loraRow('flux-realism',.8,'realism, photo');if(ip)r+=loraRow('cozy-winter-flux',.7,'cozywinter')}
+if(k=='video')r+=loraRow('wan22-orbit-cam-high',1,'orbit shot',1);
+if(k=='edit')r+=`<p class="mfg" style="font-size:12px;padding:4px 0 2px">No LoRAs on this preset.</p>`;
+return `${r}<div class="row" style="margin-top:12px">${B('Add LoRA','s sm','data-go="lora" id="addl"','plus')}${B('Embedding','g sm','data-a="toast" data-t="Embedding picker: easynegative, bad-hands…"','plus')}</div>
+<div class="swr" style="margin-top:6px"><div><div>Show as text in prompt</div><div class="d">Edit raw &lt;lora:name:weight&gt; tags</div></div>${sw(st.raw,'Show LoRAs as text','data-k="raw"')}</div>
+${more('Advanced',`<label class="fld" style="margin-top:8px">Apply mode${sel(['Auto','Immediately','At runtime'],'Auto')}</label><p class="mfg" style="font-size:12px;margin-top:6px">Auto picks At runtime for quantized (GGUF) models. Immediately is faster but less compatible.</p>`)}`}
+const ftr=(i,t,d,body)=>`<div class="ft">${ic(i)}<div style="flex:1;min-width:0"><div class="t">${t}</div><div class="d">${d}</div><div class="rev" hidden>${body}</div></div>${sw(false,t,'data-rev="1"')}</div>`;
+const addImg=t=>`<button class="b s sm" style="margin-top:8px" data-a="toast" data-t="Pick from disk, clipboard or Gallery">${ic('plus','s')}${t}</button>`;
+function secGuide(){return ftr('image','Image to image','Start from an image; strength sets how much changes.',addImg('Init image')+slider('Strength',.65,0,1,.05))
++ftr('gallery','Reference images','Kontext / Qwen Edit references, up to 4.',addImg('Add reference'))
++ftr('kits','Style reference','IP-Adapter borrows the look of an image.',addImg('Style image')+slider('Weight',.6,0,1,.05))
++ftr('user','Identity','PhotoMaker or PuLID face lock from 1–4 photos.',`<div class="seg" style="margin-top:8px"><button aria-selected="true" data-a="segv">PhotoMaker</button><button data-a="segv">PuLID</button></div>`+addImg('Add photos')+slider('Identity strength',.8,0,1,.05))
++ftr('layers','ControlNet','Pose, depth or edges from a control image.',`<label class="fld" style="margin-top:8px">Model${sel(['control_canny-fp16.safetensors','None'])}</label>`+addImg('Control image')+slider('Strength',.9,0,2,.05)+swr('Canny preprocess','Detect edges before use',true))}
+function secHires(){return ftr('expand','Hires fix','Generate smaller, upscale, then refine.',`<label class="fld" style="margin-top:8px">Hires upscaler${sel(['4x-UltraSharp.pth','Latent (bilinear)','RealESRGAN_x4plus_anime_6B.pth'])}</label>`+slider('Scale',1.5,1,4,.25)+slider('Denoise',.45,0,1,.05)+slider('Hires steps',12,1,40))
++ftr('wand','Upscale after generation','ESRGAN upscale of the final image.',`<label class="fld" style="margin-top:8px">Model${sel(['4x-UltraSharp.pth','RealESRGAN_x4plus_anime_6B.pth'])}</label><div class="seg" style="margin-top:8px"><button aria-selected="true" data-a="segv">×2</button><button data-a="segv">×4</button></div>`)
++ftr('smile','Fix faces · ADetailer','Detect faces and re-render them.',`<label class="fld" style="margin-top:8px">Detector${sel(['face_yolov8n.pt'])}</label><label class="fld" style="margin-top:8px">Face prompt<input class="in" placeholder="same as main prompt"></label>`+slider('Denoise',.4,0,1,.05)+slider('Confidence',.3,0,1,.05))}
+function secFiles(P){return `<p class="mfg" style="font-size:12px;margin:2px 0 4px">${P.m=='split'?'Split load':'Standard load'} · override any slot for this session.</p>${Object.entries(P.s).map(([k,v])=>`<button class="slot" data-a="pick" data-slot="${k}" aria-haspopup="listbox"><span class="lb">${SL[k][0]}</span><span class="fn tr">${v}</span>${ic('down','xs')}</button>`).join('')}<div style="margin-top:12px"><button class="lk" data-go="m-presets">All slots and defaults in Models</button></div>`}
+function secPerf(k){const v=k=='video';return swr('VAE tiling','Lower VRAM while decoding',v)+swr('Offload to CPU','Keeps weights in RAM between steps',v)+swr('CLIP on CPU','',!v)+swr('VAE on CPU','')+swr('Flash attention','',true)+swr('Load all weights at start','Slower start, steadier VRAM')
++`<div class="g2" style="margin-top:6px"><label class="fld">Threads<input class="in" value="auto (16)"></label><label class="fld">VAE tile size<input class="in" value="auto"></label></div><div style="margin-top:12px"><button class="lk" data-go="s-backend">Devices and VRAM limit in Settings</button></div>`}
+function secVid(){return `<div class="fl" style="margin-top:2px"><span>Start frame</span><span>I2V</span></div><div class="row"><span class="thumb" style="width:64px;height:40px">${art(0)}</span><div style="flex:1;min-width:0"><div class="tr">cabin-dusk.png</div><div class="mfg" style="font-size:12px">1024 × 1024 · cropped to 16:9</div></div>${ib('retry','Replace start frame')}${ib('x','Remove start frame','','tl-')}</div>
+<div class="fl"><span>End frame</span><span>optional · FLF2V</span></div><button class="drop" style="margin:0;padding:10px;width:100%" data-a="toast" data-t="Pick an end frame">${ic('plus','s')} Add end frame</button>
+${slider('Frames',49,5,121,4)}<div class="fl"><span>Frame rate</span><span>fps</span></div><div class="seg"><button data-a="segv">8</button><button data-a="segv">12</button><button data-a="segv" aria-selected="true">16</button><button data-a="segv">24</button></div>
+<p class="mfg" style="font-size:12px;margin-top:10px">Duration 3.1 s · frames snap to 4n+1</p>`}
+function secEdit(){return `<div class="seg" style="margin-top:2px"><button aria-selected="true" data-a="segv">Inpaint</button><button data-a="segv">Img2img</button><button data-a="segv">Reference</button></div>${slider('Strength',.75,0,1,.05)}${slider('Mask blur',8,0,64)}${swr('Only masked area','Renders the masked region at full resolution',true)}<label class="fld" style="margin-top:6px">Masked content${sel(['Original','Noise','Blur'])}</label>`}
+/* ---------- studio popovers ---------- */
+function presetMenu(){const k=SCR[st.scr].kind||'image',cur=kindP(k).n;
+return `<div style="width:300px"><div class="srch" style="margin:2px 2px 6px">${ic('search','s')}<input class="in" placeholder="Search presets" aria-label="Search presets"></div><div class="mh">My presets</div>${PR.map(p=>`<button class="mi" data-a="toast" data-t="Loaded ${p.n}: files and defaults">${p.n==cur?ic('check','s'):'<span style="width:14px"></span>'}<span class="sp tr">${p.n}</span>${tg(p.f)}</button>`).join('')}
+${st.mod?`<div class="msep"></div><div class="mh">${cur} is modified</div><div class="row" style="padding:4px 8px 6px"><button class="b p sm" data-a="save">Save</button><button class="b s sm" data-a="savenew">Save as new</button><button class="b g sm" data-a="revert">Revert</button></div>`:''}
+<div class="msep"></div><button class="mi" data-go="m-new">${ic('plus','s')}New preset from template</button><button class="mi" data-go="m-presets">${ic('models','s')}Manage presets</button></div>`}
+function sizeMenu(){const A=[['1:1',1024,1024],['4:3',1152,864],['3:2',1216,832],['16:9',1344,768],['3:4',864,1152],['2:3',832,1216],['9:16',768,1344],['21:9',1536,640]];
+return `<div style="width:272px;padding:4px"><div class="mh" style="padding-left:4px">Cozy Winter kit</div><div class="g2" style="gap:4px"><button class="mi" data-a="toast" data-t="Size 832 × 1216">${asp(832,1216)}<span><span style="display:block">Poster</span><span class="mono mfg">832×1216</span></span></button></div>
+<div class="mh" style="padding-left:4px">Aspect</div><div class="g2" style="gap:4px">${A.map(a=>`<button class="mi${a[0]=='1:1'?' on':''}" style="${a[0]=='1:1'?'background:var(--act)':''}">${asp(a[1],a[2])}<span><span style="display:block">${a[0]}</span><span class="mono mfg">${a[1]}×${a[2]}</span></span></button>`).join('')}</div>
+<div class="msep"></div><div class="row" style="padding:4px"><input class="in" value="1024" aria-label="Width"><span class="mfg">×</span><input class="in" value="1024" aria-label="Height">${ib('lock','Lock aspect','','tl-')}</div></div>`}
+function countMenu(){return `<div style="width:250px;padding:6px"><div class="mh" style="padding:2px 0 8px">Images per run</div><div class="seg"><button data-a="segv">1</button><button data-a="segv">2</button><button data-a="segv" aria-selected="true">4</button><button data-a="segv">8</button></div>${swr('One batch (-b)','Faster; Server mode falls back to CLI',true)}</div>`}
+function durMenu(){return `<div style="width:260px;padding:6px">${slider('Frames',49,5,121,4)}<div class="fl"><span>Frame rate</span></div><div class="seg"><button data-a="segv">8</button><button data-a="segv">12</button><button data-a="segv" aria-selected="true">16</button><button data-a="segv">24</button></div><p class="mfg" style="font-size:12px;margin-top:10px">49 frames at 16 fps = 3.1 s</p></div>`}
+function modeMenu(){return `<div style="width:280px">${[['Inpaint','Change only the masked area'],['Image to image','Restyle the whole image with strength'],['Reference edit','Instruction edit with Kontext or Qwen Edit']].map((m,i)=>`<button class="mi" data-a="toast" data-t="Mode: ${m[0]}">${i==0?ic('check','s'):'<span style="width:14px"></span>'}<span><span style="display:block">${m[0]}</span><span class="d">${m[1]}</span></span></button>`).join('')}</div>`}
+function imgMore(){const r=(i,t,x='')=>`<button class="mi" ${x||`data-a="toast" data-t="${t}"`}>${ic(i,'s')}${t}</button>`;
+return `<div style="width:220px">${r('repeat','Reuse settings','data-go="img-panel"')}${r('expand','Upscale ×2')}${r('smile','Fix faces (ADetailer)')}${r('copy','Copy seed')}${r('copy','Copy prompt')}${r('folder','Show in folder')}${r('gallery','Open in Gallery','data-go="gallery"')}<div class="msep"></div><button class="mi dg" data-a="toast" data-t="Moved to Recycle Bin · Undo">${ic('trash','s')}Delete</button></div>`}
+function queuePop(){const row=(i,p,m,x)=>`<div class="lr" style="min-height:44px;padding:6px 0;gap:10px;border-top:0">${ic('grip','s mfg')}<span class="thumb" style="width:32px;height:32px">${art(i)}</span><div style="flex:1;min-width:0"><div class="tr">${p}</div><div class="d">${m}</div></div>${x}</div>`;
+return `<div style="width:380px;padding:6px 8px"><div class="row" style="padding:4px 0 10px"><b style="font-weight:600">Queue</b><span class="mfg" style="font-size:12px">1 running · 2 pending</span><span class="sp"></span><button class="b g sm" data-a="toast" data-t="Queue paused after current job">${ic('pause','s')}Pause</button><button class="b g sm" data-a="toast" data-t="Cleared 2 pending runs">Clear pending</button></div>
+<div style="padding:8px 0 10px;border-top:1px solid var(--line)"><div class="row"><span class="thumb" style="width:40px;height:40px">${art(0,'live')}</span><div style="flex:1;min-width:0"><div class="tr">isometric cozy cabin in a snowy pine forest…</div><div class="d mfg" style="font-size:12px">FLUX.1 dev Q8 · image 2 of 4 · 62% · 7 s left</div></div>${ib('x','Cancel running job','data-a="toast" data-t="Cancelled"','tl-')}</div><div class="prog" style="margin-top:8px"><i style="width:62%"></i></div></div>
+<div class="mh" style="padding:6px 0 0;border-top:1px solid var(--line)">Pending · drag to reorder</div>${row(3,'lighthouse on a cliff during a storm, oil painting','FLUX.1 dev Q8 · 4 images',ib('x','Remove from queue','','tl-'))}${row(4,'slow orbit around the cabin, snow falling','Wan2.2 I2V A14B Q4 · 49 f',ib('x','Remove from queue','','tl-'))}
+<div class="mh" style="padding:10px 0 0;border-top:1px solid var(--line)">Finished</div>${row(2,'ceramic mug product shot','Done · 4 images · 58 s',`<span class="okc">${ic('check','s')}</span>`)}${row(5,'neon alley in the rain','Failed · out of VRAM at VAE decode',B('Retry','s sm','data-a="toast" data-t="Retrying with VAE tiling on"','retry'))}
+<div style="padding:8px 0 2px;border-top:1px solid var(--line)"><button class="lk" data-go="gallery">Open Gallery</button></div></div>`}
+/* ---------- home ---------- */
+const RC=[['Product shot → 4 angles','Hero shot, then three matching angles.',3,'FLUX.1 dev Q8','Image','g-rec','recipes'],['Sprite sheet','Character turnaround as a pixel sprite sheet.',4,'SDXL Juggernaut','Game assets','g-game','game'],['Tileable texture','Seamless material tiles from a prompt.',2,'FLUX.1 schnell fast','Game assets','g-game','game'],['Item icons ×8','Consistent icon set from a list of items.',2,'SDXL Juggernaut','Game assets','g-game','game'],['Portrait → animate','Portrait, face fix, then a 3 s Wan clip.',3,'FLUX → Wan2.2','Video','g-vid','video'],['Upscale & detail','Hires fix, 4× upscale, ADetailer faces.',3,'Any image preset','Image','g-rec','expand'],['Storyboard ×6','Six frames from one script, same style.',2,'Z-Image Turbo Q8','Image','g-rec','film'],['Object cleanup','Mask and remove objects with Qwen Edit.',2,'Qwen Image Edit 2511','Edit','g-edit','edit'],['Cabin series','My recipe: 6 seasons of the same cabin.',3,'FLUX.1 dev Q8','Mine','g-rec','recipes']];
+function home(s){return `<div class="pg"><div class="home"><h1>Good evening</h1><p class="mfg" style="margin-top:4px">FLUX.1 dev Q8 is ready on RTX 4070 · 12 GB</p>
+<div class="cmp hcmp" style="margin-top:22px"><div class="pr" contenteditable="true" role="textbox" aria-label="Prompt" data-ph="Describe an image, an edit or a video…"></div><div class="crow"><div class="seg" role="tablist" aria-label="Mode"><button role="tab" aria-selected="true" data-a="segv">Image</button><button role="tab" data-a="segv">Edit</button><button role="tab" data-a="segv">Video</button></div><button class="cc" data-a="pp" aria-haspopup="menu">${ic('models','s')}<span class="tr">FLUX.1 dev Q8</span>${ic('down','xs')}</button><span class="sp"></span><button class="gen${st.mobile?' ic':''}" data-go="img-gen" aria-label="Generate">${st.mobile?ic('arrow'):'Generate<kbd>Ctrl ↵</kbd>'}</button></div></div>
+<section class="chk" style="margin-top:30px"><div class="h2">Finish setup ${tg('2 of 3')}<span class="sp"></span>${ib('x','Hide checklist','data-a="toast" data-t="Checklist hidden · reopen from the Setup pill"','tl-')}</div>
+<div class="lr"><span class="okc">${ic('check')}</span><div style="flex:1;min-width:0"><div class="t">Runtime installed</div><div class="d">master-982 · CUDA 12 · verified on RTX 4070</div></div></div>
+<div class="lr"><span class="okc">${ic('check')}</span><div style="flex:1;min-width:0"><div class="t">First preset ready</div><div class="d">FLUX.1 dev Q8 · 4 files · 23.1 GB</div></div></div>
+<div class="lr"><span class="mfg">${ic('clock')}</span><div style="flex:1;min-width:0"><div class="t">Make a test image</div><div class="d">About 15 seconds on this GPU</div></div>${B('Try it','s sm','data-go="img-gen"')}</div></section>
+<div class="h2" style="margin-top:34px">Continue<span class="sp"></span><button class="lk" data-go="gallery" style="font-size:12px">Gallery</button></div>
+<div class="rec6 recent" style="margin-top:10px">${[0,3,2,4,1,6].map((a,i)=>`<button data-go="${i==3?'video':'img-result'}" aria-label="Open ${PROMPTS[a]}">${art(a)}</button>`).join('')}</div>
+<div class="h2" style="margin-top:34px">Recipes<span class="sp"></span><button class="lk" data-go="recipes" style="font-size:12px">All recipes</button></div><div style="margin-top:8px" class="hrec">${[0,1,4].map(i=>`<div class="lr cl" data-go="recipes-run">${tile(RC[i][5],RC[i][6],'lg')}<div style="flex:1;min-width:0"><div class="t">${RC[i][0]}</div><div class="d">${RC[i][1]}</div></div>${ic('right','s mfg')}</div>`).join('')}</div></div></div>`}
+function moreScr(){return `<div class="pg">${ph('More','')}${[['kits','Style kits','g-kit','kits'],['m-presets','Models','g-zinc','models'],['s-backend','Settings','g-zinc','gear'],['help','Help','g-zinc','help']].map(r=>`<div class="lr cl" data-go="${r[0]}">${tile(r[2],r[3])}<div class="t" style="flex:1">${r[1]}</div>${ic('right','s mfg')}</div>`).join('')}</div>`}
+/* ---------- recipes ---------- */
+function recipes(){return `<div class="pg"><div class="pgw">${ph('Recipes','Multi-step workflows and game-asset makers. Saved on this device.',B('Import .json','s','data-a="toast" data-t="Imported recipe from .json"','ul')+B('New recipe','p','data-go="recipes-build"','plus'))}
+<div class="tabs rtabs" role="tablist">${['All · 9','Image','Edit','Video','Game assets','Mine'].map((t,i)=>`<button role="tab" data-a="tabv" aria-selected="${i==0}">${t}</button>`).join('')}</div>
+<div class="rgrid">${RC.map((r,i)=>`<button class="rc2" data-go="recipes-run">${tile(r[5],r[6],'lg')}<div><div class="t">${r[0]}</div><div class="d" style="margin-top:2px">${r[1]}</div></div><div class="row mfg" style="font-size:12px;margin-top:auto">${r[2]} steps · ${r[3]}<span class="sp"></span>${r[4]=='Game assets'||r[4]=='Mine'?tg(r[4]):''}</div></button>`).join('')}</div></div></div>`}
+function recipeRun(){const stp=[['Generate hero shot','Image · FLUX.1 dev Q8 · 1024 × 1024 · 1 image'],['Vary angle ×3','Image to image · strength 0.55 · uses step 1'],['Upscale ×2','4x-UltraSharp · all results']];
+return `<div class="pg"><div class="pgw"><button class="lk mfg" data-go="recipes" style="font-size:12px">${'← Recipes'}</button><div style="height:10px"></div>${ph('Product shot → 4 angles','Hero shot, then three matching angles, upscaled.',B('Edit in builder','s','data-go="recipes-build"')+B('Export .json','g','data-a="toast" data-t="Exported product-angles.json"','dl'))}
+<div class="row" style="align-items:flex-start;gap:40px;flex-wrap:wrap"><div style="flex:1;min-width:280px;max-width:420px"><div class="h2">Inputs</div><label class="fld" style="margin-top:10px">Product<textarea class="in" rows="3">matte ceramic mug, sage green glaze</textarea></label><label class="fld" style="margin-top:12px">Backdrop${sel(['Soft beige studio','White seamless','Kitchen counter'])}</label><label class="fld" style="margin-top:12px">Preset${sel(PR.map(p=>p.n),'FLUX.1 dev Q8')}</label>${swr('Lock seed across steps','Keeps lighting consistent',true)}<div class="row" style="margin-top:14px">${B('Run recipe','p','data-a="toast" data-t="Queued 3 steps · 4 images"','play')}<span class="mfg" style="font-size:12px">≈ 1 min 40 s</span></div></div>
+<div style="flex:1.3;min-width:300px"><div class="h2">Steps</div><div style="margin-top:10px">${stp.map((s,i)=>`<div class="lr"><span class="tg o" style="width:22px;justify-content:center;padding:0">${i+1}</span><div style="flex:1"><div class="t">${s[0]}</div><div class="d">${s[1]}</div></div></div>`).join('')}</div><div class="h2">Last run · today</div><div class="row" style="margin-top:10px">${[2,3,6,1].map(a=>`<span class="thumb" style="width:72px;height:72px">${art(a)}</span>`).join('')}</div></div></div></div></div>`}
+function recipeBuild(){const S=[['Generate image','FLUX.1 dev Q8 · {product} on {backdrop}'],['Image to image ×3','strength 0.55 · camera: 3/4, side, top'],['Upscale','4x-UltraSharp · ×2']];
+return `<div class="pg"><div class="pgw pgn" style="max-width:820px"><button class="lk mfg" data-go="recipes" style="font-size:12px">← Recipes</button><div style="height:10px"></div>${ph('Recipe builder','Steps run top to bottom; each can use earlier results.',B('Test run','s','data-a="toast" data-t="Test run queued"','play')+B('Save','p','data-a="toast" data-t="Saved on this device"'))}
+<div class="fgrid" style="grid-template-columns:2fr 1fr"><label>Name<input class="in" value="Product shot → 4 angles"></label><label>Category${sel(['Image','Edit','Video','Game assets'])}</label></div>
+<div class="h2">Inputs</div><p class="sub">Variables users fill in before running.</p>${[['{product}','Text · required'],['{backdrop}','Choice · 3 options']].map(v=>`<div class="lr"><span class="mono">${v[0]}</span><span class="d" style="flex:1">${v[1]}</span>${ib('more','Edit input','','tl-')}</div>`).join('')}
+<div class="h2">Steps</div><div style="margin-top:10px">${S.map((s,i)=>`<div class="lr">${ic('grip','s mfg')}<span class="tg o" style="width:22px;justify-content:center;padding:0">${i+1}</span><div style="flex:1"><div class="t">${s[0]}</div><div class="d">${s[1]}</div></div>${ib('more','Step options','','tl-')}</div>`).join('')}</div><div style="margin-top:12px">${B('Add step','s sm','data-a="toast" data-t="Generate · Edit · Img2img · Upscale · Fix faces · Animate"','plus')}</div></div></div>`}
+/* ---------- gallery ---------- */
+function gallery(){const g=GAL[st.gsel],mm=st.gmulti,n=st.gpick.size;
+const it=(x,i)=>`<div class="gi${!mm&&i==st.gsel?' on':''}" data-a="gsel" data-i="${i}" role="button" tabindex="0" aria-label="${esc(x.p)}">${art(x.a)}${mm?`<span class="ck${st.gpick.has(i)?' y':''}">${st.gpick.has(i)?ic('check','xs'):''}</span>`:''}${x.f?`<span class="fv">${ic('star','s')}</span>`:''}${x.v?`<span class="vd">0:03</span>`:''}</div>`;
+const grp=(t,a,b)=>`<div class="gday">${t}</div><div class="ggrid">${GAL.slice(a,b).map((x,i)=>it(x,i+a)).join('')}</div>`;
+return `<div class="split"><div class="pg"><div class="pgw">${ph('Gallery','1,284 items · D:\\FlaxeoUI\\outputs',B('Import','s','data-a="toast" data-t="Import images or a folder"','ul')+B(mm?'Done':'Select',mm?'p':'s','data-a="gmulti"','chk'))}
+<div class="gtool"><div class="srch" style="flex:1;min-width:170px">${ic('search','s')}<input class="in" placeholder="Search prompt, seed or model" aria-label="Search gallery"></div><div class="seg" role="group" aria-label="Type"><button aria-pressed="true" data-a="segv">All</button><button data-a="segv">Images</button><button data-a="segv">Videos</button></div>${ib('star','Favorites only','data-a="toast" data-t="Showing favorites" aria-pressed="false"')}${sel(['All presets',...PR.map(p=>p.n)],'','style="width:128px;height:32px;font-size:12px" aria-label="Preset"')}${sel(['Any time','Today','This week','This month'],'','style="width:108px;height:32px;font-size:12px" aria-label="Date"')}</div>
+${mm?`<div class="bulk" role="toolbar" aria-label="Bulk actions"><b style="font-weight:500;padding-left:4px">${n} selected</b><span class="sp"></span><button class="b g sm" data-a="toast" data-t="Added ${n} to favorites">${ic('star','s')}Favorite</button><button class="b g sm" data-a="toast" data-t="Downloading ${n} files as .zip">${ic('dl','s')}Download</button><button class="b g sm" data-a="toast" data-t="${n} moved to Recycle Bin · Undo">${ic('trash','s')}Delete</button></div>`:''}
+${grp('Today',0,12)}${grp('Yesterday',12,22)}${grp('Earlier this week',22,30)}<p class="mfg" style="text-align:center;font-size:12px;margin-top:20px">Loading more as you scroll…</p></div></div>
+${mm?'':`<aside class="det" aria-label="Details"><div class="thumb" style="aspect-ratio:1;border-radius:10px">${art(g.a)}</div><div class="row" style="margin-top:12px"><b class="sp" style="font-weight:600">${g.v?'Video · 832 × 480 · 3.1 s':'Image · 1024 × 1024'}</b>${ib('star','Favorite')}${ib('dl','Download','','tl-')}</div><p style="margin-top:6px">${g.p}</p>
+<dl class="kv"><dt>Preset</dt><dd>${g.pr}</dd><dt>Seed</dt><dd class="mono">482913077</dd><dt>Steps · CFG</dt><dd>28 · 1.0 · guidance 3.5</dd><dt>Sampler</dt><dd>euler · discrete</dd><dt>LoRAs</dt><dd>flux-realism 0.8</dd><dt>Made</dt><dd>Today 18:42 · 14.2 s</dd><dt>File</dt><dd class="tr mono" title="2026-10-21_flux1-dev_482913077.png">2026-10-21_flux1-dev…png</dd></dl>
+<button class="b p" style="width:100%" data-go="img-panel">${ic('repeat','s')}Reuse settings</button><div style="margin-top:8px" class="gact">${[['edit','Send to Edit','data-go="edit"'],['video','Send to Video','data-go="video"'],['expand','Upscale ×2','data-a="toast" data-t="Upscale queued"'],['smile','Fix faces (ADetailer)','data-a="toast" data-t="ADetailer queued"'],['folder','Show in folder','data-a="toast" data-t="Opened in Explorer"']].map(r=>`<button class="mi" ${r[2]}>${ic(r[0],'s')}${r[1]}</button>`).join('')}</div>
+<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:10px"><button class="mi dg gdel" data-a="toast" data-t="Moved to Recycle Bin · Undo">${ic('trash','s')}Delete</button></div></aside>`}</div>`}
+/* ---------- style kits ---------- */
+const KITS=[['Cozy Winter',['#f5d0a9','#7c2d12','#1e3a8a','#e5e7eb','#0f172a']],['Pixel Quest',['#22c55e','#1e293b','#facc15','#ef4444','#f8fafc']],['Product Clean',['#f5f5f4','#d6d3d1','#57534e','#1c1917','#a8a29e']],['Noir Film',['#0a0a0a','#404040','#a3a3a3','#e5e5e5','#78350f']]];
+function kits(){const k=KITS[st.kit],on=st.kit==0;
+return `<div class="split"><div class="col" style="width:260px;padding:28px 12px"><div class="row" style="padding:0 8px 12px"><b style="font-size:15px;font-weight:600">Style kits</b><span class="sp"></span>${ib('plus','New kit','data-a="toast" data-t="New kit created"','tl-')}</div>${KITS.map((x,i)=>`<button class="ls${i==st.kit?' on':''}" data-a="ksel" data-i="${i}"><span class="row" style="gap:2px">${x[1].slice(0,3).map(c=>`<i style="width:10px;height:10px;border-radius:50%;background:${c};display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></i>`).join('')}</span><span class="tr" style="flex:1">${x[0]}</span>${i==0?tg('Active','f'):''}</button>`).join('')}<div style="padding:14px 8px">${B('Import .json','s sm','data-a="toast" data-t="Imported kit"','ul')}</div></div>
+<div class="pg"><div class="pgn">${ph(k[0],'A reusable look: prompt text, palette, sizes and LoRAs.',B('Export .json','g','data-a="toast" data-t="Exported kit"','dl')+B('Duplicate','g'))}
+<div class="swr kact" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0"><div><div style="font-weight:500">Active kit</div><div class="d">${on?'Applied to every new Image and Recipe run: adds the prefix, negative and LoRAs below, and its sizes appear first in the size menu.':'Turn on to apply this kit to new runs. Only one kit is active at a time.'}</div></div>${sw(on,'Active kit')}</div>
+<div class="fgrid kf" style="grid-template-columns:1fr;margin-top:18px"><label>Prompt prefix<textarea class="in" rows="2">cozy winter mood, soft falling snow, warm amber window light,</textarea></label><label>Prompt suffix<input class="in" value="film still, shallow depth of field"></label><label>Negative<input class="in" value="harsh light, oversaturated, text"></label></div>
+<div class="h2">Palette</div><p class="sub">Added to the prompt as colour guidance.</p><div class="row">${k[1].map(c=>`<span style="width:36px;height:36px;border-radius:8px;background:${c};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)" title="${c}"></span>`).join('')}${ib('plus','Add colour','','tl-')}</div>
+<div class="h2">Sizes</div><p class="sub">Shown first in the composer size menu.</p>${[['Poster','832 × 1216'],['Square','1024 × 1024'],['Banner','1344 × 768']].map(z=>`<div class="lr" style="min-height:42px">${asp(...z[1].split(' × ').map(Number))}<span style="flex:1">${z[0]}</span><span class="mono mfg">${z[1]}</span>${ib('x','Remove size','','tl-')}</div>`).join('')}<div style="margin-top:8px">${B('Add size','g sm','','plus')}</div>
+<div class="h2">LoRAs</div><p class="sub">Added to runs while the kit is active.</p><div class="lr"><span style="flex:1">cozy-winter-flux</span><span style="width:160px">${rng(.7,-2,2,.05,'Strength')}</span><span class="mono">0.70</span>${ib('x','Remove','','tl-')}</div><div style="margin-top:8px">${B('Add LoRA','g sm','data-go="lora"','plus')}</div>
+<div class="h2">Preferred preset</div><p class="sub">Optional. Switches the studio preset when the kit is activated.</p>${sel(['None · keep current','FLUX.1 dev Q8','My anime Flux v3'],'FLUX.1 dev Q8','style="max-width:320px"')}
+<div style="border-top:1px solid var(--line);margin-top:30px;padding-top:14px">${B('Delete kit','g d','data-a="toast" data-t="Kit deleted · Undo"','trash')}</div></div></div></div>`}
+/* ---------- help ---------- */
+const TOP=['Getting started','Presets & model files','LoRAs & embeddings','Backend & runtimes','Guidance & references','Video','Recipes','Gallery','Network & remote access','Troubleshooting','Keyboard shortcuts'];
+function help(){return `<div class="split"><div class="col hm" style="width:240px;padding:28px 12px"><div class="gl" style="padding:0 10px 8px">Topics</div>${TOP.map((t,i)=>`<button class="ls${i==st.topic?' on':''}" data-a="topic" data-i="${i}">${t}</button>`).join('')}</div>
+<div class="pg"><div class="pgn">${ph('Help','Guides for every part of the studio.')}<div class="srch hsrch">${ic('search','s')}<input class="in" style="height:40px" placeholder="Search help, e.g. “LoRA strength” or “out of VRAM”" aria-label="Search help"></div>
+<article style="margin-top:26px;max-width:640px;line-height:1.6"><p class="mfg" style="font-size:12px">Help › ${TOP[st.topic]}</p><h2 style="font-size:18px;font-weight:600;margin:6px 0 10px">${TOP[st.topic]}</h2>
+<p>A <b>preset</b> is a named setup for one model: which file goes in each slot, the generation defaults, default LoRAs and hardware flags. The studio's model selector lists presets, so choosing one loads everything at once.</p>
+<h3 style="font-size:14px;font-weight:600;margin:20px 0 6px">Picking files</h3><p>Every slot can use <b>any</b> file. Suggestions are ordered by the detected family, but custom finetunes with unusual names work too. Use <b>Browse…</b> to pick a file outside the models folder.</p>
+<h3 style="font-size:14px;font-weight:600;margin:20px 0 6px">Hints, not blocks</h3><p>If a template usually needs a part you left empty, you'll see a hint with <b>Ignore</b>. Generate is never disabled because of detection.</p>
+<h3 style="font-size:14px;font-weight:600;margin:20px 0 6px">Shortcuts</h3><div class="lr" style="min-height:40px"><span style="flex:1">Generate</span><kbd>Ctrl</kbd><kbd>Enter</kbd></div><div class="lr" style="min-height:40px"><span style="flex:1">Toggle settings panel</span><kbd>Ctrl</kbd><kbd>.</kbd></div><div class="lr" style="min-height:40px"><span style="flex:1">Switch preset</span><kbd>Ctrl</kbd><kbd>P</kbd></div>
+<p class="mfg" style="margin-top:20px;font-size:12px">Related: <button class="lk" data-a="topic" data-i="2">LoRAs & embeddings</button> · <button class="lk" data-a="topic" data-i="3">Backend & runtimes</button></p></article></div></div></div>`}
+/* ---------- models ---------- */
+const fileOf=n=>F.find(f=>f[0]==n);
+function mShell(tab,body,act){const T=[['m-presets','Presets'],['m-files','Files'],['m-discover','Discover'],['m-downloads','Downloads'],['m-convert','Convert']];
+return `<div class="pg"><div class="pgw">${ph('Models','Presets, files and downloads · models root '+ROOT,act)}<div class="tabs" role="tablist">${T.map(t=>`<button role="tab" data-go="${t[0]}" aria-selected="${tab==t[0]}">${t[1]}${t[0]=='m-downloads'?'<span class="bdg">1</span>':''}</button>`).join('')}</div>${body}</div></div>`}
+function presets(){const p=PR[st.preset];
+const L=PR.map((x,i)=>`<button class="ls${i==st.preset?' on':''}" data-a="psel" data-i="${i}" style="align-items:flex-start;padding:8px 10px"><span style="flex:1;min-width:0"><span class="row"><span class="tr" style="color:var(--fg);font-weight:500;flex:1">${x.n}</span>${tg(x.f)}</span><span class="tr" style="display:block;font-size:12px;margin-top:2px">${Object.keys(x.s).length} files · ${x.sz} · ${x.last}</span></span></button>`).join('');
+return mShell('m-presets',`<div class="row prow" style="align-items:flex-start;gap:0"><div class="col plist" style="width:290px;padding-right:14px;overflow:visible"><div class="srch" style="margin-bottom:10px">${ic('search','s')}<input class="in" placeholder="Search presets" aria-label="Search presets"></div><div class="gl" style="padding-top:4px">My presets · ${PR.length}</div>${L}
+<div class="gl" style="padding-top:16px">Built-in templates · ${TPL.length+8}</div>${TPL.slice(0,5).map(t=>`<button class="ls" data-go="m-new"><span class="tr" style="flex:1">${t[0]}</span><span style="font-size:12px">${t[1]}</span></button>`).join('')}<button class="more" style="margin:8px 10px" data-go="m-new">${ic('plus','xs')}Show all templates</button></div>
+<div class="ped" style="flex:1;min-width:0;padding-left:28px">${editor(p)}</div></div>`,B('Import .json','s','data-a="toast" data-t="Imported 1 preset · custom file paths kept"','ul')+B('New preset','p','data-go="m-new" id="npb"','plus'))}
+function slotRow(k,p){const v=p.s[k],f=v&&fileOf(v),[lab,fold]=SL[k];
+return `<div class="lr pslot" style="min-height:56px"><div style="width:150px;flex:none"><div class="t">${lab}</div><div class="d mono">${fold}/</div></div><button class="fbtn${v?'':' none'}" data-a="pick" data-slot="${k}" data-ctx="ed" aria-haspopup="listbox" aria-label="${lab}: ${v||'none'}">${v?ic('file','s'):''}<span style="flex:1;min-width:0"><span class="tr" style="display:block">${v||'None'}</span>${f?`<span class="mfg tr" style="display:block;font-size:12px">${f[4]}${f[0]==v?'':''} · ${f[2]} · ${f[3]}</span>`:''}</span>${ic('down','s')}</button>${v?ib('x','Clear '+lab,'data-a="toast" data-t="'+lab+' cleared"','tl-'):'<span style="width:32px"></span>'}</div>
+${p.warn==k?`<div class="hint" id="hint" role="note">${ic('alert','s')}<span style="flex:1">FLUX templates usually use a T5XXL encoder — none selected. Generation still runs.</span><button class="lk" data-a="pick" data-slot="t5" data-ctx="ed">Pick file</button><button class="lk" data-a="ign">Ignore</button></div>`:''}`}
+function editor(p){const set=Object.keys(SL).filter(k=>k!=(p.m=='split'?'checkpoint':'diffusion'));
+const first=[...p.u,...set.filter(k=>!p.u.includes(k)&&p.s[k])],rest=set.filter(k=>!first.includes(k));
+const go=p.k=='Video'?'video':p.k=='Edit'?'edit':'img-empty',g=p.g;
+const inp=(l,v)=>`<label>${l}<input class="in" value="${v}"></label>`;
+return `<div class="row" style="align-items:flex-start;gap:10px"><div style="flex:1;min-width:0"><div class="row"><h2 style="font-size:18px;font-weight:600" class="tr">${p.n}</h2>${ib('edit','Rename preset','data-a="toast" data-t="Rename inline"')}</div><div class="row mfg wrap pfam" style="font-size:12px;margin-top:2px;gap:6px">${tg(p.k)}<span>${p.fh?`Family: custom · detected ${p.fh} (hint only)`:`Family ${p.f} · detected from file header`}</span><span>· used ${p.last}</span></div></div>
+<button class="b s" data-a="pmore" aria-haspopup="menu">${ic('more','s')}More</button><button class="b p" data-go="${go}" id="usein">Use in ${p.k}</button></div>
+<div class="h2" style="margin-top:24px">Load mode</div><p class="sub">Split loads a diffusion model plus separate parts. Standard loads one checkpoint file.</p><div class="seg lg"><button data-a="segv" aria-selected="${p.m=='split'}">Split · diffusion model + parts</button><button data-a="segv" aria-selected="${p.m!='split'}">Standard · one checkpoint</button></div>
+<div class="h2" style="margin-top:28px">Files</div><p class="sub">Any file works in any slot. The family's usual slots come first.</p><div class="pfiles">${first.map(k=>slotRow(k,p)).join('')}</div>
+<button class="more mcomp" data-a="mcomp" aria-expanded="${st.more}">${ic(st.more?'up':'plus','xs')}${st.more?'Fewer components':`More components · ${rest.length}`}</button>${st.more?`<div style="margin-top:8px">${rest.map(k=>slotRow(k,p)).join('')}</div>`:''}
+<div class="h2" style="margin-top:28px">Generation defaults</div><p class="sub">Loaded into the studio with this preset.</p><div class="fgrid">${inp('Steps',g[0])}${inp('CFG scale',g[1])}${inp('Guidance',g[2])}<label>Size<input class="in" value="${g[5]}"></label><label>Sampler${sel(SAMP,g[3])}</label><label>Scheduler${sel(SCHED,g[4])}</label>${inp('Flow shift',g[6])}${inp('Clip skip',g[7])}</div>${more('More defaults (ETA, SLG, sigmas, cache, live preview)',`<div class="fgrid" style="margin-top:10px">${inp('ETA','0')}${inp('SLG scale','0')}${inp('Skip layers','7,8,9')}<label>Cache mode${sel(['off','easycache','ucache','dbcache'])}</label></div>`)}
+<div class="h2" style="margin-top:28px">Default LoRAs &amp; embeddings</div><p class="sub">Added to the prompt when this preset loads.</p>${p.l.length?p.l.map(l=>`<div class="lr" style="min-height:44px"><span style="flex:1">${l[0]}</span><span style="width:180px">${rng(l[1],-2,2,.05,l[0]+' strength')}</span><input class="in mono" style="width:60px;height:28px;text-align:right" value="${l[1].toFixed(2)}" aria-label="${l[0]} strength">${ib('x','Remove '+l[0],'','tl-')}</div>`).join(''):`<p class="mfg" style="font-size:12px">None.</p>`}<div class="row" style="margin-top:10px">${B('Add LoRA','s sm','data-go="lora"','plus')}${B('Embedding','g sm','','plus')}</div>
+<div class="h2" style="margin-top:28px">Hardware</div><p class="sub">Overrides the global defaults in Settings › Backend.</p><div class="g2" style="column-gap:32px">${['VAE tiling','Offload to CPU','CLIP on CPU','VAE on CPU','Flash attention','Load all weights at start'].map((t,i)=>swr(t,'',p.hw[i])).join('')}</div><div class="fgrid" style="margin-top:8px">${inp('Threads','auto')}${inp('VAE tile size','auto')}<label>VAE format${sel(['Auto','Flux','SD3','Flux2'])}</label></div>
+<div class="h2" style="margin-top:28px">Notes &amp; cover</div><div class="row" style="margin-top:10px;align-items:flex-start"><span class="thumb" style="width:64px;height:64px">${art(st.preset)}</span><textarea class="in" rows="3" placeholder="What this preset is good for">${p.fh?'My finetune, trained on 2k anime frames. Works best with euler + beta.':'Best quality on 12 GB. ~14 s per image.'}</textarea></div>
+<div class="row wrap" style="border-top:1px solid var(--line);margin-top:28px;padding-top:14px">${B('Export .json','g','data-a="toast" data-t="Exported '+p.n+'.json"','dl')}${B('Duplicate','g','data-a="toast" data-t="Duplicated as '+p.n+' copy"','copy')}<span class="sp"></span>${B('Delete preset','g d','data-a="toast" data-t="Preset deleted · files kept · Undo"','trash')}</div>`}
+function presetMore(){const p=PR[st.preset];return `<div style="width:210px">${[['copy','Duplicate'],['edit','Rename'],['dl','Export .json'],['star','Set as default for '+p.k]].map(r=>`<button class="mi" data-a="toast" data-t="${r[1]}">${ic(r[0],'s')}${r[1]}</button>`).join('')}<div class="msep"></div><button class="mi dg" data-a="toast" data-t="Preset deleted · Undo">${ic('trash','s')}Delete</button></div>`}
+function picker(slot,ctx,all){const [lab,fold]=SL[slot],P=ctx=='ed'?PR[st.preset]:kindP(SCR[st.scr].kind||'image'),cur=P.s[slot]||'';
+const inF=F.filter(f=>f[1]==fold),list=all?F:inF,fam=(P.fh||P.f).replace('-like','').replace('.1','').split(' ')[0].toUpperCase();
+const rec=[cur,...inF.map(f=>f[0]).filter(n=>n!=cur)].filter(Boolean).slice(0,2).map(fileOf).filter(Boolean),sug=inF.filter(f=>!rec.includes(f)&&(f[5].toUpperCase().includes(fam)||f[0].toUpperCase().includes(fam))).slice(0,3);
+const row=f=>`<button class="fr${f[0]==cur?' on':''}" role="option" aria-selected="${f[0]==cur}" data-a="pickf" data-f="${f[0]}" data-slot="${slot}" data-ctx="${ctx}">${ic(f[0]==cur?'check':'file','s')}<span class="fn tr">${f[0]}</span><span class="pth tr">${all?f[1]+'/':''}${f[4]}</span><span class="sz">${f[3]}</span></button>`;
+return `<div class="fpk"><div class="row" style="padding:6px 6px 8px;gap:8px"><b style="font-weight:600">${lab}</b><span class="mono mfg">${fold}/</span><span class="sp"></span><div class="seg" role="tablist" aria-label="Scope"><button role="tab" data-a="pall" data-v="0" data-slot="${slot}" data-ctx="${ctx}" aria-selected="${!all}">This folder · ${inF.length}</button><button role="tab" data-a="pall" data-v="1" data-slot="${slot}" data-ctx="${ctx}" aria-selected="${!!all}">All files · ${F.length}</button></div></div>
+<div class="srch" style="margin:0 4px">${ic('search','s')}<input class="in" id="fpq" placeholder="Search ${list.length} files, any name or format" aria-label="Search files"></div>
+<div class="fpl" role="listbox" aria-label="${lab} files">${all?'':`<div class="mh">Recent</div>${rec.map(row).join('')}${sug.length?`<div class="mh">Suggested for ${P.fh||P.f} · hint</div>${sug.map(row).join('')}`:''}`}<div class="mh">${all?'Every installed file':`Everything in ${fold}/ · subfolders included`}</div>${list.map(row).join('')}</div>
+<div class="msep"></div><div class="row" style="padding:0 2px"><button class="mi" style="width:auto" data-a="toast" data-t="Opens a file dialog: any file on any drive">${ic('folder','s')}Browse…</button><button class="mi" style="width:auto" data-go="m-add">${ic('plus','s')}Add files</button><span class="sp"></span><button class="mi" style="width:auto" data-a="pickf" data-f="" data-slot="${slot}" data-ctx="${ctx}">None</button></div></div>`}
+function newPreset(){return `<div class="dlg" style="width:min(680px,100%)"><div class="dlh"><div style="flex:1"><h2>New preset</h2><p>Start from a family template, copy one of yours, or start blank.</p></div>${ib('x','Close','data-go="m-presets"','tl-')}</div>
+<div class="dlb"><div class="seg lg npseg" style="margin-top:14px" role="tablist">${['From template','Duplicate preset','Blank'].map((t,i)=>`<button role="tab" data-a="np" data-v="${i}" aria-selected="${st.np==i}">${t}</button>`).join('')}</div>${st.np==1?`<div class="tpl" style="margin-top:10px">${PR.map((x,i)=>`<label class="rr" style="padding:10px 4px"><input type="radio" name="dp"${i==0?' checked':''}><span style="flex:1;min-width:0"><span class="t">${x.n} ${tg(x.f)}</span><span class="d" style="display:block">${Object.keys(x.s).length} files · ${x.g[0]} steps · ${x.g[3]} · ${x.l.length} LoRA</span></span></label>`).join('')}</div><p class="mfg" style="font-size:12px;margin-top:8px">Copies files, defaults, LoRAs and hardware flags. Change anything afterwards.</p>`:st.np==2?`<p class="sub" style="margin-top:16px">Every slot starts empty and nothing is suggested. Choose how the model loads:</p><div class="seg"><button data-a="segv" aria-selected="true">Split · diffusion model + parts</button><button data-a="segv">Standard · one checkpoint</button></div>`:`
+<div class="srch" style="margin-top:14px">${ic('search','s')}<input class="in" placeholder="Search ${TPL.length+8} templates" aria-label="Search templates"></div><div class="tpl" style="margin-top:6px">${TPL.map((t,i)=>`<label class="rr" style="padding:10px 4px"><input type="radio" name="tp"${i==3?' checked':''}><span style="flex:1;min-width:0"><span class="t">${t[0]} ${tg(t[1])}</span><span class="d" style="display:block">${t[2]}</span></span></label>`).join('')}<p class="mfg" style="font-size:12px;padding:10px 4px">Also: ${TPLX}</p></div>`}
+<div class="fgrid" style="grid-template-columns:1fr 1fr;margin-top:16px"><label>Name<input class="in" value="FLUX.1 dev — fp16 T5"></label><label>Shows in${sel(['Image','Edit','Video'])}</label></div>
+<div class="swr npfill" style="margin-top:8px"><div><div>Auto-fill files I already have</div><div class="d">Found 4 of 4 usual parts: flux1-dev-Q8_0.gguf, ae.safetensors, clip_l.safetensors, t5xxl_fp16.safetensors</div></div>${sw(true,'Auto-fill files')}</div></div>
+<div class="dlf">${B('Import .json…','g','data-a="toast" data-t="Imported preset"','ul')}<span class="sp"></span>${B('Cancel','g','data-go="m-presets"')}${B('Create preset','p','data-a="create"')}</div></div>`}
+/* files */
+function files(){const types=Object.keys(TY),list=st.ftype?F.filter(f=>f[1]==st.ftype):F,s=F[st.fsel];
+const T=`<div class="col ftypes" style="width:190px;padding-right:12px;overflow:visible"><button class="ls${st.ftype?'':' on'}" data-a="ftype" data-v="">All files<span class="n">${F.length}</span></button>${types.map(t=>`<button class="ls${st.ftype==t?' on':''}" data-a="ftype" data-v="${t}"><span class="tr">${TY[t]}</span><span class="n">${F.filter(f=>f[1]==t).length}</span></button>`).join('')}<button class="ls" data-a="toast" data-t="Unknown files are kept here until you set a type"><span class="tr">Other</span><span class="n">0</span></button></div>`;
+const R=list.map(f=>{const i=F.indexOf(f);return `<tr class="cl${i==st.fsel?' on':''}" data-a="fsel" data-i="${i}"><td><div class="tr" style="font-weight:500">${f[0]}</div><div class="mfg tr mono" style="font-size:11.5px">${f[1]}/${f[4]}</div></td><td><div class="tr">${TY[f[1]]}</div><div class="mfg tr" style="font-size:12px">${f[2]}</div></td><td class="mfg" style="text-align:right">${f[3]}</td><td><div class="mfg tr">${f[6]}</div></td></tr>`}).join('');
+const lora=s[1]=='loras',L=LO.find(l=>s[0].startsWith(l[0]))||LO[5];
+const D=`<aside class="fdet" style="width:290px;flex:none;padding-left:22px;border-left:1px solid var(--line);margin-left:20px">${lora?`<div class="thumb" style="aspect-ratio:4/3;border-radius:10px">${art(5)}</div>`:''}<div style="font-weight:600;margin-top:12px;word-break:break-all">${s[0]}</div><div class="mfg mono" style="font-size:11.5px;margin-top:4px;word-break:break-all">${ROOT}\\${s[1]}\\${s[4].replace('/','\\')}${s[0]}</div><div class="row" style="margin-top:8px">${B('Reveal in Explorer','s sm','data-a="toast" data-t="Opened in Explorer"','folder')}</div>
+<div class="fld" style="margin-top:16px">Type<select class="in" aria-label="Type">${Object.values(TY).map(t=>`<option${t==TY[s[1]]?' selected':''}>${t}</option>`).join('')}</select></div><p class="mfg" style="font-size:12px;margin-top:4px">Detected from the file header. Change it if it's wrong.</p>
+<div class="fld" style="margin-top:12px">Family hint${sel(['FLUX','SDXL','SD1.5','Wan2.2','Z-Image','Qwen-Image','Unknown'],s[5])}</div>
+${lora?`<label class="fld" style="margin-top:12px">Trigger words<input class="in" value="${L[3]}"></label>${slider('Default strength',L[5],-2,2,.05)}<div class="row" style="margin-top:10px">${B('Change preview','g sm','','image')}</div>`:''}
+<div class="fld" style="margin-top:14px">Used by<span style="color:var(--fg)">${s[6]}</span></div><div class="row" style="margin-top:10px">${B('Create preset from this file','s sm','data-go="m-new"','plus')}</div>
+<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:12px">${B('Delete file…','g d sm','data-a="toast" data-t="Moved to Recycle Bin · 2 presets need a new file"','trash')}<p class="mfg" style="font-size:12px;margin-top:4px">Moves to the Recycle Bin.</p></div></aside>`;
+return mShell('m-files',`<div class="row frow" style="align-items:flex-start;gap:0">${T}<div style="flex:1;min-width:0;padding-left:20px"><div class="row" style="margin-bottom:10px"><select class="in ftsel" id="ftsel" style="width:170px" aria-label="Type"><option value="">All files · ${F.length}</option>${Object.keys(TY).map(t=>`<option value="${t}"${st.ftype==t?' selected':''}>${TY[t]} · ${F.filter(f=>f[1]==t).length}</option>`).join('')}</select><div class="srch" style="flex:1">${ic('search','s')}<input class="in" placeholder="Search ${list.length} files" aria-label="Search files"></div><span class="hide-m">${sel(['Sort: name','Sort: size','Sort: recently added'],'','style="width:170px" aria-label="Sort"')}</span></div><table class="tbl ftbl"><colgroup><col><col style="width:132px"><col style="width:72px"><col style="width:128px"></colgroup><thead><tr><th>Name · path</th><th>Type · format</th><th style="text-align:right">Size</th><th>Used by</th></tr></thead><tbody>${R}</tbody></table></div>${D}</div>`,
+B('Rescan','g','data-a="toast" data-t="Rescanned 3 folders · no changes"','retry')+B('Add folder…','s','data-go="m-add"','folder')+B('Add files…','p','data-go="m-add" id="addfb"','plus'))}
+function addFiles(){const r=[['my-anime-flux-v4.safetensors','23.8 GB','Diffusion model','Unknown · FLUX-like','diffusion_models/custom/','Move'],['an4char-v2.safetensors','38 MB','LoRA','Unknown family','loras/custom/','Copy'],['4x-NMKD-Siax.pth','67 MB','Upscaler (ESRGAN)','','upscale_models/','Copy'],['mystery_encoder.gguf','2.3 GB','','Could not detect',' — ','Keep in place']];
+return `<div class="dlg" style="width:min(820px,100%)"><div class="dlh"><div style="flex:1"><h2>Add your own files</h2><p>Detected types are guesses — change any of them. Every file stays usable in any slot.</p></div>${ib('x','Close','data-go="m-files"','tl-')}</div>
+<div class="dlb"><div class="drop afdrop">${ic('ul')}<div style="margin-top:6px">Drop .safetensors, .gguf, .ckpt, .pt, .pth or .bin files</div><div class="row" style="justify-content:center;margin-top:10px">${B('Choose files…','s sm')}${B('Add folder…','g sm','','folder')}</div></div>
+<table class="tbl aftbl" style="margin-top:12px"><thead><tr><th>File</th><th>Detected as</th><th>Destination</th><th>Action</th></tr></thead><tbody>${r.map(x=>`<tr><td style="max-width:220px"><div class="tr" style="font-weight:500">${x[0]}</div><div class="mfg" style="font-size:12px">${x[1]}${x[3]?' · '+x[3]:''}</div></td><td>${x[2]?sel(Object.values(SL).map(s=>s[0]).concat(['LoRA','Embedding']),x[2],'style="height:30px;width:160px"'):`<span class="row wac" style="font-size:12px">${ic('alert','s')}${sel(['Pick a type…','Text encoder','LLM','VAE','Other'],'','style="height:30px;width:130px"')}</span>`}</td><td>${sel([x[4],'diffusion_models/','loras/','upscale_models/','text_encoders/','Other…'],x[4],'style="height:30px;width:170px"')}</td><td>${sel(['Move','Copy','Keep in place'],x[5],'style="height:30px;width:120px"')}</td></tr>`).join('')}</tbody></table>
+<div class="h2" style="margin-top:22px">Already have a model library?</div><div class="lr afroot"><span class="mfg">${ic('folder')}</span><div style="flex:1;min-width:0"><div class="t">D:\\ComfyUI\\models</div><div class="d">ComfyUI layout detected · 9 folders mapped · 22 files · scanned recursively, kept in place</div></div>${tg('Mapped','ok')}</div>
+<div class="swr" style="margin-top:6px"><div><div>Create a preset from new diffusion models</div><div class="d">Uses the closest template; you can change any slot.</div></div>${sw(true,'Create preset')}</div></div>
+<div class="dlf"><span class="mfg" style="font-size:12px">4 files · 26.2 GB · 1 move, 2 copies, 1 in place</span><span class="sp"></span>${B('Cancel','g','data-go="m-files"')}${B('Add 4 files','p','data-a="toast" data-t="Added 4 files · 1 preset created"')}</div></div>`}
+function discover(){const R=[['g-img','FLUX.1 dev · balanced','Diffusion Q8_0 + ae + clip_l + t5xxl fp16','21.6 GB','12 GB',['Q8_0','Q5_K','Q4_K'],'Fits','ok','Installed'],['g-img','FLUX.1 schnell · fast','4-step distilled, great for drafts','9.8 GB','8 GB',['Q4_K','Q8_0'],'Fits','ok',''],['g-img','Z-Image Turbo','Diffusion Q8_0 + ae + Qwen3-4B LLM','11.3 GB','8 GB',['Q8_0','Q4_K'],'Fits','ok','Installed'],['g-edit','Qwen Image Edit 2511','Instruction edits with Qwen2.5-VL','18.3 GB','12 GB',['Q4_K','Q8_0'],'Fits with offload','wa',''],['g-vid','Wan2.2 I2V A14B','High + low-noise Q4_K, UMT5, Wan VAE','25.8 GB','12 GB',['Q4_K','Q3_K'],'Fits with offload','wa','Downloading'],['g-vid','LTX-2.3 Video','Video with audio, 2.3 release','31.4 GB','16 GB',['Q4_K','Q8_0'],'Needs 16 GB','',''],['g-img','SDXL · Juggernaut XL v9','Single checkpoint + fp16-fix VAE','7.2 GB','8 GB',['fp16'],'Fits','ok','Installed']];
+return mShell('m-discover',`<div class="gtool"><div class="srch" style="flex:1;min-width:240px">${ic('search','s')}<input class="in" placeholder="Search models, or paste a Hugging Face URL" aria-label="Search models"></div><div class="seg" role="group"><button aria-pressed="true" data-a="segv">All</button><button data-a="segv">Image</button><button data-a="segv">Edit</button><button data-a="segv">Video</button><button data-a="segv">LoRA</button><button data-a="segv">Upscalers</button></div><label class="row mfg" style="font-size:12px">${sw(true,'Only show what fits')}Fits RTX 4070 · 12 GB</label></div>
+<div class="h2">Starter packs</div><p class="sub">Each pack downloads every part and creates a ready preset.</p>${R.map(r=>`<div class="lr dsc">${tile(r[0],r[0]=='g-vid'?'video':r[0]=='g-edit'?'edit':'image','lg')}<div style="flex:1;min-width:180px"><div class="t">${r[1]}</div><div class="d">${r[2]}</div></div><span class="mfg hide-m" style="width:70px;text-align:right;font-size:12px">${r[3]}</span><span class="mfg hide-m" style="width:84px;font-size:12px">min ${r[4]}</span>${sel(r[5],r[5][0],'style="width:92px;height:28px;font-size:12px" aria-label="Quantization"')}<span style="width:120px">${tg(r[6],r[7])}</span>${r[8]=='Installed'?B('Installed','g sm','disabled','check'):r[8]?B('Downloading 64%','s sm','data-go="m-downloads"'):B('Download & create preset','s sm','data-a="toast" data-t="Downloading 4 files · preset will be created"','dl')}</div>`).join('')}
+<div class="h2" style="margin-top:28px">Add from a URL</div><p class="sub">Any direct link or Hugging Face repo. Gated repos such as FLUX.1 dev need a token in Settings › Storage.</p><div class="row durl"><input class="in" placeholder="https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q5_K.gguf" aria-label="URL"><select class="in" style="width:170px" aria-label="Save as">${['Auto-detect type','Diffusion model','LoRA','VAE','Text encoder'].map(t=>`<option>${t}</option>`).join('')}</select>${B('Add','s','data-a="toast" data-t="Added to downloads"')}</div>`,B('Add LoRAs…','s','data-go="m-add"','plus'))}
+function downloads(){const R=[['wan2.2_i2v_high_noise_14B_Q4_K.gguf','diffusion_models/wan/',64,'6.1 of 9.6 GB · 38 MB/s · 1 min 32 s left','run'],['umt5-xxl-encoder-Q8_0.gguf','text_encoders/',22,'1.4 of 6.3 GB · paused','pause'],['pulid_flux_v0.9.1.safetensors','pulid/',41,'Failed at 0.45 GB · connection reset','fail'],['Qwen3-4B-Q8_0.gguf','text_encoders/llm/',100,'4.3 GB · finished 12 min ago','done']];
+return mShell('m-downloads',`${R.map(r=>`<div class="lr dlr" style="align-items:flex-start;padding:14px 0"><span class="${r[4]=='done'?'okc':r[4]=='fail'?'bac':'mfg'}" style="margin-top:2px">${ic(r[4]=='done'?'check':r[4]=='fail'?'alert':'dl')}</span><div style="flex:1;min-width:0"><div class="row"><span class="t tr">${r[0]}</span><span class="mono mfg hide-m">→ ${r[1]}</span></div><div class="prog" style="margin:8px 0 6px"><i style="width:${r[2]}%;${r[4]=='fail'?'background:var(--bad)':''}"></i></div><div class="d">${r[3]}</div></div><div class="row">${r[4]=='run'?B('Pause','s sm','','pause')+ib('x','Cancel download','','tl-'):r[4]=='pause'?B('Resume','s sm','','play')+ib('x','Cancel download','','tl-'):r[4]=='fail'?B('Retry','s sm','data-a="toast" data-t="Resuming from 0.45 GB"','retry')+ib('x','Remove','','tl-'):B('Show in folder','g sm','','folder')}</div></div>`).join('')}<p class="mfg" style="font-size:12px;margin-top:14px">Downloads go to the default target folder for each type · change in Settings › Storage.</p>`,B('Pause all','g','','pause')+B('Clear finished','s'))}
+function convert(){const T=[['q8_0','12.6 GB','Near-lossless',''],['q6_K','9.8 GB','Very close to original',''],['q5_K','8.4 GB','Small quality loss',''],['q4_K','6.7 GB','Recommended for 12 GB with LoRAs','Recommended'],['q3_K','5.1 GB','Visible softening',''],['q2_K','3.9 GB','Noticeable quality loss',''],['f16','23.8 GB','No compression','']];
+return mShell('m-convert',`<div class="pgn"><div class="h2">Source</div><p class="sub">Any diffusion model or text encoder you have, including custom finetunes.</p><button class="fbtn" data-a="toast" data-t="Pick any installed file or browse">${ic('file','s')}<span style="flex:1;min-width:0"><span class="tr" style="display:block">my-anime-flux-v3.safetensors</span><span class="mfg" style="font-size:12px">diffusion_models/custom/ · safetensors bf16 · 23.8 GB</span></span>${ic('down','s')}</button>
+<div class="h2" style="margin-top:26px">Convert to</div><p class="sub">Estimated output size and quality.</p><div class="cvt">${T.map((t,i)=>`<label class="rr" style="padding:11px 0"><input type="radio" name="q"${i==3?' checked':''}><span style="flex:1"><span class="t"><span class="mono" style="font-size:13px">${t[0]}</span>${t[3]?tg(t[3],'ok'):''}</span><span class="d" style="display:block">${t[2]}</span></span><span class="mfg mono">${t[1]}</span></label>`).join('')}</div>
+<div class="h2" style="margin-top:26px">Output</div><div class="fgrid" style="grid-template-columns:2fr 1fr;margin-top:10px"><label>File name<input class="in mono" value="my-anime-flux-v3-Q4_K.gguf"></label><label>Folder${sel(['diffusion_models/custom/','diffusion_models/'])}</label></div>${swr('Add a preset copy that uses the new file','“My anime Flux v3 · Q4_K”',true)}
+<p class="mono mfg" style="margin-top:12px;font-size:11.5px;word-break:break-all">sd-cli -M convert -m my-anime-flux-v3.safetensors -o my-anime-flux-v3-Q4_K.gguf --type q4_K</p><div class="row" style="margin-top:16px">${B('Convert','p','data-a="toast" data-t="Converting · about 4 min · original is kept"','swap')}<span class="mfg" style="font-size:12px">About 3–6 min. The original file is kept.</span></div></div>`,'')}
+/* ---------- settings ---------- */
+function sShell(id,body){const T=[['s-backend','Backend','gpu'],['s-storage','Storage','hdd'],['s-network','Network & LAN','wifi'],['s-appearance','Appearance','sun'],['s-about','About','info']];
+const nav=st.mobile?`<div class="tabs" style="margin:12px 16px 0" role="tablist">${T.map(t=>`<button role="tab" data-go="${t[0]}" aria-selected="${id==t[0]}">${t[1]}</button>`).join('')}</div>`:`<nav class="col snav" style="width:220px;padding:28px 12px" aria-label="Settings sections"><div style="padding:0 10px 12px;font-size:15px;font-weight:600">Settings</div>${T.map(t=>`<button class="ls${id==t[0]?' on':''}" data-go="${t[0]}"${id==t[0]?' aria-current="page"':''}>${ic(t[2],'s')}${t[1]}</button>`).join('')}</nav>`;
+return `<div class="split">${nav}<div class="pg"><div class="pgn">${body}</div></div></div>`}
+function backend(ins){const BL=[['CUDA 12','Fastest on NVIDIA. Includes the CUDA runtime (+640 MB).','Recommended',1],['Vulkan','Works on NVIDIA, AMD and Intel. About 15–30% slower here.','',1],['ROCm','Needs an AMD Radeon GPU — none detected.','',0],['CPU','No GPU needed. Very slow for FLUX-size models.','',1],['Metal','Apple silicon Macs only.','',0]];
+const srv=st.mode=='server'?`<div style="padding:2px 0 14px 28px;border-bottom:1px solid var(--line)"><div class="row wrap"><span class="dot sm${st.server?'':' wa'}"></span><span>${st.server?'Running · 127.0.0.1:1234 · FLUX.1 dev Q8 loaded':'Stopped'}</span><span class="sp"></span>${st.server?B('Restart','s sm','data-a="toast" data-t="Restarting sd-server"','retry')+B('Stop','g sm','data-a="stopsrv"','stop'):B('Start server','p sm','data-a="startsrv"','play')}</div>
+${st.server?`<div class="hint" role="note">${ic('alert','s')}<span style="flex:1">Loaded preset is out of date — FLUX.1 dev Q8 changed.</span><button class="lk" data-a="toast" data-t="Restarting sd-server">Restart</button></div>`:''}<div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld" style="width:110px">Port<input class="in" value="1234"></label><label class="fld" style="flex:1">Listen on${sel(['127.0.0.1 · this computer','0.0.0.0 · network'])}</label></div>${swr('Restart automatically when the preset changes','',true)}</div>`:'';
+return sShell('s-backend',`${ph('Backend','The stable-diffusion.cpp runtime that makes your images.')}
+<div class="h2">Engine</div><div class="lr beng" style="padding:13px 0">${tile('g-zinc','zap','lg')}<div style="flex:1;min-width:0"><div class="t">stable-diffusion.cpp master-982 · CUDA 12 · Windows x64</div><div class="d mono" style="font-size:11.5px">D:\\FlaxeoUI\\runtime\\master-982-cuda12 · installed Oct 20</div></div>${tg('Verified','ok')}</div>
+<div class="lr"><span class="mfg">${ic('gpu')}</span><div style="flex:1"><div class="t">GPU0 · NVIDIA GeForce RTX 4070</div><div class="d">12 GB VRAM · CUDA 12.6 driver</div></div>${tg('Default device')}</div>
+<div class="lr"><span class="mfg">${ic('models')}</span><div style="flex:1"><div class="t">CPU · AMD Ryzen 7 7800X3D</div><div class="d">8 cores · 16 threads · 32 GB RAM</div></div></div>
+<div class="lr bupd"><span class="mfg">${ic('dl')}</span><div style="flex:1"><div class="t">master-984 is available</div><div class="d">Released today · faster Q4_K on CUDA, Wan2.2 VAE fix</div></div>${ins?tg('Installing'):B('Update','s sm','data-go="s-install"')}</div>
+<div class="h2" style="margin-top:30px">Run mode</div><p class="sub">Same switch as CLI | Server in the top bar.</p>
+<label class="rr brun"><input type="radio" name="rm"${st.mode=='cli'?' checked':''} data-a="run" data-v="cli"><span style="flex:1"><span class="t">CLI</span><span class="d" style="display:block">A new process for each job. Lowest idle memory and every feature works.</span></span></label>
+<label class="rr" style="${st.mode=='server'?'border-bottom:0':''}"><input type="radio" name="rm"${st.mode=='server'?' checked':''} data-a="run" data-v="server"><span style="flex:1"><span class="t">Server</span><span class="d" style="display:block">Keeps the model loaded, so repeat runs start faster. Batches, ControlNet, PhotoMaker and img2img fall back to CLI automatically.</span></span></label>${srv}
+<div class="h2" style="margin-top:30px">Installed runtimes</div><p class="sub">Older builds are kept so you can roll back.</p>
+<table class="tbl brt"><thead><tr><th>Version</th><th>Build</th><th>Installed</th><th>Status</th><th></th></tr></thead><tbody>
+${ins?`<tr><td>master-984</td><td>CUDA 12</td><td class="mfg">today</td><td><span class="row" style="font-size:12px"><span class="spin"></span>Installing 62%</span></td><td></td></tr>`:''}
+<tr><td><b style="font-weight:500">master-982</b></td><td>CUDA 12</td><td class="mfg">Oct 20</td><td>${tg('In use','ok')}</td><td></td></tr>
+<tr><td>master-982</td><td>Vulkan</td><td class="mfg">Oct 20</td><td class="mfg">Installed</td><td style="text-align:right">${B('Use','s sm','data-a="toast" data-t="Switched to Vulkan build · verifying devices"')} ${B('Remove','g sm')}</td></tr>
+<tr><td>master-971</td><td>CUDA 12</td><td class="mfg">Oct 9</td><td class="mfg">Kept for rollback</td><td style="text-align:right">${B('Use','s sm','data-a="toast" data-t="Rolled back to master-971"')} ${B('Remove','g sm')}</td></tr></tbody></table>
+<div class="row wrap" style="margin-top:12px">${B('Use custom binary…','s sm','data-a="toast" data-t="Pick a folder with sd-cli and sd-server · checked with --version and --list-devices"','folder')}<span class="mfg" style="font-size:12px">A folder with sd-cli and sd-server, validated before use.</span></div>
+<div class="h2 binst" style="margin-top:30px">Install a runtime</div><p class="sub">Detected NVIDIA RTX 4070 · CUDA 12.6 driver · Windows x64.</p>
+${ins?`<div class="binsx" style="padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"><div class="row"><b style="font-weight:600">master-984 · CUDA 12</b>${tg('Recommended')}<span class="sp"></span>${B('Cancel','g sm','data-go="s-backend"')}</div>
+<div class="steps" style="margin-top:14px"><span class="s on"><span class="n">1</span>Download</span><span class="ln"></span><span class="s"><span class="n">2</span>Extract</span><span class="ln"></span><span class="s"><span class="n">3</span>Verify devices</span><span class="ln"></span><span class="s"><span class="n">4</span>Ready</span></div>
+<div class="prog" style="margin-top:16px"><i style="width:62%"></i></div><div class="row wrap mfg" style="font-size:12px;margin-top:6px"><span class="tr" style="flex:1">sd-bin-win-cuda12-x64.zip + cudart-sd-bin-win-cu12-x64.zip</span><span class="mono">214 of 345 MB · 18 MB/s · 7 s left</span></div>
+<p class="mfg" style="font-size:12px;margin-top:10px">Keep generating with master-982 meanwhile. After verification we'll ask before switching.</p></div>`
+:`<div>${BL.map((b,i)=>`<label class="rr${b[3]?'':' dis'}"><input type="radio" name="bl"${i==0?' checked':''}${b[3]?'':' disabled'}><span style="flex:1"><span class="t">${b[0]}${b[2]?tg(b[2],'ok'):''}</span><span class="d" style="display:block">${b[1]}</span></span></label>`).join('')}</div>
+<div class="row wrap" style="margin-top:14px;align-items:flex-end"><label class="fld" style="width:260px">Version${sel(['Latest · master-984 (today)','master-982 (Oct 20)','master-971 (Oct 9)'])}</label><span class="sp"></span>${B('Install','p','data-go="s-install"','dl')}</div><p class="mfg" style="font-size:12px;margin-top:8px">Installs in the background. The current runtime keeps working until the new one is verified.</p>`}
+<button class="h2 adv" style="margin-top:30px;width:100%" data-a="mo" aria-expanded="false">Advanced<span class="mfg" style="font-weight:400;font-size:12px">devices, VRAM, offload, threads</span><span class="sp"></span>${ic('down','s')}</button><div class="mo" hidden><p class="sub">Defaults for new presets. Each preset can override them.</p>
+<div class="fgrid" style="grid-template-columns:repeat(3,1fr)">${[['Diffusion','GPU0 · RTX 4070'],['Text encoders','CPU'],['VAE','GPU0 · RTX 4070'],['ControlNet','GPU0 · RTX 4070'],['Upscaler','GPU0 · RTX 4070'],['PhotoMaker','GPU0 · RTX 4070']].map(d=>`<label>${d[0]}${sel(['GPU0 · RTX 4070','CPU'],d[1])}</label>`).join('')}</div>
+<p class="mono mfg" style="font-size:11.5px;margin-top:8px">--backend diffusion=cuda0,te=cpu,vae=cuda0</p>${slider('Max VRAM (GB)',11,2,12,.5)}
+${swr('Offload to CPU','',false)}${swr('CLIP on CPU','',true)}${swr('VAE on CPU','',false)}${swr('VAE tiling','',false)}${swr('Flash attention','',true)}
+<div class="fgrid" style="grid-template-columns:repeat(2,1fr);margin-top:8px"><label>Threads<input class="in" value="auto (16)"></label><label>RPC servers<input class="in mono" placeholder="host:port, host:port"></label><label>Runtime backend${sel(['auto','cuda0','vulkan0','cpu'])}</label><label>Params backend${sel(['auto','cuda0','cpu'])}</label></div></div>`)}
+function storage(){const sz={checkpoints:'9.0 GB',diffusion_models:'81.1 GB',vae:'1.2 GB',text_encoders:'28.0 GB',loras:'1.1 GB'};
+return sShell('s-storage',`${ph('Storage','Where models, outputs and caches live.')}
+<div class="h2">Models folder</div><p class="sub">Folder names match ComfyUI. Subfolders are scanned, so organise freely.</p>
+<div class="lr sroot"><span class="mfg">${ic('folder')}</span><div style="flex:1;min-width:0"><div class="t mono" style="font-size:13px">${ROOT}</div><div class="d">38 files · 124 GB · downloads go here</div></div>${B('Change','s sm')}${B('Open','g sm')}</div>
+<div class="stree">${Object.keys(TY).map(t=>`<div class="lr" style="min-height:38px;padding:5px 0 5px 28px"><span class="mono" style="width:190px;font-size:12.5px">${t}/</span><span class="mfg tr hide-m" style="flex:1">${TY[t]}</span><span class="mfg" style="font-size:12px;width:120px;text-align:right">${F.filter(f=>f[1]==t).length} files${sz[t]?' · '+sz[t]:''}</span><button class="lk mfg" style="font-size:12px;margin-left:10px">Change</button>${ib('folder','Open '+t,'','tl-')}</div>`).join('')}</div>
+<div class="h2" style="margin-top:30px">Extra folders</div><p class="sub">Use existing libraries without copying. Layouts are mapped automatically.</p>
+<div class="lr sextra"><span class="mfg">${ic('folder')}</span><div style="flex:1;min-width:0"><div class="t mono" style="font-size:13px">D:\\ComfyUI\\models</div><div class="d">ComfyUI layout · 9 folders mapped · 22 files</div></div>${B('Remap','g sm')}${B('Remove','g sm')}</div>
+<div class="lr"><span class="mfg">${ic('folder')}</span><div style="flex:1;min-width:0"><div class="t mono" style="font-size:13px">E:\\AI\\lora-archive</div><div class="d">LoRAs only · 41 files</div></div>${B('Remap','g sm')}${B('Remove','g sm')}</div>
+<div class="row" style="margin-top:12px">${B('Add folder…','s sm','data-go="m-add"','plus')}<label class="fld" style="flex-direction:row;align-items:center;gap:8px;margin-left:auto">Default download target${sel([ROOT,'D:\\ComfyUI\\models'],'','style="width:210px;height:28px;font-size:12px"')}</label></div>
+<div class="h2" style="margin-top:30px">Outputs</div><div class="lr"><span class="mfg">${ic('folder')}</span><div style="flex:1"><div class="t mono" style="font-size:13px">D:\\FlaxeoUI\\outputs</div><div class="d">1,284 items · 3.4 GB</div></div>${B('Change','s sm')}</div>
+<div class="fgrid" style="grid-template-columns:2fr 1fr;margin-top:14px"><label>File name pattern<input class="in mono" value="{date}_{preset}_{seed}"></label><label>Format${sel(['PNG','WebP','JPG'])}</label></div>${swr('Embed generation settings in files','Reuse settings works on any exported image',true)}
+<div class="h2" style="margin-top:30px">Downloads</div><div class="lr"><span class="mfg">${ic('key')}</span><div style="flex:1"><div class="t">Hugging Face token</div><div class="d">Saved in Windows Credential Manager · needed for gated repos</div></div>${B('Replace','s sm')}${B('Remove','g sm')}</div>
+<div class="lr"><span class="mfg">${ic('hdd')}</span><div style="flex:1"><div class="t">Thumbnails and previews cache</div><div class="d">1.2 GB</div></div>${B('Clear','s sm','data-a="toast" data-t="Cache cleared"')}</div>`)}
+function network(){return sShell('s-network',`${ph('Network & LAN','Use this studio from phones and other computers on your network.')}
+<div class="swr nrem" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0"><div><div style="font-weight:500">Remote access</div><div class="d">Other devices on your network can open the studio in a browser.</div></div>${sw(true,'Remote access')}</div>
+<div class="row" style="gap:18px;padding:16px 0;border-bottom:1px solid var(--line);align-items:flex-start"><svg width="84" height="84" viewBox="0 0 21 21" aria-label="QR code" style="flex:none;border-radius:6px;background:#fff;padding:4px" shape-rendering="crispEdges">${Array.from({length:21*21},(_,i)=>{const x=i%21,y=i/21|0,f=(x<7&&y<7)||(x>13&&y<7)||(x<7&&y>13);const on=f?((x%14==0||x%14==6||y%14==0||y%14==6)||((x%14>1&&x%14<5)&&(y%14>1&&y%14<5))):((x*7+y*13+x*y)%5<2);return on?`<rect x="${x}" y="${y}" width="1" height="1"/>`:''}).join('')}</svg>
+<div style="flex:1;min-width:0"><div class="mfg" style="font-size:12px">Address</div><div class="row"><span class="mono" style="font-size:14px">http://192.168.1.24:7860</span>${ib('copy','Copy address','data-a="toast" data-t="Address copied"')}</div><div class="mfg" style="font-size:12px;margin-top:10px">Pairing code · expires in 9 min</div><div class="row"><span class="mono" style="font-size:18px;letter-spacing:.12em">482 913</span>${B('New code','g sm','','retry')}</div></div></div>
+<div class="h2" style="margin-top:26px">Paired devices</div>${[['Pixel 9 · Chrome','Last seen 2 min ago'],['MacBook Air · Safari','Last seen yesterday']].map(d=>`<div class="lr"><span class="mfg">${ic('gpu')}</span><div style="flex:1"><div class="t">${d[0]}</div><div class="d">${d[1]}</div></div>${B('Remove','g sm')}</div>`).join('')}
+<div class="h2" style="margin-top:26px">What paired devices can do</div><div class="nperm">${swr('Generate and queue runs','',true)}${swr('Browse and download the gallery','',true)}${swr('Change models, presets and settings','Off keeps your setup safe',false)}${swr('See logs','',false)}</div>
+<div class="h2" style="margin-top:26px">Listening</div><div class="fgrid" style="grid-template-columns:2fr 1fr;margin-top:10px"><label>Interface${sel(['All interfaces','Wi-Fi only','This computer only'])}</label><label>Port<input class="in" value="7860"></label></div><p class="mfg" style="font-size:12px;margin-top:8px">sd-server stays on 127.0.0.1:1234 and is never exposed.</p>`)}
+function appearance(){const t=document.documentElement.dataset.theme||'';return sShell('s-appearance',`${ph('Appearance','How the studio looks and what opens by default.')}
+<div class="h2">Theme</div><div class="seg lg" style="margin-top:10px" role="group"><button data-a="thm" data-v="" aria-pressed="${!t}">System</button><button data-a="thm" data-v="light" aria-pressed="${t=='light'}">Light</button><button data-a="thm" data-v="dark" aria-pressed="${t=='dark'}">Dark</button></div>
+<div class="h2" style="margin-top:26px">Density</div><div class="seg lg" style="margin-top:10px"><button data-a="segv" aria-pressed="true">Comfortable</button><button data-a="segv">Compact</button></div>
+<div class="h2" style="margin-top:26px">Studio</div>${swr('Open the Settings panel by default','Otherwise it remembers the last state',false)}${swr('Expand all panel sections','',false)}${swr('Show the session filmstrip','',true)}${swr('Live preview while generating','Uses TAESD when available',true)}
+<div class="h2" style="margin-top:26px">Accessibility</div>${swr('Reduce motion','Follows the system setting unless changed',false)}${swr('Always show image action toolbar','Instead of on hover or focus',false)}
+<div class="h2" style="margin-top:26px">Language</div>${sel(['English','Español','Português','Deutsch','日本語'],'English','style="max-width:240px;margin-top:10px"')}`)}
+function about(){return sShell('s-about',`${ph('About','')}<div class="row abt" style="gap:14px;padding-bottom:18px;border-bottom:1px solid var(--line)"><span class="bm" style="font-size:18px;padding:9px 12px"><b>Flaxeo</b><span>Image</span></span><div><div style="font-weight:600">Version 0.7.8</div><div class="mfg" style="font-size:12px">stable-diffusion.cpp master-982 · CUDA 12 · Electron 33</div></div></div>
+<div class="lr"><div style="flex:1"><div class="t">Updates</div><div class="d">You're up to date · checked 5 min ago</div></div>${B('Check now','s sm','data-a="toast" data-t="No updates"')}</div>
+<div class="lr"><div style="flex:1"><div class="t">Release notes</div><div class="d">What changed in 0.7.8</div></div>${ib('ext','Open release notes','','tl-')}</div>
+<div class="lr"><div style="flex:1"><div class="t">Diagnostics</div><div class="d">Copies runtime, GPU and log summary for bug reports</div></div>${B('Copy','s sm','data-a="toast" data-t="Diagnostics copied"','copy')}</div>
+<div class="lr"><div style="flex:1"><div class="t">Open-source licenses</div><div class="d">stable-diffusion.cpp, ggml, Electron, Vue and others</div></div>${B('View','g sm')}</div>`)}
+/* ---------- overlays ---------- */
+function wizard(){const w=st.wiz,S=['Runtime','First model','Done'];
+const steps=`<div class="steps wst">${S.map((t,i)=>`<span class="s${i+1==w?' on':i+1<w?' dn':''}"><span class="n">${i+1<w?'✓':i+1}</span>${t}</span>${i<2?'<span class="ln"></span>':''}`).join('')}</div>`;
+const body=w==1?`<p class="sub" style="margin-top:14px">We found an NVIDIA RTX 4070 with 12 GB.</p>${[['CUDA 12','Fastest on NVIDIA · 345 MB','Recommended'],['Vulkan','Works on most GPUs · 92 MB',''],['CPU only','Slow · 40 MB','']].map((r,i)=>`<label class="rr"><input type="radio" name="wr"${i==0?' checked':''}><span style="flex:1"><span class="t">${r[0]}${r[2]?tg(r[2],'ok'):''}</span><span class="d" style="display:block">${r[1]}</span></span></label>`).join('')}<p class="mfg" style="font-size:12px;margin-top:10px">Have your own build? <button class="lk" data-a="toast" data-t="Pick a folder with sd-cli">Use custom binary</button></p>`
+:w==2?`<label class="rr wopt" style="margin-top:8px"><input type="radio" name="wm" checked><span style="flex:1"><span class="t">Download a starter pack</span><span class="d" style="display:block">Every part downloads and a preset is created for you.</span></span></label>
+<div class="wpk" style="padding-left:28px">${[['FLUX.1 schnell · fast','9.8 GB · 4 steps · great first model','Fits 12 GB','ok',1],['Z-Image Turbo','11.3 GB · photoreal, 8 steps','Fits 12 GB','ok',0],['SDXL · Juggernaut XL','7.2 GB · huge LoRA ecosystem','Fits 12 GB','ok',0]].map(p=>`<label class="rr" style="padding:10px 0"><input type="radio" name="wp"${p[4]?' checked':''}><span style="flex:1"><span class="t">${p[0]}</span><span class="d" style="display:block">${p[1]}</span></span>${tg(p[2],p[3])}</label>`).join('')}</div>
+<label class="rr wown"><input type="radio" name="wm"><span style="flex:1"><span class="t">I already have model files</span><span class="d" style="display:block">Point at any folder, e.g. D:\\ComfyUI\\models. Files stay in place; the layout is mapped.</span><span style="display:block;margin-top:8px">${B('Choose folder…','s sm','data-a="toast" data-t="Pick a folder"','folder')}</span></span></label>`
+:`<div style="padding:20px 0 6px"><h3 style="font-size:16px;font-weight:600">You're set</h3><p class="mfg" style="margin-top:4px">The download keeps going in the background.</p></div><div class="lr"><span class="okc">${ic('check')}</span><span style="flex:1">Runtime master-982 · CUDA 12 · verified</span></div><div class="lr"><span class="mfg">${ic('dl')}</span><span style="flex:1">FLUX.1 schnell fast · downloading 64%</span><button class="lk" data-go="m-downloads">Downloads</button></div><div style="margin-top:16px">${B('Open the Image studio','p','data-go="img-empty"')}</div>`;
+return `<div class="dlg" style="width:min(640px,100%)"><div class="dlh"><div style="flex:1"><h2>Set up Flaxeo Image</h2><p>Three short steps. Leave any time and resume from the Setup pill.</p><div style="margin-top:14px">${steps}</div></div>${ib('x','Close','data-go="home"','tl-')}</div><div class="dlb">${body}</div>
+<div class="dlf">${w>1?B('Back','g','data-a="wiz" data-v="'+(w-1)+'"'):''}<span class="sp"></span>${w<3?B('Skip for now','g','data-go="home"')+B(w==1?'Install runtime':'Download & continue','p','data-a="wiz" data-v="'+(w+1)+'"'):B('Close','s','data-go="home"')}</div></div>`}
+function loraPick(){const n=st.lsel.size;
+return `<div class="dlg" style="width:min(760px,100%);height:min(620px,100%)"><div class="dlh"><div style="flex:1"><h2>Add LoRAs</h2><p>Every LoRA is selectable. Family tags are hints — finetunes often work across bases.</p></div>${ib('x','Close','data-go="img-panel"','tl-')}</div>
+<div class="row wrap lpt" style="padding:12px 20px 6px"><div class="srch" style="flex:1;min-width:200px">${ic('search','s')}<input class="in" placeholder="Search names or trigger words" aria-label="Search LoRAs"></div>${sel(['All folders · 10','loras/flux/','loras/sdxl/','loras/wan/','loras/custom/','D:\\ComfyUI\\models\\loras\\'],'','style="width:180px" aria-label="Folder"')}${sel(['Recently used','Name','Size'],'','style="width:140px" aria-label="Sort"')}</div>
+<div class="dlb lpl" style="padding-top:0">${LO.map(l=>{const u=l[0]=='flux-realism';return `<label class="lr" style="cursor:pointer;gap:12px;${u?'opacity:.7':''}"><input type="checkbox" data-a="lchk" data-n="${l[0]}"${st.lsel.has(l[0])||u?' checked':''}${u?' disabled':''}><span class="thumb" style="width:44px;height:44px">${art(l[0].length+3)}</span><span style="flex:1;min-width:0"><span class="row"><span class="t tr">${l[0]}</span>${u?tg('In use'):''}</span><span class="d tr" style="display:block"><span class="mono" style="font-size:11.5px">${l[1]}</span> · ${l[4]} · triggers: ${l[3]}</span></span>${l[2]=='FLUX'?tg('FLUX'):tg(l[2]=='Unknown'?'Unknown family':l[2]+' · may differ','o')}<span class="mono mfg" style="width:34px;text-align:right">${l[5].toFixed(1)}</span></label>`}).join('')}</div>
+<div class="dlf"><button class="lk" data-go="m-add">Add LoRA files…</button><span class="sp"></span><span class="mfg" id="lcount" style="font-size:12px">${n} selected</span>${B('Cancel','g','data-go="img-panel"')}${B(`Add ${n} LoRA${n==1?'':'s'}`,'p','data-a="ladd" id="laddb"')}</div></div>`}
+/* ---------- registry ---------- */
+const stu=(kind,state,x={})=>Object.assign({studio:1,kind,state,nav:kind,r:studio},x);
+const SCR={
+'home':{g:'Start',t:'Home',nav:'home',r:home,setup:1,notes:[['.hcmp','One prompt box sends you to the studio with the chosen mode and preset. No tool tiles duplicating the sidebar.'],['.chk','Setup checklist appears only while something is missing, then goes away for good.'],['.recent','Recent outputs are clickable and reopen in their studio.'],['.sbn','Flat sidebar: no Boards, no team footer, no command search. Recipes now includes Game assets.'],['.hub','Top bar is unchanged. Model Hub now opens Models › Discover.']]},
+'wizard':{g:'Start',t:'Setup wizard',nav:'home',r:home,ov:wizard,setup:1,notes:[['.wst','Three steps: runtime, first model, done. Each can be skipped and resumed from the Setup pill.'],['.wpk','Packs show size and GPU fit before anything downloads.'],['.wown','People with ComfyUI installs point at their folder instead of downloading again.'],['.setup','The Setup pill is the only entry point and disappears once setup is done.']]},
+'img-empty':stu('image','empty',{g:'Create',t:'Image · empty',notes:[['.sugg','Empty canvas: three quiet prompt ideas and the Generate shortcut. Nothing else to read.'],['.crow','One thin row: preset, size, count, settings, Generate. Everything else lives in the panel.'],['#ppc','Presets replace the raw model list. Choosing one loads its files and defaults together.'],['#cgen','Ctrl+Enter generates; while busy, it queues another run.']]}),
+'img-result':stu('image','result',{g:'Create',t:'Image · result',notes:[['.itb','Five icons with tooltips show on hover, focus or touch. Everything else is in the overflow menu.'],['.cap','Seed and timing stay readable without a metadata card.'],['.strip','Session history is a thin filmstrip you can collapse, not a separate popover.'],['#cset','The dot shows non-default settings (a LoRA) are active even with the panel closed.'],['.ltk','LoRAs show as compact tokens in the prompt. Click one to open its controls.']]}),
+'img-gen':stu('image','gen',{g:'Create',t:'Image · generating',q:3,notes:[['#cgen','Progress lives on the Generate button: percent and time left. Clicking it queues another run.'],['.stepcap','Live preview fills the canvas; the step count is one caption.'],['#qBtn','The Queue badge counts this run plus pending ones. Details are in the Queue popover.']]}),
+'img-panel':stu('image','result',{g:'Create',t:'Studio · Settings panel open',panel:1,mod:1,open:{gen:1,lora:1},notes:[['.pnl .pnb','One flat panel with collapsible sections and no cards. Collapsed sections show their values on the right.'],['.modb','Any change marks the preset Modified, with Save, Save as new and Revert in one place.'],['[data-sx=lora] .lra','LoRA rows: strength slider plus number, trigger toggle, remove. Apply mode is under Advanced.'],['.ltk','Prompt tokens mirror the LoRA rows. Turn on "Show as text" to edit raw <lora:…> tags.'],['[data-sx=gen] .more','Rare sampler options (SLG, sigmas, cache) sit behind one "More" link.']]}),
+'lora':stu('image','result',{g:'Create',t:'LoRA picker',panel:1,mod:1,open:{lora:1},ov:loraPick,notes:[['.lpt','Search plus a folder filter. Every LoRA stays selectable whatever its family.'],['.lpl .tg.o','Family is a hint, not a filter, because finetunes often work across bases.'],['.lpl .lr:nth-child(2) .d','Trigger words and default strength come from Models › Files, where they can be edited.'],['.dlf .lk','Missing a LoRA? Add your own files without leaving the picker.']]}),
+'edit':stu('edit','result',{g:'Create',t:'Edit',notes:[['.mtools','Mask tools float only once an image is loaded: brush, eraser, size, invert, clear, undo.'],['#emode','Edit mode is one small menu in the composer instead of two competing selectors.'],['#esrc','Source thumbnail: click to replace from disk, clipboard or Gallery.'],['.mask','The masked area previews as a soft overlay. Unmasked pixels stay untouched.']]}),
+'video':stu('video','result',{g:'Create',t:'Video',panel:1,open:{vid:1},notes:[['#cdur','Duration shows frames, fps and seconds together, so there is no mental math.'],['[data-sx=vid]','Start and end frames live in the panel\'s first section, for I2V and FLF2V.'],['[data-sx=lora]','The Wan 2.2 branch select appears only when the preset has a high-noise model.'],['.scrub','The result plays inline with a scrubber. Frame export is in the overflow menu.']]}),
+'queue':stu('image','gen',{g:'Create',t:'Queue popover',q:3,qo:1,notes:[['#pop .prog','The running job shows progress and a cancel button that is always visible.'],['#pop .b.g','Pause and Clear pending stay visible at the top.'],['#pop .mh','Drag to reorder pending runs. Each keeps its own preset snapshot.'],['#pop .b.s','Failed runs keep their error and offer a one-click Retry with a fix applied.']]}),
+'recipes':{g:'Library',t:'Recipes',nav:'recipes',r:recipes,notes:[['.rtabs','Game assets is now a Recipes filter, so all multi-step workflows live in one place.'],['.rc2','Cards are used only for recipes and images. Each shows its steps and the preset it expects.'],['.ph .act','Recipes are .json files you import and export. Saved on this device, no sharing scopes.']]},
+'recipes-run':{g:'Library',t:'Recipes · run',nav:'recipes',r:recipeRun,notes:[['.fld','Run view asks only for the recipe\'s inputs. Steps are listed, not configured here.'],['.lr .tg.o','Numbered flat steps show what each one uses.'],['.ph .act','Run is the only primary action. Builder and export stay secondary.']]},
+'recipes-build':{g:'Library',t:'Recipes · builder',nav:'recipes',r:recipeBuild,notes:[['.mono','Inputs become {variables} that steps can reference.'],['.lr .i','Drag the grip to reorder steps. Each step has its own options menu.'],['.fgrid','Category decides which Recipes filter shows it, including Game assets.']]},
+'gallery':{g:'Library',t:'Gallery',nav:'gallery',r:gallery,notes:[['.gtool .srch','Search by prompt, seed or model. Filters stay in one row.'],['.gday','Continuous scroll grouped by day replaces pagination.'],['.det .b.p','Labelled actions: Reuse settings first, then Send to Edit or Video, Upscale, Fix faces.'],['.gdel','Delete sits alone at the bottom, away from harmless actions.'],['.ph .act .b:last-child','Select mode turns on bulk favorite, download and delete.']]},
+'kits':{g:'Library',t:'Style kits',nav:'kits',r:kits,notes:[['.kact','The active kit applies everywhere. The line under the switch says exactly what it changes.'],['.kf','Flat fields with no repeated row cards. Sizes and LoRAs are simple lists.'],['.ph .act','Kits import and export as .json.']]},
+'m-presets':{g:'Models',t:'Models · Presets',nav:'models',r:presets,notes:[['.tabs','Presets is the first tab because presets are what the studio picks.'],['.plist','My presets sit above built-in templates. Each row shows family, files, size and last use.'],['.pfiles','The family\'s usual slots come first. Every other slot is one click away under More components.'],['.pfam','Family detection is only a hint. Generation is never blocked.'],['#usein','Use in Image loads this preset into the studio.']]},
+'m-editor':{g:'Models',t:'Models · Preset editor (file picker)',nav:'models',r:presets,pre:1,after:()=>{const a=$('.pslot [data-slot=diffusion]'),g=$('.pg');if(a&&g){g.scrollTop=a.getBoundingClientRect().top-g.getBoundingClientRect().top-150;openPicker(a)}},notes:[['#pop .fpl','Picker order: recent, suggested, then the whole folder. "All files" lists every file installed.'],['#pop .msep+.row','Browse… accepts any file on any drive. None clears the slot.'],['#hint','Advisory hint with Ignore. A missing part warns but never disables Generate.'],['.pfam','Custom finetunes keep working. "FLUX-like" only orders the suggestions.']]},
+'m-new':{g:'Models',t:'Models · New preset',nav:'models',r:presets,ov:newPreset,notes:[['.npseg','Three ways to start: template, duplicate or blank.'],['.tpl','Templates list the slots each family uses, so nothing is a guess.'],['.npfill','Auto-fill matches files you already have. Any slot can change later.'],['.dlf .b.g','Import .json sits beside Create, so shared presets with custom paths arrive the same way.']]},
+'m-files':{g:'Models',t:'Models · Files',nav:'models',r:files,notes:[['.ftypes,.ftsel','Type list with counts. Folders mirror ComfyUI names.'],['.ftbl th:last-child','"Used by" shows which presets depend on a file before you delete it.'],['.fdet','LoRA trigger words, strength and preview are edited once here and reused everywhere.'],['.fdet .b.d','Delete is set apart and sends the file to the Recycle Bin.'],['#addfb','Add files or a whole folder. Rescan picks up manual changes.']]},
+'m-add':{g:'Models',t:'Models · Add files dialog',nav:'models',r:files,ov:addFiles,notes:[['.aftbl th:nth-child(2)','Detected type is a guess from the file header and can always be changed.'],['.aftbl th:nth-child(4)','Move, Copy or Keep in place per file. Keep in place avoids duplicating 24 GB.'],['.aftbl .wac','Unknown files can still be added. Pick a type or leave them in Other.'],['.afroot','Adding a folder maps an existing ComfyUI layout automatically.']]},
+'m-discover':{g:'Models',t:'Models · Discover',nav:'models',r:discover,notes:[['.dsc .tg','The fit badge compares size and VRAM with this RTX 4070 12 GB.'],['.dsc .b.s','Download & create preset fetches every part and builds a ready preset.'],['.dsc select','Choosing a quant on the row updates the size right away.'],['.durl','Paste any URL or Hugging Face repo. Gated models note the token requirement.']]},
+'m-downloads':{g:'Models',t:'Models · Downloads',nav:'models',r:downloads,notes:[['.dlr .d','Every download shows size, speed and time left, with pause and cancel.'],['.dlr:nth-of-type(3) .b','Failed downloads keep their progress and offer Retry.'],['.dlr .mono','Each file shows its destination folder.']]},
+'m-convert':{g:'Models',t:'Models · Convert',nav:'models',r:convert,notes:[['.fbtn','Quantize moved here from the main nav: pick a source, a type and an output.'],['.cvt','Each type shows estimated size and quality, so fitting 12 GB is obvious.'],['.cvt .tg','Recommended marks the best fit for 12 GB with LoRAs loaded.'],['p.mono','A command preview for power users. The original file is kept.']]},
+'s-backend':{g:'Settings',t:'Settings · Backend',nav:'settings',r:()=>backend(0),notes:[['.beng','One line answers "what runs my images": build, GPU backend, platform and verified.'],['.bupd','Updates say what changed and install beside the current build, never over it.'],['.brun','Run mode is the same switch as the top bar, explained in plain words.'],['.brt','Older builds stay for rollback. Custom binaries are validated before use.'],['.binst','Builds are ranked for the detected hardware. Unavailable ones say why.'],['.adv','Device assignment, VRAM limits and threads sit behind Advanced.']]},
+'s-install':{g:'Settings',t:'Settings · Backend (installing)',nav:'settings',r:()=>backend(1),after:()=>{const e=$('.binst');e&&e.scrollIntoView({block:'center'})},notes:[['.binsx .steps','Install steps: download, extract, verify devices, ready. None of it blocks you.'],['.binsx p','The current runtime keeps working until the new one is verified.'],['.binsx .b','Cancel any time. Partial downloads resume.']]},
+'s-storage':{g:'Settings',t:'Settings · Storage',nav:'settings',r:storage,notes:[['.stree','Folder tree: every type folder with its file count and size. Change any one.'],['.sextra','Extra folders such as ComfyUI are scanned recursively and mapped automatically.'],['.sroot .d','The default download target is stated where you can change it.'],['.sroot .b','Changing the root rescans files; nothing is downloaded again.']]},
+'s-network':{g:'Settings',t:'Settings · Network & LAN',nav:'settings',r:network,notes:[['.nrem','Remote access is one switch with an address and a pairing code. No team or member concepts.'],['.h2+.lr','Paired devices list, each with Remove.'],['.nperm','Permissions decide what remote devices can change.']]},
+'s-appearance':{g:'Settings',t:'Settings · Appearance',nav:'settings',r:appearance,notes:[['.seg','Theme and density in one place. System follows Windows.'],['.swr','Studio defaults: whether the panel opens and whether sections start expanded.'],['.ph','Same page header as every screen outside the studio: title, one line, actions.']]},
+'s-about':{g:'Settings',t:'Settings · About',nav:'settings',r:about,notes:[['.abt','Version and runtime on one line for bug reports.'],['.lr:nth-of-type(3)','Diagnostics copies everything support needs in one click.'],['.lr .b.s','Updates are checked on launch or on demand. Nothing installs without asking.']]},
+'help':{g:'Help',t:'Help',nav:'help',r:help,notes:[['.hsrch','Search across all docs. Results open the article.'],['.col','Topics follow the app\'s structure. The ? in the studio panel opens the matching article.'],['article .lr','Shortcuts are listed in one place.']]},
+'more':{g:'Help',t:'Mobile · More',nav:'more',r:moreScr,notes:[['.lr','On mobile, More collects the less frequent destinations.'],['.bn','Bottom nav: Home, Create, Recipes, Gallery, More, in sidebar order.'],['.mtb .seg','Mobile keeps the mode switch and Queue from the top bar.']]}};
+/* ---------- popover ---------- */
+let popA=null,popO={};
+function closePop(){if(popA&&popA.isConnected)popA.setAttribute('aria-expanded','false');pop.hidden=true;pop.innerHTML='';popA=null}
+function openPop(a,html,o={}){if(popA===a&&!pop.hidden){closePop();return}closePop();pop.innerHTML=html;pop.hidden=false;popA=a;popO=o;a.setAttribute('aria-expanded','true');posPop()}
+const K=()=>app.getBoundingClientRect().width/app.offsetWidth||1;
+function fit(){const S=$('#stage');app.style.transform='';app.style.width='';S.style.height='';if(!st.notes||st.mobile)return;const w=Math.min(1440,innerWidth-32),k=Math.min(1,(innerWidth-376)/w);app.style.width=w+'px';app.style.transform=`scale(${k})`;S.style.height=(app.offsetHeight*k+32)+'px'}
+function posPop(){const a=popA,o=popO;if(!a)return;const k=K(),A=a.getBoundingClientRect(),P=app.getBoundingClientRect(),ar={left:(A.left-P.left)/k,right:(A.right-P.left)/k,top:(A.top-P.top)/k,bottom:(A.bottom-P.top)/k},pr={left:0,top:0,width:app.offsetWidth,height:app.offsetHeight},w=pop.offsetWidth,h=pop.offsetHeight;
+let x=o.right?ar.right-w:ar.left;x=Math.max(8,Math.min(x,pr.width-w-8));let y=o.up?ar.top-h-8:ar.bottom+6;
+if(!o.up&&y+h>pr.height-8)y=Math.max(8,ar.top-h-6);if(y<8)y=8;pop.style.left=x+'px';pop.style.top=y+'px'}
+function openPicker(a,focus){openPop(a,picker(a.dataset.slot,a.dataset.ctx||'st',false));if(focus){const q=$('#fpq');q&&q.focus()}}
+/* ---------- render ---------- */
+function render(){const s=SCR[st.scr];closePop();app.classList.toggle('mobile',st.mobile);
+const body=s.r(s),ov=s.ov?`<div class="ovl" role="dialog" aria-modal="true" aria-label="${s.t}">${s.ov(s)}</div>`:'';
+shell.innerHTML=st.mobile?`${mtitlebar(s)}<div class="ws">${body}</div>${bnav(s.nav)}${ov}`:`${sidebar(s.nav)}<div class="rc">${titlebar(s)}<div class="ws">${body}</div></div>${ov}`;
+if(s.qo){const q=$('#qBtn');q&&openPop(q,queuePop(),{right:1})}
+fit();s.after&&s.after();syncChrome();pins()}
+function go(id){if(!SCR[id])id='img-result';const s=SCR[id];st.scr=id;st.panel=!!s.panel&&!(st.mobile&&id=='video');st.mod=!!s.mod;st.modTxt='';st.more=false;
+st.open=Object.assign({},s.open||(s.studio?{[s.kind=='video'?'vid':s.kind=='edit'?'edit':'gen']:1}:{}));
+if('pre' in s)st.preset=s.pre;if(id=='m-presets')st.preset=0;if(id=='wizard')st.wiz=2;if(id=='m-new')st.np=0;if(id=='m-files'||id=='m-add'){st.ftype='loras';st.fsel=22}if(id=='lora')st.lsel=new Set(['cozy-winter-flux']);
+history.replaceState(null,'','#'+id+(st.mobile?'&m':'')+(st.notes?'&notes':''));render()}
+function setMod(t){if(!SCR[st.scr].studio)return;st.modTxt=t;if(st.mod){const m=$('.modb .mt');m&&(m.textContent=t);return}st.mod=true;const h=$('.pnl .pnh');h&&h.insertAdjacentHTML('afterend',modbar());const c=$('#ppc .tr');c&&c.insertAdjacentHTML('afterend','<span class="mdot" aria-hidden="true"></span>');pins()}
+function toast(t){const T=$('#toast');T.textContent=t;T.style.display='block';clearTimeout(T._t);T._t=setTimeout(()=>T.style.display='none',2400)}
+/* ---------- notes ---------- */
+let pinRaf=0;const pins=()=>{cancelAnimationFrame(pinRaf);pinRaf=requestAnimationFrame(placePins)};
+function placePins(){const P=$('#pins'),L=$('#legend'),s=SCR[st.scr];P.innerHTML='';if(!st.notes)return;const k=K(),A=app.getBoundingClientRect(),ar={left:A.left,top:A.top,width:app.offsetWidth,height:app.offsetHeight};let h='',lg='';
+(s.notes||[]).forEach(([q,t],i)=>{lg+=`<li><b>${i+1}</b><span>${esc(t)}</span></li>`;const el=q&&$$(q,app).find(e=>{const b=e.getBoundingClientRect();return b.width||b.height});if(!el)return;const r=el.getBoundingClientRect();if(!r.width&&!r.height)return;const sc=el.parentElement&&el.parentElement.closest('.pg,.pnb,.dlb,.fpl,.det,.col');if(sc){const c=sc.getBoundingClientRect();if(r.bottom<c.top+4||r.top>c.bottom-4)return}
+let x=(r.left-ar.left)/k-6,y=(r.top-ar.top)/k-6;if(x>ar.width||y>ar.height||r.bottom<ar.top)return;x=Math.max(4,Math.min(x,ar.width-26));y=Math.max(4,Math.min(y,ar.height-26));
+h+=`<button class="pin${x>ar.width-260?' r':''}${y>ar.height-140?' b':''}" style="left:${x}px;top:${y}px" data-n="${esc(t)}" aria-label="Note ${i+1}: ${esc(t)}">${i+1}</button>`});
+P.innerHTML=h;L.innerHTML=`<h3>UX notes · ${esc(s.t)}</h3><p class="mfg" style="font-size:12px">Pins mark each decision. Hover or focus a pin to read it here or in place.</p><ol>${lg}</ol>`}
+/* ---------- actions ---------- */
+const OVB={wizard:'home',lora:'img-panel','m-new':'m-presets','m-add':'m-files'};
+const ACT={
+sx(a){const x=a.closest('.sx'),o=x.classList.toggle('open');a.setAttribute('aria-expanded',o);st.open[x.dataset.sx]=o;pins()},
+mo(a){const n=a.nextElementSibling;if(!n)return;n.hidden=!n.hidden;a.setAttribute('aria-expanded',!n.hidden);if(a.classList.contains('more')){const u=a.querySelector('use');u&&u.setAttribute('href',n.hidden?'#i-plus':'#i-up')}else a.classList.toggle('open',!n.hidden);pins()},
+sw(a){const on=a.getAttribute('aria-checked')!='true';a.setAttribute('aria-checked',on);if(a.dataset.k=='raw'){st.raw=on;render();return}
+if(a.dataset.rev){const r=a.parentElement.querySelector('.rev');r&&(r.hidden=!on);const s=a.closest('.sx');if(s){const c=$$('.sw[data-rev][aria-checked=true]',s).length;s.querySelector('.sm').textContent=c?c+' on':'Off'}}
+if(a.closest('.pnl'))setMod((a.getAttribute('aria-label')||'Option')+(on?' on':' off'));pins()},
+panel(){st.panel=!st.panel;render()},
+mode(a){st.mode=a.dataset.v;if(st.mode=='cli')st.server=false;render();toast(st.mode=='server'?'Server mode · sd-server is offline, start it from the status dot':'CLI mode · new process per job')},
+run(a){ACT.mode(a)},
+startsrv(){st.server=true;st.mode='server';render();toast('sd-server started · FLUX.1 dev Q8 loaded')},
+stopsrv(){st.server=false;render();toast('sd-server stopped')},
+theme(){setTheme(isDark()?'light':'dark')},
+thm(a){const v=a.dataset.v;if(v)document.documentElement.dataset.theme=v;else delete document.documentElement.dataset.theme;render()},
+queue(a){openPop(a,queuePop(),{right:1})},
+save(){const n=kindP(SCR[st.scr].kind).n;st.mod=false;render();toast('Saved to '+n)},
+savenew(){const n=kindP(SCR[st.scr].kind).n;st.mod=false;render();toast('Saved as new preset “'+n+' · 2”')},
+revert(){st.mod=false;render();toast('Reverted to the saved preset')},
+pp(a){openPop(a,presetMenu(),{up:1})},psz(a){openPop(a,sizeMenu(),{up:1})},pcnt(a){openPop(a,countMenu(),{up:1})},pdur(a){openPop(a,durMenu(),{up:1})},pmode(a){openPop(a,modeMenu(),{up:1})},
+imore(a){openPop(a,imgMore(),{right:1})},pmore(a){openPop(a,presetMore(),{right:1})},
+pick(a){openPicker(a,1)},
+pall(a){pop.innerHTML=picker(a.dataset.slot,a.dataset.ctx,a.dataset.v=='1');posPop();const q=$('#fpq');q&&q.focus()},
+pickf(a){const sl=a.dataset.slot,f=a.dataset.f,ed=a.dataset.ctx=='ed',P=ed?PR[st.preset]:kindP(SCR[st.scr].kind);if(f)P.s[sl]=f;else delete P.s[sl];if(ed&&f&&P.warn==sl)delete P.warn;closePop();
+if(!ed){st.mod=true;st.modTxt=SL[sl][0]+' → '+(f||'None')}render();toast(SL[sl][0]+': '+(f||'None'))},
+strip(){st.strip=!st.strip;render()},
+gen(){go('img-gen')},stop(){go('img-result');toast('Stopped · 1 of 4 images kept')},
+sugg(a){const p=$('.pr');p&&(p.textContent=a.textContent);toast('Prompt filled · Ctrl+Enter to generate')},
+lock(){st.lock=!st.lock;const b=$('[data-a=lock]');if(b){b.querySelector('use').setAttribute('href','#i-'+(st.lock?'lock':'dice'));b.setAttribute('aria-pressed',st.lock);b.dataset.tip=st.lock?'Unlock seed':'Lock seed'}const s=$('#seedst');s&&(s.textContent=st.lock?'Locked':'Random each run');setMod(st.lock?'Seed locked':'Seed random')},
+lrm(a){a.closest('.lra').remove();setMod('Removed a LoRA')},
+ltok(){st.panel=true;st.open.lora=1;render()},
+segv(a){const p=a.parentElement,k=[...p.children].some(b=>b.hasAttribute('aria-selected'))?'aria-selected':'aria-pressed';[...p.children].forEach(b=>b.setAttribute(k,b===a));if(a.closest('.pnl'))setMod(a.textContent.trim()+' selected')},
+tabv(a){[...a.parentElement.children].forEach(b=>b.setAttribute('aria-selected',b===a))},
+gsel(a){const i=+a.dataset.i;if(st.gmulti){st.gpick.has(i)?st.gpick.delete(i):st.gpick.add(i)}else st.gsel=i;render()},
+gmulti(){st.gmulti=!st.gmulti;st.gpick=new Set(st.gmulti?[2,5,6]:[]);render()},
+psel(a){st.preset=+a.dataset.i;st.more=false;render()},
+mcomp(){st.more=!st.more;render()},
+ftype(a){st.ftype=a.dataset.v;const l=st.ftype?F.filter(f=>f[1]==st.ftype):F;if(!l.includes(F[st.fsel]))st.fsel=F.indexOf(l[0]);render()},
+fsel(a){st.fsel=+a.dataset.i;render()},ksel(a){st.kit=+a.dataset.i;render()},topic(a){st.topic=+a.dataset.i;render()},wiz(a){st.wiz=+a.dataset.v;render()},
+ign(){const h=$('#hint');h&&h.remove();toast('Hint hidden for this preset');pins()},
+lchk(a){const n=a.dataset.n;a.checked?st.lsel.add(n):st.lsel.delete(n);const c=st.lsel.size;$('#lcount').textContent=c+' selected';$('#laddb').textContent='Add '+c+' LoRA'+(c==1?'':'s')},
+ladd(){const c=st.lsel.size;go('img-panel');toast('Added '+c+' LoRA'+(c==1?'':'s')+' · preset marked Modified')},
+create(){go('m-presets');toast('Created “FLUX.1 dev — fp16 T5” · 4 files filled')},
+np(a){st.np=+a.dataset.v;render()},
+toast(a){toast(a.dataset.t)}};
+document.addEventListener('click',e=>{const t=e.target;if(!app.contains(t))return;const inPop=pop.contains(t),g=t.closest('[data-go]'),a=t.closest('[data-a]');
+if(!pop.hidden&&!inPop&&(!a||a!==popA))closePop();
+if(g){e.preventDefault();go(g.dataset.go);return}
+if(a&&ACT[a.dataset.a]){if(a.tagName!='INPUT')e.preventDefault();ACT[a.dataset.a](a,e)}});
+document.addEventListener('keydown',e=>{const t=e.target;
+if(e.key=='Escape'){if(!pop.hidden){const a=popA;closePop();a&&a.focus();return}if(OVB[st.scr]){go(OVB[st.scr]);return}if(st.panel&&SCR[st.scr].studio){st.panel=false;render();return}}
+if((e.ctrlKey||e.metaKey)&&e.key=='Enter'&&SCR[st.scr].studio){e.preventDefault();go('img-gen');return}
+if((e.ctrlKey||e.metaKey)&&e.key=='.'&&SCR[st.scr].studio){e.preventDefault();ACT.panel();return}
+if(t.closest&&t.closest('input,textarea,select,[contenteditable=true]'))return;
+if(e.key=='['){step(-1)}else if(e.key==']'){step(1)}
+else if((e.key=='Enter'||e.key==' ')&&t.matches&&t.matches('[role=button]:not(button)')){e.preventDefault();t.click()}});
+document.addEventListener('input',e=>{const t=e.target;
+if(t.type=='range'){t.style.setProperty('--p',pct(+t.value,+t.min,+t.max));const o=t.previousElementSibling,b=o&&o.querySelector&&o.querySelector('[data-out]');b&&(b.textContent=t.value);const n=t.parentElement.querySelector('.num');n&&(n.value=(+t.value).toFixed(2));if(t.closest('.pnl'))setMod((t.getAttribute('aria-label')||'Value')+' → '+t.value)}
+if(t.id=='fpq'){const q=t.value.toLowerCase();$$('#pop .fr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q))}});
+document.addEventListener('change',e=>{const t=e.target;if(t.id=='ftsel'){ACT.ftype({dataset:{v:t.value}});return}if(t.tagName=='SELECT'&&t.closest('.pnl'))setMod((t.closest('label')?t.closest('label').firstChild.textContent:'Option')+' → '+t.value)});
+document.addEventListener('scroll',()=>{if(st.notes)pins();if(!pop.hidden&&!pop.contains(document.activeElement))posPop()},true);
+addEventListener('resize',()=>{fit();posPop();pins()});
+/* ---------- chrome ---------- */
+const KEYS=Object.keys(SCR);
+function step(d){const i=KEYS.indexOf(st.scr);go(KEYS[(i+d+KEYS.length)%KEYS.length])}
+(function(){const G={};KEYS.forEach(k=>{const v=SCR[k];(G[v.g]=G[v.g]||[]).push(`<option value="${k}">${v.t}</option>`)});$('#scr').innerHTML=Object.entries(G).map(([g,o])=>`<optgroup label="${g}">${o.join('')}</optgroup>`).join('')})();
+function syncChrome(){$('#scr').value=st.scr;const d=isDark();$$('#mkTheme button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.t=='dark')==d));$$('#mkDev button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.d=='1')==st.mobile));$('#mkNotes').setAttribute('aria-checked',st.notes);document.body.classList.toggle('notes',st.notes)}
+$('#scr').addEventListener('change',e=>go(e.target.value));$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#mkTheme').onclick=e=>{const b=e.target.closest('button');b&&setTheme(b.dataset.t)};
+$('#mkDev').onclick=e=>{const b=e.target.closest('button');if(!b)return;st.mobile=b.dataset.d=='1';go(st.scr)};
+$('#mkNotes').onclick=()=>{st.notes=!st.notes;syncChrome();fit();history.replaceState(null,'','#'+st.scr+(st.mobile?'&m':'')+(st.notes?'&notes':''));setTimeout(placePins,260)};
+mq.addEventListener('change',()=>{if(!document.documentElement.dataset.theme)render()});
+(function(){const h=location.hash.slice(1).split('&');if(h.includes('m'))st.mobile=true;if(h.includes('notes'))st.notes=true;if(h.includes('dark'))document.documentElement.dataset.theme='dark';if(h.includes('light'))document.documentElement.dataset.theme='light';go(SCR[h[0]]?h[0]:'img-result')})();
+</script>
+</body>
+</html>

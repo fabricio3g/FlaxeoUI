@@ -20,8 +20,7 @@ const props = withDefaults(
 )
 
 const variantClasses = {
-  ghost:
-    'text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40',
+  ghost: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40',
   outline:
     'border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40',
   solid: 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40'

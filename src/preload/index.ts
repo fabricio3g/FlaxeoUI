@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { StorageDirectoryId, StorageSettings } from '../shared/storage'
 import type { LanSharingOptions, LanSharingStatus } from '../shared/lan'
+import type { ServerStatusEvent } from '../shared/connection'
 
 /**
  * Custom Electron API exposed to the renderer process
@@ -52,7 +53,13 @@ const api = {
   }> => ipcRenderer.invoke('get-init-state'),
   setFirstRunComplete: (): Promise<boolean> => ipcRenderer.invoke('set-first-run-complete'),
   reopenSetup: (): Promise<boolean> => ipcRenderer.invoke('reopen-setup'),
-  setSetupSkipped: (): Promise<boolean> => ipcRenderer.invoke('set-setup-skipped')
+  setSetupSkipped: (): Promise<boolean> => ipcRenderer.invoke('set-setup-skipped'),
+  /** Local service restarted or stopped; returns an unsubscribe function. */
+  onServerStatus: (listener: (status: ServerStatusEvent) => void): (() => void) => {
+    const handler = (_event: unknown, status: ServerStatusEvent): void => listener(status)
+    ipcRenderer.on('server-status', handler)
+    return () => ipcRenderer.removeListener('server-status', handler)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to renderer

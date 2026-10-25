@@ -24,6 +24,15 @@ export function humanizeCliError(raw: unknown): HumanizedError {
     }
   }
 
+  // The sd-cli binary itself is missing — ahead of the generic ENOENT "model not found"
+  if (/spawn\s+\S*sd-(cli|server)(\.exe)?\s+ENOENT/i.test(text)) {
+    return {
+      title: 'Backend not installed',
+      detail: 'stable-diffusion.cpp (sd-cli) was not found in the active backend folder.',
+      hint: 'Open Settings → Installation and install a release, or place sd-cli in backend/custom.'
+    }
+  }
+
   if (/GENERATION_BUSY|already running|CLI busy/i.test(text)) {
     return {
       title: 'Already generating',

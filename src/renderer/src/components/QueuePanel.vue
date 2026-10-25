@@ -80,7 +80,8 @@ function surfaceLabel(surface: string): string {
     edit: 'Edit',
     video: 'Video',
     upscale: 'Upscale',
-    adetailer: 'ADetailer'
+    adetailer: 'ADetailer',
+    workflow: 'Workflow'
   }
   return map[surface] || surface
 }
@@ -131,19 +132,8 @@ watch(
             >
               <CircleHelp class="size-4" />
             </IconButton>
-            <Button
-              v-if="!paused"
-              size="sm"
-              @click="pause"
-            >
-              Pause
-            </Button>
-            <Button
-              v-else
-              size="sm"
-              class="font-medium text-foreground"
-              @click="resume"
-            >
+            <Button v-if="!paused" size="sm" @click="pause"> Pause </Button>
+            <Button v-else size="sm" class="font-medium text-foreground" @click="resume">
               Resume
             </Button>
             <IconButton aria-label="Close" @click="emit('close')">
@@ -211,6 +201,13 @@ watch(
                     {{ job.label }}
                   </p>
                   <p class="text-xs text-muted-foreground">{{ surfaceLabel(job.surface) }}</p>
+                  <p
+                    v-if="index === 0 && job.waitingFor"
+                    class="truncate text-xs text-warning"
+                    :title="job.waitingFor"
+                  >
+                    Waiting for the GPU · {{ job.waitingFor }}
+                  </p>
                 </div>
                 <IconButton
                   size="sm"

@@ -28,8 +28,9 @@ const STATIC_ENDPOINTS = new Map<string, LanEndpointClass>([
   ['POST /api/auth/pair', 'public'],
 
   ['GET /api/models', 'generation'],
+  ['GET /api/models/files', 'generation'],
   ['GET /api/remote/status', 'generation'],
-  ['POST /api/generate', 'generation'],
+  ['GET /api/backend/options', 'generation'],
   ['POST /api/generate-cli', 'generation'],
   ['POST /api/inpaint', 'generation'],
   ['POST /api/generate-video', 'generation'],
@@ -42,15 +43,26 @@ const STATIC_ENDPOINTS = new Map<string, LanEndpointClass>([
   ['POST /api/image/params', 'generation'],
   ['GET /api/export-image', 'generation'],
   ['POST /api/auth/logout', 'generation'],
+  ['POST /api/auth/profile', 'generation'],
+  ['GET /api/library', 'generation'],
+  ['POST /api/workflows/run', 'generation'],
+  ['GET /api/workflows/status', 'generation'],
+
+  ['GET /api/hub/search', 'generation'],
+  ['GET /api/hub/hf-files', 'generation'],
+
+  ['GET /api/sessions', 'generation'],
+  ['POST /api/uploads', 'generation'],
 
   ['GET /api/gallery', 'gallery'],
 
   ['GET /api/status', 'control'],
-  ['POST /api/start', 'control'],
   ['POST /api/stop', 'control'],
   ['GET /api/logs', 'control'],
   ['GET /api/logs/stream', 'control'],
-  ['POST /api/logs/clear', 'control']
+  ['POST /api/logs/clear', 'control'],
+  ['POST /api/library/save', 'control'],
+  ['POST /api/library/delete', 'control']
 ])
 
 const ACCESS_RANK: Readonly<Record<LanAccessLevel, number>> = {
@@ -98,6 +110,22 @@ export function classifyLanEndpoint(method: unknown, path: unknown): LanEndpoint
       /\.(?:png|jpe?g|webp|gif|avif|mp4)$/i.test(filename)
     )
       return 'generation'
+    return null
+  }
+
+  // Model family pictures: /api/hub/family/<familyId>
+  const familyMatch = /^\/api\/hub\/family\/([a-z0-9][a-z0-9.-]{0,62})$/.exec(path)
+  if (familyMatch) return method === 'GET' ? 'generation' : null
+
+  // Create sessions: /api/sessions/<id>[/rows[/<rowId>]]
+  const sessionMatch = /^\/api\/sessions\/([^/]+)(?:\/rows(?:\/([^/]+))?)?$/.exec(path)
+  if (sessionMatch) {
+    if (!isCanonicalLanMediaId(sessionMatch[1])) return null
+    if (sessionMatch[2] !== undefined && !isCanonicalLanMediaId(sessionMatch[2])) return null
+    const rows = path.includes('/rows')
+    if (method === 'GET' && !rows) return 'generation'
+    if (method === 'POST' && sessionMatch[2] === undefined) return 'generation'
+    if (method === 'DELETE') return rows && sessionMatch[2] ? 'generation' : 'gallery'
     return null
   }
 

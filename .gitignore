@@ -3,10 +3,14 @@ dist
 out
 .DS_Store
 .eslintcache
+.codegraph/
 *.log*
 build-structure
 temp
 backend-config.json
+*.tsbuildinfo
+hub-cache.json
+.claude/
 # Ignore all files in models, backend, and output subfolders, but keep the folder structure
 models/**/*
 !models/**/.gitkeep

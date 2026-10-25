@@ -131,7 +131,9 @@ export function createContext(): AppContext {
     previewTempFile: null,
     previewEtag: null,
     convertOutputPath: null,
-    lanWebReady: false
+    lanWebReady: false,
+    activeOwner: null as string | null,
+    workflowRun: null
   }
 
   return {

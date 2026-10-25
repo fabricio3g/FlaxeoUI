@@ -100,16 +100,42 @@ function notifyAuthenticationRequired(status: number): void {
   if (status === 401 && !window.electronAPI) window.dispatchEvent(new Event('flaxeo-auth-required'))
 }
 
+/** Re-read the live port/token from the desktop shell (the local service may have restarted). */
+async function refreshDesktopConnection(): Promise<boolean> {
+  if (!window.electronAPI) return false
+  try {
+    const state = await window.electronAPI.getInitState()
+    if (!state?.port) return false
+    const changed = state.port !== serverPort || state.desktopApiToken !== desktopApiToken
+    initializeApi(state.port, state.desktopApiToken)
+    return changed
+  } catch {
+    return false
+  }
+}
+
 export async function authenticatedFetch(
   input: string | URL,
   options: RequestInit = {}
 ): Promise<Response> {
-  const headers = new Headers(options.headers)
-  const target = new URL(String(input), window.location.href)
-  const backendOrigin = new URL(getApiBase()).origin
-  if (desktopApiToken && target.origin === backendOrigin)
-    headers.set('X-Flaxeo-Desktop-Token', desktopApiToken)
-  const response = await fetch(input, { credentials: 'include', ...options, headers })
+  const send = (): Promise<Response> => {
+    const headers = new Headers(options.headers)
+    const target = new URL(String(input), window.location.href)
+    const backendOrigin = new URL(getApiBase()).origin
+    if (desktopApiToken && target.origin === backendOrigin)
+      headers.set('X-Flaxeo-Desktop-Token', desktopApiToken)
+    return fetch(input, { credentials: 'include', ...options, headers })
+  }
+  let response: Response
+  try {
+    response = await send()
+  } catch (error) {
+    // Network failure: the desktop service may be on a new port. Retry once if it moved.
+    const base = getApiBase()
+    if (!String(input).startsWith(base) || !(await refreshDesktopConnection())) throw error
+    input = getApiBase() + String(input).slice(base.length)
+    response = await send()
+  }
   notifyAuthenticationRequired(response.status)
   return response
 }
@@ -195,7 +221,6 @@ export const API_ENDPOINTS = {
 
   // Generation
   GENERATE_CLI: '/api/generate-cli',
-  GENERATE_SERVER: '/api/generate',
   CANCEL_CLI: '/api/cancel-cli',
   CANCEL: '/api/cancel',
   GENERATION_PROGRESS: '/api/generation/progress',
@@ -211,9 +236,9 @@ export const API_ENDPOINTS = {
   DELETE: '/api/delete',
   EXPORT_IMAGE: '/api/export-image',
 
-  // Server control
-  START: '/api/start',
-  STOP: '/api/stop',
+  // Kept-loaded model (sd-server)
+  LOADED_MODEL: '/api/loaded-model',
+  UNLOAD_MODEL: '/api/stop',
 
   // Backend management
   BACKEND_CONFIG: '/api/backend/config',

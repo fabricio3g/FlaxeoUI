@@ -2,30 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import type { Express } from 'express'
 import type { AppContext } from '../types'
-import {
-  appendLog,
-  errorMessage,
-  firstString,
-  modelDirectory,
-  modelPath,
-  spawnLoggedProcess
-} from '../utils'
+import { appendLog, errorMessage, modelDirectory } from '../utils'
 import { MODEL_DIRECTORY_KEYS, resolveModelDirectoryKey } from '../../shared/storage'
-import {
-  addHardwareArgs,
-  addModelArgs,
-  addOptionalArgs,
-  addPromptModelExtras,
-  getSdCliPath,
-  getSdServerPath,
-  pushArg
-} from '../sd'
-import { downloadFile } from '../utils'
+import { getSdCliPath } from '../sd'
+import { loadedModelStatus, stopLoadedModel } from '../loadedModel'
+import { downloadFile, listFiles } from '../utils'
 import { getModelsPayload, invalidateModelsCache } from '../modelsCache'
 
 const MODEL_DOWNLOAD_DIRS = new Set<string>(MODEL_DIRECTORY_KEYS)
-
-type GenerationPayload = Record<string, string | number> & { seed: number }
 
 function createDownloadTask(
   ctx: AppContext,
@@ -54,7 +38,11 @@ async function trackedDownload(
   url: string,
   targetPath: string
 ): Promise<string> {
+  const token = ctx.state.backendConfig.huggingFaceToken
+  const civitai = ctx.state.backendConfig.civitaiToken
   return downloadFile(url, targetPath, {
+    huggingFaceToken: typeof token === 'string' && token ? token : undefined,
+    civitaiToken: typeof civitai === 'string' && civitai ? civitai : undefined,
     registerCancel: (cancel) => {
       const task = ctx.state.downloads[id]
       if (task) task.cancel = cancel
@@ -93,6 +81,54 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     const force =
       req.query.refresh === '1' || req.query.refresh === 'true' || req.query.force === '1'
     res.json(getModelsPayload(ctx, force))
+  })
+
+  /** Installed files with size and date, per category (Models page). */
+  app.get('/api/models/files', (_req, res) => {
+    const remote = Boolean(res.locals.lanSession)
+    const files: Array<{
+      category: string
+      name: string
+      size: number
+      mtime: number
+      path: string
+    }> = []
+    for (const category of MODEL_DIRECTORY_KEYS) {
+      const dir = modelDirectory(ctx, category)
+      for (const name of listFiles(dir)) {
+        try {
+          const full = path.join(dir, name)
+          const stat = fs.statSync(full)
+          files.push({
+            category,
+            name,
+            size: stat.size,
+            mtime: stat.mtimeMs,
+            path: remote ? '' : full
+          })
+        } catch {
+          /* vanished while listing */
+        }
+      }
+    }
+    res.json({ files })
+  })
+
+  /** Desktop only: whether a Hugging Face token is set (the token is never returned). */
+  app.get('/api/models/hf-token', (_req, res) => {
+    if (res.locals.lanSession) return res.status(403).json({ error: 'Desktop only' })
+    const token = ctx.state.backendConfig.huggingFaceToken
+    res.json({ configured: typeof token === 'string' && token.length > 0 })
+  })
+
+  app.post('/api/models/hf-token', (req, res) => {
+    if (res.locals.lanSession) return res.status(403).json({ error: 'Desktop only' })
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : ''
+    if (token && !/^hf_[A-Za-z0-9]{20,}$/.test(token))
+      return res.status(400).json({ error: 'That does not look like a Hugging Face token (hf_…).' })
+    ctx.state.backendConfig.huggingFaceToken = token || undefined
+    ctx.saveBackendConfig()
+    res.json({ configured: Boolean(token) })
   })
 
   /**
@@ -205,54 +241,26 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
     res.json({ success: true })
   })
 
-  app.post('/api/start', (req, res) => {
-    if (ctx.state.sdProcess) return res.status(400).json({ message: 'Server already running' })
-
-    const body = req.body || {}
-    const args = ['--listen-port', String(body.port || 1234), '-v']
-    addModelArgs(ctx, args, body)
-
-    if (body.loraDir) args.push('--lora-model-dir', modelDirectory(ctx, 'loras'))
-    addOptionalArgs(args, body)
-    addHardwareArgs(args, body)
-    addPromptModelExtras(ctx, args, body)
-    if (body.vaeTileSize && Number(body.vaeTileSize) > 0)
-      pushArg(args, '--vae-tile-size', body.vaeTileSize)
-    const controlNet = modelPath(ctx, 'controlnet', firstString(body.controlNet))
-    if (controlNet) args.push('--control-net', controlNet)
-    const photoMaker = modelPath(ctx, 'photomaker', firstString(body.photoMaker))
-    if (photoMaker) args.push('--photo-maker', photoMaker)
-    pushArg(args, '--steps', body.defaultSteps)
-    pushArg(args, '--cfg-scale', body.defaultCfg)
-
-    try {
-      const activeBackend = ctx.getActiveBackendPath()
-      ctx.state.serverLogs = []
-      ctx.state.sdProcess = spawnLoggedProcess(ctx, getSdServerPath(ctx), args, 'SD-SERVER', {
-        cwd: activeBackend
-      })
-      ctx.state.sdProcess.on('close', (code) => {
-        console.log(`SD Exit: ${code}`)
-        ctx.state.sdProcess = null
-        appendLog(ctx, `EXIT: ${code}`)
-      })
-      res.json({ message: 'Server started', args })
-    } catch (error: unknown) {
-      res.status(500).json({ message: 'Failed to start', error: errorMessage(error) })
-    }
+  /** "Keep the model loaded" (Settings → Engine). Desktop only; sd-server loads on the next run. */
+  app.post('/api/loaded-model', (req, res) => {
+    if (res.locals.lanSession) return res.status(403).json({ error: 'Desktop only' })
+    const enabled = req.body?.enabled === true
+    ctx.state.backendConfig.keepModelLoaded = enabled
+    ctx.saveBackendConfig()
+    if (!enabled) stopLoadedModel(ctx, 'turned off')
+    res.json(loadedModelStatus(ctx))
   })
 
+  /** Free the memory now; the next run loads the model again. */
   app.post('/api/stop', (_req, res) => {
-    if (!ctx.state.sdProcess) return res.status(400).json({ message: 'Not running' })
-    ctx.state.sdProcess.kill()
-    ctx.state.sdProcess = null
-    res.json({ message: 'Stopped' })
+    stopLoadedModel(ctx, 'unloaded from Settings')
+    res.json(loadedModelStatus(ctx))
   })
 
   app.get('/api/status', (_req, res) => {
     const all = ctx.state.serverLogs
     res.json({
-      running: !!ctx.state.sdProcess,
+      ...loadedModelStatus(ctx),
       logs: all.slice(-STATUS_LOG_TAIL),
       logTotal: all.length,
       logTail: STATUS_LOG_TAIL
@@ -260,58 +268,13 @@ export function registerCoreRoutes(app: Express, ctx: AppContext): void {
   })
 
   app.get('/api/remote/status', (_req, res) => {
+    const loaded = loadedModelStatus(ctx)
     res.json({
-      running: !!ctx.state.sdProcess,
+      running: loaded.running,
+      loadedModel: loaded.enabled ? { status: loaded.status, model: loaded.model } : null,
       activeVersion: ctx.state.backendConfig.activeVersion,
       activeBackendValid: fs.existsSync(getSdCliPath(ctx))
     })
-  })
-
-  app.post('/api/generate', async (req, res) => {
-    if (!ctx.state.sdProcess) return res.status(400).json({ message: 'Server not running' })
-
-    const body = req.body || {}
-    const stepsVal = parseInt(body.steps, 10) || 20
-    const payload: GenerationPayload = {
-      prompt: body.prompt,
-      negative_prompt: body.negative_prompt || '',
-      n: 1,
-      size: `${Math.round((body.width || 512) / 64) * 64}x${Math.round((body.height || 512) / 64) * 64}`,
-      response_format: 'b64_json',
-      steps: stepsVal,
-      sample_steps: stepsVal,
-      num_inference_steps: stepsVal,
-      cfg_scale: parseFloat(body.cfg_scale) || 7.0,
-      seed: parseInt(body.seed, 10) || -1
-    }
-    if (body.guidance) payload.guidance = parseFloat(body.guidance)
-    if (body.clip_skip) payload.clip_skip = parseInt(body.clip_skip, 10)
-
-    try {
-      const generatedFiles: string[] = []
-      const batchSize = parseInt(body.batch_size, 10) || 1
-      for (let i = 0; i < batchSize; i++) {
-        if (payload.seed !== -1 && i > 0) payload.seed += 1
-        const response = await fetch('http://localhost:1234/v1/images/generations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        if (!response.ok) throw new Error(await response.text())
-        const data = await response.json()
-        if (!data.data?.[0]) throw new Error('No data received')
-        const filename = `gen_${Date.now()}_${i}.png`
-        fs.writeFileSync(
-          path.join(ctx.paths.outputDir, filename),
-          Buffer.from(data.data[0].b64_json, 'base64')
-        )
-        generatedFiles.push(filename)
-      }
-      res.json({ message: 'Complete', filenames: generatedFiles })
-    } catch (error: unknown) {
-      console.error('Gen Error:', error)
-      res.status(500).json({ message: 'Generation failed', error: errorMessage(error) })
-    }
   })
 
   app.get('/api/generation/progress', (req, res) => {

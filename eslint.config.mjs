@@ -9,7 +9,13 @@ export default defineConfig(
       '**/dist',
       '**/out',
       '**/server.js',
-      '**/create-folder-structure.js'
+      '**/create-folder-structure.js',
+      // Runtime data folders in a dev checkout (git-ignored)
+      'temp/**',
+      'output/**',
+      'models/**',
+      'backend/**',
+      'library/**'
     ]
   },
   tseslint.configs.recommended,

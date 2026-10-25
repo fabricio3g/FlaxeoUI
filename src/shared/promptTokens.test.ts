@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { appendLoraPromptTokens, formatLoraPromptToken } from '../renderer/src/lib/promptTokens.ts'
+import { appendLoraPromptTokens, formatLoraPromptToken } from './promptTokens.ts'
 
 describe('formatLoraPromptToken', () => {
   it('formats default lora token', () => {

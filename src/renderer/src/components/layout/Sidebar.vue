@@ -1,204 +1,106 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import {
-  ImageIcon,
-  Brush,
-  Video,
-  Images,
-  Settings,
-  Binary,
-  FolderOpen,
-  Database,
-  ChevronLeft,
-  ChevronRight,
-  BookOpen,
-  Search
-} from '@/lib/icons'
-import Tooltip from '@/components/ui/Tooltip.vue'
-import IconButton from '@/components/ui/IconButton.vue'
-import Button from '@/components/ui/Button.vue'
-import BrandMark from '@/components/BrandMark.vue'
+/**
+ * The one sidebar: where you work (Create, Workflows, Assets, Models), then the current
+ * page's own list (sessions in Create, workflows and nodes in Workflows), then Settings/Help.
+ * `floating` draws it as the hover preview shown while it is collapsed.
+ */
+import { computed } from 'vue'
+import { PanelLeft } from '@/lib/icons'
+import SessionList from '@/components/create/SessionList.vue'
+import WorkflowSidebar from '@/components/workflow/WorkflowSidebar.vue'
+import SettingsNav from './SettingsNav.vue'
+import { NAV_FOOTER, NAV_ITEMS, type NavItem } from '@/lib/tools'
+import { useRemoteSession } from '@/composables/useRemoteSession'
 
-interface NavItem {
-  id: string
-  label: string
-  icon: Component
-}
+const props = withDefaults(
+  defineProps<{ currentTab: string; floating?: boolean; closable?: boolean }>(),
+  { floating: false, closable: false }
+)
+/** toggle: hide the docked sidebar, or keep the floating preview open */
+const emit = defineEmits<{ navigate: [tab: string]; toggle: [] }>()
 
-const props = defineProps<{
-  currentTab: string
-  collapsed: boolean
-}>()
+const { isRemote, canViewGallery } = useRemoteSession()
 
-const emit = defineEmits<{
-  navigate: [tab: string]
-  toggleCollapse: []
-  openSearch: []
-}>()
+const visible = (items: NavItem[]): NavItem[] =>
+  items.filter(
+    (item) => !(isRemote && item.desktopOnly) && !(item.needsGallery && !canViewGallery.value)
+  )
 
-const isMac =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || '')
-const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
-
-const navItems: NavItem[] = [
-  { id: 'text2image', label: 'Image', icon: ImageIcon },
-  { id: 'edit', label: 'Edit', icon: Brush },
-  { id: 'video', label: 'Video', icon: Video },
-  { id: 'gallery', label: 'Gallery', icon: Images },
-  { id: 'quantization', label: 'Quantize', icon: Binary },
-  { id: 'help', label: 'Help', icon: BookOpen }
-]
-
-function isActive(id: string): boolean {
-  return props.currentTab === id
-}
-
-function handleNavClick(id: string): void {
-  emit('navigate', id)
-}
-
-function openModelsFolder(): void {
-  window.electronAPI?.openModelsFolder()
-}
-
-function openGalleryFolder(): void {
-  window.electronAPI?.openGalleryFolder()
-}
+const main = computed(() => visible(NAV_ITEMS))
+const footer = computed(() => visible(NAV_FOOTER))
+const isActive = (item: NavItem): boolean => props.currentTab === item.id
 </script>
 
 <template>
   <aside
-    class="relative isolate flex h-full shrink-0 flex-col border-r-0 bg-sidebar transition-[width] duration-200"
-    :class="collapsed ? 'w-14 items-center px-2 py-2' : 'w-52 items-stretch px-3 py-3'"
+    class="flex h-full w-64 shrink-0 flex-col"
+    :class="
+      floating
+        ? 'rounded-xl border border-border bg-popover shadow-[var(--float-shadow)] titlebar-no-drag'
+        : 'bg-sidebar'
+    "
   >
-    <!-- Brand (expanded) + collapse/expand — size-8 control -->
+    <!-- The floating preview opens under the top bar's "Show sidebar" button, which stays the
+         one toggle; the docked sidebar has its own "Hide" toggle here. -->
     <div
-      class="relative z-10 mb-3 flex h-8 w-full shrink-0 items-center"
-      :class="collapsed ? 'justify-center' : 'justify-between px-1'"
+      class="flex h-12 shrink-0 items-center justify-between pl-4 pr-2"
+      :class="!floating && 'titlebar-drag'"
     >
-      <BrandMark
-        v-if="!collapsed"
-        size="sm"
-        :ambient="false"
-        class="min-w-0 shrink rounded-lg bg-foreground px-2 py-1.5 text-background"
-      />
-      <Tooltip :text="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" position="right">
-        <IconButton
-          :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          @click="emit('toggleCollapse')"
-        >
-          <ChevronRight v-if="collapsed" class="size-4" />
-          <ChevronLeft v-else class="size-4" />
-        </IconButton>
-      </Tooltip>
-    </div>
-
-    <!-- Search / jump -->
-    <div class="mb-2 w-full" :class="collapsed ? 'flex justify-center' : ''">
-      <Tooltip v-if="collapsed" :text="`Search (${searchShortcutLabel})`" position="right">
-        <IconButton aria-label="Search" @click="emit('openSearch')">
-          <Search class="size-4" />
-        </IconButton>
-      </Tooltip>
-      <Button
-        v-else
-        variant="ghost"
-        class="h-8 w-full justify-start gap-2 border border-transparent bg-sidebar-accent/60 px-2.5"
-        aria-label="Search"
-        @click="emit('openSearch')"
+      <span class="text-[13px] font-semibold tracking-tight">Flaxeo</span>
+      <button
+        v-if="!floating || closable"
+        v-tip="closable ? 'Close menu' : { text: 'Hide sidebar', keys: 'Mod+\\' }"
+        type="button"
+        class="aui-icon-button inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground titlebar-no-drag"
+        :aria-label="closable ? 'Close menu' : 'Hide sidebar'"
+        @click="emit('toggle')"
       >
-        <Search class="size-4 shrink-0" />
-        <span class="min-w-0 flex-1 truncate text-left">Search</span>
-        <kbd
-          class="shrink-0 rounded border border-border/60 bg-background/80 px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
-          >{{ searchShortcutLabel }}</kbd
-        >
-      </Button>
+        <PanelLeft class="size-4" />
+      </button>
     </div>
 
-    <!-- Same gap as expanded; collapsed icons match collapse button (size-8) -->
-    <nav
-      class="flex flex-1 flex-col gap-0.5"
-      :class="collapsed ? 'items-center' : ''"
-      aria-label="Primary navigation"
-    >
-      <template v-for="item in navItems" :key="item.id">
-        <Tooltip v-if="collapsed" :text="item.label" position="right">
-          <IconButton
-            :variant="isActive(item.id) ? 'solid' : 'ghost'"
-            :aria-label="item.label"
-            :aria-current="isActive(item.id) ? 'page' : undefined"
-            @click="handleNavClick(item.id)"
-          >
-            <component :is="item.icon" class="size-4" />
-          </IconButton>
-        </Tooltip>
-        <Button
-          v-else
-          :variant="isActive(item.id) ? 'primary' : 'ghost'"
-          class="w-full justify-start gap-3 px-2.5"
-          :aria-current="isActive(item.id) ? 'page' : undefined"
-          @click="handleNavClick(item.id)"
-        >
-          <component :is="item.icon" class="size-4 shrink-0" />
-          <span>{{ item.label }}</span>
-        </Button>
-      </template>
+    <nav class="flex flex-col gap-0.5 px-2" aria-label="Primary">
+      <button
+        v-for="item in main"
+        :key="item.id"
+        type="button"
+        class="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors"
+        :class="
+          isActive(item)
+            ? 'bg-accent font-medium text-foreground'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+        "
+        :aria-current="isActive(item) ? 'page' : undefined"
+        @click="emit('navigate', item.id)"
+      >
+        <component :is="item.icon" class="size-4 shrink-0" aria-hidden="true" />
+        {{ item.label }}
+      </button>
     </nav>
 
-    <div
-      class="mt-auto flex flex-col gap-0.5 border-t border-sidebar-border/70 pt-2"
-      :class="collapsed ? 'items-center' : ''"
-    >
-      <template v-if="collapsed">
-        <Tooltip text="Settings" position="right">
-          <IconButton
-            :variant="isActive('settings') ? 'solid' : 'ghost'"
-            aria-label="Settings"
-            :aria-current="isActive('settings') ? 'page' : undefined"
-            @click="handleNavClick('settings')"
-          >
-            <Settings class="size-4" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip text="Open Models Folder" position="right">
-          <IconButton aria-label="Open Models Folder" @click="openModelsFolder">
-            <Database class="size-4" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip text="Open Gallery Folder" position="right">
-          <IconButton aria-label="Open Gallery Folder" @click="openGalleryFolder">
-            <FolderOpen class="size-4" />
-          </IconButton>
-        </Tooltip>
-      </template>
-      <template v-else>
-        <Button
-          :variant="isActive('settings') ? 'primary' : 'ghost'"
-          class="w-full justify-start gap-3 px-2.5"
-          :aria-current="isActive('settings') ? 'page' : undefined"
-          @click="handleNavClick('settings')"
-        >
-          <Settings class="size-4 shrink-0" />
-          <span>Settings</span>
-        </Button>
-        <Button
-          variant="ghost"
-          class="w-full justify-start gap-3 px-2.5"
-          @click="openModelsFolder"
-        >
-          <Database class="size-4 shrink-0" />
-          <span>Models</span>
-        </Button>
-        <Button
-          variant="ghost"
-          class="w-full justify-start gap-3 px-2.5"
-          @click="openGalleryFolder"
-        >
-          <FolderOpen class="size-4 shrink-0" />
-          <span>Gallery</span>
-        </Button>
-      </template>
+    <div class="mt-3 min-h-0 flex-1 border-t border-border">
+      <SessionList v-if="currentTab === 'create'" />
+      <WorkflowSidebar v-else-if="currentTab === 'workflows'" />
+      <SettingsNav v-else-if="currentTab === 'settings'" />
+    </div>
+
+    <div class="flex flex-col gap-0.5 border-t border-border px-2 py-2">
+      <button
+        v-for="item in footer"
+        :key="item.id"
+        type="button"
+        class="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors"
+        :class="
+          isActive(item)
+            ? 'bg-accent font-medium text-foreground'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+        "
+        :aria-current="isActive(item) ? 'page' : undefined"
+        @click="emit('navigate', item.id)"
+      >
+        <component :is="item.icon" class="size-4 shrink-0" aria-hidden="true" />
+        {{ item.label }}
+      </button>
     </div>
   </aside>
 </template>

@@ -38,6 +38,8 @@ export interface LanPairedDevice {
   lastSeenAt: number
   expiresAt: number
   accessLevel: LanAccessLevel
+  /** Display name the teammate chose when pairing */
+  name?: string
 }
 
 export function isLanTransport(value: unknown): value is LanTransport {

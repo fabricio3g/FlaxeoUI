@@ -2,6 +2,7 @@ import type { ChildProcess } from 'child_process'
 import type { EventEmitter } from 'events'
 import type { Server } from 'http'
 import type { ModelDirectoryKey } from '../shared/storage'
+import type { GraphRunState } from '../shared/workflowGraph'
 
 export type JsonObject = Record<string, unknown>
 
@@ -28,6 +29,8 @@ export interface ProgressInfo {
   stageCurrent?: number
   stageTotal?: number
   stageLabel?: string
+  /** Team member who started the running job (desktop name or LAN device name) */
+  owner?: string
 }
 
 export interface BackendConfig {
@@ -86,6 +89,10 @@ export interface RuntimeState {
   previewEtag: string | null
   convertOutputPath: string | null
   lanWebReady: boolean
+  /** Owner of the running CLI job, for busy messages and the shared queue */
+  activeOwner: string | null
+  /** Running / last workflow graph run (per-node status for the canvas) */
+  workflowRun: GraphRunState | null
 }
 
 export interface AppContext {

@@ -150,8 +150,8 @@ const selectedPreset = computed(() =>
         :class="
           compact
             ? [
-                'aui-icon-button relative size-10 shrink-0 justify-center rounded-full border border-transparent hover:border-border hover:bg-background hover:text-foreground',
-                open ? 'border-border bg-background text-foreground shadow-sm' : ''
+                'aui-icon-button relative size-8 shrink-0 justify-center rounded-md hover:bg-accent hover:text-foreground',
+                open ? 'bg-accent text-foreground' : ''
               ]
             : [
                 'h-9 gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 text-xs font-medium shadow-sm hover:border-foreground/20 hover:bg-background hover:text-foreground',

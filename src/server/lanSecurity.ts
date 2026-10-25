@@ -16,6 +16,7 @@ import {
   type LanTransport
 } from '../shared/lan'
 import { evaluateLanRequest } from '../shared/lanPolicy'
+import { cleanMemberName } from '../shared/library'
 import {
   hostMatchesAddress,
   isLoopbackAddress,
@@ -67,7 +68,7 @@ function securityHeaders(response: Response): void {
   response.setHeader('Cache-Control', 'no-store')
   response.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
   )
   response.setHeader('Referrer-Policy', 'no-referrer')
   response.setHeader('X-Content-Type-Options', 'nosniff')
@@ -360,7 +361,8 @@ export function createLanSecurity(app: Express, ctx: AppContext) {
       response.json({
         paired: loopback || Boolean(session),
         transport,
-        accessLevel: session?.accessLevel || accessLevel
+        accessLevel: session?.accessLevel || accessLevel,
+        name: session?.name || undefined
       })
     })
 
@@ -398,7 +400,8 @@ export function createLanSecurity(app: Express, ctx: AppContext) {
         createdAt: now,
         lastSeenAt: now,
         expiresAt: now + lifetime,
-        accessLevel
+        accessLevel,
+        name: cleanMemberName(request.body?.name) || undefined
       })
       rotatePairingCode()
       const cookieName = transport === 'https' ? SECURE_SESSION_COOKIE : QUICK_SESSION_COOKIE
@@ -408,6 +411,16 @@ export function createLanSecurity(app: Express, ctx: AppContext) {
         `${cookieName}=${sessionToken}; Path=/; Max-Age=${Math.floor(lifetime / 1000)}${secure}; HttpOnly; SameSite=Strict`
       )
       response.json({ paired: true, accessLevel })
+    })
+
+    app.post('/api/auth/profile', (request, response) => {
+      const session = sessionForRequest(request)
+      if (!session) {
+        response.status(401).json({ error: 'Pairing required' })
+        return
+      }
+      session.name = cleanMemberName(request.body?.name) || undefined
+      response.json({ name: session.name })
     })
 
     app.post('/api/auth/logout', (request, response) => {

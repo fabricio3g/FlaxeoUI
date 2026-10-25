@@ -34,7 +34,7 @@ const containerClasses = (size: 'sm' | 'md') =>
   )
 
 const optionClasses = (
-  option: SegmentedOption,
+  _option: SegmentedOption,
   size: 'sm' | 'md',
   iconOnly: boolean,
   active: boolean

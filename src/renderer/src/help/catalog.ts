@@ -12,9 +12,9 @@ export interface HelpTopic {
 
 export const HELP_SECTIONS = [
   'Getting started',
-  'Studio basics',
-  'Power tools',
+  'Create',
   'Workflows',
+  'Power tools',
   'Models & hardware',
   'Troubleshoot',
   'Community'
@@ -25,283 +25,174 @@ export const helpTopics: HelpTopic[] = [
     id: 'getting-started',
     title: 'Getting started',
     section: 'Getting started',
-    keywords: ['setup', 'wizard', 'first', 'install', 'backend', 'onboarding', 'skip'],
+    keywords: ['setup', 'wizard', 'first', 'install', 'engine', 'onboarding', 'skip'],
     body: `# Getting started
 
-## First run
+1. **Install the engine.** Flaxeo runs models with stable-diffusion.cpp. The title bar says
+   **Install sd.cpp engine** until one is installed; **Settings → Engine & performance** installs it.
+2. **Get a model.** Open **Models** and download a ready pack, or drop files into the models folder.
+3. **Create.** Type a prompt in **Create** and press Enter.
 
-1. Open Flaxeo Image.
-2. Complete the **setup wizard**: install or select an **sd.cpp** backend (\`sd-cli\`).
-3. **Models (optional now):** download a **starter pack**, or **Skip download** and add models later from the Hub or folders.
-4. Optionally enable **Low VRAM** if you have a smaller GPU.
-5. Finish → **Generate sample**, or open Image and write your own prompt.
+The dot in the title bar tells you where things stand: green means the engine is ready,
+amber means it is not installed, red means the local service stopped.
 
-If you skip the wizard, a quiet **Getting started** strip stays until your first successful image.
+## Where files live
 
-## Where models live
-
-- Default: app data → \`models/\` (subfolders like \`diffusion/\`, \`vae/\`, \`loras/\`).
-- Change root or open folders: **Settings → Storage**.
-- Full folder map: Help → **Models & hardware**.
-
-## Checklist
-
-- **Backend** — \`sd-cli\` present and valid in Settings
-- **Models** — at least one diffusion model (and VAE / encoders if the pack needs them)
-- **First image** — successful Text2Image run
-
-## Tips
-
-- Prefer **CLI** mode until you are comfortable; **Server** is best for warm simple T2I.
-- Open **Help** anytime from the sidebar (works offline).
+- Models: app data → \`models/\` (\`diffusion/\`, \`vae/\`, \`loras/\`…). Change it in **Settings → Storage**.
+- Everything you make lands in **Assets** (the output folder).
 `
   },
   {
-    id: 'studio-basics',
-    title: 'Studio basics',
-    section: 'Studio basics',
-    keywords: ['text2image', 'image', 'edit', 'video', 'gallery', 'seed', 'batch', 'preview'],
-    body: `# Studio basics
+    id: 'create',
+    title: 'Create',
+    section: 'Create',
+    keywords: [
+      'image',
+      'edit',
+      'video',
+      'session',
+      'prompt',
+      'reference',
+      'inpaint',
+      'mask',
+      'img2img'
+    ],
+    body: `# Create
 
-## Image (Text2Image)
+One place for images, edits and video. Pick **Image**, **Edit** or **Video** in the prompt box.
 
-1. Choose a model (command strip or Model panel).
-2. Write a **prompt** (optional negative).
-3. Set size, steps, CFG (composer + gear).
-4. Optional: **Preview** = Proj / TAE / VAE for live frames while generating.
-5. Press **Generate**.
+## Sessions
 
-**Session strip** under the stage lists this session’s images. While generating, the stage stays on live preview — click a past thumb to open the **fullscreen viewer** (does not interrupt the run). **Clear** blanks the workspace but keeps files in Gallery. **Delete** removes the current file from disk.
+Each generation becomes a row in the current session: the prompt, the model, size, seed and
+the results. Start a new session from the column on the left. Sessions live on this computer,
+so phones and laptops paired over your network see the same feed.
 
-**Seeds:** lock to reproduce; dice for random.  
-**Batch:** multiple images per job.  
-**Queue:** next Generate enqueues while a job runs.
+Hover a result to **edit** it, **animate** it, **upscale** it, use it as a **reference** or
+download it. Hover a row to load its prompt and settings again, run it again or remove it
+(the files stay in Assets).
 
-**Advanced tools:** Img2Img (\`-i\`), Reference multi-ref (\`-r\`) — same ref processing presets as Edit → Ref Edit.
+## Attaching images
 
-## Edit
+Drop images on the prompt box, paste them, or use the paperclip (from this device or from
+Assets). Each image has a role you can change under its thumbnail:
 
-| Mode | What it does |
-|------|----------------|
-| **Inpaint** | Mask areas to change. Size always follows the source image. |
-| **Img2Img** | Transform whole image with strength. Studio size or match source. |
-| **Ref Edit** | Multi-reference edit (\`-r\`). Studio size or match ref. |
+| Mode | Roles |
+|------|-------|
+| Image | Reference (combine several), Start image (img2img), ControlNet, Style (IP-Adapter), Face (PhotoMaker) |
+| Edit | Image to edit, Reference |
+| Video | First frame, Last frame, Reference |
 
-Shared with Image: steps, CFG, seed, **live preview**.  
-On Img2Img / Ref Edit: resolution chip, size policy, optional fit-to-target crop when adding an image.
+## Editing with a mask
 
-Models & packs: see **Models & hardware**.
+Choose **Edit** on a result (or **Paint the area to change** after attaching one). Paint what
+should change; leave it empty to edit the whole image. Reference-edit models (Kontext, Qwen
+Image Edit…) receive the image as a reference automatically.
 
-## Gallery
+## Shortcuts
 
-Browse outputs, fullscreen, **reuse seed** or **reuse all settings**, **upscale** when a model is in \`models/upscale\`.
+- **Enter** generates; **Shift+Enter** adds a line.
+- Generating while something runs adds it to the queue.
+`
+  },
+  {
+    id: 'model-options',
+    title: 'Model options',
+    section: 'Create',
+    keywords: [
+      'options',
+      'settings',
+      'sampler',
+      'steps',
+      'cfg',
+      'lora',
+      'family',
+      'recommended',
+      'flags'
+    ],
+    body: `# Model options
 
-## Video
+**Options** in the prompt box opens every option of the selected model, grouped and searchable:
+model files, LoRAs, sampling, size, image inputs, hi-res fix, face fix, video and advanced.
 
-**T2V**, **I2V**, **FLF2V**. Resolution chips + FPS. Models from Hub video packs.
+## Recommendations, not rules
 
-## Queue
+Picking a model fills in its companion files (VAE, text encoders) from what is installed and
+takes the recommended settings for its family only where you have not changed them. When your
+values differ, the panel shows **Recommended for …** with **Apply**. Nothing is locked.
 
-One generation at a time. Open **Queue** to reorder, remove waiting jobs, pause, or cancel.
+## New sd.cpp options
+
+Flaxeo reads the installed engine's \`--help\`. Options it has no dedicated control for yet
+appear under **More sd.cpp options**, so a new sd.cpp release is usable right away. Values are
+checked against the engine before a run.
+`
+  },
+  {
+    id: 'workflows',
+    title: 'Workflows',
+    section: 'Workflows',
+    keywords: ['nodes', 'graph', 'chain', 'comfy', 'lora', 'model', 'socket', 'bypass', 'batch'],
+    body: `# Workflows
+
+A node graph for chaining models: **Load model → LoRA → Generate image → Video → Output**.
+
+## Sockets
+
+Wires connect sockets of the same type; the color tells you which:
+**Model** (lavender), **Text** (amber), **Image** (blue), **Video** (coral), **Number** (green).
+Image sockets marked with ⋯ take several wires; their images are combined (for example several
+references into one edit model).
+
+- **Load model** holds a model with all its options (select it to edit them on the right).
+- **LoRA** nodes add to the model passing through; chain as many as you like.
+- Widgets left empty use the model's own value (shown as the placeholder).
+- **Make input** on a widget (in the right panel) turns it into a socket, e.g. one **Number**
+  node feeding the seed of several nodes.
+
+## Editing
+
+- Double-click the canvas, or drop a wire on empty space, to search for a node.
+- Right-click a node: **Bypass** (passes its input through), **Duplicate**, **Delete**.
+- **Ctrl+Z / Ctrl+Y** undo/redo, **Ctrl+C / Ctrl+V** copy/paste, **Ctrl+D** duplicate,
+  **Ctrl+B** bypass, **Delete** removes, **Ctrl+S** saves, **Ctrl+Enter** runs.
+
+## Running
+
+**Run** checks the graph first and lists what is missing. **×N** queues the workflow N times.
+Each node shows its progress and results; every file also lands in Assets.
 `
   },
   {
     id: 'queue',
     title: 'Job queue',
-    section: 'Studio basics',
+    section: 'Create',
     keywords: ['queue', 'pause', 'cancel', 'waiting', 'batch', 'pending'],
     body: `# Job queue
 
-Flaxeo runs **one** generation at a time (sd-cli single-flight). The queue lets you line up more work safely.
+Flaxeo runs one generation at a time. Anything you start while something runs waits in the
+**Queue** (title bar), including workflow runs and jobs from other devices.
 
-## Basics
-
-- **Generate while busy** → job goes to **Waiting**.
-- **Queue** button (command strip) shows count badge.
-- **Pause** finishes the current job then stops starting more.
-- **Cancel current** aborts the running job; the next waiting job starts.
-- **Clear** under Recent removes done / failed / cancelled entries in the panel (not gallery files).
-
-## Tips
-
-- Reorder with ↑↓ before a job starts.
-- Form jobs (Edit / Video with uploads) keep file snapshots in memory until the app restarts.
-- Progress chip shows phase (loading encoder → diffusion → VAE, etc.).
+- **Pause** finishes the current job, then waits.
+- **Cancel** stops the running job; the next one starts.
+- Reorder waiting jobs before they start.
 `
   },
   {
-    id: 'recipes',
-    title: 'Recipes',
-    section: 'Power tools',
-    keywords: ['recipe', 'template', 'preset', 'export', 'import', 'share'],
-    body: `# Recipes
+    id: 'sharing',
+    title: 'Sharing on your network',
+    section: 'Getting started',
+    keywords: ['lan', 'phone', 'remote', 'pair', 'qr', 'share', 'network', 'devices', 'name'],
+    body: `# Sharing on your network
 
-A **recipe** is a full look: prompts plus generation settings (and model hints), not just saved prompt text.
+Phones, tablets and other computers on the same network can use this computer's GPU.
 
-## Use a recipe
+1. **Settings → Sharing**: turn sharing on.
+2. On the other device, scan the QR code or open the address and enter the pairing code.
+3. Pick a name on that device; it shows on its generations and in the queue.
 
-1. Open **Image**.
-2. Open the **Recipes** control near the prompt.
-3. Pick a built-in or saved recipe → **Apply**.
-
-Built-ins are starting points; change anything after apply.
-
-## Save a recipe
-
-1. Dial in models, size, steps, prompt, etc.
-2. Open Recipes → name it → **Save**.
-3. Recipes are stored locally in the app. The applied recipe stays marked in the list.
-
-## Share
-
-- **Export** writes a single \`.flaxeo-recipe.json\` file with the settings **and** a
-  human-readable guide (models + combination) embedded inside — one file to send offline.
-- **Import JSON** loads a recipe file into your library.
-
-## Prompt presets vs recipes
-
-| | Prompt presets | Recipes |
-|--|----------------|---------|
-| Stores | Positive / negative text | Full config snapshot + prompts |
-| Best for | Reusing wording | Reusing a whole look |
-
-Recipes only overwrite the prompts they actually contain; applying never clears your current text.
-
-## Built-in families
-
-Search in Recipes by tag:
-
-- **surface** — base color, roughness look, normal style, tileable
-- **object** / **icon** — hero props, solid-bg icons
-- **wide** / **tall** / **illustration** / **interface** — frames and mocks
-- **mood** / **batch** — multi-seed cohesive sets
-
-Map-style recipes are **looks** for iteration, not authored PBR channel bakes.
-`
-  },
-  {
-    id: 'surfaces-maps',
-    title: 'Surfaces & map looks',
-    section: 'Workflows',
-    keywords: [
-      'surface',
-      'tile',
-      'seamless',
-      'albedo',
-      'roughness',
-      'normal',
-      'material',
-      'texture',
-      '1024'
-    ],
-    body: `# Surfaces & map looks
-
-Use **Recipes** tagged \`surface\` for material-style stills.
-
-## Suggested loop
-
-1. Apply **Surface · tileable** or **Surface · base color** (usually 1024×1024).
-2. Generate; lock seed if you like the structure.
-3. Optionally **Upscale** from Gallery for 2K handoff.
-4. Open the gallery folder and drop files into your project tree.
-
-## Map-style recipes
-
-| Recipe | Intent |
-|--------|--------|
-| Base color | Flat-lit color, even lighting |
-| Roughness look | Grayscale map *style* |
-| Normal style | Technical purple/blue *look* |
-| Tileable | Edge-friendly repeating prompt |
-
-These are **prompted looks** for concepts and basing. True tangent-space normals and graph-authored maps belong in a DCC or specialist tool.
-
-## Tips
-
-- Prefer square power-of-two sizes (512 / 1024 / 2048 via resolution menu).
-- Batch or queue several seeds, then re-run winners from **History**.
-- Img2Img can refine a surface without losing overall layout.
-`
-  },
-  {
-    id: 'frames-mockups',
-    title: 'Frames & mockups',
-    section: 'Workflows',
-    keywords: [
-      'hero',
-      'banner',
-      'story',
-      'mock',
-      'interface',
-      'empty',
-      'illustration',
-      'wide',
-      'tall'
-    ],
-    body: `# Frames & mockups
-
-Recipes for presentation frames and comps — not a separate app mode.
-
-## Common picks
-
-| Recipe | Frame |
-|--------|--------|
-| Wide · hero banner | ~16:9 covers and headers |
-| Tall · story frame | ~9:16 full-bleed |
-| Square · social | 1:1 thumbs |
-| Illustration · empty state | Soft art with space |
-| Interface · mock screen | Abstract UI illustration |
-| Object · hero on ground | Single product/prop |
-| Icon · solid background | Keyable solid bg |
-
-## Loop
-
-1. Apply a frame recipe.
-2. Edit the prompt subject; keep size/steps from the recipe.
-3. Use **batch** or **Mood · multi-seed set** for a small set.
-4. History → **Re-run** the winner with a locked seed.
-
-**Interface · mock screen** is illustration for comps, not production UI widgets.
-`
-  },
-  {
-    id: 'batch-queue-workflow',
-    title: 'Batch & queue',
-    section: 'Workflows',
-    keywords: ['batch', 'queue', 'variants', 'overnight', 'seed', 'production'],
-    body: `# Batch & queue
-
-## Batch
-
-Increase **batch count** in generation settings (or apply **Mood · multi-seed set**) to produce several images in one job when the backend supports multi-output.
-
-## Queue
-
-While a job runs, **Generate** adds the next job to the queue:
-
-- Reorder waiting jobs
-- Pause the queue
-- Cancel only the current run
-
-Use this for multi-look nights: tileable surface → base color → object hero, each as its own queued job.
-
-## History
-
-**History** (command strip) stores recent jobs. **Re-run** restores settings and prompts so you can refine winners without retyping.
-
-## Variants & upscale
-
-- Generation settings → **Queue 4 seed variants** enqueues four jobs with different seeds.
-- Optional **Queue upscale after success** runs an upscale job when generation finishes (first model in \`models/upscale\`).
-- Gallery: scale icon queues upscale; **…** opens upscale options.
-
-## Viewer tools
-
-Fullscreen image viewer:
-
-- **2×2 / 3×3** — tile preview to check seams
-- **Gray** — grayscale inspection for map-style stills
-- **Copy image** / **Save** — clipboard and download
+Paired devices use Create and Workflows; you choose what they may do (generate, browse Assets,
+or full control). Revoke one device or all of them from the same page. Sharing stays inside
+your local network.
 `
   },
   {
@@ -373,7 +264,7 @@ See also: full guide in the repo \`docs/user-guide/adetailer.md\`.
   },
   {
     id: 'cli-vs-server',
-    title: 'CLI vs Server',
+    title: 'Keeping the model loaded',
     section: 'Models & hardware',
     keywords: [
       'cli',
@@ -388,42 +279,18 @@ See also: full guide in the repo \`docs/user-guide/adetailer.md\`.
       'stop',
       't2i'
     ],
-    body: `# CLI vs Server
+    body: `# Keep the model loaded
 
-Flaxeo can drive **stable-diffusion.cpp** two ways. The install zip must include **both** \`sd-cli\` and \`sd-server\`.
+Flaxeo runs every model with **stable-diffusion.cpp**. By default each image starts \`sd-cli\`, which loads the model, generates and exits.
 
-**Settings → Installation** recommends the newest published release and lists every binary variant.
+Turn on **Settings → Engine & performance → Keep the model loaded** to keep it in memory instead:
 
-## CLI mode (default)
-
-- Runs \`sd-cli\` **per job** (cold or warm process lifecycle managed by Flaxeo).
-- **Full studio:** Image, Edit, Video, ADetailer, batch, PhotoMaker, ControlNet, init/ref uploads, upscale.
-- Use this unless you specifically want a warm HTTP server.
-
-## Server mode
-
-- Starts **\`sd-server\`** once (\`POST /api/start\`) with the **current model stack** and hardware flags.
-- Flaxeo then posts simple T2I to \`http://localhost:1234/v1/images/generations\`.
-- **Best for:** repeated Text2Image with the same loaded model (less load churn).
-- **Limits (by design today):**
-  - Core **text-to-image** only (batch 1, no PM / ControlNet / init / multi-ref form path).
-  - Advanced jobs **automatically fall back to CLI** with a toast.
-  - **Changing model or many settings requires Stop → Start** so the server reloads args.
-
-## Controls
-
-- Titlebar or Config → **CLI | Server**
-- When Server is selected: **Start** / **Stop** for \`sd-server\`
-- Runtime probe: Settings uses \`sd-cli --help\` (and reports \`sd-server --help\`) so soft-gates match your build
-
-## Docs / help dumps
-
-Checked into the repo as a reference for the sd.cpp CLI surface:
-
-- \`sd-cli-help.txt\`
-- \`sd-server-help.txt\`
-
-Refresh those after installing a newer runtime.
+- The first image loads the model into \`sd-server\`; the next ones start right away.
+- Picking another model (or other model files, like a VAE) reloads it on the next image.
+- The setting lives on this computer, so **paired phones and tablets** use the loaded model too.
+- Same settings either way: prompt, size, seed, sampler, scheduler, CFG, guidance, LoRAs, reference images, image-to-image and masked edits.
+- Video, hi-res fix, face fix, ControlNet, identity and style references run through \`sd-cli\` as before. The loaded model is unloaded first so both never hold your GPU memory.
+- **Unload** frees the memory right away. Builds older than sd-server's native API fall back to \`sd-cli\` and say so.
 `
   },
   {
@@ -508,12 +375,9 @@ Open **Model Hub** from the titlebar or Config → Models. It is a **curated lis
 - Prefer smaller quants (Q4 / Q5) on small GPUs.
 - **Cache presets** — EasyCache, UCache, and other sd.cpp recipes (Advanced).
 
-## CLI vs Server
+## Keep the model loaded
 
-| Mode | Best for |
-|------|----------|
-| **CLI** | Default. Edit, video, batch, uploads — full features. |
-| **Server** | Warm multi-gen for simple Text2Image. Advanced jobs fall back to CLI. |
+Off by default: each image loads the model. Turn it on in **Settings → Engine & performance** to keep the model in memory between images, for this computer and paired devices alike.
 
 ## Quantize
 

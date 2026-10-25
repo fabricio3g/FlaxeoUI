@@ -1,16 +1,12 @@
 <script setup lang="ts">
-import { Download, Moon, Minus, Square, SlidersHorizontal, Sun, Terminal, X } from '@/lib/icons'
+import { Download, Moon, Minus, PanelLeft, Square, Sun, Terminal, X } from '@/lib/icons'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useConfigStore } from '@/stores/config'
-import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import { useConnection } from '@/composables/useConnection'
 import { useTheme } from '@/composables/useTheme'
 import { useRemoteSession } from '@/composables/useRemoteSession'
 import { useJobQueue } from '@/composables/useJobQueue'
 import { useDownloads } from '@/composables/useDownloads'
 import DownloadManagerModal from '@/components/DownloadManagerModal.vue'
-import ModelHubModal from '@/components/ModelHubModal.vue'
-import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import Button from '@/components/ui/Button.vue'
@@ -24,97 +20,67 @@ export type PanelAnchor = {
 }
 
 const props = defineProps<{
-  currentTab: string
   setupNeeded?: boolean
-  collapsed?: boolean
   queueOpen?: boolean
+  sidebarCollapsed?: boolean
 }>()
 
 const emit = defineEmits<{
-  toggleMobileConfig: []
+  expandSidebar: []
+  /** Phone width: open the sidebar as a drawer */
+  openDrawer: []
+  /** Pointer over the expand button: show (true) or hide (false) the sidebar preview */
+  peek: [show: boolean]
   toggleLogs: []
   openSetup: []
-  toggleSidebar: []
-  'update:backendMode': [value: string]
+  openEngine: []
   toggleQueue: [anchor: PanelAnchor | null]
 }>()
 
 const isElectron = ref(false)
-const showModelHub = ref(false)
 const showDownloadManager = ref(false)
 const queueBtnRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const configStore = useConfigStore()
-const { config } = storeToRefs(configStore)
-const {
-  sdServerRunning,
-  backendVersion,
-  backendValid,
-  runtimeState,
-  runtimeLabel,
-  startRuntimeStatusPolling,
-  stopRuntimeStatusPolling
-} = useRuntimeStatus()
+const connection = useConnection()
 const { isDark, toggleTheme } = useTheme()
 const { canControl } = useRemoteSession()
 const { pendingCount, current: currentJob } = useJobQueue()
 const { activeCount, subscribeDownloads } = useDownloads()
 
-const backendModeOptions = [
-  { value: 'cli', label: 'CLI' },
-  { value: 'server', label: 'Server' }
-]
-
 const queueBadge = computed(() => pendingCount.value + (currentJob.value ? 1 : 0))
+const badge = (n: number): string => (n <= 0 ? '' : n > 99 ? '99+' : String(n))
 
-const downloadBadgeLabel = computed(() => {
-  const n = activeCount.value
-  if (n <= 0) return ''
-  return n > 99 ? '99+' : String(n)
+/** One status: is the local service reachable, and is an sd.cpp engine installed? */
+const status = computed(() => {
+  const app = connection.appState.value
+  if (app === 'connecting') return { tone: 'muted', action: false }
+  if (app !== 'connected') return { tone: 'bad', action: false }
+  if (connection.engineState.value === 'missing') return { tone: 'warn', action: canControl.value }
+  return { tone: 'ok', action: false }
 })
 
-const queueBadgeLabel = computed(() => {
-  const n = queueBadge.value
-  if (n <= 0) return ''
-  return n > 99 ? '99+' : String(n)
-})
+const statusText = computed(() =>
+  status.value.action ? 'Install sd.cpp engine' : connection.summary.value
+)
 
-const statusDotClass = computed(() => {
-  if (runtimeState.value === 'online') return 'bg-success'
-  if (runtimeState.value === 'offline') return 'bg-warning'
-  return 'bg-destructive'
-})
-
-const statusHint = computed(() => {
-  if (config.value.backendMode === 'server' && backendValid.value && !sdServerRunning.value) {
-    return 'Server mode is selected but sd-server is offline.'
-  }
-  if (!backendValid.value) return 'Backend binary is not valid.'
-  return config.value.backendMode === 'server' ? 'Server mode active.' : 'CLI mode active.'
-})
-
-const showMobileConfig = computed(() => ['text2image', 'edit', 'video'].includes(props.currentTab))
-
-function rectFromEl(el: HTMLElement | null): PanelAnchor | null {
-  if (!el) return null
-  const r = el.getBoundingClientRect()
-  return {
-    top: r.top,
-    left: r.left,
-    right: r.right,
-    bottom: r.bottom,
-    width: r.width
-  }
-}
+const dotClass = computed(
+  () =>
+    ({
+      ok: 'bg-success',
+      warn: 'bg-warning',
+      bad: 'bg-destructive',
+      muted: 'bg-muted-foreground/50'
+    })[status.value.tone]
+)
 
 function handleToggleQueue(): void {
-  // Ref may be a component wrapper; resolve its root element
   const el = queueBtnRef.value
-  const target = el instanceof HTMLElement ? el : ((el as { $el?: HTMLElement } | null)?.$el ?? null)
-  emit('toggleQueue', rectFromEl(target))
-}
-
-function handleBackendMode(value: string): void {
-  emit('update:backendMode', value)
+  const target =
+    el instanceof HTMLElement ? el : ((el as { $el?: HTMLElement } | null)?.$el ?? null)
+  const r = target?.getBoundingClientRect()
+  emit(
+    'toggleQueue',
+    r ? { top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width } : null
+  )
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
@@ -127,13 +93,13 @@ let unsubDownloads: (() => void) | null = null
 
 onMounted(() => {
   isElectron.value = !!window.electronAPI
-  startRuntimeStatusPolling()
+  connection.start()
   unsubDownloads = subscribeDownloads()
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
-  stopRuntimeStatusPolling()
+  connection.stop()
   unsubDownloads?.()
   unsubDownloads = null
   window.removeEventListener('keydown', handleGlobalKeydown)
@@ -154,84 +120,48 @@ function handleClose(): void {
 
 <template>
   <header
-    class="relative z-50 flex h-10 shrink-0 select-none items-center justify-between bg-background titlebar-drag"
+    class="relative z-30 flex h-12 shrink-0 select-none items-center gap-2 pl-2 titlebar-drag"
   >
-    <div class="flex h-full min-w-0 items-center gap-1.5 px-2 titlebar-no-drag">
-      <div class="group relative hidden h-8 items-center justify-center titlebar-no-drag md:flex">
-        <IconButton
-          shape="pill"
-          :aria-label="runtimeLabel"
-        >
-          <span class="h-2.5 w-2.5 rounded-full" :class="statusDotClass"></span>
-        </IconButton>
-
-        <div
-          class="pointer-events-none absolute left-0 top-full z-[60] mt-2 w-64 -translate-y-1 rounded-xl border border-border/80 bg-popover p-3.5 text-xs text-popover-foreground opacity-0 shadow-xl shadow-black/10 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:shadow-black/30"
-        >
-          <div class="mb-2.5 flex items-center gap-2 border-b border-border/70 pb-2.5">
-            <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
-            <span class="font-medium">Runtime status</span>
-          </div>
-          <div class="space-y-1.5 text-muted-foreground">
-            <div class="flex items-center justify-between gap-3">
-              <span>Server</span>
-              <span
-                class="font-medium"
-                :class="sdServerRunning ? 'text-success' : 'text-warning'"
-                >{{ sdServerRunning ? 'Online' : 'Offline' }}</span
-              >
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <span>Backend</span>
-              <span
-                class="max-w-36 truncate font-medium"
-                :class="backendValid ? 'text-foreground' : 'text-destructive'"
-                :title="backendVersion"
-                >{{ backendVersion }}</span
-              >
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <span>Mode</span>
-              <span class="font-medium text-foreground">{{
-                config.backendMode.toUpperCase()
-              }}</span>
-            </div>
-          </div>
-          <p
-            class="mt-2.5 border-t border-border/70 pt-2.5 text-xs leading-relaxed text-muted-foreground"
-          >
-            {{ statusHint }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Backend mode next to sidebar / status -->
-      <SegmentedControl
-        class="shrink-0"
-        :model-value="config.backendMode"
-        :options="backendModeOptions"
-        size="sm"
-        aria-label="Backend mode"
-        @update:model-value="handleBackendMode"
-      />
-    </div>
-
-    <div
-      v-if="isElectron"
-      class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 titlebar-no-drag md:flex"
+    <button
+      type="button"
+      class="aui-icon-button inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground titlebar-no-drag md:hidden"
+      aria-label="Open menu"
+      @click="emit('openDrawer')"
     >
-      <Button
-        variant="ghost"
-        size="sm"
-        class="h-7 rounded-md px-3"
-        @click="showModelHub = true"
+      <PanelLeft class="size-4" />
+    </button>
+    <span
+      v-if="sidebarCollapsed"
+      class="hidden titlebar-no-drag md:inline-flex"
+      @pointerenter="emit('peek', true)"
+      @pointerleave="emit('peek', false)"
+    >
+      <button
+        type="button"
+        class="aui-icon-button inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground titlebar-no-drag"
+        aria-label="Show sidebar"
+        v-tip="{ text: 'Show sidebar', keys: 'Mod+\\' }"
+        @click="emit('expandSidebar')"
       >
-        Model Hub
-      </Button>
-    </div>
+        <PanelLeft class="size-4" />
+      </button>
+    </span>
 
-    <!-- Drag region between left tools and right actions -->
-    <div class="min-w-0 flex-1" aria-hidden="true" />
+    <!-- Pages put their title and actions here (Teleport to #page-header) -->
+    <div id="page-header" class="flex min-w-0 flex-1 items-center gap-1 pl-1"></div>
+
+    <component
+      :is="status.action ? 'button' : 'span'"
+      type="button"
+      class="inline-flex h-7 min-w-0 shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground titlebar-no-drag"
+      :class="status.action && 'text-foreground hover:bg-accent'"
+      :title="connection.summary.value"
+      role="status"
+      @click="status.action && emit('openEngine')"
+    >
+      <span class="size-2 shrink-0 rounded-full" :class="dotClass" aria-hidden="true" />
+      <span class="hidden truncate lg:inline">{{ statusText }}</span>
+    </component>
 
     <div class="flex h-full items-center gap-0.5 titlebar-no-drag">
       <!-- Queue -->
@@ -248,38 +178,17 @@ function handleClose(): void {
         >
           <span>Queue</span>
           <span
-            v-if="queueBadgeLabel"
+            v-if="badge(queueBadge)"
             class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-xs font-medium tabular-nums text-background"
           >
-            {{ queueBadgeLabel }}
+            {{ badge(queueBadge) }}
           </span>
         </Button>
       </Tooltip>
 
-      <Tooltip v-if="showMobileConfig" text="Model & settings" position="bottom">
-        <IconButton
-          class="mr-0.5 md:hidden"
-          aria-label="Open mobile settings"
-          @click="emit('toggleMobileConfig')"
-        >
-          <SlidersHorizontal class="h-4 w-4" />
-        </IconButton>
-      </Tooltip>
-
       <button
         v-if="props.setupNeeded"
-        class="aui-status-badge mr-0.5 inline-flex h-7 items-center gap-1.5 rounded-md bg-warning/10 px-2 text-xs font-medium text-warning transition-colors duration-150 hover:bg-warning/15 titlebar-no-drag md:hidden"
-        type="button"
-        title="Open setup wizard"
-        @click="emit('openSetup')"
-      >
-        <span class="h-1.5 w-1.5 rounded-full bg-warning"></span>
-        Setup
-      </button>
-
-      <button
-        v-if="props.setupNeeded"
-        class="aui-status-badge mr-0.5 hidden h-7 items-center gap-1.5 rounded-md bg-warning/10 px-2 text-xs font-medium text-warning transition-colors duration-150 hover:bg-warning/15 titlebar-no-drag md:inline-flex"
+        class="mr-1 inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-warning hover:bg-accent titlebar-no-drag"
         type="button"
         @click="emit('openSetup')"
       >
@@ -308,10 +217,10 @@ function handleClose(): void {
         >
           <Download class="h-4 w-4 shrink-0" />
           <span
-            v-if="downloadBadgeLabel"
+            v-if="badge(activeCount)"
             class="inline-flex min-w-4 items-center justify-center rounded-md bg-foreground px-1 text-xs font-medium tabular-nums text-background"
           >
-            {{ downloadBadgeLabel }}
+            {{ badge(activeCount) }}
           </span>
         </IconButton>
       </Tooltip>
@@ -337,7 +246,7 @@ function handleClose(): void {
         <button
           @click="handleMinimize"
           class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
-          title="Minimize"
+          v-tip="'Minimize'"
         >
           <Minus class="h-3.5 w-3.5" />
         </button>
@@ -345,7 +254,7 @@ function handleClose(): void {
         <button
           @click="handleMaximize"
           class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
-          title="Maximize"
+          v-tip="'Maximize'"
         >
           <Square class="h-3 w-3" />
         </button>
@@ -353,13 +262,12 @@ function handleClose(): void {
         <button
           @click="handleClose"
           class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-destructive hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
-          title="Close"
+          v-tip="'Close'"
         >
           <X class="h-4 w-4" />
         </button>
       </template>
     </div>
-    <ModelHubModal :open="showModelHub" @close="showModelHub = false" />
     <DownloadManagerModal :open="showDownloadManager" @close="showDownloadManager = false" />
   </header>
 </template>

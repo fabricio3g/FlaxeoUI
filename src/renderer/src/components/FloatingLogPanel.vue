@@ -15,20 +15,13 @@ const emit = defineEmits<{
 const autoScroll = ref(true)
 const isPolling = ref(true)
 const logsContainer = ref<HTMLElement | null>(null)
-const {
-  logs,
-  total,
-  isStreaming,
-  refreshLogs,
-  startServerLogStream,
-  stopServerLogStream,
-  clearServerLogs
-} = useServerLogs()
+const { logs, total, refreshLogs, startServerLogStream, stopServerLogStream, clearServerLogs } =
+  useServerLogs()
 
 const panelRef = ref<HTMLElement | null>(null)
 const dragHandleRef = ref<HTMLElement | null>(null)
 
-const { x, y, style } = useDraggable(panelRef, {
+const { style } = useDraggable(panelRef, {
   initialValue: { x: 200, y: 80 },
   handle: dragHandleRef,
   preventDefault: true,
@@ -135,9 +128,7 @@ onUnmounted(() => {
           <GripHorizontal class="h-4 w-4 shrink-0 text-muted-foreground/70" />
           <Terminal class="h-4 w-4 shrink-0 text-muted-foreground" />
           <span class="truncate text-xs font-semibold">Server Logs</span>
-          <span class="hidden text-xs text-muted-foreground sm:inline"
-            >{{ total }} entries</span
-          >
+          <span class="hidden text-xs text-muted-foreground sm:inline">{{ total }} entries</span>
         </div>
 
         <div class="flex shrink-0 items-center gap-1">

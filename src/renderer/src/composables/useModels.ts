@@ -16,6 +16,9 @@ export interface ModelCategories {
   clipVision: string[]
   controlnet: string[]
   photomaker: string[]
+  ipAdapter: string[]
+  tokenizers: string[]
+  pulid: string[]
   upscale: string[]
   hiresUpscalers: string[]
   taesd: string[]
@@ -39,6 +42,9 @@ const emptyModels = (): ModelCategories => ({
   clipVision: [],
   controlnet: [],
   photomaker: [],
+  ipAdapter: [],
+  tokenizers: [],
+  pulid: [],
   upscale: [],
   hiresUpscalers: [],
   taesd: [],

@@ -122,10 +122,7 @@ onUnmounted(() => {
                   <p class="truncate text-xs font-medium text-foreground" :title="task.label">
                     {{ task.label }}
                   </p>
-                  <p
-                    class="mt-0.5 truncate text-xs text-muted-foreground"
-                    :title="task.targetPath"
-                  >
+                  <p class="mt-0.5 truncate text-xs text-muted-foreground" :title="task.targetPath">
                     {{ task.targetPath }}
                   </p>
                 </div>

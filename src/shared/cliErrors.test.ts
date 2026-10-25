@@ -77,3 +77,20 @@ describe('humanizeCliError', () => {
     assert.equal(result.title, 'LoRA load failed')
   })
 })
+
+describe('missing backend binary', () => {
+  it('says the backend is missing instead of blaming model files', () => {
+    const human = humanizeCliError(
+      'spawn C:\\data\\backend\\custom\\sd-cli.exe ENOENT\n[CLI-GEN] Args: --diffusion-model x.gguf'
+    )
+    assert.equal(human.title, 'Backend not installed')
+    assert.equal(
+      humanizeCliError('spawn /opt/flaxeo/backend/sd-cli ENOENT').title,
+      'Backend not installed'
+    )
+    assert.equal(
+      humanizeCliError('error: model file x.gguf: No such file').title,
+      'Model file not found'
+    )
+  })
+})

@@ -3,16 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ArrowRight, Check, ChevronLeft, Download, FolderOpen, Loader2, X } from '@/lib/icons'
 import { useConfigStore } from '@/stores/config'
 import { useBackend } from '@/composables/useBackend'
-import { useRuntimeStatus } from '@/composables/useRuntimeStatus'
+import { useConnection } from '@/composables/useConnection'
 import { useSetup } from '@/composables/useSetup'
 import { apiGet, apiPost } from '@/services/api'
-import {
-  hubModels,
-  STARTER_PACK_IDS,
-  STARTER_PACK_META,
-  type HubFile,
-  type HubModel
-} from '@/lib/starterPacks'
+import { hubModels, STARTER_PACK_IDS, STARTER_PACK_META, type HubFile } from '@/lib/starterPacks'
 import Select from '@/components/ui/Select.vue'
 import type { Release, ReleaseAsset } from '@/composables/useBackend'
 import {
@@ -30,7 +24,7 @@ const emit = defineEmits<{
 
 const configStore = useConfigStore()
 const backend = useBackend()
-const { backendValid } = useRuntimeStatus()
+const { engineReady: backendValid } = useConnection()
 const { checklist } = useSetup()
 
 const welcomeSteps = [
@@ -49,8 +43,6 @@ const modelDownloading = ref(false)
 /** True when user left the model step without downloading a starter pack. */
 const skippedModelDownload = ref(false)
 const modelDownloadStatus = ref<Record<string, string>>({})
-const modelDownloadProgress = ref<Record<string, number>>({})
-const packDownloadPoll = ref<number | null>(null)
 const selectedReleaseTag = ref<string>('')
 const selectedAssetName = ref<string>('')
 
@@ -218,7 +210,7 @@ async function downloadFile(file: HubFile): Promise<void> {
   const key = fileKey(file)
   modelDownloadStatus.value[key] = 'Downloading...'
   try {
-    await apiPost('/api/models/download', file)
+    await apiPost('/api/models/download', { ...file })
     modelDownloadStatus.value[key] = 'Downloaded'
   } catch (error) {
     modelDownloadStatus.value[key] = error instanceof Error ? error.message : 'Failed'

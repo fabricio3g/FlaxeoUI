@@ -14,9 +14,19 @@ import {
 } from '../sd'
 import { downloadFile, fetchJson } from '../utils'
 import { parseCliHelp } from '../../shared/cliHelp'
-import { invalidateCapabilitiesCache } from '../capabilitiesCache'
+import { stopLoadedModel } from '../loadedModel'
+import { getHelpForUi, invalidateCapabilitiesCache } from '../capabilitiesCache'
 
 const execFileAsync = promisify(execFile)
+
+function parseDeviceList(text: string): Array<{ name: string; description: string }> {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.split('\t'))
+    .filter((parts) => parts.length >= 2 && /^[A-Za-z][\w.-]{0,40}$/.test(parts[0].trim()))
+    .map(([name, ...rest]) => ({ name: name.trim(), description: rest.join(' ').trim() }))
+    .slice(0, 32)
+}
 
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/leejet/stable-diffusion.cpp/releases'
 const CACHE_TTL = 5 * 60 * 1000
@@ -55,6 +65,42 @@ function installedVersions(ctx: AppContext): string[] {
     .filter((version) => backendHasBinaries(path.join(ctx.paths.releasesDir, version)))
 }
 
+/** What we remember about an installed build (written at install time). */
+interface BuildInfo {
+  version: string
+  asset: string
+  installedAt: number
+  sizeBytes: number
+}
+
+const BUILD_INFO_FILE = 'flaxeo-build.json'
+
+function readBuildInfo(ctx: AppContext, version: string): BuildInfo {
+  const dir = path.join(ctx.paths.releasesDir, version)
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(dir, BUILD_INFO_FILE), 'utf8'))
+    return {
+      version,
+      asset: typeof raw.asset === 'string' ? raw.asset : '',
+      installedAt: Number(raw.installedAt) || fs.statSync(dir).mtimeMs,
+      sizeBytes: Number(raw.sizeBytes) || 0
+    }
+  } catch {
+    let installedAt = 0
+    try {
+      installedAt = fs.statSync(dir).mtimeMs
+    } catch {
+      /* folder vanished */
+    }
+    return { version, asset: '', installedAt, sizeBytes: 0 }
+  }
+}
+
+/** Release tags are folder names: letters, digits, dots, dashes and underscores only. */
+function isSafeVersion(value: unknown): value is string {
+  return typeof value === 'string' && /^[\w.-]{1,80}$/.test(value) && !value.includes('..')
+}
+
 function flattenNestedRelease(versionDir: string): void {
   const items = fs.readdirSync(versionDir)
   const hasBinaries = items.some(
@@ -71,6 +117,30 @@ function flattenNestedRelease(versionDir: string): void {
 }
 
 export function registerBackendRoutes(app: Express, ctx: AppContext): void {
+  /** ggml devices for --backend / --params-backend (one "name<TAB>description" per line). */
+  app.get('/api/backend/devices', async (_req, res) => {
+    const cliPath = getSdCliPath(ctx)
+    if (!fs.existsSync(cliPath)) return res.json({ devices: [], error: 'sd-cli not installed' })
+    try {
+      const { stdout } = await execFileAsync(cliPath, ['--list-devices'], {
+        cwd: ctx.getActiveBackendPath(),
+        timeout: 20000,
+        windowsHide: true,
+        maxBuffer: 512 * 1024
+      })
+      res.json({ devices: parseDeviceList(stdout || '') })
+    } catch (error: unknown) {
+      const err = error as { stdout?: string; message?: string }
+      const devices = parseDeviceList(err?.stdout || '')
+      res.json({
+        devices,
+        error: devices.length
+          ? undefined
+          : 'This sd-cli build cannot list devices (--list-devices).'
+      })
+    }
+  })
+
   app.get('/api/backend/capabilities', async (_req, res) => {
     try {
       const cwd = ctx.getActiveBackendPath()
@@ -195,6 +265,18 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
     }
   })
 
+  /** Every sd-cli option (installed binary, or the help captured in the repo when none is). */
+  app.get('/api/backend/options', async (_req, res) => {
+    try {
+      const { help, live } = await getHelpForUi(getSdCliPath(ctx))
+      res.json({ live, versionLine: help.versionLine, options: help.options })
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: error instanceof Error ? error.message : 'Options unavailable' })
+    }
+  })
+
   app.get('/api/backend/detect', (_req, res) => {
     const recommendation: {
       platform: NodeJS.Platform
@@ -222,8 +304,16 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
             { encoding: 'utf8', stdio: 'pipe' }
           )
           if (output.includes('Radeon') || output.includes('AMD')) {
-            gpuType = 'rocm'
-            recommendation.note = 'AMD GPU detected. Recommend ROCM or Vulkan build.'
+            // ROCm builds need AMD's HIP SDK (it sets HIP_PATH); Vulkan runs on any AMD card.
+            if (process.env.HIP_PATH) {
+              gpuType = 'rocm'
+              recommendation.note =
+                'AMD GPU with the ROCm (HIP SDK) runtime found: the ROCm build is fastest; Vulkan also works.'
+            } else {
+              gpuType = 'amd'
+              recommendation.note =
+                'AMD GPU detected: Vulkan runs on it. ROCm is faster only if your card supports it and AMD’s HIP SDK is installed.'
+            }
           } else if (
             output.includes('NVIDIA') ||
             output.includes('GeForce') ||
@@ -261,6 +351,7 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       activeVersion,
       customBinaryExists,
       installedVersions: versions,
+      installed: versions.map((version) => readBuildInfo(ctx, version)),
       activeBackendPath: activeBackend,
       activeBackendValid: backendHasBinaries(activeBackend),
       activeBackendPlatformMismatch: backendDirPlatformMismatch(activeBackend),
@@ -286,18 +377,29 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
     }
   })
 
-  app.post('/api/backend/download', async (req, res) => {
-    const { url, variant, version } = req.body || {}
-    if (!url || !version)
-      return res.status(400).json({ error: 'Download URL and version required' })
+  /**
+   * Install an engine build in the background. Replies at once with the download id;
+   * progress, completion and errors are read from /api/downloads (cancel works there too).
+   */
+  app.post('/api/backend/download', (req, res) => {
+    const { url, variant, version, runtimeUrl } = req.body || {}
+    // Windows CUDA builds load the CUDA runtime DLLs from their own folder
+    const runtime =
+      typeof runtimeUrl === 'string' && /^https:\/\//.test(runtimeUrl) ? runtimeUrl : ''
+    if (typeof url !== 'string' || !/^https:\/\//.test(url) || !isSafeVersion(version))
+      return res.status(400).json({ error: 'A download link and a release tag are required' })
+    const busy = Object.values(ctx.state.downloads).some(
+      (task) => task.label.startsWith('Engine:') && task.status === 'downloading'
+    )
+    if (busy) return res.status(409).json({ error: 'An engine build is already installing' })
 
+    const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const versionDir = path.join(ctx.paths.releasesDir, version)
     const isTarGz = url.endsWith('.tar.gz') || url.endsWith('.tgz')
-    const archivePath = path.join(ctx.paths.releasesDir, `download${isTarGz ? '.tar.gz' : '.zip'}`)
-    const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const archivePath = path.join(ctx.paths.releasesDir, `${id}${isTarGz ? '.tar.gz' : '.zip'}`)
     ctx.state.downloads[id] = {
       id,
-      label: `Backend: ${variant || version}`,
+      label: `Engine: ${version}`,
       url,
       targetPath: archivePath,
       status: 'downloading',
@@ -306,56 +408,96 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
       startedAt: Date.now(),
       updatedAt: Date.now()
     }
+    res.status(202).json({ id })
 
-    try {
-      console.log(`[Backend] Downloading ${version} (${variant}) from ${url}`)
-      fs.mkdirSync(versionDir, { recursive: true })
-      await downloadFile(url, archivePath, {
-        registerCancel: (cancel) => {
-          const task = ctx.state.downloads[id]
-          if (task) task.cancel = cancel
-        },
-        onProgress: (receivedBytes, totalBytes) => {
-          const task = ctx.state.downloads[id]
-          if (!task) return
-          task.receivedBytes = receivedBytes
-          task.totalBytes = totalBytes
-          task.updatedAt = Date.now()
+    void (async () => {
+      const task = (): (typeof ctx.state.downloads)[string] | undefined => ctx.state.downloads[id]
+      try {
+        console.log(`[Backend] Downloading ${version} (${variant}) from ${url}`)
+        fs.mkdirSync(versionDir, { recursive: true })
+        // One progress bar across the build and its runtime (offset by what is done)
+        const fetchInto = async (from: string, offset: number): Promise<number> => {
+          await downloadFile(from, archivePath, {
+            registerCancel: (cancel) => {
+              const t = task()
+              if (t) t.cancel = cancel
+            },
+            onProgress: (receivedBytes, totalBytes) => {
+              const t = task()
+              if (!t) return
+              t.receivedBytes = offset + receivedBytes
+              if (totalBytes) t.totalBytes = Math.max(t.totalBytes || 0, offset + totalBytes)
+              t.updatedAt = Date.now()
+            }
+          })
+          const size = fs.statSync(archivePath).size
+          if (isTarGz) await tar.x({ file: archivePath, cwd: versionDir, strip: 0 })
+          else new AdmZip(archivePath).extractAllTo(versionDir, true)
+          fs.rmSync(archivePath, { force: true })
+          flattenNestedRelease(versionDir)
+          return size
         }
-      })
-      if (isTarGz) await tar.x({ file: archivePath, cwd: versionDir, strip: 0 })
-      else new AdmZip(archivePath).extractAllTo(versionDir, true)
-      if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
-      flattenNestedRelease(versionDir)
+        let sizeBytes = await fetchInto(url, 0)
+        if (runtime) sizeBytes += await fetchInto(runtime, sizeBytes)
 
-      if (process.platform !== 'win32') {
-        for (const bin of ['sd', 'sd-server', 'sd-cli']) {
-          const binPath = path.join(versionDir, bin)
-          if (fs.existsSync(binPath)) fs.chmodSync(binPath, '755')
+        if (process.platform !== 'win32') {
+          for (const bin of ['sd', 'sd-server', 'sd-cli']) {
+            const binPath = path.join(versionDir, bin)
+            if (fs.existsSync(binPath)) fs.chmodSync(binPath, '755')
+          }
+        }
+        if (!backendHasBinaries(versionDir)) {
+          throw new Error('The download did not contain sd-cli and sd-server for this computer.')
+        }
+        fs.writeFileSync(
+          path.join(versionDir, BUILD_INFO_FILE),
+          JSON.stringify({
+            version,
+            asset: typeof variant === 'string' ? variant : '',
+            installedAt: Date.now(),
+            sizeBytes
+          })
+        )
+
+        ctx.state.backendConfig.activeVersion = version
+        ctx.state.backendConfig.installedVersions = Array.from(
+          new Set([...(ctx.state.backendConfig.installedVersions || []), version])
+        )
+        ctx.saveBackendConfig()
+        invalidateCapabilitiesCache()
+        const t = task()
+        if (t) {
+          t.status = 'completed'
+          t.updatedAt = Date.now()
+        }
+      } catch (error: unknown) {
+        console.error('[Backend] Download/install error:', error)
+        fs.rmSync(archivePath, { force: true })
+        if (!backendHasBinaries(versionDir)) fs.rmSync(versionDir, { recursive: true, force: true })
+        const message = error instanceof Error ? error.message : String(error)
+        const t = task()
+        if (t) {
+          t.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
+          t.error = message
+          t.updatedAt = Date.now()
         }
       }
+    })()
+  })
 
-      ctx.state.backendConfig.activeVersion = version
-      ctx.state.backendConfig.installedVersions = Array.from(
-        new Set([...(ctx.state.backendConfig.installedVersions || []), version])
-      )
-      ctx.saveBackendConfig()
-      invalidateCapabilitiesCache()
-      ctx.state.downloads[id].status = 'completed'
-      ctx.state.downloads[id].updatedAt = Date.now()
-      res.json({ success: true, id, version, path: versionDir })
-    } catch (error: unknown) {
-      console.error('[Backend] Download/install error:', error)
-      if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
-      const message = error instanceof Error ? error.message : String(error)
-      const task = ctx.state.downloads[id]
-      if (task) {
-        task.status = message === 'Download cancelled' ? 'cancelled' : 'failed'
-        task.error = message
-        task.updatedAt = Date.now()
-      }
-      res.status(500).json({ error: message })
-    }
+  /** Delete an installed build that is not in use. */
+  app.post('/api/backend/remove', (req, res) => {
+    const version = req.body?.version
+    if (!isSafeVersion(version) || !installedVersions(ctx).includes(version))
+      return res.status(400).json({ error: 'Unknown build' })
+    if (ctx.state.backendConfig.activeVersion === version)
+      return res.status(400).json({ error: 'Switch to another build before removing this one' })
+    fs.rmSync(path.join(ctx.paths.releasesDir, version), { recursive: true, force: true })
+    ctx.state.backendConfig.installedVersions = (
+      ctx.state.backendConfig.installedVersions || []
+    ).filter((v: string) => v !== version)
+    ctx.saveBackendConfig()
+    res.json({ success: true })
   })
 
   app.post('/api/backend/use-custom', (_req, res) => {
@@ -367,9 +509,12 @@ export function registerBackendRoutes(app: Express, ctx: AppContext): void {
 
   app.post('/api/backend/set-active', (req, res) => {
     const version = req.body?.version
-    if (!version) return res.status(400).json({ error: 'Version required' })
+    if (version !== 'custom' && !isSafeVersion(version))
+      return res.status(400).json({ error: 'Version required' })
     if (version !== 'custom' && !backendHasBinaries(path.join(ctx.paths.releasesDir, version)))
       return res.status(400).json({ error: `Version ${version} not found` })
+    // A model kept loaded by the old build would keep serving runs; unload it.
+    stopLoadedModel(ctx, 'switched sd.cpp build')
     ctx.state.backendConfig.activeVersion = version
     ctx.saveBackendConfig()
     invalidateCapabilitiesCache()

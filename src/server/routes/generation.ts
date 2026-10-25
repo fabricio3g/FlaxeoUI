@@ -40,8 +40,16 @@ import {
   getSdCliPath,
   pushArg
 } from '../sd'
-import { resolveInpaintStrength } from '../../shared/sdArgHelpers'
-import { getCapabilities } from '../capabilitiesCache'
+import {
+  addHiresArgs,
+  expectedImageOutputs,
+  isHiresModelUpscaler,
+  resolveInpaintStrength
+} from '../../shared/sdArgHelpers'
+import { requestOwner } from '../members'
+import { cachedHelp, getCapabilities } from '../capabilitiesCache'
+import { checkArgValues } from '../../shared/sdOptionCatalog'
+import { runOnLoadedModel, stopLoadedModel } from '../loadedModel'
 import {
   planCliImageOutput,
   publishCliImageOutputs,
@@ -85,7 +93,11 @@ function uploadMiddleware(ctx: AppContext) {
           return
         }
 
-        if (file.fieldname === 'controlNetImage' || file.fieldname === 'initImage') {
+        if (
+          file.fieldname === 'controlNetImage' ||
+          file.fieldname === 'initImage' ||
+          file.fieldname === 'ipAdapterImage'
+        ) {
           cb(null, ctx.paths.tempDir)
           return
         }
@@ -103,15 +115,20 @@ function uploadMiddleware(ctx: AppContext) {
     { name: 'pmImages', maxCount: 4 },
     { name: 'kontextRefImage', maxCount: 8 },
     { name: 'controlNetImage', maxCount: 1 },
-    { name: 'initImage', maxCount: 1 }
+    { name: 'initImage', maxCount: 1 },
+    { name: 'ipAdapterImage', maxCount: 1 }
   ])
 }
 
-function sendCliBusy(res: Response): void {
-  const human = humanizeCliError('GENERATION_BUSY: Another generation is already running')
+function sendCliBusy(ctx: AppContext, res: Response): void {
+  const owner = ctx.state.activeOwner
+  const human = humanizeCliError(
+    `GENERATION_BUSY: ${owner ? `${owner} is generating` : 'Another generation is already running'}`
+  )
   res.status(409).json({
     message: formatHumanizedError(human),
     error: 'GENERATION_BUSY',
+    owner: owner || undefined,
     title: human.title,
     detail: human.detail,
     hint: human.hint
@@ -119,9 +136,9 @@ function sendCliBusy(res: Response): void {
 }
 
 /** Returns false if a response was already sent (busy). */
-function ensureCliIdle(ctx: AppContext, res: Response): boolean {
-  if (ctx.state.cliProcess) {
-    sendCliBusy(res)
+export function ensureCliIdle(ctx: AppContext, res: Response): boolean {
+  if (ctx.state.cliProcess || ctx.state.activeOwner) {
+    sendCliBusy(ctx, res)
     return false
   }
   return true
@@ -140,16 +157,22 @@ async function warmCapabilities(ctx: AppContext): Promise<void> {
   }
 }
 
+type StageInfo = { current: number; total: number; label: string }
+
 async function runCli(
   ctx: AppContext,
   args: string[],
   label: string,
-  stage?: { current: number; total: number; label: string }
+  stage?: StageInfo,
+  owner?: string
 ): Promise<{ cancelled: boolean }> {
   if (ctx.state.cliProcess) {
     throw new Error('GENERATION_BUSY: Another generation is already running')
   }
   if (ctx.state.cliCancelRequested) return { cancelled: true }
+  // Readable errors for values sd-cli would reject with a usage dump.
+  const help = cachedHelp()
+  if (help) checkArgValues(args, help)
 
   const activeBackend = ctx.getActiveBackendPath()
   const startedAt = Date.now()
@@ -162,7 +185,8 @@ async function runCli(
     phaseLabel: phaseLabel(phase),
     stageCurrent: stage?.current,
     stageTotal: stage?.total,
-    stageLabel: stage?.label
+    stageLabel: stage?.label,
+    owner
   })
   ctx.state.progress = {
     current: 0,
@@ -175,7 +199,8 @@ async function runCli(
     phaseLabel: phaseLabel(phase),
     stageCurrent: stage?.current,
     stageTotal: stage?.total,
-    stageLabel: stage?.label
+    stageLabel: stage?.label,
+    owner
   }
 
   const cliPath = getSdCliPath(ctx)
@@ -258,7 +283,8 @@ function emitPhase(
     phaseLabel: phaseLabel(phase),
     stageCurrent: stage?.current,
     stageTotal: stage?.total,
-    stageLabel: stage?.label
+    stageLabel: stage?.label,
+    owner: prev?.owner
   }
   ctx.state.progress = p
   ctx.state.progressBus.emit('progress', p)
@@ -270,8 +296,9 @@ function updateProgress(
   label: string,
   startedAt: number,
   phase: GenerationPhase = 'sampling',
-  stage?: { current: number; total: number; label: string }
+  stage?: StageInfo
 ): void {
+  const owner = ctx.state.progress?.owner
   const p = {
     current: parsed.current,
     total: parsed.total,
@@ -283,7 +310,8 @@ function updateProgress(
     phaseLabel: phaseLabel(phase),
     stageCurrent: stage?.current,
     stageTotal: stage?.total,
-    stageLabel: stage?.label
+    stageLabel: stage?.label,
+    owner
   }
   ctx.state.progress = p
   ctx.state.progressBus.emit('progress', p)
@@ -384,44 +412,6 @@ function collectOutputFilenames(outputPath: string, batchCount: number): string[
   return names
 }
 
-function sendCliResult(
-  res: Response,
-  result: { cancelled: boolean },
-  outputPath: string,
-  filename: string,
-  failedMessage: string,
-  batchCount = 1
-): void {
-  if (result.cancelled) {
-    res.json({ message: 'Cancelled' })
-    return
-  }
-
-  const filenames = collectOutputFilenames(outputPath, batchCount)
-  if (filenames.length > 0) {
-    res.json({
-      message: 'Complete',
-      filenames,
-      filename: filenames[0]
-    })
-    return
-  }
-
-  if (fs.existsSync(outputPath)) {
-    res.json({ message: 'Complete', filenames: [filename], filename })
-    return
-  }
-
-  const human = humanizeCliError(failedMessage)
-  res.status(500).json({
-    message: formatHumanizedError(human),
-    error: failedMessage,
-    title: human.title,
-    detail: human.detail,
-    hint: human.hint
-  })
-}
-
 /** After image CLI success: publish staged PNG→AVIF when configured, then respond. */
 async function sendCliImageResult(
   ctx: AppContext,
@@ -463,7 +453,11 @@ async function sendCliImageResult(
   })
 }
 
-function sendCliFailure(res: Response, error: unknown, fallback = 'CLI operation failed'): void {
+export function sendCliFailure(
+  res: Response,
+  error: unknown,
+  fallback = 'CLI operation failed'
+): void {
   const raw = errorMessage(error) || fallback
   const human = humanizeCliError(raw)
   res.status(500).json({
@@ -512,6 +506,47 @@ function copyPhotoMakerGallery(
   return pmImagesDir
 }
 
+/** Reference images (uploads first, then library paths), resolved to files on disk. */
+function refImagesFor(ctx: AppContext, body: JsonObject, req: UploadRequest): string[] {
+  return [
+    ...filesFromUpload(req, 'kontextRefImage'),
+    ...parseJsonArray(body.kontextRefPaths),
+    ...parseJsonArray(body.refImages),
+    firstString(body.kontextRefPath, body.kontextRefGallery)
+  ]
+    .filter(Boolean)
+    .map((file) => resolveInputFile(ctx, file as string))
+    .filter(Boolean) as string[]
+}
+
+/** Inpaint mask from a library path (workflows); the Create editor uploads to /api/inpaint. */
+function maskFor(ctx: AppContext, body: JsonObject): string | undefined {
+  return resolveInputFile(ctx, firstString(body.maskPath)) || undefined
+}
+
+function initImageFor(ctx: AppContext, body: JsonObject, req: UploadRequest): string | undefined {
+  const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
+  return (initImage && resolveInputFile(ctx, initImage)) || undefined
+}
+
+/** Save sd-server's images where sd-cli would have written them, then publish as usual. */
+async function writeServerImages(
+  ctx: AppContext,
+  plan: CliImageOutputPlan,
+  images: Buffer[]
+): Promise<string[]> {
+  const target = plan.cliOutputPath
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  if (target.includes('%03d'))
+    images.forEach((image, i) =>
+      fs.writeFileSync(target.replace('%03d', String(i).padStart(3, '0')), image)
+    )
+  else fs.writeFileSync(target, images[0])
+  const filenames = await publishCliImageOutputs(ctx, plan, images.length)
+  if (!filenames.length) throw new Error('Generation failed - no output file')
+  return filenames
+}
+
 function buildImageArgs(
   ctx: AppContext,
   body: JsonObject,
@@ -531,18 +566,8 @@ function buildImageArgs(
   addPromptModelExtras(ctx, args, body, prompt)
 
   // Multi-ref images for Kontext / Qwen Image Edit (`-r` can be repeated)
-  const refUploads = filesFromUpload(req, 'kontextRefImage')
-  const refFromBody = [
-    ...parseJsonArray(body.kontextRefPaths),
-    ...parseJsonArray(body.refImages),
-    firstString(body.kontextRefPath, body.kontextRefGallery)
-  ].filter(Boolean) as string[]
-
-  const allRefPaths = [...refUploads, ...refFromBody]
-  for (const refPath of allRefPaths) {
-    const resolved = resolveInputFile(ctx, refPath)
-    if (resolved) args.push('-r', resolved)
-  }
+  const allRefPaths = refImagesFor(ctx, body, req)
+  for (const refPath of allRefPaths) args.push('-r', refPath)
 
   // Multi-ref DiT edit (PR #1780): --ref-image-args "preset=…,key=value,…"
   // When the unified flag is present, do not also send deprecated --increase-ref-index /
@@ -563,11 +588,12 @@ function buildImageArgs(
     }
   }
 
-  const initImage = fileFromUpload(req, 'initImage') || firstString(body.initImagePath)
+  const initImage = initImageFor(ctx, body, req)
   if (initImage) {
-    const resolved = resolveInputFile(ctx, initImage)
-    if (resolved) args.push('-i', resolved)
+    args.push('-i', initImage)
     pushArg(args, '--strength', body.img2imgStrength ?? body.strength)
+    const mask = maskFor(ctx, body)
+    if (mask) args.push('--mask', mask)
   }
 
   const upscaleModel = modelPath(ctx, 'upscale', firstString(body.upscaleModel))
@@ -601,6 +627,8 @@ function buildImageArgs(
     if (asBool(body.applyCanny)) args.push('--canny')
   }
 
+  addImageConditioningArgs(ctx, args, body, fileFromUpload(req, 'ipAdapterImage'))
+
   // Post-generation ADetailer (YOLOv8) — only when enabled + detector present
   addAdetailerArgs(ctx, args, body, { requireEnabled: true })
 
@@ -611,8 +639,54 @@ function buildImageArgs(
     cleanupFiles: [
       ...filesFromUpload(req, 'kontextRefImage'),
       fileFromUpload(req, 'controlNetImage'),
-      fileFromUpload(req, 'initImage')
+      fileFromUpload(req, 'initImage'),
+      fileFromUpload(req, 'ipAdapterImage')
     ].filter(Boolean) as string[]
+  }
+}
+
+/**
+ * Hires fix, IP-Adapter (SD1.5/SDXL style reference) and PuLID (FLUX identity).
+ * Model files resolve inside their model folders; reference images inside output/temp.
+ */
+function addImageConditioningArgs(
+  ctx: AppContext,
+  args: string[],
+  body: JsonObject,
+  ipAdapterUpload: string | null
+): void {
+  if (asBool(body.hiresEnabled)) {
+    const upscaler = firstString(body.hiresUpscaler)
+    if (isHiresModelUpscaler(upscaler)) {
+      // Model-backed upscaler: only accept a file that exists in models/hires_upscalers.
+      // sd-cli wants its folder plus the bare name (no path, no extension) — docs/ltx2.md.
+      const resolved = modelPath(ctx, 'hires_upscalers', upscaler)
+      if (resolved) {
+        args.push('--hires-upscalers-dir', path.dirname(resolved))
+        addHiresArgs(args, {
+          ...body,
+          hiresUpscaler: path.basename(resolved, path.extname(resolved))
+        })
+      } else {
+        addHiresArgs(args, { ...body, hiresUpscaler: '' })
+      }
+    } else {
+      addHiresArgs(args, body)
+    }
+  }
+
+  const ipAdapter = modelPath(ctx, 'ip_adapter', firstString(body.ipAdapterModel))
+  const ipImage = ipAdapterUpload || resolveInputFile(ctx, firstString(body.ipAdapterImage))
+  if (ipAdapter && ipImage) {
+    args.push('--ip-adapter', ipAdapter, '--ip-adapter-image', ipImage)
+    pushNumericArgIfPresent(args, '--ip-adapter-strength', body.ipAdapterStrength)
+  }
+
+  const pulidWeights = modelPath(ctx, 'pulid', firstString(body.pulidWeights))
+  const pulidIdentity = modelPath(ctx, 'pulid', firstString(body.pulidIdEmbedding))
+  if (pulidWeights && pulidIdentity) {
+    args.push('--pulid-weights', pulidWeights, '--pulid-id-embedding', pulidIdentity)
+    pushNumericArgIfPresent(args, '--pulid-id-weight', body.pulidIdWeight)
   }
 }
 
@@ -650,78 +724,464 @@ function buildInpaintArgs(
   return args
 }
 
+function buildVideoArgs(
+  ctx: AppContext,
+  body: JsonObject,
+  req: UploadRequest,
+  outputPath: string
+): { args: string[]; tempFiles: Array<string | null> } {
+  const args = ['-M', 'vid_gen']
+
+  // Normalize diffusion name for addModelArgs (standard AnimateDiff uses -m)
+  const loadMode = firstString(body.loadMode) || 'split'
+  const diffusionName =
+    firstString(body.diffusionModel, body.diffusion_model, body.standardModel) || ''
+  const modelBody: JsonObject = {
+    ...body,
+    loadMode,
+    diffusionModel: diffusionName,
+    diffusion_model: diffusionName
+  }
+  addModelArgs(ctx, args, modelBody)
+
+  const highNoiseName = firstString(body.highNoiseDiffusionModel, body.high_noise_diffusion_model)
+  const highNoise = highNoiseName ? modelPath(ctx, 'diffusion', highNoiseName) : undefined
+  const motionName = firstString(body.motionModule, body.motion_module, body.motionModuleModel)
+  const motionPath = motionName ? modelPath(ctx, 'animatediff', motionName) : undefined
+
+  // AnimateDiff: --motion-module under models/animatediff/
+  if (motionPath) args.push('--motion-module', motionPath)
+
+  const initImg =
+    fileFromUpload(req, 'initImage') ||
+    fileFromUpload(req, 'reference_image') ||
+    resolveInputFile(ctx, firstString(body.initImagePath))
+  if (initImg) {
+    args.push('-i', initImg)
+    // img2video / I2V denoise strength (AnimateDiff docs: ~0.75)
+    const strength = body.strength ?? body.img2imgStrength ?? body.img2img_strength
+    if (strength !== '' && strength != null) pushArg(args, '--strength', strength)
+  }
+
+  // FLF2V end frame
+  const endImg =
+    fileFromUpload(req, 'endImage') ||
+    fileFromUpload(req, 'end_img') ||
+    resolveInputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
+  if (endImg) args.push('--end-img', endImg)
+
+  // VACE control video: directory of frames in lexicographic order
+  const controlVideo = resolveInputDirectory(
+    ctx,
+    firstString(body.controlVideo, body.control_video, body.controlVideoPath)
+  )
+  if (controlVideo) args.push('--control-video', controlVideo)
+
+  // Reference images (-r) and MiniMax-H3 Ref2VA references (cannot mix with -i/--end-img)
+  for (const ref of parseJsonArray(body.refImages)) {
+    const resolved = resolveInputFile(ctx, ref)
+    if (resolved) args.push('-r', resolved)
+  }
+  if (!initImg && !endImg) {
+    const refVideos = parseJsonArray(body.refVideos)
+      .map((dir) => resolveInputDirectory(ctx, dir))
+      .filter(Boolean) as string[]
+    const refVideoAudios = parseJsonArray(body.refVideoAudios)
+      .map((file) => resolveInputFile(ctx, file))
+      .filter(Boolean) as string[]
+    refVideos.forEach((dir) => args.push('--ref-video', dir))
+    // Audio pairs by index with --ref-video, so never send more than there are videos
+    refVideoAudios.slice(0, refVideos.length).forEach((wav) => args.push('--ref-video-audio', wav))
+    for (const wav of parseJsonArray(body.refAudios)) {
+      const resolved = resolveInputFile(ctx, wav)
+      if (resolved) args.push('--ref-audio', resolved)
+    }
+  }
+
+  const genDefaults = motionPath
+    ? { width: 512, height: 512, cfg: 8.0, multiple: 64 }
+    : { width: 832, height: 480, cfg: 6.0, multiple: 16 }
+  addGenerationArgs(args, body, outputPath, genDefaults)
+  const defaultFrames = motionPath ? 16 : 33
+  args.push('--video-frames', String(body.videoFrames || body.video_frames || defaultFrames))
+  const defaultFps = motionPath ? 8 : 24
+  const fps = parseInt(String(body.fps ?? defaultFps), 10)
+  if (Number.isFinite(fps) && fps > 0) args.push('--fps', String(fps))
+
+  // Flow-shift is Wan/DiT; do not force it for AnimateDiff
+  if (!motionPath) {
+    const fsVal = body.flowShift ?? body.flow_shift
+    if (fsVal !== '' && fsVal != null && Number(fsVal) !== 0) {
+      args.push('--flow-shift', String(fsVal))
+    } else {
+      args.push('--flow-shift', '3.0')
+    }
+  }
+
+  if (!motionPath) {
+    pushNumericArgIfPresent(args, '--vace-strength', body.vaceStrength ?? body.vace_strength)
+    pushNumericArgIfPresent(args, '--moe-boundary', body.moeBoundary ?? body.moe_boundary)
+
+    // High-noise suite (Wan2.2 MoE and similar)
+    if (highNoise || body.highNoiseSteps != null || body.highNoiseCfg != null) {
+      pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg ?? body.highNoiseCfgScale)
+      pushArg(args, '--high-noise-steps', body.highNoiseSteps)
+      pushArg(
+        args,
+        '--high-noise-sampling-method',
+        body.highNoiseSampler ?? body.highNoiseSamplingMethod
+      )
+      pushArg(args, '--high-noise-guidance', body.highNoiseGuidance)
+      pushArg(args, '--high-noise-eta', body.highNoiseEta)
+      pushArg(args, '--high-noise-slg-scale', body.highNoiseSlgScale)
+      pushArg(args, '--high-noise-skip-layers', body.highNoiseSkipLayers)
+      pushArg(args, '--high-noise-skip-layer-start', body.highNoiseSkipLayerStart)
+      pushArg(args, '--high-noise-skip-layer-end', body.highNoiseSkipLayerEnd)
+      pushArg(args, '--high-noise-img-cfg-scale', body.highNoiseImgCfgScale)
+    }
+  }
+
+  addOptionalArgs(args, body)
+  addHardwareArgs(args, body, String(body.prompt || ''))
+  assertLoraFilesPresent(ctx, body, String(body.prompt || ''))
+  addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
+  args.push('-v')
+  const tempFiles = [
+    fileFromUpload(req, 'initImage'),
+    fileFromUpload(req, 'reference_image'),
+    fileFromUpload(req, 'endImage'),
+    fileFromUpload(req, 'end_img')
+  ]
+  return { args, tempFiles }
+}
+
+export interface JobOptions {
+  label: string
+  stage?: StageInfo
+  /** Keep PNG even when the store format is AVIF (workflow intermediates) */
+  forcePng?: boolean
+  /** Output file name prefix */
+  prefix?: string
+}
+
+export interface JobResult {
+  cancelled: boolean
+  filenames: string[]
+}
+
+function uploadedPaths(req: UploadRequest): string[] {
+  if (!req.files || Array.isArray(req.files)) return []
+  return Object.values(req.files)
+    .flat()
+    .map((file) => file.path)
+    .filter(Boolean)
+}
+
+function removeStage(plan: CliImageOutputPlan): void {
+  if (!plan.stageDir) return
+  try {
+    fs.rmSync(plan.stageDir, { recursive: true, force: true })
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Marks who owns the GPU for the whole call (one route, or every step of a workflow). */
+export async function runAsOwner<T>(
+  ctx: AppContext,
+  owner: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  ctx.state.activeOwner = owner
+  ctx.state.cliCancelRequested = false
+  try {
+    await warmCapabilities(ctx)
+    return await fn()
+  } finally {
+    ctx.state.activeOwner = null
+  }
+}
+
+function sendJobResult(res: Response, result: JobResult): void {
+  if (result.cancelled) {
+    res.json({ message: 'Cancelled' })
+    return
+  }
+  res.json({ message: 'Complete', filenames: result.filenames, filename: result.filenames[0] })
+}
+
+function jobOwner(ctx: AppContext): string | undefined {
+  return ctx.state.activeOwner ?? undefined
+}
+
+/** Text-to-image / img2img / ref edit via sd-cli. Throws on failure. */
+export async function runImageJob(
+  ctx: AppContext,
+  body: JsonObject,
+  req: UploadRequest | null,
+  opts: JobOptions
+): Promise<JobResult> {
+  const batchCount = Math.max(
+    1,
+    Math.min(16, parseInt(String(body.batchCount || body.batch_count || 1), 10) || 1)
+  )
+  body.batchCount = batchCount
+  // Batches and Qwen Image Layered both write an image sequence
+  const outputs = expectedImageOutputs(body)
+  const stamp = Date.now()
+  const prefix = opts.prefix || 'gen'
+  const pngFilename = outputs > 1 ? `${prefix}_${stamp}_%03d.png` : `${prefix}_${stamp}.png`
+  const imagePlan = planCliImageOutput(
+    ctx,
+    pngFilename,
+    opts.forcePng ? { format: 'png' } : undefined
+  )
+  const upload = req || ({} as UploadRequest)
+
+  // "Keep the model loaded": same request, served by sd-server when it can take it
+  try {
+    const served = await runOnLoadedModel(
+      ctx,
+      body,
+      {
+        init: initImageFor(ctx, body, upload),
+        mask: maskFor(ctx, body),
+        refs: refImagesFor(ctx, body, upload)
+      },
+      (images) => writeServerImages(ctx, imagePlan, images),
+      opts.label
+    )
+    if (served) {
+      if (served.cancelled) removeStage(imagePlan)
+      removeTemporaryFiles(
+        [upload.pmImagesDir || null, upload.kontextRefDir || null],
+        uploadedPaths(upload)
+      )
+      return served
+    }
+  } catch (error) {
+    removeStage(imagePlan)
+    removeTemporaryFiles(
+      [upload.pmImagesDir || null, upload.kontextRefDir || null],
+      uploadedPaths(upload)
+    )
+    throw error
+  }
+  stopLoadedModel(ctx, 'this run needs sd-cli')
+
+  const { args, cleanupDirs, cleanupFiles } = buildImageArgs(
+    ctx,
+    body,
+    upload,
+    imagePlan.cliOutputPath
+  )
+  if (outputs > 1 && !args.includes('--output-begin-idx')) {
+    args.push('--output-begin-idx', '0')
+  }
+
+  ctx.state.previewImageBuffer = null
+  const stopWatching = ctx.state.previewTempFile
+    ? watchPreviewFile(ctx, ctx.state.previewTempFile)
+    : null
+
+  try {
+    const result = await runCli(ctx, args, opts.label, opts.stage, jobOwner(ctx))
+    if (result.cancelled) {
+      removeStage(imagePlan)
+      return { cancelled: true, filenames: [] }
+    }
+    const filenames = await publishCliImageOutputs(ctx, imagePlan, outputs)
+    if (!filenames.length) throw new Error('Generation failed - no output file')
+    return { cancelled: false, filenames }
+  } catch (error) {
+    removeStage(imagePlan)
+    throw error
+  } finally {
+    if (stopWatching) stopWatching()
+    if (ctx.state.previewTempFile) {
+      removeFile(ctx.state.previewTempFile)
+      ctx.state.previewTempFile = null
+    }
+    ctx.state.previewImageBuffer = null
+    removeTemporaryFiles(cleanupDirs, cleanupFiles)
+  }
+}
+
+export async function runVideoJob(
+  ctx: AppContext,
+  body: JsonObject,
+  req: UploadRequest | null,
+  opts: JobOptions
+): Promise<JobResult> {
+  const filename = `${opts.prefix || 'video'}_${Date.now()}.mp4`
+  const outputPath = path.join(ctx.paths.outputDir, filename)
+  const { args, tempFiles } = buildVideoArgs(ctx, body, req || ({} as UploadRequest), outputPath)
+  stopLoadedModel(ctx, 'video runs through sd-cli')
+  try {
+    const result = await runCli(ctx, args, opts.label, opts.stage, jobOwner(ctx))
+    if (result.cancelled) return { cancelled: true, filenames: [] }
+    const filenames = collectOutputFilenames(outputPath, 1)
+    if (!filenames.length) throw new Error('Video generation failed - no output file')
+    return { cancelled: false, filenames }
+  } finally {
+    removeTemporaryFiles([], tempFiles)
+  }
+}
+
+export async function runUpscaleJob(
+  ctx: AppContext,
+  body: JsonObject,
+  sourcePath: string,
+  opts: JobOptions
+): Promise<JobResult> {
+  const upscaleModel = modelPath(ctx, 'upscale', firstString(body.upscaleModel, body.upscale_model))
+  if (!upscaleModel) {
+    throw new Error('UPSCALE_MODEL_REQUIRED: Place an ESRGAN or MoSR model in models/upscale.')
+  }
+  // CLI upscale writes an image file; always stage as PNG then honor store format.
+  const imagePlan = planCliImageOutput(
+    ctx,
+    `${opts.prefix || 'upscale'}_${Date.now()}.png`,
+    opts.forcePng ? { format: 'png' } : undefined
+  )
+  const args: string[] = ['-M', 'upscale', '-i', sourcePath, '-o', imagePlan.cliOutputPath]
+  args.push('--upscale-model', upscaleModel)
+
+  const repeats = parseInt(String(body.upscaleRepeats ?? body.upscale_repeats ?? 1), 10)
+  if (Number.isFinite(repeats) && repeats > 1) args.push('--upscale-repeats', String(repeats))
+
+  const tileSize = parseInt(String(body.upscaleTileSize ?? body.upscale_tile_size ?? 0), 10)
+  if (Number.isFinite(tileSize) && tileSize > 0) args.push('--upscale-tile-size', String(tileSize))
+
+  addHardwareArgs(args, body)
+  args.push('-v')
+
+  try {
+    const result = await runCli(ctx, args, opts.label, opts.stage, jobOwner(ctx))
+    if (result.cancelled) {
+      removeStage(imagePlan)
+      return { cancelled: true, filenames: [] }
+    }
+    const filenames = await publishCliImageOutputs(ctx, imagePlan)
+    if (!filenames.length) throw new Error('Upscale failed - no output file')
+    return { cancelled: false, filenames }
+  } catch (error) {
+    removeStage(imagePlan)
+    throw error
+  }
+}
+
+function adetailerRequestError(
+  ctx: AppContext,
+  body: JsonObject
+): { message: string; error: string } | null {
+  if (!firstString(body.diffusionModel, body.diffusion_model)) {
+    return {
+      message: 'No model selected. Select a diffusion model for the ADetailer inpaint pass.',
+      error: 'MODEL_REQUIRED'
+    }
+  }
+  if (!modelPath(ctx, 'adetailer', firstString(body.adetailerModel, body.ad_model, body.adModel))) {
+    return {
+      message:
+        'ADetailer detector required. Place a converted YOLOv8 .safetensors in models/adetailer.',
+      error: 'ADETAILER_MODEL_REQUIRED'
+    }
+  }
+  return null
+}
+
+/**
+ * Standalone ADetailer repair on an existing image (-M adetailer).
+ * Requires diffusion weights + YOLO detector under models/adetailer.
+ */
+export async function runAdetailerJob(
+  ctx: AppContext,
+  body: JsonObject,
+  sourcePath: string,
+  opts: JobOptions
+): Promise<JobResult> {
+  const invalid = adetailerRequestError(ctx, body)
+  if (invalid) throw new Error(`${invalid.error}: ${invalid.message}`)
+  const adName = firstString(body.adetailerModel, body.ad_model, body.adModel)
+
+  const imagePlan = planCliImageOutput(
+    ctx,
+    `${opts.prefix || 'adetailer'}_${Date.now()}.png`,
+    opts.forcePng ? { format: 'png' } : undefined
+  )
+  const args: string[] = ['-M', 'adetailer']
+  addModelArgs(ctx, args, body)
+  args.push('-i', sourcePath)
+
+  const prompt = String(body.prompt || body.adetailerPrompt || '')
+  // Prefer ad prompts when provided; generation args still need -p
+  const genBody: JsonObject = {
+    ...body,
+    prompt: prompt || 'detailed',
+    negative_prompt: body.negative_prompt ?? body.adetailerNegativePrompt ?? '',
+    // Standalone mode: strength is the detail denoise when not overridden in extra-ad-args
+    strength: body.strength ?? body.adetailerDenoisingStrength ?? body.img2imgStrength ?? 0.4
+  }
+  addGenerationArgs(args, genBody, imagePlan.cliOutputPath, {
+    width: 1024,
+    height: 1024,
+    cfg: 7,
+    multiple: 64
+  })
+  // Detail denoise: adetailer mode inherits --strength (docs)
+  pushArg(args, '--strength', genBody.strength)
+
+  addOptionalArgs(args, body)
+  addHardwareArgs(args, body, prompt)
+  assertLoraFilesPresent(ctx, body, prompt)
+  addPromptModelExtras(ctx, args, body, prompt)
+  addAdetailerArgs(
+    ctx,
+    args,
+    { ...body, adetailerEnabled: true, adetailerModel: adName },
+    { requireEnabled: false }
+  )
+  args.push('-v')
+  stopLoadedModel(ctx, 'face fix runs through sd-cli')
+
+  try {
+    const result = await runCli(ctx, args, opts.label, opts.stage, jobOwner(ctx))
+    if (result.cancelled) {
+      removeStage(imagePlan)
+      return { cancelled: true, filenames: [] }
+    }
+    const filenames = await publishCliImageOutputs(ctx, imagePlan)
+    if (!filenames.length) throw new Error('ADetailer failed - no output file')
+    return { cancelled: false, filenames }
+  } catch (error) {
+    removeStage(imagePlan)
+    throw error
+  }
+}
+
 export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
   app.post('/api/generate-cli', uploadMiddleware(ctx), async (req: UploadRequest, res) => {
-    if (!ensureCliIdle(ctx, res)) return
-    ctx.state.cliCancelRequested = false
-    await warmCapabilities(ctx)
-
+    if (!ensureCliIdle(ctx, res)) {
+      removeTemporaryFiles([req.pmImagesDir || null, req.kontextRefDir || null], uploadedPaths(req))
+      return
+    }
     const body = req.body || {}
-    const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
-    if (!diffusionModel) {
+    if (!firstString(body.diffusionModel, body.diffusion_model)) {
       return res.status(400).json({
         message:
           'No model selected. Please select a model in the sidebar (Model Configuration section).',
         error: 'MODEL_REQUIRED'
       })
     }
-
-    // Modern sd-cli: use printf %d for multi-image sequences when batch > 1
-    // (see --output help: e.g. output_%03d.png + --output-begin-idx)
-    const batchCount = Math.max(
-      1,
-      Math.min(16, parseInt(String(body.batchCount || body.batch_count || 1), 10) || 1)
-    )
-    const stamp = Date.now()
-    const pngFilename = batchCount > 1 ? `gen_${stamp}_%03d.png` : `gen_${stamp}.png`
-    const imagePlan = planCliImageOutput(ctx, pngFilename)
-    // Ensure body carries clamped batch so buildImageArgs emits -b
-    body.batchCount = batchCount
-    const { args, cleanupDirs, cleanupFiles } = buildImageArgs(
-      ctx,
-      body,
-      req,
-      imagePlan.cliOutputPath
-    )
-    if (batchCount > 1 && pngFilename.includes('%') && !args.includes('--output-begin-idx')) {
-      args.push('--output-begin-idx', '0')
-    }
-
-    ctx.state.previewImageBuffer = null
-
-    let stopWatching: (() => void) | null = null
-    if (ctx.state.previewTempFile) {
-      stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
-    }
-
-    try {
-      const result = await runCli(ctx, args, 'CLI-GEN')
-      await sendCliImageResult(
-        ctx,
-        res,
-        result,
-        imagePlan,
-        'Generation failed - no output file',
-        batchCount
-      )
-    } catch (error: unknown) {
-      if (imagePlan.stageDir) {
-        try {
-          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
-        } catch {
-          /* ignore */
-        }
+    await runAsOwner(ctx, requestOwner(ctx, res), async () => {
+      try {
+        const result = await runImageJob(ctx, body, req, { label: 'CLI-GEN' })
+        sendJobResult(res, result)
+      } catch (error: unknown) {
+        sendCliFailure(res, error, 'CLI generation failed')
       }
-      sendCliFailure(res, error, 'CLI generation failed')
-    } finally {
-      if (stopWatching) stopWatching()
-      if (ctx.state.previewTempFile) {
-        removeFile(ctx.state.previewTempFile)
-        ctx.state.previewTempFile = null
-      }
-      ctx.state.previewImageBuffer = null
-      removeTemporaryFiles(cleanupDirs, cleanupFiles)
-    }
+    })
   })
 
   app.post('/api/cancel-cli', (_req, res) => {
@@ -817,8 +1277,18 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         stopWatching = watchPreviewFile(ctx, ctx.state.previewTempFile)
       }
 
+      ctx.state.activeOwner = requestOwner(ctx, res)
       try {
-        const result = await runCli(ctx, args, 'INPAINT')
+        const served = await runOnLoadedModel(
+          ctx,
+          { ...body, strength: resolveInpaintStrength(body) },
+          { init: initImg, mask: maskPath || undefined, refs: [] },
+          (images) => writeServerImages(ctx, imagePlan, images.slice(0, 1)),
+          'INPAINT'
+        )
+        if (served) return sendJobResult(res, served)
+        stopLoadedModel(ctx, 'this run needs sd-cli')
+        const result = await runCli(ctx, args, 'INPAINT', undefined, ctx.state.activeOwner)
         await sendCliImageResult(ctx, res, result, imagePlan, 'Inpainting failed - no output file')
       } catch (error: unknown) {
         if (imagePlan.stageDir) {
@@ -830,6 +1300,7 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
         }
         sendCliFailure(res, error, 'Inpainting failed')
       } finally {
+        ctx.state.activeOwner = null
         if (stopWatching) stopWatching()
         if (ctx.state.previewTempFile) {
           removeFile(ctx.state.previewTempFile)
@@ -857,267 +1328,55 @@ export function registerGenerationRoutes(app: Express, ctx: AppContext): void {
       { name: 'end_img', maxCount: 1 }
     ]),
     async (req: UploadRequest, res) => {
-      if (!ensureCliIdle(ctx, res)) return
-      ctx.state.cliCancelRequested = false
-      await warmCapabilities(ctx)
-
+      if (!ensureCliIdle(ctx, res)) {
+        removeTemporaryFiles([], uploadedPaths(req))
+        return
+      }
       const body = req.body || {}
-      const filename = `video_${Date.now()}.mp4`
-      const outputPath = path.join(ctx.paths.outputDir, filename)
-      const args = ['-M', 'vid_gen']
-
-      // Normalize diffusion name for addModelArgs (standard AnimateDiff uses -m)
-      const loadMode = firstString(body.loadMode) || 'split'
-      const diffusionName =
-        firstString(body.diffusionModel, body.diffusion_model, body.standardModel) || ''
-      const modelBody: JsonObject = {
-        ...body,
-        loadMode,
-        diffusionModel: diffusionName,
-        diffusion_model: diffusionName
-      }
-      addModelArgs(ctx, args, modelBody)
-
-      const highNoiseName = firstString(
-        body.highNoiseDiffusionModel,
-        body.high_noise_diffusion_model
-      )
-      const highNoise = highNoiseName ? modelPath(ctx, 'diffusion', highNoiseName) : undefined
-      const motionName = firstString(body.motionModule, body.motion_module, body.motionModuleModel)
-      const motionPath = motionName ? modelPath(ctx, 'animatediff', motionName) : undefined
-
-      // AnimateDiff: --motion-module under models/animatediff/
-      if (motionPath) args.push('--motion-module', motionPath)
-
-      const initImg =
-        fileFromUpload(req, 'initImage') ||
-        fileFromUpload(req, 'reference_image') ||
-        resolveInputFile(ctx, firstString(body.initImagePath))
-      if (initImg) {
-        args.push('-i', initImg)
-        // img2video / I2V denoise strength (AnimateDiff docs: ~0.75)
-        const strength = body.strength ?? body.img2imgStrength ?? body.img2img_strength
-        if (strength !== '' && strength != null) pushArg(args, '--strength', strength)
-      }
-
-      // FLF2V end frame
-      const endImg =
-        fileFromUpload(req, 'endImage') ||
-        fileFromUpload(req, 'end_img') ||
-        resolveInputFile(ctx, firstString(body.endImagePath, body.end_img, body.endImg))
-      if (endImg) args.push('--end-img', endImg)
-
-      // VACE control video: directory of frames in lexicographic order
-      const controlVideo = resolveInputDirectory(
-        ctx,
-        firstString(body.controlVideo, body.control_video, body.controlVideoPath)
-      )
-      if (controlVideo) args.push('--control-video', controlVideo)
-
-      const genDefaults = motionPath
-        ? { width: 512, height: 512, cfg: 8.0, multiple: 64 }
-        : { width: 832, height: 480, cfg: 6.0, multiple: 16 }
-      addGenerationArgs(args, body, outputPath, genDefaults)
-      const defaultFrames = motionPath ? 16 : 33
-      args.push('--video-frames', String(body.videoFrames || body.video_frames || defaultFrames))
-      const defaultFps = motionPath ? 8 : 24
-      const fps = parseInt(String(body.fps ?? defaultFps), 10)
-      if (Number.isFinite(fps) && fps > 0) args.push('--fps', String(fps))
-
-      // Flow-shift is Wan/DiT; do not force it for AnimateDiff
-      if (!motionPath) {
-        const fsVal = body.flowShift ?? body.flow_shift
-        if (fsVal !== '' && fsVal != null && Number(fsVal) !== 0) {
-          args.push('--flow-shift', String(fsVal))
-        } else {
-          args.push('--flow-shift', '3.0')
+      await runAsOwner(ctx, requestOwner(ctx, res), async () => {
+        try {
+          const result = await runVideoJob(ctx, body, req, { label: 'VIDEO' })
+          sendJobResult(res, result)
+        } catch (error: unknown) {
+          sendCliFailure(res, error, 'Video generation failed')
         }
-      }
-
-      if (!motionPath) {
-        pushNumericArgIfPresent(args, '--vace-strength', body.vaceStrength ?? body.vace_strength)
-        pushNumericArgIfPresent(args, '--moe-boundary', body.moeBoundary ?? body.moe_boundary)
-
-        // High-noise suite (Wan2.2 MoE and similar)
-        if (highNoise || body.highNoiseSteps != null || body.highNoiseCfg != null) {
-          pushArg(args, '--high-noise-cfg-scale', body.highNoiseCfg ?? body.highNoiseCfgScale)
-          pushArg(args, '--high-noise-steps', body.highNoiseSteps)
-          pushArg(
-            args,
-            '--high-noise-sampling-method',
-            body.highNoiseSampler ?? body.highNoiseSamplingMethod
-          )
-          pushArg(args, '--high-noise-guidance', body.highNoiseGuidance)
-          pushArg(args, '--high-noise-eta', body.highNoiseEta)
-          pushArg(args, '--high-noise-slg-scale', body.highNoiseSlgScale)
-          pushArg(args, '--high-noise-skip-layers', body.highNoiseSkipLayers)
-          pushArg(args, '--high-noise-skip-layer-start', body.highNoiseSkipLayerStart)
-          pushArg(args, '--high-noise-skip-layer-end', body.highNoiseSkipLayerEnd)
-          pushArg(args, '--high-noise-img-cfg-scale', body.highNoiseImgCfgScale)
-        }
-      }
-
-      addOptionalArgs(args, body)
-      addHardwareArgs(args, body, String(body.prompt || ''))
-      assertLoraFilesPresent(ctx, body, String(body.prompt || ''))
-      addPromptModelExtras(ctx, args, body, String(body.prompt || ''))
-      args.push('-v')
-      const tempFiles = [
-        fileFromUpload(req, 'initImage'),
-        fileFromUpload(req, 'reference_image'),
-        fileFromUpload(req, 'endImage'),
-        fileFromUpload(req, 'end_img')
-      ]
-
-      try {
-        const result = await runCli(ctx, args, 'VIDEO')
-        sendCliResult(res, result, outputPath, filename, 'Video generation failed - no output file')
-      } catch (error: unknown) {
-        sendCliFailure(res, error, 'Video generation failed')
-      } finally {
-        removeTemporaryFiles([], tempFiles)
-      }
+      })
     }
   )
 
   app.post('/api/upscale', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
-    ctx.state.cliCancelRequested = false
-    await warmCapabilities(ctx)
-
     const body = (req.body || {}) as JsonObject
-    const sourceFilename = firstString(body.filename, body.source, body.image)
-    if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
-
-    const sourcePath = resolveOutputFile(ctx, sourceFilename)
+    const sourcePath = resolveOutputFile(ctx, firstString(body.filename, body.source, body.image))
     if (!sourcePath) return res.status(400).json({ message: 'Source image not found' })
-
-    const upscaleModelName = firstString(body.upscaleModel, body.upscale_model)
-    const upscaleModel = modelPath(ctx, 'upscale', upscaleModelName)
-    if (!upscaleModel)
+    if (!modelPath(ctx, 'upscale', firstString(body.upscaleModel, body.upscale_model)))
       return res.status(400).json({
         message: 'Upscale model required. Place an ESRGAN model in models/upscale.',
         error: 'UPSCALE_MODEL_REQUIRED'
       })
-
-    // CLI upscale writes an image file; always stage as PNG then honor store format.
-    const imagePlan = planCliImageOutput(ctx, `upscale_${Date.now()}.png`)
-    const args: string[] = ['-M', 'upscale', '-i', sourcePath, '-o', imagePlan.cliOutputPath]
-    args.push('--upscale-model', upscaleModel)
-
-    const repeats = parseInt(String(body.upscaleRepeats ?? body.upscale_repeats ?? 1), 10)
-    if (Number.isFinite(repeats) && repeats > 1) args.push('--upscale-repeats', String(repeats))
-
-    const tileSize = parseInt(String(body.upscaleTileSize ?? body.upscale_tile_size ?? 0), 10)
-    if (Number.isFinite(tileSize) && tileSize > 0)
-      args.push('--upscale-tile-size', String(tileSize))
-
-    addHardwareArgs(args, body)
-    args.push('-v')
-
-    try {
-      const result = await runCli(ctx, args, 'UPSCALE')
-      await sendCliImageResult(ctx, res, result, imagePlan, 'Upscale failed - no output file')
-    } catch (error: unknown) {
-      if (imagePlan.stageDir) {
-        try {
-          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
-        } catch {
-          /* ignore */
-        }
+    await runAsOwner(ctx, requestOwner(ctx, res), async () => {
+      try {
+        sendJobResult(res, await runUpscaleJob(ctx, body, sourcePath, { label: 'UPSCALE' }))
+      } catch (error: unknown) {
+        sendCliFailure(res, error, 'Upscale failed')
       }
-      sendCliFailure(res, error, 'Upscale failed')
-    }
+    })
   })
 
-  /**
-   * Standalone ADetailer repair on an existing gallery image (-M adetailer).
-   * Requires diffusion weights + YOLO detector under models/adetailer.
-   */
   app.post('/api/adetailer', async (req, res) => {
     if (!ensureCliIdle(ctx, res)) return
-    ctx.state.cliCancelRequested = false
-    await warmCapabilities(ctx)
-
     const body = (req.body || {}) as JsonObject
-    const sourceFilename = firstString(body.filename, body.source, body.image)
-    if (!sourceFilename) return res.status(400).json({ message: 'Source image filename required' })
-
-    const sourcePath = resolveOutputFile(ctx, sourceFilename)
+    const sourcePath = resolveOutputFile(ctx, firstString(body.filename, body.source, body.image))
     if (!sourcePath) return res.status(400).json({ message: 'Source image not found' })
-
-    const diffusionModel = firstString(body.diffusionModel, body.diffusion_model)
-    if (!diffusionModel) {
-      return res.status(400).json({
-        message: 'No model selected. Select a diffusion model for the ADetailer inpaint pass.',
-        error: 'MODEL_REQUIRED'
-      })
-    }
-
-    const adName = firstString(body.adetailerModel, body.ad_model, body.adModel)
-    const adResolved = modelPath(ctx, 'adetailer', adName)
-    if (!adResolved) {
-      return res.status(400).json({
-        message:
-          'ADetailer detector required. Place a converted YOLOv8 .safetensors in models/adetailer.',
-        error: 'ADETAILER_MODEL_REQUIRED'
-      })
-    }
-
-    const imagePlan = planCliImageOutput(ctx, `adetailer_${Date.now()}.png`)
-    const args: string[] = ['-M', 'adetailer']
-    addModelArgs(ctx, args, body)
-    args.push('-i', sourcePath)
-
-    const prompt = String(body.prompt || body.adetailerPrompt || '')
-    // Prefer ad prompts when provided; generation args still need -p
-    const genBody: JsonObject = {
-      ...body,
-      prompt: prompt || 'detailed',
-      negative_prompt: body.negative_prompt ?? body.adetailerNegativePrompt ?? '',
-      // Standalone mode: strength is the detail denoise when not overridden in extra-ad-args
-      strength: body.strength ?? body.adetailerDenoisingStrength ?? body.img2imgStrength ?? 0.4
-    }
-    addGenerationArgs(args, genBody, imagePlan.cliOutputPath, {
-      width: 1024,
-      height: 1024,
-      cfg: 7,
-      multiple: 64
-    })
-    // Detail denoise: adetailer mode inherits --strength (docs)
-    pushArg(args, '--strength', genBody.strength)
-
-    addOptionalArgs(args, body)
-    addHardwareArgs(args, body, prompt)
-    assertLoraFilesPresent(ctx, body, prompt)
-    addPromptModelExtras(ctx, args, body, prompt)
-
-    addAdetailerArgs(
-      ctx,
-      args,
-      {
-        ...body,
-        adetailerEnabled: true,
-        adetailerModel: adName
-      },
-      { requireEnabled: false }
-    )
-
-    args.push('-v')
-
-    try {
-      const result = await runCli(ctx, args, 'ADETAILER')
-      await sendCliImageResult(ctx, res, result, imagePlan, 'ADetailer failed - no output file')
-    } catch (error: unknown) {
-      if (imagePlan.stageDir) {
-        try {
-          fs.rmSync(imagePlan.stageDir, { recursive: true, force: true })
-        } catch {
-          /* ignore */
-        }
+    const invalid = adetailerRequestError(ctx, body)
+    if (invalid) return res.status(400).json(invalid)
+    await runAsOwner(ctx, requestOwner(ctx, res), async () => {
+      try {
+        sendJobResult(res, await runAdetailerJob(ctx, body, sourcePath, { label: 'ADETAILER' }))
+      } catch (error: unknown) {
+        sendCliFailure(res, error, 'ADetailer failed')
       }
-      sendCliFailure(res, error, 'ADetailer failed')
-    }
+    })
   })
 
   app.post('/api/convert', async (req, res) => {

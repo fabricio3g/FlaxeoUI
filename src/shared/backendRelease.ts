@@ -27,23 +27,52 @@ export function backendPlatformMismatch(fileNames: readonly string[], platform: 
   return dirPlatform === 'win32' ? platform !== 'win32' : platform === 'win32'
 }
 
+/**
+ * The OS a release file is built for. macOS is checked first: "darwin" contains "win".
+ * Windows needs "win" as its own token so names like "darwin" or "twin" do not count.
+ */
+export function assetOs(assetName: string): 'win32' | 'darwin' | 'linux' | null {
+  const n = assetName.toLowerCase()
+  if (/macos|darwin|osx|metal/.test(n)) return 'darwin'
+  if (/linux|ubuntu|debian/.test(n)) return 'linux'
+  if (/(^|[^a-z])win(dows)?([^a-z]|$)|win(32|64)/.test(n)) return 'win32'
+  return null
+}
+
+/** CUDA runtime DLL packages (cudart-*) ship next to CUDA builds; they are not engines. */
+export function isRuntimePackage(assetName: string): boolean {
+  return /^cudart[-_]/i.test(assetName)
+}
+
 /** Keep zip assets that match the current OS (win / macos / linux). */
 export function assetMatchesPlatform(assetName: string, platform: string): boolean {
-  const n = assetName.toLowerCase()
-  if (platform === 'win32') return n.includes('win') || n.includes('windows')
-  if (platform === 'darwin')
-    return n.includes('macos') || n.includes('darwin') || n.includes('osx') || n.includes('metal')
-  if (platform === 'linux')
-    return n.includes('linux') || n.includes('ubuntu') || n.includes('debian')
-  return true
+  const os = assetOs(assetName)
+  return os === null || os === platform
+}
+
+/**
+ * The CUDA runtime package a Windows CUDA build needs (same CUDA major), so installing
+ * the build also installs the DLLs it loads. Undefined for every other build.
+ */
+export function cudaRuntimeFor<T extends { name: string }>(
+  assets: T[],
+  buildName: string
+): T | undefined {
+  const n = buildName.toLowerCase()
+  if (assetOs(buildName) !== 'win32' || !/cuda|cu1\d/.test(n) || isRuntimePackage(buildName))
+    return undefined
+  const major = n.match(/(?:cuda|cu)(\d{2})/)?.[1]
+  const runtimes = assets.filter((a) => isRuntimePackage(a.name) && assetOs(a.name) === 'win32')
+  return runtimes.find((a) => major && a.name.toLowerCase().includes(`cu${major}`)) || runtimes[0]
 }
 
 export function filterAssetsForPlatform<T extends { name: string }>(
   assets: T[],
   platform: string
 ): T[] {
-  const matched = assets.filter((a) => assetMatchesPlatform(a.name, platform))
-  return matched.length > 0 ? matched : assets
+  const builds = assets.filter((a) => !isRuntimePackage(a.name))
+  const matched = builds.filter((a) => assetMatchesPlatform(a.name, platform))
+  return matched.length > 0 ? matched : builds
 }
 
 /**
@@ -69,14 +98,8 @@ export function backendVariantLabel(assetName: string): string {
   else if (n.includes('avx')) accel = 'CPU (AVX)'
   else if (n.includes('cpu')) accel = 'CPU'
 
-  const os =
-    n.includes('win') || n.includes('windows')
-      ? 'Windows'
-      : n.includes('linux') || n.includes('ubuntu') || n.includes('debian')
-        ? 'Linux'
-        : n.includes('macos') || n.includes('darwin') || n.includes('osx')
-          ? 'macOS'
-          : ''
+  if (isRuntimePackage(assetName)) return 'CUDA runtime libraries'
+  const os = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[assetOs(assetName) || ''] || ''
 
   let label = os ? `${os} · ${accel}` : accel
   if (n.includes('arm64') || n.includes('aarch64')) {
@@ -106,6 +129,11 @@ export function pickBestBackendAsset(
   if (hintL.includes('cuda')) {
     const hit =
       prefer((n) => n.includes('cuda12') || n.includes('cu12')) || prefer((n) => n.includes('cuda'))
+    if (hit) return hit
+  }
+  // AMD without the ROCm runtime: Vulkan is the build that surely runs
+  if (hintL.includes('amd')) {
+    const hit = prefer((n) => n.includes('vulkan'))
     if (hit) return hit
   }
   if (hintL.includes('rocm') || hintL.includes('hip')) {
@@ -142,4 +170,20 @@ export function pickBestBackendAsset(
   }
 
   return pool[0].name
+}
+
+/**
+ * A second build worth offering next to the best one: for AMD GPUs, ROCm when Vulkan is
+ * the pick (faster where ROCm is installed) and Vulkan when ROCm is (runs everywhere).
+ */
+export function alternativeBackendAsset(
+  assets: { name: string }[],
+  platform: string,
+  hint?: string | null
+): string | undefined {
+  const h = (hint || '').toLowerCase()
+  if (!h.includes('amd') && !h.includes('rocm')) return undefined
+  const pool = filterAssetsForPlatform(assets, platform).map((a) => a.name)
+  const want = h.includes('rocm') ? 'vulkan' : 'rocm'
+  return pool.find((n) => n.toLowerCase().includes(want))
 }

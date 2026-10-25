@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { useRuntimeStatus } from './useRuntimeStatus'
+import { useConnection } from './useConnection'
 import { useModels } from './useModels'
 import { useGenerationHistory } from './useGenerationHistory'
 
@@ -14,7 +14,7 @@ const FIRST_IMAGE_KEY = 'flaxeo-first-image-done'
 export const STRIP_DISMISS_KEY = 'flaxeo-onboarding-strip-dismissed'
 
 export function useSetup() {
-  const { backendValid } = useRuntimeStatus()
+  const { engineReady: backendValid } = useConnection()
   const { models } = useModels()
   const { entries } = useGenerationHistory()
 

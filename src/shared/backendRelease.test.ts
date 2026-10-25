@@ -2,9 +2,13 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   assetMatchesPlatform,
+  assetOs,
   backendPlatformMismatch,
   backendVariantLabel,
+  cudaRuntimeFor,
   detectBackendDirPlatform,
+  isRuntimePackage,
+  alternativeBackendAsset,
   pickBestBackendAsset
 } from './backendRelease.ts'
 
@@ -103,5 +107,46 @@ describe('pickBestBackendAsset', () => {
 
   it('returns undefined for an empty list', () => {
     assert.equal(pickBestBackendAsset([], 'linux', null), undefined)
+  })
+})
+
+describe('release file names', () => {
+  it('does not read "darwin" as Windows', () => {
+    const mac = 'sd-master-ddd6b3a-bin-Darwin-macOS-26.6.2-arm64.zip'
+    assert.equal(assetOs(mac), 'darwin')
+    assert.equal(assetMatchesPlatform(mac, 'win32'), false)
+    assert.equal(backendVariantLabel(mac), 'macOS · Other · ARM64')
+  })
+
+  it('keeps the CUDA runtime package out of the builds and pairs it with CUDA builds', () => {
+    const assets = [
+      { name: 'cudart-sd-bin-win-cu12-x64.zip' },
+      { name: 'sd-master-ddd6b3a-bin-win-cpu-x64.zip' },
+      { name: 'sd-master-ddd6b3a-bin-win-cuda12-x64.zip' },
+      { name: 'sd-master-ddd6b3a-bin-win-vulkan-x64.zip' }
+    ]
+    assert.equal(isRuntimePackage(assets[0].name), true)
+    assert.equal(
+      pickBestBackendAsset(assets, 'win32', 'win-cuda12-x64'),
+      'sd-master-ddd6b3a-bin-win-cuda12-x64.zip'
+    )
+    assert.equal(cudaRuntimeFor(assets, assets[2].name)?.name, assets[0].name)
+    assert.equal(cudaRuntimeFor(assets, assets[3].name), undefined)
+  })
+})
+
+describe('AMD builds', () => {
+  const assets = [
+    { name: 'sd-master-x-bin-win-rocm-10.1.0-x64.zip' },
+    { name: 'sd-master-x-bin-win-vulkan-x64.zip' },
+    { name: 'sd-master-x-bin-win-cpu-x64.zip' }
+  ]
+  it('picks Vulkan without the ROCm runtime and offers ROCm next to it', () => {
+    assert.equal(pickBestBackendAsset(assets, 'win32', 'win-amd-x64'), assets[1].name)
+    assert.equal(alternativeBackendAsset(assets, 'win32', 'win-amd-x64'), assets[0].name)
+  })
+  it('picks ROCm when its runtime is installed and offers Vulkan next to it', () => {
+    assert.equal(pickBestBackendAsset(assets, 'win32', 'win-rocm-x64'), assets[0].name)
+    assert.equal(alternativeBackendAsset(assets, 'win32', 'win-rocm-x64'), assets[1].name)
   })
 })

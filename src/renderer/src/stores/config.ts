@@ -1,166 +1,31 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { ImageGenerationParams, ImageParamsReuseMode } from '@/lib/imageParams'
+import { useModels } from '@/composables/useModels'
+import {
+  DEFAULT_MACHINE,
+  DEFAULT_RUN,
+  DEFAULT_SETUP,
+  mainModel,
+  pickSetup,
+  SETUP_KEYS,
+  type InstalledModels,
+  type MachineFields,
+  type ModelSetup,
+  type ModelSetupFields,
+  type RunFields
+} from '../../../shared/modelSetup'
+import { MODEL_FAMILIES, applyFamily, familyById, inferFamily } from '../../../shared/modelFamilies'
 
 /**
- * GenerationConfig - All parameters for image generation
- * Matches the sd-cli command line arguments
+ * GenerationConfig - All parameters for one generation, matching sd-cli arguments.
+ * Model setup (per workspace / workflow node), machine settings (per device) and run
+ * inputs (per generation) are declared once in src/shared/modelSetup.ts.
  */
-export interface GenerationConfig {
-  // Backend mode
-  backendMode: 'server' | 'cli'
+export interface GenerationConfig extends ModelSetupFields, MachineFields, RunFields {}
 
-  // Model loading mode
-  loadMode: 'standard' | 'split'
-
-  // Standard mode model
-  standardModel: string
-
-  // Split mode models
-  diffusionModel: string
-  highNoiseDiffusionModel: string
-  uncondDiffusionModel: string
-  t5xxlModel: string
-  llmModel: string
-  llmVisionModel: string
-  clipModel: string
-  clipGModel: string
-  clipVisionModel: string
-  embeddingsConnectorsModel: string
-
-  // Common models
-  vaeModel: string
-  vaeTileSize: number
-  controlNetModel: string
-  photoMakerModel: string
-  upscaleModel: string
-  taesdModel: string
-  audioVaeModel: string
-  vaeFormat: string
-
-  // LoRAs (array of { path, strength, optional high_noise target for Wan MoE })
-  loras: Array<{ path: string; strength: number; target?: 'default' | 'high_noise' }>
-  loraApplyMode: 'auto' | 'immediately' | 'at_runtime'
-
-  // Embeddings
-  embeddings: string[]
-
-  // Sampling
-  scheduler: string
-  sampler: string
-  rngType: string
-  samplerRngType: string
-  batchCount: number
-
-  // Generation parameters
-  steps: number
-  cfgScale: number
-  guidance: number
-  clipSkip: number
-  seed: number
-  /** When true, keep seed fixed across gens (do not force -1) */
-  seedLocked: boolean
-  width: number
-  height: number
-
-  // Hardware options
-  flashAttention: boolean
-  vaeTiling: boolean
-  clipOnCpu: boolean
-  cpuOffload: boolean
-  diffusionConvDirect: boolean
-  vaeConvDirect: boolean
-  forceSDXLVaeConvScale: boolean
-  backendAssignment: string
-  paramsBackendAssignment: string
-  autoFit: boolean
-  splitMode: 'layer' | 'row'
-  threads: number
-  maxVram: number
-  streamLayers: boolean
-  mmap: boolean
-  vaeOnCpu: boolean
-  controlNetOnCpu: boolean
-  circular: boolean
-  circularX: boolean
-  circularY: boolean
-  qwenImageZeroCondT: boolean
-  chromaEnableT5Mask: boolean
-  chromaDisableDitMask: boolean
-  chromaT5MaskPad: number
-  quantizationType: string
-  tensorTypeRules: string
-  predictionType: string
-
-  // Caching / acceleration
-  cacheMode: string
-  cacheOption: string
-  scmMask: string
-  scmPolicy: string
-
-  // Advanced sampling
-  flowShift: number
-  eta: number
-  slgScale: number
-  skipLayerStart: number
-  skipLayerEnd: number
-  skipLayers: string
-  sigmas: string
-  imgCfgScale: number
-  extraSampleArgs: string
-  extraTilingArgs: string
-  disableImageMetadata: boolean
-
-  // Live preview
-  livePreviewMethod: string
-
-  // ControlNet settings
-  controlNetStrength: number
-  applyCanny: boolean
-  controlImagePath: string
-
-  // PhotoMaker settings
-  photoMakerImages: string[]
-  photoMakerStyleStrength: number
-  photoMakerIdEmbedsPath: string
-
-  // Kontext (Flux image editing)
-  kontextRefImage: string
-
-  /**
-   * Ref Edit / Image Reference --ref-image-args (sd.cpp PR #1780):
-   * - `auto` — infer from diffusion model (e.g. Anima → cosmos_reference)
-   * - `off` — omit the flag (CLI architecture default, or required on old binaries)
-   * - named preset — force that preset when the binary supports the flag
-   */
-  refImagePreset: string
-
-  // Img2Img
-  initImagePath: string
-  img2imgStrength: number
-
-  // ADetailer (YOLOv8 detect + cropped inpaint; sd-cli --ad-model / -M adetailer)
-  adetailerEnabled: boolean
-  adetailerModel: string
-  adetailerPrompt: string
-  adetailerNegativePrompt: string
-  adetailerConfidence: number
-  adetailerDenoisingStrength: number
-  adetailerInpaintPadding: number
-  adetailerMaskBlur: number
-  adetailerInpaintWidth: number
-  adetailerInpaintHeight: number
-  adetailerMaskKLargest: number
-  adetailerMaskMode: string
-  adetailerSortBy: string
-  adetailerExtraArgs: string
-
-  // AnimateDiff motion module (models/animatediff → --motion-module)
-  motionModule: string
-
-  // Video mode
-  videoMode: boolean
-}
+/** Image keeps the main config; Edit and Video each have their own model setup. */
+export type WorkspaceSurface = 'image' | 'edit' | 'video'
 
 export interface ConfigPreset {
   id: string
@@ -169,649 +34,68 @@ export interface ConfigPreset {
   createdAt: number
   updatedAt: number
   builtin?: boolean
+  /** Built-in presets map to a model family */
+  familyId?: string
 }
 
 const PRESETS_STORAGE_KEY = 'flaxeo-config-presets'
 const CONFIG_STORAGE_KEY = 'flaxeo-current-config'
+const SETUPS_STORAGE_KEY = 'flaxeo-workspace-setups'
 
-const defaultConfig: GenerationConfig = {
-  backendMode: 'cli',
-  loadMode: 'standard',
-  standardModel: '',
-  diffusionModel: '',
-  highNoiseDiffusionModel: '',
-  uncondDiffusionModel: '',
-  t5xxlModel: '',
-  llmModel: '',
-  llmVisionModel: '',
-  clipModel: '',
-  clipGModel: '',
-  clipVisionModel: '',
-  embeddingsConnectorsModel: '',
-  vaeModel: '',
-  vaeTileSize: 0,
-  controlNetModel: '',
-  photoMakerModel: '',
-  upscaleModel: '',
-  taesdModel: '',
-  audioVaeModel: '',
-  vaeFormat: '',
-  loras: [],
-  loraApplyMode: 'auto',
-  embeddings: [],
-  scheduler: 'discrete',
-  sampler: 'euler',
-  rngType: '',
-  samplerRngType: '',
-  batchCount: 1,
-  steps: 20,
-  cfgScale: 3.5,
-  guidance: 3.5,
-  clipSkip: -1,
-  seed: -1,
-  seedLocked: false,
-  width: 1024,
-  height: 1024,
-  flashAttention: false,
-  vaeTiling: false,
-  clipOnCpu: false,
-  cpuOffload: false,
-  diffusionConvDirect: false,
-  vaeConvDirect: false,
-  forceSDXLVaeConvScale: false,
-  backendAssignment: '',
-  paramsBackendAssignment: '',
-  autoFit: false,
-  splitMode: 'layer',
-  threads: -1,
-  maxVram: 0,
-  streamLayers: false,
-  mmap: false,
-  vaeOnCpu: false,
-  controlNetOnCpu: false,
-  circular: false,
-  circularX: false,
-  circularY: false,
-  qwenImageZeroCondT: false,
-  chromaEnableT5Mask: false,
-  chromaDisableDitMask: false,
-  chromaT5MaskPad: 0,
-  quantizationType: '',
-  tensorTypeRules: '',
-  predictionType: '',
-  cacheMode: '',
-  cacheOption: '',
-  scmMask: '',
-  scmPolicy: '',
-  flowShift: 0,
-  eta: 0,
-  slgScale: 0,
-  skipLayerStart: 0.01,
-  skipLayerEnd: 0.2,
-  skipLayers: '',
-  sigmas: '',
-  imgCfgScale: 0,
-  extraSampleArgs: '',
-  extraTilingArgs: '',
-  disableImageMetadata: false,
-  livePreviewMethod: '',
-  controlNetStrength: 0.9,
-  applyCanny: false,
-  controlImagePath: '',
-  photoMakerImages: [],
-  photoMakerStyleStrength: 20,
-  photoMakerIdEmbedsPath: '',
-  kontextRefImage: '',
-  refImagePreset: 'auto',
-  initImagePath: '',
-  img2imgStrength: 0.4,
-  adetailerEnabled: false,
-  adetailerModel: '',
-  adetailerPrompt: '',
-  adetailerNegativePrompt: '',
-  adetailerConfidence: 0.3,
-  adetailerDenoisingStrength: 0.4,
-  adetailerInpaintPadding: 32,
-  adetailerMaskBlur: 4,
-  adetailerInpaintWidth: 512,
-  adetailerInpaintHeight: 512,
-  adetailerMaskKLargest: 0,
-  adetailerMaskMode: 'none',
-  adetailerSortBy: 'none',
-  adetailerExtraArgs: '',
-  motionModule: '',
-  videoMode: false
+const defaultConfig: GenerationConfig = { ...DEFAULT_SETUP, ...DEFAULT_MACHINE, ...DEFAULT_RUN }
+
+/** Video workspace starting point (was local state in Video.vue). */
+const VIDEO_DEFAULTS: Partial<ModelSetup> = {
+  videoMode: true,
+  width: 832,
+  height: 480,
+  videoFrames: 33,
+  videoFps: 24,
+  flowShift: 3
 }
 
-function presetConfig(partial: Partial<GenerationConfig>): GenerationConfig {
-  // Clear model filenames by default so presets are pack-agnostic; callers may set names.
-  return normalizeConfig({
-    standardModel: '',
-    diffusionModel: '',
-    ...partial
+/** One built-in preset per runnable model family. */
+const BUILTIN_PRESETS: ConfigPreset[] = MODEL_FAMILIES.filter(
+  (family) => family.support !== 'docs'
+).map((family) => ({
+  id: `builtin-${family.id}`,
+  name: family.name,
+  builtin: true,
+  createdAt: 0,
+  updatedAt: 0,
+  familyId: family.id,
+  config: normalizeConfig({
+    ...family.defaults,
+    modelFamily: family.id,
+    loadMode: family.loadMode,
+    videoMode: family.kind === 'video'
   })
+}))
+
+/** Preset ids used before presets came from the family catalog (hub packs, saved state). */
+const LEGACY_PRESET_FAMILY: Record<string, { family: string; overrides?: Partial<ModelSetup> }> = {
+  'builtin-sd35': { family: 'sd3' },
+  'builtin-flux-dev': { family: 'flux1-dev' },
+  'builtin-flux-schnell': { family: 'flux1-schnell' },
+  'builtin-qwen-image-edit': { family: 'qwen-image-edit' },
+  'builtin-qwen-image-edit-2511': {
+    family: 'qwen-image-edit',
+    overrides: { qwenImageZeroCondT: true }
+  },
+  'builtin-z-image-turbo': { family: 'z-image' },
+  'builtin-lens-turbo': { family: 'lens', overrides: { cfgScale: 1, steps: 4 } },
+  'builtin-wan22-a14b': { family: 'wan22' },
+  'builtin-animatediff-v3': { family: 'animatediff' }
 }
 
-const BUILTIN_PRESETS: ConfigPreset[] = [
-  {
-    id: 'builtin-sd15',
-    name: 'SD 1.x / 2.x',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'standard',
-      cfgScale: 7,
-      guidance: 3.5,
-      steps: 20,
-      width: 512,
-      height: 512,
-      sampler: 'euler_a',
-      scheduler: 'discrete'
-    })
-  },
-  {
-    id: 'builtin-sdxl',
-    name: 'SDXL',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'standard',
-      cfgScale: 7,
-      steps: 25,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete'
-    })
-  },
-  {
-    id: 'builtin-sd35',
-    name: 'SD3 / SD3.5',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 4.5,
-      guidance: 3.5,
-      steps: 28,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      clipOnCpu: true,
-      t5xxlModel: '',
-      clipModel: '',
-      clipGModel: ''
-    })
-  },
-  {
-    id: 'builtin-flux-dev',
-    name: 'FLUX.1 Dev',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 28,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      clipOnCpu: true,
-      t5xxlModel: '',
-      clipModel: '',
-      vaeModel: '',
-      flashAttention: true
-    })
-  },
-  {
-    id: 'builtin-flux-schnell',
-    name: 'FLUX.1 Schnell',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 4,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      clipOnCpu: true,
-      t5xxlModel: '',
-      clipModel: '',
-      vaeModel: '',
-      flashAttention: true
-    })
-  },
-  {
-    id: 'builtin-flux2-dev',
-    name: 'FLUX.2 Dev',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 28,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeFormat: 'flux2',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-flux2-klein',
-    name: 'FLUX.2 Klein',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 4,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeFormat: 'flux2',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-qwen-image',
-    name: 'Qwen Image',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 2.5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-flux-kontext',
-    name: 'FLUX Kontext',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      clipOnCpu: true,
-      t5xxlModel: '',
-      clipModel: '',
-      vaeModel: '',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-qwen-image-edit',
-    name: 'Qwen Image Edit',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 2.5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true,
-      qwenImageZeroCondT: false
-    })
-  },
-  {
-    id: 'builtin-qwen-image-edit-2511',
-    name: 'Qwen Image Edit 2511',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 2.5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true,
-      qwenImageZeroCondT: true
-    })
-  },
-  {
-    id: 'builtin-z-image-turbo',
-    name: 'Z-Image Turbo',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 8,
-      width: 512,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeModel: '',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-chroma',
-    name: 'Chroma',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 4,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      t5xxlModel: '',
-      vaeModel: '',
-      clipOnCpu: true,
-      chromaDisableDitMask: true,
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-krea2',
-    name: 'Krea2',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 3.5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeModel: '',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-lens',
-    name: 'Lens',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeFormat: 'flux2',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-lens-turbo',
-    name: 'Lens Turbo',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 1,
-      guidance: 3.5,
-      steps: 4,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeFormat: 'flux2',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-ideogram4',
-    name: 'Ideogram4',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 3.5,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      uncondDiffusionModel: '',
-      llmModel: '',
-      vaeFormat: 'flux2',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-anima',
-    name: 'Anima',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 6,
-      guidance: 3.5,
-      steps: 20,
-      width: 1024,
-      height: 1024,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeModel: '',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-lingbot-video',
-    name: 'LingBot Video',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      videoMode: true,
-      cfgScale: 3,
-      guidance: 3.5,
-      steps: 20,
-      width: 832,
-      height: 480,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      llmModel: '',
-      vaeModel: '',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-minit2i',
-    name: 'MiniT2I',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      cfgScale: 6,
-      guidance: 3.5,
-      steps: 100,
-      width: 512,
-      height: 512,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      t5xxlModel: '',
-      flashAttention: true,
-      cpuOffload: true
-    })
-  },
-  {
-    id: 'builtin-animatediff-v3',
-    name: 'AnimateDiff v3 (SD1.5)',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'standard',
-      videoMode: true,
-      // Recommended base from sd.cpp animatediff.md (Realistic Vision V6.0 B1 fp16)
-      standardModel: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors',
-      cfgScale: 8,
-      guidance: 3.5,
-      steps: 20,
-      width: 512,
-      height: 512,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      flowShift: 0,
-      flashAttention: true,
-      cpuOffload: true,
-      motionModule: 'mm_sd15_v3.safetensors',
-      img2imgStrength: 0.75
-    })
-  },
-  {
-    id: 'builtin-wan21',
-    name: 'Wan2.1 Video',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      videoMode: true,
-      cfgScale: 6,
-      guidance: 3.5,
-      steps: 20,
-      width: 832,
-      height: 480,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true,
-      t5xxlModel: '',
-      vaeModel: '',
-      motionModule: ''
-    })
-  },
-  {
-    id: 'builtin-wan22-a14b',
-    name: 'Wan2.2 A14B Video',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      videoMode: true,
-      cfgScale: 3.5,
-      guidance: 3.5,
-      steps: 10,
-      width: 832,
-      height: 480,
-      sampler: 'euler',
-      scheduler: 'discrete',
-      flowShift: 3,
-      flashAttention: true,
-      cpuOffload: true,
-      highNoiseDiffusionModel: '',
-      t5xxlModel: '',
-      vaeModel: ''
-    })
-  },
-  {
-    id: 'builtin-ltx23',
-    name: 'LTX-2.3 Video',
-    builtin: true,
-    createdAt: 0,
-    updatedAt: 0,
-    config: presetConfig({
-      loadMode: 'split',
-      videoMode: true,
-      cfgScale: 6,
-      guidance: 3.5,
-      steps: 20,
-      width: 1280,
-      height: 720,
-      sampler: 'euler',
-      scheduler: 'ltx2',
-      flashAttention: true,
-      cpuOffload: true,
-      llmModel: '',
-      embeddingsConnectorsModel: '',
-      audioVaeModel: '',
-      extraTilingArgs: 'temporal_tile_frames=4,temporal_tile_overlap=1'
-    })
-  }
-]
+/** Resolve a built-in or legacy preset id to its family (+ overrides). */
+export function presetFamily(
+  id: string
+): { family: string; overrides?: Partial<ModelSetup> } | null {
+  if (LEGACY_PRESET_FAMILY[id]) return LEGACY_PRESET_FAMILY[id]
+  const familyId = id.startsWith('builtin-') ? id.slice('builtin-'.length) : ''
+  return familyById(familyId) ? { family: familyId } : null
+}
 
 function cloneConfig(value: GenerationConfig): GenerationConfig {
   return JSON.parse(JSON.stringify(value))
@@ -833,10 +117,39 @@ function loadConfig(): GenerationConfig {
 
   try {
     const raw = localStorage.getItem(CONFIG_STORAGE_KEY)
-    return raw ? normalizeConfig(JSON.parse(raw)) : cloneConfig(defaultConfig)
+    const loaded = raw ? normalizeConfig(JSON.parse(raw)) : cloneConfig(defaultConfig)
+    // Configs saved before families existed: infer the family from the chosen model
+    if (!loaded.modelFamily) loaded.modelFamily = inferFamily(mainModel(loaded))?.id || ''
+    return loaded
   } catch (e) {
     console.error('Failed to load current configuration:', e)
     return cloneConfig(defaultConfig)
+  }
+}
+
+interface WorkspaceSetups {
+  edit: ModelSetup
+  video: ModelSetup
+}
+
+/** Edit starts from the Image setup; Video starts clean unless a video model was in use. */
+function loadSetups(config: GenerationConfig): WorkspaceSetups {
+  try {
+    const raw =
+      typeof localStorage !== 'undefined' ? localStorage.getItem(SETUPS_STORAGE_KEY) : null
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<WorkspaceSetups>
+      return {
+        edit: pickSetup(parsed.edit || config),
+        video: pickSetup(parsed.video || { ...DEFAULT_SETUP, ...VIDEO_DEFAULTS })
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load workspace setups:', e)
+  }
+  return {
+    edit: pickSetup({ ...config, videoMode: false }),
+    video: pickSetup(config.videoMode ? config : { ...DEFAULT_SETUP, ...VIDEO_DEFAULTS })
   }
 }
 
@@ -865,11 +178,109 @@ function schedulePersistConfig(value: GenerationConfig): void {
 export const useConfigStore = defineStore('config', () => {
   // Default configuration matching original app
   const config = ref<GenerationConfig>(loadConfig())
+  const setups = ref<WorkspaceSetups>(loadSetups(config.value))
   const presets = ref<ConfigPreset[]>([...BUILTIN_PRESETS])
   const selectedPresetId = ref('')
+  const { models } = useModels()
 
   // Keep direct v-model changes available after restart (debounced for main-thread cost).
   watch(config, (value) => schedulePersistConfig(value), { deep: true })
+  watch(
+    setups,
+    (value) => {
+      try {
+        localStorage.setItem(SETUPS_STORAGE_KEY, JSON.stringify(value))
+      } catch {
+        /* storage unavailable */
+      }
+    },
+    { deep: true }
+  )
+
+  /** The live, writable model setup of a workspace (Image = the main config object). */
+  function setupFor(surface: WorkspaceSurface): ModelSetup {
+    if (surface === 'edit') return setups.value.edit
+    if (surface === 'video') return setups.value.video
+    return config.value
+  }
+
+  const SETUP_KEY_SET = new Set<string>(SETUP_KEYS)
+  const workspaceProxies = new Map<WorkspaceSurface, GenerationConfig>()
+
+  /**
+   * Live, writable config for a workspace view: setup fields read/write that workspace's
+   * own setup; machine and run fields read/write the shared config. Lets Edit and Video
+   * keep their v-model bindings while owning a separate model setup.
+   */
+  function workspaceConfig(surface: WorkspaceSurface): GenerationConfig {
+    if (surface === 'image') return config.value
+    const cached = workspaceProxies.get(surface)
+    if (cached) return cached
+    const target = (key: string | symbol): Record<string, unknown> =>
+      (typeof key === 'string' && SETUP_KEY_SET.has(key)
+        ? setups.value[surface]
+        : config.value) as unknown as Record<string, unknown>
+    const keys = (): string[] => Object.keys(config.value)
+    const proxy = new Proxy({} as GenerationConfig, {
+      get: (_t, key) => target(key)[key as string],
+      set: (_t, key, value) => {
+        target(key)[key as string] = value
+        return true
+      },
+      has: (_t, key) => typeof key === 'string' && keys().includes(key),
+      ownKeys: () => keys(),
+      getOwnPropertyDescriptor: (_t, key) =>
+        typeof key === 'string' && keys().includes(key)
+          ? { enumerable: true, configurable: true, writable: true, value: target(key)[key] }
+          : undefined
+    })
+    workspaceProxies.set(surface, proxy)
+    return proxy
+  }
+
+  function updateSetup(surface: WorkspaceSurface, partial: Partial<ModelSetup>): void {
+    if (surface === 'image') updateConfig(partial)
+    else Object.assign(setups.value[surface], partial)
+  }
+
+  /** Full generation config for a workspace: its setup + this machine + run inputs. */
+  function configFor(surface: WorkspaceSurface): GenerationConfig {
+    if (surface === 'image') return config.value
+    return { ...config.value, ...pickSetup(setupFor(surface)) }
+  }
+
+  function writeSetup(surface: WorkspaceSurface, next: ModelSetup): void {
+    if (surface === 'image') config.value = { ...config.value, ...next }
+    else setups.value = { ...setups.value, [surface]: next }
+  }
+
+  function installedModels(): InstalledModels {
+    return models.value as unknown as InstalledModels
+  }
+
+  /**
+   * Switch a workspace to a model family: documented defaults + companion files
+   * auto-matched from what is installed. LoRAs, hardware and run inputs are kept.
+   */
+  function applyFamilyTo(
+    surface: WorkspaceSurface,
+    familyId: string,
+    options: { mainFile?: string; overrides?: Partial<ModelSetup> } = {}
+  ): boolean {
+    const family = familyById(familyId)
+    if (!family) return false
+    const next = applyFamily(pickSetup(setupFor(surface)), family, installedModels(), {
+      mainFile: options.mainFile
+    })
+    writeSetup(surface, { ...next, ...(options.overrides || {}) })
+    return true
+  }
+
+  /** Apply the performance settings a family's docs recommend (opt-in). */
+  function applyMachineHints(familyId: string): void {
+    const hints = familyById(familyId)?.machineHints
+    if (hints) updateConfig(hints)
+  }
 
   function persistPresets(): void {
     if (typeof localStorage === 'undefined') return
@@ -910,7 +321,8 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  function savePreset(name: string): ConfigPreset | null {
+  /** Save a preset from the Image config, or from another workspace's setup. */
+  function savePreset(name: string, surface: WorkspaceSurface = 'image'): ConfigPreset | null {
     const trimmedName = name.trim()
     if (!trimmedName) return null
 
@@ -918,7 +330,7 @@ export const useConfigStore = defineStore('config', () => {
     const preset: ConfigPreset = {
       id: createPresetId(),
       name: trimmedName,
-      config: cloneConfig(config.value),
+      config: cloneConfig(configFor(surface)),
       createdAt: now,
       updatedAt: now
     }
@@ -941,11 +353,20 @@ export const useConfigStore = defineStore('config', () => {
     persistPresets()
   }
 
-  function applyPreset(id: string): void {
+  /**
+   * Apply a preset to a workspace. Built-ins switch the model family (files auto-matched);
+   * saved presets restore their model setup. Hardware, uploads and seed are never touched.
+   */
+  function applyPreset(id: string, surface: WorkspaceSurface = 'image'): void {
+    const builtin = presetFamily(id)
+    if (builtin) {
+      applyFamilyTo(surface, builtin.family, { overrides: builtin.overrides })
+      selectedPresetId.value = id
+      return
+    }
     const preset = presets.value.find((item) => item.id === id)
     if (!preset) return
-
-    config.value = normalizeConfig(preset.config)
+    writeSetup(surface, pickSetup(preset.config))
     selectedPresetId.value = preset.id
   }
 
@@ -1087,9 +508,10 @@ export const useConfigStore = defineStore('config', () => {
   /**
    * setDimensions() - Set width/height with preset support
    */
-  function setDimensions(width: number, height: number): void {
-    config.value.width = width
-    config.value.height = height
+  function setDimensions(width: number, height: number, surface: WorkspaceSurface = 'image'): void {
+    const setup = setupFor(surface)
+    setup.width = width
+    setup.height = height
   }
 
   /**
@@ -1106,6 +528,12 @@ export const useConfigStore = defineStore('config', () => {
 
   return {
     config,
+    setups,
+    setupFor,
+    configFor,
+    writeSetup,
+    applyFamilyTo,
+    applyMachineHints,
     presets,
     selectedPresetId,
     updateConfig,
@@ -1123,6 +551,8 @@ export const useConfigStore = defineStore('config', () => {
     addEmbedding,
     removeEmbedding,
     setDimensions,
+    workspaceConfig,
+    updateSetup,
     selectedModel
   }
 })

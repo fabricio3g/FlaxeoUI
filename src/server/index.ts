@@ -7,6 +7,9 @@ import { registerGenerationRoutes } from './routes/generation'
 import { registerMediaRoutes } from './routes/media'
 import { registerBackendRoutes } from './routes/backend'
 import { registerNetworkRoutes, updateLocalNetworkUrl } from './routes/network'
+import { registerLibraryRoutes } from './routes/library'
+import { registerWorkflowRoutes } from './routes/workflows'
+import { registerHubRoutes } from './routes/hub'
 import { createLanSecurity } from './lanSecurity'
 import {
   readRendererSnapshotAsset,
@@ -39,6 +42,9 @@ registerGenerationRoutes(app, ctx)
 registerMediaRoutes(app, ctx)
 registerBackendRoutes(app, ctx)
 registerNetworkRoutes(app, ctx)
+registerLibraryRoutes(app, ctx)
+registerWorkflowRoutes(app, ctx)
+registerHubRoutes(app, ctx)
 
 app.use((request, response, next) => {
   if (!rendererSnapshot || !['GET', 'HEAD'].includes(request.method)) return next()

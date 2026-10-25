@@ -2,6 +2,8 @@ import fs from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { hasHelpFlag, parseCliHelp, type CliHelpInfo } from '../shared/cliHelp'
+import { parseSdHelp, type SdHelp } from '../shared/sdHelp'
+import bundledHelpText from '../../sd-cli-help.txt'
 
 const execFileAsync = promisify(execFile)
 
@@ -15,26 +17,28 @@ const execFileAsync = promisify(execFile)
  */
 const CAPABILITIES_CACHE_TTL_MS = 60_000
 
-let capabilitiesCache: { at: number; path: string; info: CliHelpInfo } | null = null
+let capabilitiesCache: { at: number; path: string; info: CliHelpInfo; help: SdHelp } | null = null
+let bundledHelp: SdHelp | null = null
 
 /** Call whenever the active backend changes (switch version, custom folder, install). */
 export function invalidateCapabilitiesCache(): void {
   capabilitiesCache = null
 }
 
-async function probe(cliPath: string): Promise<CliHelpInfo> {
+async function probe(cliPath: string): Promise<string> {
   try {
     const { stdout, stderr } = await execFileAsync(cliPath, ['--help'], {
       timeout: 15000,
       windowsHide: true,
       maxBuffer: 2 * 1024 * 1024
     })
-    return parseCliHelp(`${stdout || ''}\n${stderr || ''}`)
+    return `${stdout || ''}
+${stderr || ''}`
   } catch (error: unknown) {
     // sd-cli prints help to stderr and exits non-zero on some builds
     const err = error as { stdout?: string; stderr?: string }
-    const text = `${err?.stdout || ''}\n${err?.stderr || ''}`
-    return text.trim() ? parseCliHelp(text) : { flags: [], modes: [] }
+    return `${err?.stdout || ''}
+${err?.stderr || ''}`
   }
 }
 
@@ -48,9 +52,24 @@ export async function getCapabilities(cliPath: string): Promise<CliHelpInfo> {
 
   if (!fs.existsSync(cliPath)) return { flags: [], modes: [] }
 
-  const info = await probe(cliPath)
-  capabilitiesCache = { at: Date.now(), path: cliPath, info }
+  const text = await probe(cliPath)
+  const info = text.trim() ? parseCliHelp(text) : { flags: [], modes: [] }
+  capabilitiesCache = { at: Date.now(), path: cliPath, info, help: parseSdHelp(text) }
   return info
+}
+
+/** Parsed options of the installed sd-cli (null until probed or when none is installed). */
+export function cachedHelp(): SdHelp | null {
+  return capabilitiesCache?.help.options.length ? capabilitiesCache.help : null
+}
+
+/** Options for the UI: the installed sd-cli when available, else the help captured in the repo. */
+export async function getHelpForUi(cliPath: string): Promise<{ help: SdHelp; live: boolean }> {
+  await getCapabilities(cliPath)
+  const live = cachedHelp()
+  if (live) return { help: live, live: true }
+  bundledHelp ??= parseSdHelp(bundledHelpText)
+  return { help: bundledHelp, live: false }
 }
 
 /**

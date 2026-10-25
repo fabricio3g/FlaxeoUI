@@ -30,8 +30,13 @@ export type CliImageOutputPlan = {
  * Plan where the CLI should write PNGs and whether a temp stage is used.
  * `pngBasename` must end with .png (supports %03d batch patterns).
  */
-export function planCliImageOutput(ctx: AppContext, pngBasename: string): CliImageOutputPlan {
-  const format = getOutputImageFormat(ctx)
+export function planCliImageOutput(
+  ctx: AppContext,
+  pngBasename: string,
+  options?: { format?: OutputImageFormat }
+): CliImageOutputPlan {
+  // Workflow intermediates force PNG: the next sd-cli step must be able to read them
+  const format = options?.format ?? getOutputImageFormat(ctx)
   if (format !== 'avif') {
     return {
       cliOutputPath: path.join(ctx.paths.outputDir, pngBasename),
@@ -97,7 +102,7 @@ type SharpFactory = (input?: string | Buffer) => any
  * Load sharp via Node require so it resolves from node_modules at runtime.
  * Must stay external in build-server.js — bundling breaks createRequire / native bindings.
  */
-function loadSharp(): SharpFactory | null {
+export function loadSharp(): SharpFactory | null {
   try {
     const mod = require('sharp') as SharpFactory | { default: SharpFactory }
     return typeof mod === 'function' ? mod : (mod.default ?? null)

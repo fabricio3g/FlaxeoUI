@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { apiPost, apiPostForm } from '@/services/api'
+import { ApiError, apiPost, apiPostForm } from '@/services/api'
 import {
   claimGeneration,
   releaseGeneration,
@@ -24,6 +24,7 @@ export interface GenApiResult {
   message?: string
   filename?: string
   filenames?: string[]
+  [key: string]: unknown
 }
 
 export type FormPart =
@@ -47,7 +48,11 @@ export interface QueueJob {
   jsonBody?: Record<string, unknown>
   formParts?: FormPart[]
   resultFilenames?: string[]
+  /** Full API response (workflow runs carry per-step results) */
+  result?: GenApiResult
   error?: string
+  /** Set while the GPU is busy with someone else's job (LAN teammate) — retried automatically */
+  waitingFor?: string
   startedAt?: number
   finishedAt?: number
   /** In-memory UI callbacks (not persisted) */
@@ -64,6 +69,8 @@ const paused = ref(false)
 const loopActive = ref(false)
 /** When true, cancel was requested for the running job */
 const cancelRequested = ref(false)
+/** Back-off while another device holds the GPU */
+const BUSY_RETRY_MS = 3000
 
 const MAX_RECENT = 30
 
@@ -131,10 +138,19 @@ async function executeJob(job: QueueJob): Promise<void> {
         ? [result.filename]
         : []
     job.resultFilenames = names
+    job.result = result
+    job.waitingFor = undefined
     job.status = 'success'
     job.finishedAt = Date.now()
     job.onSuccess?.(result)
   } catch (e) {
+    if (!cancelRequested.value && e instanceof ApiError && e.status === 409) {
+      // Shared GPU: someone else's job is running on the server. Wait our turn.
+      job.status = 'pending'
+      job.startedAt = undefined
+      job.waitingFor = e.message
+      return
+    }
     if (cancelRequested.value) {
       job.status = 'cancelled'
       job.error = 'Cancelled'
@@ -150,8 +166,8 @@ async function executeJob(job: QueueJob): Promise<void> {
   } finally {
     releaseGeneration(job.surface)
     job.onSettled?.()
-    // Drop heavy file blobs after finish
-    if (job.formParts) {
+    // Drop heavy file blobs after finish (a busy-retried job still needs them)
+    if (job.formParts && job.status !== 'pending') {
       job.formParts = job.formParts.map((p) =>
         p.type === 'file' ? { name: p.name, type: 'text' as const, value: '[file]' } : p
       )
@@ -168,9 +184,9 @@ async function processLoop(): Promise<void> {
       const next = listPending(jobs.value)[0]
       if (!next) break
       await executeJob(next)
-      // If claim failed and job re-pended, avoid tight spin
+      // If claim failed or the server was busy and the job re-pended, avoid a tight spin
       if (next.status === 'pending') {
-        await new Promise((r) => setTimeout(r, 400))
+        await new Promise((r) => setTimeout(r, next.waitingFor ? BUSY_RETRY_MS : 400))
       }
     }
   } finally {

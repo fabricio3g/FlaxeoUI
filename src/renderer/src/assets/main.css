@@ -23,6 +23,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
@@ -105,6 +107,10 @@
   --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   --surface-shadow-focus: 0 1px 3px rgb(0 0 0 / 0.08);
   --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Generate / running work use the existing ink color, not a new accent */
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --float-shadow: 0 8px 24px -6px rgb(0 0 0 / 0.16);
 }
 
 .dark {
@@ -159,6 +165,7 @@
   --sidebar-ring: rgb(255 255 255 / 0.16);
   --surface-shadow: none;
   --surface-shadow-focus: none;
+  --float-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.6);
 }
 
 @layer base {
@@ -217,6 +224,16 @@
   ::selection {
     background: color-mix(in oklch, var(--foreground) 16%, transparent);
   }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--brand);
+  }
 }
 
 @supports (height: 100dvh) {
@@ -265,7 +282,9 @@
   -webkit-app-region: drag;
 }
 
-.titlebar-no-drag {
+.titlebar-no-drag,
+/* Controls inside a drag region (page titles teleported into the top bar) stay clickable */
+.titlebar-drag :is(button, a, input, select, textarea, [role='button'], [role='switch']) {
   -webkit-app-region: no-drag;
 }
 
@@ -374,27 +393,16 @@
 /* Icon chrome: no sticky mouse focus ring / border on the glyph */
 .aui-icon-button {
   -webkit-app-region: no-drag;
-  outline: none !important;
-  --tw-ring-offset-shadow: 0 0 #0000;
-  --tw-ring-shadow: 0 0 #0000;
-  --tw-ring-offset-width: 0px;
-  --tw-ring-color: transparent;
 }
 
-.aui-icon-button:focus,
-.aui-icon-button:focus-visible,
-.aui-icon-button:active {
-  outline: none !important;
-  box-shadow: none !important;
-  --tw-ring-offset-shadow: 0 0 #0000 !important;
-  --tw-ring-shadow: 0 0 #0000 !important;
-  --tw-ring-offset-width: 0px !important;
-  --tw-ring-color: transparent !important;
+/* Mouse clicks leave no ring; keyboard focus always shows one. */
+.aui-icon-button:focus:not(:focus-visible) {
+  outline: none;
 }
 
-/* Keyboard users still get a soft ring only via :focus-visible when we opt in */
 .aui-icon-button:focus-visible {
-  outline: none !important;
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 
 .aui-icon-button svg,

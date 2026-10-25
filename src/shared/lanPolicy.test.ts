@@ -46,7 +46,6 @@ describe('LAN endpoint policy', () => {
     expectClass('generation', [
       ['GET', '/api/models'],
       ['GET', '/api/remote/status'],
-      ['POST', '/api/generate'],
       ['POST', '/api/generate-cli'],
       ['POST', '/api/inpaint'],
       ['POST', '/api/generate-video'],
@@ -76,7 +75,6 @@ describe('LAN endpoint policy', () => {
     expectClass('control', [
       ['DELETE', '/api/media/media_01'],
       ['GET', '/api/status'],
-      ['POST', '/api/start'],
       ['POST', '/api/stop'],
       ['GET', '/api/logs'],
       ['GET', '/api/logs/stream'],
@@ -187,9 +185,9 @@ describe('LAN endpoint policy', () => {
     assert.equal(allowedAt('generation', 'GET', '/api/gallery'), false)
     assert.equal(allowedAt('gallery', 'GET', '/api/models'), true)
     assert.equal(allowedAt('gallery', 'GET', '/api/gallery'), true)
-    assert.equal(allowedAt('gallery', 'POST', '/api/start'), false)
+    assert.equal(allowedAt('gallery', 'POST', '/api/stop'), false)
     assert.equal(allowedAt('control', 'GET', '/api/gallery'), true)
-    assert.equal(allowedAt('control', 'POST', '/api/start'), true)
+    assert.equal(allowedAt('control', 'POST', '/api/stop'), true)
     assert.equal(allowedAt('control', 'GET', '/api/backend/config'), false)
   })
 
@@ -215,11 +213,87 @@ describe('LAN endpoint policy', () => {
     assert.deepEqual(
       evaluateLanRequest({
         method: 'POST',
-        path: '/api/start',
+        path: '/api/stop',
         paired: true,
         accessLevel: 'gallery'
       }),
       { allowed: false, endpointClass: 'control', reason: 'insufficient-access' }
+    )
+  })
+})
+
+describe('team library endpoints', () => {
+  it('keeps persistent workflow image imports desktop-only', () => {
+    for (const accessLevel of ['generation', 'gallery', 'control'] as const) {
+      assert.equal(
+        isLanRequestAllowed({
+          paired: true,
+          accessLevel,
+          method: 'POST',
+          path: '/api/workflows/images'
+        }),
+        false
+      )
+    }
+  })
+  it('lets generation devices create in sessions but not edit the library', () => {
+    const base = { paired: true, accessLevel: 'generation' as const }
+    const allowed = (method: string, path: string): boolean =>
+      isLanRequestAllowed({ ...base, method, path })
+    assert.equal(allowed('GET', '/api/library'), true)
+    assert.equal(allowed('POST', '/api/workflows/run'), true)
+    assert.equal(allowed('POST', '/api/auth/profile'), true)
+    assert.equal(allowed('POST', '/api/uploads'), true)
+    assert.equal(allowed('GET', '/api/sessions'), true)
+    assert.equal(allowed('GET', '/api/sessions/ses-abc'), true)
+    assert.equal(allowed('POST', '/api/sessions/ses-abc/rows'), true)
+    assert.equal(allowed('DELETE', '/api/sessions/ses-abc/rows/row-1'), true)
+    assert.equal(allowed('DELETE', '/api/sessions/ses-abc'), false)
+    assert.equal(allowed('GET', '/api/sessions/ses-abc/rows/../x'), false)
+    assert.equal(allowed('POST', '/api/library/save'), false)
+  })
+
+  it('lets gallery devices delete sessions and control devices edit', () => {
+    const gallery = { paired: true, accessLevel: 'gallery' as const }
+    assert.equal(
+      isLanRequestAllowed({ ...gallery, method: 'DELETE', path: '/api/sessions/ses-abc' }),
+      true
+    )
+    assert.equal(
+      isLanRequestAllowed({ ...gallery, method: 'POST', path: '/api/library/delete' }),
+      false
+    )
+    const control = { paired: true, accessLevel: 'control' as const }
+    assert.equal(
+      isLanRequestAllowed({ ...control, method: 'POST', path: '/api/library/save' }),
+      true
+    )
+  })
+
+  it('keeps library settings and device listing desktop-only', () => {
+    const control = { paired: true, accessLevel: 'control' as const }
+    assert.equal(
+      isLanRequestAllowed({ ...control, method: 'POST', path: '/api/library/settings' }),
+      false
+    )
+    assert.equal(
+      isLanRequestAllowed({ ...control, method: 'GET', path: '/api/backend/devices' }),
+      false
+    )
+  })
+})
+
+describe('model library endpoints', () => {
+  it('lets paired devices read model files but keeps the HF token desktop-only', () => {
+    const base = { paired: true, accessLevel: 'control' as const }
+    assert.equal(isLanRequestAllowed({ ...base, method: 'GET', path: '/api/models/files' }), true)
+    assert.equal(
+      isLanRequestAllowed({ ...base, method: 'GET', path: '/api/models/hf-token' }),
+      false
+    )
+    assert.equal(
+      isLanRequestAllowed({ ...base, method: 'POST', path: '/api/models/hf-token' }),
+      false
     )
   })
 })

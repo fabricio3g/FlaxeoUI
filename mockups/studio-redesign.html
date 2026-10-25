@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flaxeo Image - Studio redesign mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*:has(>.pin){position:relative}
+:root{--bg:#fff;--fg:#000;--card:#fafafa;--mut:#f5f5f5;--mfg:#525252;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.2);--hov:rgba(0,0,0,.04);--hov2:rgba(0,0,0,.08);
+--ok:oklch(.48 .12 150);--okbg:oklch(.95 .045 150);--wn:oklch(.46 .11 70);--wnbg:oklch(.96 .05 85);--dg:oklch(.5 .22 27);--dgbg:oklch(.96 .03 25);
+--sh:0 8px 30px rgba(0,0,0,.14);--r:16px;--mono:'Geist Mono',ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--card:#0a0a0a;--mut:#111;--mfg:#b3b3b3;--bd:rgba(255,255,255,.1);--bd2:rgba(255,255,255,.26);--hov:rgba(255,255,255,.06);--hov2:rgba(255,255,255,.12);
+--ok:oklch(.78 .13 155);--okbg:oklch(.27 .05 150);--wn:oklch(.82 .12 85);--wnbg:oklch(.28 .05 80);--dg:oklch(.75 .17 22);--dgbg:oklch(.28 .07 25);--sh:0 8px 30px rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--card:#0a0a0a;--mut:#111;--mfg:#b3b3b3;--bd:rgba(255,255,255,.1);--bd2:rgba(255,255,255,.26);--hov:rgba(255,255,255,.06);--hov2:rgba(255,255,255,.12);
+--ok:oklch(.78 .13 155);--okbg:oklch(.27 .05 150);--wn:oklch(.82 .12 85);--wnbg:oklch(.28 .05 80);--dg:oklch(.75 .17 22);--dgbg:oklch(.28 .07 25);--sh:0 8px 30px rgba(0,0,0,.7)}
+*{box-sizing:border-box;margin:0}[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg);font:13px/1.45 'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.sm{width:14px;height:14px}.ic.lg{width:20px;height:20px}
+kbd{font:500 11px var(--mono);border:1px solid var(--bd2);border-radius:6px;padding:0 5px;color:var(--mfg);background:var(--bg)}
+.mono{font-family:var(--mono)}.mut{color:var(--mfg)}.sm{font-size:12px}.b{font-weight:600}
+/* mockup chrome */
+.chrome{position:sticky;top:0;z-index:100;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;background:var(--mut);border-bottom:1px solid var(--bd2)}
+.chrome .cb{height:28px;padding:0 11px;border-radius:99px;border:1px solid var(--bd);background:var(--bg);font-size:12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chrome .cb:hover{background:var(--hov2)}.chrome .cb.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chrome .sep{width:1px;height:20px;background:var(--bd2);margin:0 4px}.chrome .sw{display:flex;gap:4px;flex-wrap:wrap}
+.stage{padding:14px;display:flex;justify-content:center;position:relative}
+.frame{width:min(1440px,100%);height:min(900px,calc(100vh - 110px));min-height:660px;border:1px solid var(--bd2);border-radius:14px;overflow:hidden;background:var(--bg);position:relative;transform:translateZ(0)}
+.frame.mobile{width:390px;height:min(812px,calc(100vh - 110px));min-height:720px;border-radius:34px;border:8px solid var(--fg)}
+#app{height:100%;display:flex;flex-direction:column;position:relative}
+.note{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:200;width:min(520px,calc(100vw - 24px));background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;gap:10px;box-shadow:var(--sh)}
+.note b{flex:none;width:22px;height:22px;border-radius:99px;background:#2563eb;color:#fff;display:grid;place-items:center;font-size:12px}
+.note p{flex:1;font-size:13px}.note button{color:var(--bg);text-decoration:underline;font-size:12px}
+.pin{display:none;position:absolute;top:6px;right:6px;z-index:60;width:22px;height:22px;border-radius:99px;background:#2563eb;color:#fff;font:600 11px var(--mono);place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;padding:0;text-align:center}
+.pin.l{right:auto;left:6px}.pin.b{top:auto;bottom:6px}
+body.notes .pin{display:grid}.pin.on{background:#e11d48;transform:scale(1.15)}
+/* shell */
+.tb{height:44px;flex:none;display:flex;align-items:center;gap:12px;padding:0 10px 0 14px;border-bottom:1px solid var(--bd);background:var(--bg);position:relative;z-index:50}
+.tb-l,.tb-r{display:flex;align-items:center;gap:10px;flex:1}.tb-r{justify-content:flex-end;gap:2px}
+.logo{width:22px;height:22px;border-radius:7px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-weight:600;font-size:12px}
+.status{height:28px;padding:0 11px;border-radius:99px;border:1px solid var(--bd);display:inline-flex;align-items:center;gap:7px;font-size:12px}
+.status:hover{background:var(--hov)}.dot{width:7px;height:7px;border-radius:9px;background:var(--ok);display:inline-block}.dot.off{background:var(--wn)}
+.cmdk{width:min(380px,36vw);height:30px;border-radius:99px;border:1px solid var(--bd2);background:var(--card);display:flex;align-items:center;gap:8px;padding:0 6px 0 12px;color:var(--mfg);font-size:12px}
+.cmdk span{flex:1}.cmdk:hover{background:var(--hov)}
+.ibtn{width:32px;height:32px;border-radius:99px;display:grid;place-items:center}.ibtn:hover{background:var(--hov2)}
+.wc{display:flex;margin-left:6px}.wc span{width:40px;height:44px;display:grid;place-items:center;color:var(--mfg)}
+.body{flex:1;display:flex;min-height:0}
+.side{width:224px;flex:none;border-right:1px solid var(--bd);display:flex;flex-direction:column;padding:10px;gap:1px;overflow-y:auto}
+.gl{font-size:11px;font-weight:500;color:var(--mfg);padding:12px 10px 4px;letter-spacing:.04em;text-transform:uppercase}
+.nav{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border-radius:10px;width:100%;font-size:13px}
+.nav:hover{background:var(--hov)}.nav.on{background:var(--hov2);font-weight:600}
+.tile{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;color:#fff;flex:none}.tile .ic{width:13px;height:13px;stroke-width:1.75}
+.t-image{background:linear-gradient(135deg,#38bdf8,#2563eb)}.t-edit{background:linear-gradient(135deg,#e879f9,#db2777)}.t-video{background:linear-gradient(135deg,#f59e0b,#ea580c)}
+.t-recipes{background:linear-gradient(135deg,#a78bfa,#4f46e5)}.t-gallery{background:linear-gradient(135deg,#94a3b8,#475569)}.t-boards{background:linear-gradient(135deg,#fb7185,#dc2626)}
+.t-kits{background:linear-gradient(135deg,#facc15,#d97706)}.t-models{background:linear-gradient(135deg,#a1a1aa,#52525b)}.t-game{background:linear-gradient(135deg,#34d399,#0d9488)}
+.nav .ic.plain{width:18px;margin:0 2px}
+.grow{flex:1}
+.dock{margin-top:8px;border:1px solid var(--bd2);background:var(--card);border-radius:14px;padding:9px 11px;width:100%;display:block}
+.dock:hover{background:var(--hov)}.dock .t{display:flex;gap:8px;align-items:center;font-size:12px;font-weight:500}
+.bar{height:5px;border-radius:9px;background:var(--hov2);overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;background:var(--fg);border-radius:9px;transition:width .6s linear}
+.spin{width:12px;height:12px;border-radius:9px;border:2px solid var(--bd2);border-top-color:var(--fg);animation:sp 1s linear infinite;flex:none}@keyframes sp{to{transform:rotate(360deg)}}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.page{flex:1;overflow:auto;padding:24px 28px 48px}.wrap{max-width:1180px;margin:0 auto}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.ph h1{font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.3}.ph p{color:var(--mfg);margin-top:2px;font-size:13px}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.h2{font-size:14px;font-weight:600;margin:28px 0 12px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r)}
+.pad{padding:16px}
+.btn{height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg);display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;white-space:nowrap;justify-content:center}
+.btn:hover{background:var(--hov2)}.btn.pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}.btn.pri:hover{opacity:.85}
+.btn.lg{height:40px;padding:0 20px}.btn.xs{height:26px;padding:0 10px;font-size:12px}
+.btn.ghost{border-color:transparent;background:transparent}.btn.ghost:hover{background:var(--hov2)}
+.btn.dng{color:var(--dg);border-color:color-mix(in srgb,var(--dg) 45%,transparent)}.btn.dng:hover{background:var(--dgbg)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn kbd{color:inherit;opacity:.85;border-color:currentColor;background:transparent}
+.chip{height:28px;padding:0 11px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg);display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;flex:none}
+.chip:hover{background:var(--hov2)}.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.chip .mut{font-size:12px}.chip.on .mut{color:inherit;opacity:.8}
+.chip .x{opacity:.7}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:99px;padding:2px;background:var(--bg);flex:none}
+.seg button{height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:var(--mfg);white-space:nowrap}
+.seg button:hover{color:var(--fg)}.seg button.on{background:var(--fg);color:var(--bg)}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:500;background:var(--hov2);white-space:nowrap}
+.badge.ok{background:var(--okbg);color:var(--ok)}.badge.wn{background:var(--wnbg);color:var(--wn)}.badge.dg{background:var(--dgbg);color:var(--dg)}.badge.pri{background:var(--fg);color:var(--bg)}
+[data-tip]{position:relative}[data-tip]:hover::after,[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);z-index:70;width:220px;white-space:normal;background:var(--fg);color:var(--bg);padding:8px 10px;border-radius:10px;font-size:12px;font-weight:400;line-height:1.4}
+.in{height:34px;border:1px solid var(--bd2);border-radius:99px;background:var(--bg);padding:0 12px;min-width:0;width:100%}
+select.in{appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+textarea.in{height:auto;border-radius:14px;padding:10px 12px;resize:none}
+.sf{position:relative;display:flex;align-items:center}.sf .ic{position:absolute;left:12px;color:var(--mfg)}.sf .in{padding-left:34px}
+.rng{width:100%;accent-color:var(--fg);height:18px;margin:2px 0 8px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
+.lbl{font-size:12px;font-weight:500}
+.sw2{width:36px;height:20px;border-radius:99px;background:var(--bd2);position:relative;flex:none;transition:.15s}.sw2::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:9px;background:var(--bg);transition:.15s}
+.sw2.on{background:var(--fg)}.sw2.on::after{left:18px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.g3{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.g2{grid-template-columns:repeat(auto-fill,minmax(420px,1fr))}
+.art{position:relative;overflow:hidden;width:100%;height:100%;background:radial-gradient(circle at var(--s),var(--c) 0 7%,transparent 7.5%),linear-gradient(165deg,var(--a),var(--b))}
+.art::after{content:"";position:absolute;inset:auto 0 0;height:46%;background:linear-gradient(180deg,color-mix(in srgb,var(--b) 75%,#000),rgba(0,0,0,.7));clip-path:polygon(0 100%,0 55%,22% 22%,40% 52%,62% 12%,82% 48%,100% 30%,100% 100%)}
+.art::before{content:"";position:absolute;left:46%;bottom:20%;width:15%;height:13%;background:var(--c);z-index:1;clip-path:polygon(0 100%,0 42%,50% 0,100% 42%,100% 100%)}
+.ar{aspect-ratio:1;overflow:hidden;border-radius:12px;position:relative}
+.pop{position:absolute;z-index:40;bottom:calc(100% + 8px);left:0;min-width:270px;background:var(--bg);border:1px solid var(--bd2);border-radius:16px;box-shadow:var(--sh);padding:8px;max-height:420px;overflow:auto;text-align:left}
+.pop.dn{top:calc(100% + 8px);bottom:auto}.pop.r{left:auto;right:0}
+.pop h4{font-size:11px;font-weight:500;color:var(--mfg);text-transform:uppercase;letter-spacing:.04em;padding:8px 8px 4px}
+.mi{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:10px;width:100%;font-size:13px}.mi:hover{background:var(--hov2)}
+.mi small{display:block;color:var(--mfg);font-size:12px;font-weight:400}.mi.dng{color:var(--dg)}
+.hr{height:1px;background:var(--bd);margin:6px 0}
+.pw{position:relative;display:inline-flex}
+.mono-box{font:12px/1.6 var(--mono);background:var(--mut);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;color:var(--fg);overflow:auto}
+.libtabs{display:none;margin-bottom:14px}
+/* studio */
+.studio{flex:1;display:flex;min-height:0;position:relative}
+.scol{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.sscroll{flex:1;min-height:0;display:flex;flex-direction:column}
+.stop{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bd);flex:none}
+.stop .t{font-size:13px;color:var(--mfg);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.canvas{flex:1;min-height:150px;container-type:size;display:flex;align-items:center;justify-content:center;padding:14px;position:relative;background:var(--card)}
+.cimg{width:calc(100cqmin);height:calc(100cqmin);border-radius:12px;overflow:hidden;position:relative;box-shadow:0 0 0 1px var(--bd);flex:none}
+.cimg.w{width:min(100cqw,calc(100cqh*1.7778));height:auto;aspect-ratio:16/9}
+.ov{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(0,0,0,.72);color:#fff;border-radius:99px;padding:5px 11px;font-size:12px;display:flex;gap:8px;align-items:center}
+.abar{display:flex;gap:6px;justify-content:center;padding:10px 12px;flex-wrap:wrap;flex:none;border-top:1px solid var(--bd)}
+.film{display:flex;gap:8px;padding:8px 16px;overflow-x:auto;flex:none;border-top:1px solid var(--bd);align-items:center}
+.th{width:44px;height:44px;border-radius:9px;overflow:hidden;flex:none;border:2px solid transparent;padding:0}.th.on{border-color:var(--fg)}
+.comp{margin:0 16px 14px;padding:12px 12px 10px;border-radius:24px;flex:none;background:var(--card);border:1px solid var(--bd2)}
+.prompt{width:100%;border:0;background:transparent;resize:none;outline:0;font-size:14px;line-height:1.5;min-height:42px;padding:2px 4px}
+.prompt.neg{border-top:1px dashed var(--bd2);margin-top:4px;padding-top:8px;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.cact{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-left:auto}
+.prog{position:relative;overflow:hidden;min-width:190px;cursor:default}.prog i{position:absolute;inset:0 auto 0 0;background:rgba(128,128,128,.4);transition:width .6s linear}.prog span{position:relative;display:flex;gap:8px;align-items:center}
+.insp{width:292px;flex:none;border-left:1px solid var(--bd);overflow:auto;padding:14px;background:var(--bg)}
+.insp h3{font-size:13px;font-weight:600;margin-bottom:8px}.insp .sec{margin-bottom:16px}
+.insp .sheethd{display:none}
+details.dis>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;height:34px;padding:0 12px;border:1px solid var(--bd2);border-radius:99px;font-weight:500;font-size:13px}
+details.dis>summary::-webkit-details-marker{display:none}details.dis[open]>summary .ic{transform:rotate(180deg)}details.dis>div{padding:12px 2px 0}
+.lora{border:1px solid var(--bd);border-radius:12px;padding:8px 10px;margin-bottom:8px;background:var(--card)}
+.ftool{position:absolute;top:22px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bd2);border-radius:99px;padding:4px;box-shadow:var(--sh);max-width:calc(100% - 20px)}
+.ftool .btn{height:28px;padding:0 10px;font-size:12px;border:0}.ftool .btn.on{background:var(--fg);color:var(--bg)}.ftool .v{width:1px;height:18px;background:var(--bd2);margin:0 4px}
+.drop{border:1.5px dashed var(--bd2);border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;width:min(560px,100%);height:min(100%,320px);background:var(--bg)}
+.slot{width:112px;border-radius:14px;border:1px solid var(--bd2);background:var(--bg);overflow:hidden}.slot .ar{border-radius:0;aspect-ratio:16/10}.slot.empty{border-style:dashed;text-align:center;padding:12px 6px;color:var(--mfg)}
+/* gallery */
+.gal{flex:1;display:flex;min-height:0;position:relative}
+.gcol{flex:1;min-width:0;display:flex;flex-direction:column}
+.gtool{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cell,170px),1fr));gap:10px}
+.gi{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;display:block;border:2px solid transparent;padding:0}
+.gi:hover,.gi:focus-visible{border-color:var(--fg)}.gi.sel{border-color:#2563eb}
+.gi .go{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 40%,rgba(0,0,0,.6));opacity:0;transition:.12s;color:#fff;z-index:2;padding:8px;display:flex;flex-direction:column;justify-content:space-between;font-size:11px}
+.gi:hover .go,.gi:focus-visible .go,.selmode .gi .go{opacity:1}
+.gi .ck{width:20px;height:20px;border-radius:7px;border:1.5px solid #fff;background:rgba(0,0,0,.35);display:grid;place-items:center}.gi.sel .ck{background:#2563eb;border-color:#2563eb}
+.gi .ck .ic{width:13px;height:13px;stroke-width:2.5;opacity:0}.gi.sel .ck .ic{opacity:1}
+.gi .vd{position:absolute;right:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.7);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.gd{font-size:12px;font-weight:500;color:var(--mfg);margin:18px 0 8px;position:sticky;top:-24px;background:var(--bg);padding:4px 0;z-index:2}
+.drawer{width:356px;flex:none;border-left:1px solid var(--bd);overflow:auto;padding:16px;background:var(--bg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px}.kv dt{color:var(--mfg)}.kv dd{margin:0;font-family:var(--mono);font-size:12px;word-break:break-all}
+.bulk{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:20;background:var(--fg);color:var(--bg);border-radius:99px;padding:6px 8px 6px 16px;display:flex;gap:6px;align-items:center;box-shadow:var(--sh);max-width:calc(100% - 16px);flex-wrap:wrap;justify-content:center}
+.bulk .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 40%,transparent);height:30px}.bulk .btn:hover{background:rgba(128,128,128,.35)}.bulk .btn.dng{color:#fca5a5}
+.danger{margin-top:20px;border:1px solid color-mix(in srgb,var(--dg) 35%,transparent);background:var(--dgbg);border-radius:14px;padding:12px}
+.lrow{display:flex;align-items:center;gap:12px;padding:6px;border-radius:12px;width:100%}.lrow:hover{background:var(--hov)}.lrow .ar{width:44px;flex:none;border-radius:8px}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:70px 20px;border:1.5px dashed var(--bd2);border-radius:20px}
+/* lists */
+.cardlink{display:block;width:100%;overflow:hidden;transition:.12s}.cardlink:hover{border-color:var(--bd2);background:var(--hov)}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;gap:2px;aspect-ratio:2/1;overflow:hidden}.mosaic>*{aspect-ratio:auto;min-height:0;overflow:hidden;height:100%}
+.cbody{padding:14px}.cbody h3{font-size:14px;font-weight:600;margin-bottom:2px}
+.cols{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px;align-items:start;overflow-x:auto}
+.col{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:10px;min-width:220px}
+.col h3{font-size:13px;font-weight:600;display:flex;justify-content:space-between;padding:2px 4px 10px}
+.rc{background:var(--bg);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:10px}.rc .ar{border-radius:0}.rc .cbody{padding:10px}
+.rbtn{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.split{display:flex;gap:20px;align-items:flex-start}.split>.l{width:280px;flex:none}.split>.r{flex:1;min-width:0}
+.li{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:12px}.li:hover{background:var(--hov)}.li.on{background:var(--hov2)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:18px;overflow-x:auto}
+.tabs button{padding:8px 14px;font-weight:500;color:var(--mfg);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}.tabs button.on{color:var(--fg);border-color:var(--fg)}
+.mrow{display:grid;grid-template-columns:2fr 90px 90px 90px 140px;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bd)}.mrow:last-child{border:0}
+.step{display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bd);border-radius:14px;background:var(--bg);margin-bottom:8px;width:100%}
+.step.on{border-color:var(--fg)}.step .n{width:24px;height:24px;border-radius:99px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.step .th2{width:52px;height:40px;border-radius:8px;overflow:hidden;flex:none}
+.banner{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--ok) 40%,transparent);background:var(--okbg);margin-bottom:16px}
+.acc{margin-bottom:10px;overflow:hidden}.acc>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-weight:600;font-size:13px}.acc>summary::-webkit-details-marker{display:none}.acc[open]>summary .ic{transform:rotate(180deg)}.acc>div{padding:0 16px 16px}
+.swc{width:30px;height:30px;border-radius:9px;border:1px solid var(--bd2)}
+.fgrid{display:grid;grid-template-columns:200px 1fr;gap:12px 20px;align-items:center;padding:14px 0;border-bottom:1px solid var(--bd)}.fgrid:last-child{border:0}
+.art-h{font-size:20px}.prose h2{font-size:18px;font-weight:600;margin-bottom:6px}.prose h3{font-size:14px;margin:18px 0 6px}.prose p,.prose li{font-size:14px;line-height:1.65;margin-bottom:6px}.prose ol{padding-left:20px}
+.hero{padding:16px}.hero .prompt{font-size:16px;min-height:72px}
+.jb{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--bd);border-radius:14px;background:var(--bg);margin-bottom:8px}
+.jb[draggable=true]{cursor:grab}.jb.drag{opacity:.4}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:70}
+.actp{position:absolute;top:0;right:0;bottom:0;width:min(400px,100%);background:var(--bg);border-left:1px solid var(--bd2);z-index:80;display:flex;flex-direction:column;box-shadow:var(--sh)}
+.actp .hd{padding:16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}.actp .bd{flex:1;overflow:auto;padding:16px}
+.pal{position:absolute;z-index:90;left:50%;top:60px;transform:translateX(-50%);width:min(520px,calc(100% - 20px));background:var(--bg);border:1px solid var(--bd2);border-radius:18px;box-shadow:var(--sh);padding:10px}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:90;background:var(--bg);border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh);padding:12px 12px 20px}
+.mnav{height:60px;flex:none;border-top:1px solid var(--bd);display:flex;background:var(--bg)}
+.mnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--mfg);font-weight:500}.mnav button.on{color:var(--fg);font-weight:600}.mnav .ic{width:20px;height:20px}
+/* mobile */
+.mobile .side,.mobile .wc,.mobile .tb-l .nm,.mobile .cmdk span,.mobile .cmdk kbd,.mobile .status .tx{display:none}
+.mobile .tb{padding:0 8px 0 12px;gap:6px}.mobile .cmdk{width:34px;height:34px;padding:0;justify-content:center;flex:none;border-radius:99px}
+.mobile .tb-l{flex:1}.mobile .page{padding:14px}.mobile .libtabs{display:flex;overflow-x:auto;max-width:100%}
+.mobile .ph{margin-bottom:14px}.mobile .acts{width:100%}
+.mobile .g4,.mobile .g3,.mobile .g2{grid-template-columns:1fr}.mobile .g4.two{grid-template-columns:1fr 1fr}
+.mobile .studio{flex-direction:column}
+.mobile .sscroll{overflow:auto;padding-bottom:230px}
+.mobile .canvas{flex:none;height:300px}
+.mobile .stop{padding:8px 12px}.mobile .stop .t{display:none}.mobile .stop .grow{display:none}
+.mobile .comp{position:absolute;left:0;right:0;bottom:0;margin:0;border-radius:24px 24px 0 0;z-index:30;box-shadow:var(--sh);padding-top:14px}
+.mobile .comp::before{content:"";position:absolute;top:5px;left:50%;width:36px;height:4px;border-radius:9px;background:var(--bd2);transform:translateX(-50%)}
+.mobile .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.mobile .cact{width:100%;margin-top:6px}.mobile .cact .btn{flex:1}.mobile .prog{min-width:0;flex:2}
+.mobile .abar{display:grid;grid-template-columns:repeat(3,1fr)}.mobile .abar .btn{padding:0 6px}
+.mobile .insp{position:absolute;left:0;right:0;bottom:0;top:22%;width:auto;z-index:95;border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh)}
+.mobile .insp .sheethd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mobile .pop{position:fixed;left:8px;right:8px;bottom:8px;top:auto;width:auto;max-height:70%;z-index:100}.mobile .pop.dn,.mobile .pop.r{left:8px;right:8px;top:auto}
+.mobile .drawer{position:absolute;inset:auto 0 0 0;top:18%;width:auto;z-index:60;border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh)}
+.mobile .gg{--cell:140px!important}.mobile .gi .go{opacity:1;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 40%)}.mobile .gi .go .bot{display:none}
+.mobile .split{flex-direction:column}.mobile .split>.l{width:100%}.mobile .mrow{grid-template-columns:1fr auto}.mobile .mrow .hm{display:none}
+.mobile .fgrid{grid-template-columns:1fr}.mobile .cols{grid-template-columns:repeat(4,240px)}
+.mobile .ftool{overflow-x:auto;top:10px}.mobile .bulk{bottom:10px}.mobile .note{bottom:10px}
+.mobile .hide-m{display:none!important}
+.mobile .hero .prompt{font-size:15px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></symbol>
+<symbol id="i-recipes" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M9 6h5a3 3 0 0 1 3 3v6"/></symbol>
+<symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-boards" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v7M12 7v3M16 7v10"/></symbol>
+<symbol id="i-kits" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M12 21c-1.5 0-2-1-2-2 0-2 3-2 3-4 0-1-1-1.5-2-1.5"/></symbol>
+<symbol id="i-models" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+<symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m6 3 14 9-14 9z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r=".6"/><circle cx="16" cy="16" r=".6"/><circle cx="12" cy="12" r=".6"/><circle cx="16" cy="8" r=".6"/><circle cx="8" cy="16" r=".6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+<symbol id="i-brush" viewBox="0 0 24 24"><path d="m9.1 11.9 8-8a2.8 2.8 0 1 1 4 4l-8 8.1M7 15c-1.7 0-3 1.3-3 3 0 1.3-2.5 1.5-2 2 1.1 1.1 2.5 2 4 2 2.200 0 4-1.800 4-4a3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.500 0-3.400l9.600-9.600c1-1 2.500-1 3.400 0l5.600 5.600c1 1 1 2.500 0 3.400L13 21M22 21H7M5 11l9 9"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.300L3 13"/></symbol>
+<symbol id="i-invert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.900M16 3.100a4 4 0 0 1 0 7.800"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+<symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3.300 7 12 12l8.700-5M12 22V12"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.500v-15A2.500 2.500 0 0 1 6.500 2H20v20H6.500a2.500 2.500 0 0 1 0-5H20"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.700 18-8-14a2 2 0 0 0-3.400 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.700-3zM12 9v4M12 17h.01"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.700L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.700L3 16M3 21v-5h5"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></symbol>
+<symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-up2" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-rows" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="7" rx="1"/><rect x="3" y="14" width="18" height="7" rx="1"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3 1.900 5.100L19 10l-5.100 1.900L12 17l-1.900-5.100L5 10l5.100-1.900zM19 3v4M21 5h-4"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+</defs></svg>
+
+<div class="chrome" id="chrome">
+  <b style="margin-right:6px">Flaxeo Image redesign</b>
+  <div class="sw" id="sw"></div>
+  <span class="sep"></span>
+  <button class="cb" id="cbTheme" data-a="theme">Theme</button>
+  <div class="sw"><button class="cb" data-a="dev" data-v="desktop" id="cbD">Desktop</button><button class="cb" data-a="dev" data-v="mobile" id="cbM">Mobile</button></div>
+  <button class="cb" data-a="notes" id="cbN">Show UX notes</button>
+  <button class="cb" data-a="variant" id="cbV" hidden></button>
+</div>
+<div class="stage"><div class="frame" id="frame"><div id="app"></div></div></div>
+<div id="noteBox"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const ic=(n,c='')=>`<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const PROMPTS=['isometric cozy cabin in snowy forest, warm window light','cyberpunk street market at night, neon rain, 35mm','ceramic coffee mug product shot, soft studio light, pastel backdrop','portrait of an elderly fisherman, golden hour, film grain','pixel art tavern interior, warm lanterns','low-poly fox character sprite, game asset','watercolor mountain lake at dawn, soft mist','minimal flat vector logo of a fox'];
+const HUES=[210,25,150,280,340,45,190,100];
+const art=(i,x='')=>{const h=HUES[i%8];return `<div class="art ${x}" style="--a:hsl(${h} 52% 40%);--b:hsl(${(h+45)%360} 58% 13%);--c:hsl(${(h+25)%360} 80% 66%);--s:${55+(i*7)%30}% ${16+(i*5)%16}%"></div>`};
+const MODELS=[['Flux.1 Schnell Q4','6.8 GB'],['Juggernaut XL v9','6.6 GB'],['SD 3.5 Medium Q5','3.4 GB']];
+const VMODELS=[['Wan 2.1 T2V 1.3B Q8','1.5 GB',false],['Wan 2.2 TI2V 5B Q4','3.4 GB',true]];
+const SIZES=[['1:1','1024 x 1024'],['3:4','896 x 1152'],['4:3','1152 x 896'],['16:9','1344 x 768'],['9:16','768 x 1344']];
+const KITS=[['Cozy Winter',true,'Warm light, soft snow, muted palette'],['Pixel Tavern',false,'16-bit pixel art, limited palette'],['Clean Product',false,'Soft studio light, pastel seamless'],['Film Portrait',false,'35mm grain, golden hour, shallow focus']];
+const GUIDES=[['Structure',[['controlnet','ControlNet','Follow the pose, edges or depth of a picture.'],['start','Start from image','Use a picture as the starting point (img2img).']]],['Look and subject',[['reference','Reference image','Borrow subject and composition from a photo.'],['style','Style reference','Match the look and colors of another image.']]],['People',[['identity','Identity','Keep one face consistent across images.'],['photomaker','PhotoMaker','Create new scenes of a person from 1-4 photos.']]]];
+const RECIPES=[['Sprite sheet pack','Generate one character in four poses with matching style.','Game assets',5],['Isometric tile set','Seamless terrain tiles for top-down or isometric maps.','Game assets',4],['Product shot on pastel','Clean packshot from a photo of your product.','Product',4],['Mug mockup variants','Show one design on five mug colors.','Product',3],['Studio portrait polish','Restyle and upscale a portrait photo.','Portrait',4],['Headshot set','Six consistent headshots from one reference.','Portrait',3],['Cabin four seasons','Same scene in spring, summer, autumn and winter.','Mine',3],['Icon pack x8','Matching app icons from one concept.','Game assets',3]];
+const STEPS=[['Generate base character','Image - Flux Schnell - 1024 x 1024'],['Remove background','Edit - Restyle - transparent'],['Pose variants x4','Image - ControlNet pose - 4 images'],['Upscale 2x','Edit - Upscale - 2048 px'],['Export sprite sheet','Save - PNG 4096 x 4096']];
+const NOTES={
+home:['Prompt box really generates: jumps to the studio with your prompt and starts. Fixes audit #7 (prompt only navigated).','Mode segmented replaces Create tiles that duplicated the sidebar. Fixes audit #7.','First-run checklist lists missing models with size and one-click Download. Fixes empty model dropdown (research #10).','Recent outputs are real buttons that open the item. Fixes audit #7 and silent failures (#6).','Recipes row replaces Apps/Workflows/Game assets tiles: one home for ready-made flows. Fixes audit #2.','Titlebar slimmed: status, search, theme. Setup, Downloads, Logs buttons removed. Fixes audit #1.'],
+image:['Mode switch keeps your prompt across Image, Edit and Video: one shell, one composer. Fixes audit #2 and #9.','Result actions are labeled and always visible; Delete sits in the overflow, away from Save. Fixes audit #5.','Preset (Fast, Balanced, Quality) comes before raw sliders. Fixes audit #1; research principle 4.','Guide menu groups six features by purpose with one-line help. Fixes audit #8 (unexplained chips).','Generate shows percent and ETA and always allows Queue another. Fixes audit #8 and research feedback rule.','Inspector is the single home for settings; Advanced is one disclosure. Replaces floating strip and 114-control modal. Fixes #1, #2.','Activity pill in the sidebar shows live job progress from anywhere. Fixes audit #3.'],
+edit:['One Mode segmented (Inpaint, Restyle, Expand) replaces two selectors. Fixes audit #9.','Drop zone with Gallery shortcut gives Edit a real empty state. Fixes audit #6 and #9.','Canvas tools are labeled and floating on the image, not tiny icons. Fixes audit #9.','Same composer and inspector as Image: no re-implemented resolution and sampler. Fixes audit #9.','Remove image is explicit and reversible with Undo; mask edits are never lost silently. Fixes audit #6.'],
+video:['Start and End frame slots are optional and explained. Fixes audit #10.','Duration shows 49 frames at 16 fps = 3.1 s live. Fixes bare inputs, audit #10.','Frames snap to 4n+1 as the model requires, preventing invalid values. Fixes audit #10.','Switch to a model without LoRA support and those controls hide with a note. Fixes irrelevant strip, audit #10.','Motion preset gives a safe default before frame math.'],
+recipes:['One Recipes page merges Workflows, Game assets and Home Apps. Fixes audit #2 and #13.','Category chips replace a separate Game assets destination. Fixes audit #13.','Search finds recipes by name or purpose; "Mine" collects your own.','Cards show step count so you know effort before opening.','Run and Build are separate views, no RUN/BUILD tabs in one screen. Fixes audit #13.'],
+run:['Left form lists only the inputs this recipe needs. Fixes audit #13.','Step preview shows what will happen, with thumbnails, before you run.','Save to explains This device vs Team library in plain words. Fixes audit #13.','Run is the single primary action; Edit recipe is secondary.','Results land beside the steps and can go straight to a board.'],
+builder:['Builder is its own view with a clear back path. Fixes audit #13.','Steps are a reorderable list; Add step offers typed blocks.','Per-step settings use the same names as the studios.','Choose which values become form inputs for people who run it.'],
+gallery:['Search covers prompts, seeds and models. Fixes audit #11 (no search or filter).','Filter chips and sort replace pagination; History merged here. Fixes audit #2 and #11.','Continuous scroll grid with density slider; hover and keyboard focus both reveal actions. Fixes research on load-more.','Select mode adds a bulk bar: Add to board, Download, Delete. Research principle 8.','Detail drawer: labeled primary actions, Delete isolated in a danger zone. Fixes audit #5 (9 icon buttons).','Empty state links straight to Create. Fixes audit #11.'],
+boards:['Badge plus tooltip explains Shared vs This device. Fixes audit #12.','Cover mosaics make boards recognizable at a glance.','New board button sits in the header, consistent with other pages. Fixes audit #4.','Library tabs on mobile make Boards and Style kits reachable. Fixes audit (mobile nav).'],
+board:['Review columns map to the real approval flow.','Review buttons are labeled text, not icons. Fixes audit #5 and #12.','Add from Gallery lives inside the board. Fixes audit #12.','Comment count shows discussion without opening each item.'],
+kits:['Active banner states the global effect: applied to every generation. Fixes audit #14.','Live preview tile shows the kit applied to a sample prompt.','Collapsible sections replace one long repeat-row form. Fixes audit #14.','Kit list stays visible while editing; Style kit chip in the composer picks the same kits.'],
+models:['Models merges Hub, Installed and Convert; Quantize leaves main nav. Fixes audit #15.','Cards show size, VRAM need and a GPU recommendation. Research: avoid downloads without size.','Downloads live here with progress, speed, ETA, pause and resume. Fixes duplicate titlebar Downloads.','File location is shown and openable; users know where files go. Research principle 10.'],
+settings:['Settings is a real page, not a modal; sections deep-linkable. Fixes audit #1 and #16.','Search settings finds options across sections. Research: searchable grouped settings.','Plain-language labels with helper text under each field.','Changes apply live; restart banner appears only when needed.'],
+help:['Searchable docs with topics on the left. Fixes audit #16.','Contextual "?" icons across the app deep-link into these articles. Fixes audit #16.','Articles use numbered steps and short paragraphs.'],
+activity:['Queue and History merged into one Activity panel. Fixes audit #3.','Cancel current and Clear queue are always visible, never hover-only. Research: avoid hover-only cancel.','Each job shows status: queued, running, done, failed with the reason.','Drag to reorder or use Run next; research: add-to-front.']
+};
+const S={screen:'image',dev:'desktop',notes:false,note:null,menu:null,act:false,pal:false,
+prompt:PROMPTS[0],hp:'',neg:false,insp:true,adv:false,preset:'Balanced',size:0,vsize:3,count:4,kit:0,model:0,vm:0,guides:['reference'],
+steps:28,cfg:4.5,seed:482913077,lock:false,hmode:'image',variant:{home:'setup',gallery:'full',edit:'loaded'},
+setup:{vae:['missing',0],video:['missing',0]},srv:true,cli:false,emode:'Inpaint',tool:'Brush',brush:42,frames:49,fps:16,motion:'Gentle',
+cat:'All',q:'',recipe:0,ran:false,bstep:1,saveTo:'device',sel:null,selmode:false,selected:[],gview:'grid',dens:170,gf:{Images:true,Videos:false,Favorites:false},gq:'',
+board:0,cards:[[0,'review',3],[1,'review',0],[2,'approved',5],[3,'changes',2],[4,'review',1],[5,'rejected',0]],kitSel:0,kitOn:[true,false,false,false],
+mtab:'Installed',dlp:{0:false,1:true},sec:'Backend',helpI:0,img:2,pct:62,
+jobs:[{id:1,st:'running',t:PROMPTS[0],m:'Image - 1024 x 1024 - 4 images',n:4,i:0},{id:2,st:'queued',t:PROMPTS[1],m:'Image - 1344 x 768 - 2 images',n:2,i:1},{id:3,st:'queued',t:'Recipe: Sprite sheet pack',m:'Recipe - step 2 of 5',n:1,i:5},{id:4,st:'queued',t:'Pine forest timelapse',m:'Video - 49 frames - 16 fps',n:1,i:6},{id:5,st:'done',t:PROMPTS[2],m:'Done 2 min ago - 4 images',n:4,i:2},{id:6,st:'failed',t:PROMPTS[3],m:'Failed - Out of VRAM at step 3. Try the Fast preset.',n:2,i:3},{id:7,st:'done',t:PROMPTS[4],m:'Done 14 min ago - 2 images',n:2,i:4}],jid:10};
+const running=()=>S.jobs.find(j=>j.st==='running');
+const pin=(n,k=S.screen)=>`<span class="pin" role="button" tabindex="0" data-a="pin" data-v="${k}:${n}" aria-label="UX note ${n}">${n}</span>`;
+const mob=()=>S.dev==='mobile';
+const seg=(items,cur,a,extra='')=>`<div class="seg" role="group">${items.map(x=>{const v=Array.isArray(x)?x[0]:x,l=Array.isArray(x)?x[1]:x;return `<button class="${v===cur?'on':''}" data-a="${a}" data-v="${v}" aria-pressed="${v===cur}">${l}</button>`}).join('')}</div>`;
+const page=(t,s,a,b)=>`<div class="page"><div class="wrap"><header class="ph"><div><h1>${t}</h1><p>${s}</p></div><div class="acts">${a}</div></header>${b}</div></div>`;
+const libtabs=c=>`<nav class="seg libtabs" aria-label="Library">${[['gallery','Gallery'],['boards','Boards'],['kits','Style kits']].map(x=>`<button class="${c===x[0]?'on':''}" data-a="go" data-v="${x[0]}">${x[1]}</button>`).join('')}</nav>`;
+const tile=(t,i)=>`<span class="tile t-${t}">${ic(i)}</span>`;
+
+/* ---------- shell ---------- */
+const NAVMAP={run:'recipes',builder:'recipes',board:'boards'};
+function titlebar(){const m=mob();return `<header class="tb"><div class="tb-l"><span class="logo">F</span><b class="nm">Flaxeo Image</b>
+<div class="pw"><button class="status" data-a="menu" data-v="status" aria-haspopup="true" aria-label="Runtime status"><i class="dot ${S.srv?'':'off'}"></i><span class="tx">${S.cli?'sd-cli':'sd-server'} - ${S.srv?'Ready':'Stopped'}</span></button>${S.menu==='status'?statusPop():''}</div></div>
+<button class="cmdk" data-a="pal" aria-label="Search or run a command">${ic('search')}<span>Search or run a command</span><kbd>Ctrl K</kbd></button>
+<div class="tb-r"><button class="ibtn" data-a="theme" aria-label="Toggle theme">${ic('sun')}</button><div class="wc">${['min','max','x'].map(x=>`<span>${ic(x,'sm')}</span>`).join('')}</div></div></header>`}
+function statusPop(){return `<div class="pop dn" style="width:320px" role="dialog" aria-label="Runtime">
+<h4>Backend mode</h4><div style="padding:0 8px 8px">${seg([['server','Server mode'],['cli','CLI mode']],S.cli?'cli':'server','mode')}<p class="mut sm" style="margin-top:6px">Server keeps the model loaded between jobs (faster). CLI frees VRAM after each job.</p></div>
+<div class="hr"></div><div class="row" style="padding:6px 8px"><span><b>sd-server</b> on :1234<br><span class="mut sm">${S.srv?'Running - 4.1 GB VRAM in use':'Not running'}</span></span><button class="btn ${S.srv?'':'pri'}" data-a="srv">${S.srv?'Stop':'Start'}</button></div>
+<div class="hr"></div><h4>Latest logs</h4><div class="mono-box" style="margin:0 8px 8px;max-height:110px">[12:04:11] model loaded flux1-schnell-q4<br>[12:04:12] sampling 28 steps<br>[12:04:41] image 1/4 done 29.1s<br>[12:04:42] sampling 28 steps</div>
+<button class="mi" data-a="go" data-v="settings">${ic('term')}<span>Open full logs</span></button></div>`}
+function nav(id,t,ic_,sub){const cur=NAVMAP[S.screen]||S.screen;const on=cur===id&&!S.act;return `<button class="nav ${on?'on':''}" data-a="go" data-v="${id}" ${on?'aria-current="page"':''}>${t.length?tile(t,ic_):ic(ic_,'plain')}${sub}</button>`}
+function sidebar(){const j=running();return `<nav class="side" aria-label="Main">
+${nav('home','','home','Home')}
+<div class="gl">Create</div>${nav('image','image','image','Image')}${nav('edit','edit','edit','Edit')}${nav('video','video','video','Video')}
+<div style="height:8px"></div>${nav('recipes','recipes','recipes','Recipes')}
+<div class="gl">Library</div>${nav('gallery','gallery','gallery','Gallery')}${nav('boards','boards','boards','Boards')}${nav('kits','kits','kits','Style kits')}
+<div class="grow"></div>
+${nav('models','models','models','Models')}${nav('help','','help','Help')}${nav('settings','','settings','Settings')}
+<button class="dock" data-a="act" aria-label="Open Activity">${S.screen==='image'?pin(7):''}<div class="t">${j?'<i class="spin"></i>':ic('check','sm')}<span data-pill>${pill()}</span></div><div class="bar"><i data-bar style="width:${j?S.pct:0}%"></i></div></button></nav>`}
+const pill=()=>{const j=running();const q=S.jobs.filter(x=>x.st==='queued').length;return j?`Generating ${S.img}/${j.n} - ${S.pct}% - ~${Math.round((100-S.pct)*.48)}s`:`Idle - ${q} queued`};
+function mnav(){const c=NAVMAP[S.screen]||S.screen;const cur=['image','edit','video'].includes(c)?'create':['gallery','boards','kits'].includes(c)?'library':['models','settings','help'].includes(c)?'more':c;
+return `<nav class="mnav" aria-label="Main">${[['home','home','Home'],['create','image','Create'],['recipes','recipes','Recipes'],['library','gallery','Library'],['more','menu','More']].map(x=>`<button class="${cur===x[0]?'on':''}" data-a="${x[0]==='more'?'menu':'go'}" data-v="${x[0]==='create'?'image':x[0]==='library'?'gallery':x[0]==='more'?'more':x[0]}">${ic(x[1])}${x[2]}</button>`).join('')}</nav>`}
+function moreSheet(){return `<div class="scrim" data-a="menu" data-v=""></div><div class="sheet" role="dialog" aria-label="More"><h4 class="mut sm" style="padding:6px 8px">MORE</h4>${[['models','models','Models','Installed, Discover, Convert'],['settings','settings','Settings','Backend, storage, network'],['help','help','Help','Docs and shortcuts']].map(x=>`<button class="mi" data-a="go" data-v="${x[0]}">${ic(x[1],'lg')}<span class="b">${x[2]}<small>${x[3]}</small></span></button>`).join('')}</div>`}
+
+/* ---------- Home ---------- */
+function home(){const st=S.variant.home==='setup',su=S.setup;
+const row=(k,n,sz,state,id)=>{const s=state?state[0]:'ok';return `<div class="row" style="padding:10px 0;border-top:1px solid var(--bd);gap:12px"><span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="badge ${s==='ok'?'ok':s==='dl'?'':'wn'}" style="width:22px;height:22px;padding:0;justify-content:center">${s==='ok'?ic('check','sm'):s==='dl'?ic('dl','sm'):ic('alert','sm')}</span><span><b>${n}</b><br><span class="mut sm">${sz}</span></span></span>
+${s==='ok'?'<span class="badge ok">Installed</span>':s==='dl'?`<span style="width:130px"><span class="sm mut"><span data-dlp="${id}">${state[1]}</span>%</span><div class="bar"><i data-dlb="${id}" style="width:${state[1]}%"></i></div></span>`:`<button class="btn xs" data-a="dl" data-v="${id}">${ic('dl','sm')}Download</button>`}</div>`};
+const left=1+(su.vae[0]==='ok'?1:0)+(su.video[0]==='ok'?1:0);
+return page('Good evening, Fabricio','Describe an idea, or pick up where you left off.',`<button class="btn" data-a="go" data-v="gallery">${ic('gallery')}Open Gallery</button>`,`
+<section class="card hero">${pin(1)}<textarea class="prompt" data-in="hp" rows="3" aria-label="Prompt" placeholder="Describe what you want to see... e.g. ${esc(PROMPTS[0])}">${esc(S.hp)}</textarea>
+<div class="chips" style="justify-content:space-between;margin-top:10px"><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${pin(2)}${seg([['image','Image'],['edit','Edit'],['video','Video']],S.hmode,'hmode')}<button class="chip" data-a="fill" data-v="0">Try: cozy cabin</button><button class="chip hide-m" data-a="fill" data-v="4">Try: pixel tavern</button></span>
+<button class="btn pri lg" data-a="homegen">${ic('zap')}Generate <kbd class="hide-m">Ctrl+Enter</kbd></button></div></section>
+${st?`<section class="card pad" style="margin-top:16px">${pin(3)}<div class="row"><div><h2 class="b" style="font-size:14px">Get set up</h2><p class="mut">${left} of 3 ready. Files save to <span class="mono">D:\\Flaxeo\\models</span></p></div><button class="btn pri" data-a="dl" data-v="all">${ic('dl')}Download missing (3.7 GB)</button></div>
+<div style="margin-top:8px">${row('i','Image model - Flux.1 Schnell Q4','6.8 GB - installed',null,'img')}${row('v','VAE - ae.safetensors','335 MB - about 1 min',su.vae,'vae')}${row('vd','Video model - Wan 2.2 TI2V 5B Q4','3.4 GB - about 6 min',su.video,'video')}</div></section>`:''}
+<div class="h2">Continue <button class="btn ghost xs" data-a="go" data-v="gallery">View all ${ic('right','sm')}</button></div>
+<div class="grid g4 two" style="position:relative;grid-template-columns:repeat(auto-fill,minmax(${mob()?130:150}px,1fr))">${pin(4)}${[0,1,2,3,4,5].slice(0,mob()?4:6).map(i=>`<button class="ar gi" style="border-radius:14px" data-a="open" data-v="${i}" aria-label="Open image ${i+1}: ${esc(PROMPTS[i])}">${art(i)}<span class="go"><span></span><span class="bot">${esc(PROMPTS[i].slice(0,28))}...</span></span></button>`).join('')}</div>
+<div class="h2" style="position:relative">Popular recipes${pin(5)} <button class="btn ghost xs" data-a="go" data-v="recipes">All recipes ${ic('right','sm')}</button></div>
+<div class="grid g4">${RECIPES.slice(0,4).map((r,i)=>recipeCard(r,i,true)).join('')}</div>`)}
+const recipeCard=(r,i,mini)=>`<button class="card cardlink" data-a="recipe" data-v="${i}"><div class="mosaic">${[i,i+3,i+5,i+1].map(k=>`<div>${art(k)}</div>`).join('')}</div><div class="cbody"><h3>${r[0]}</h3><p class="mut sm" style="min-height:34px">${r[1]}</p><div class="row" style="margin-top:8px"><span class="badge">${r[2]}</span><span class="mut sm">${r[3]} steps</span></div></div></button>`;
+
+/* ---------- Studio shared ---------- */
+function chipMenu(key,label,val,body,cls=''){return `<span class="pw"><button class="chip ${cls}" data-a="menu" data-v="${key}" aria-haspopup="true" aria-expanded="${S.menu===key}">${label}${val?`<b>${val}</b>`:''}${ic('down','sm')}</button>${S.menu===key?`<div class="pop" role="menu">${body}</div>`:''}</span>`}
+function modelMenu(video){const L=video?VMODELS:MODELS,c=video?S.vm:S.model;return chipMenu('model',`${ic('models','sm')}<span class="mut">Model</span>`,esc(L[c][0]),`<h4>Switch model</h4>${L.map((m,i)=>`<button class="mi" data-a="setmodel" data-v="${i}"><svg class="ic sm" style="opacity:${i===c?1:0}"><use href="#i-check"/></svg><span>${m[0]}<small>${m[1]}${video&&m[2]?' - supports LoRA':''}</small></span></button>`).join('')}<div class="hr"></div><button class="mi" data-a="go" data-v="models">${ic('dl','sm')}<span>Get more models<small>Opens Models - Discover</small></span></button>`)}
+function sizeMenu(video){const L=video?[['16:9','832 x 480'],['9:16','480 x 832'],['1:1','640 x 640']]:SIZES;const c=video?S.vsize%3:S.size;const cur=L[c]||L[0];
+return chipMenu('size',`${ic('expand','sm')}<span class="mut">Size</span>`,`${cur[0]} <span class="mut">${cur[1]}</span>`,`<h4>Aspect ratio</h4><div class="chips" style="padding:0 6px 6px">${L.map((s,i)=>`<button class="chip ${i===c?'on':''}" data-a="setsize" data-v="${i}">${s[0]}</button>`).join('')}</div><h4>Custom</h4><div class="row" style="padding:2px 8px 8px"><input class="in" aria-label="Width" value="1024" style="width:90px"> x <input class="in" aria-label="Height" value="1024" style="width:90px"></div><p class="mut sm" style="padding:0 8px 6px">Multiples of 64. Larger sizes need more VRAM.</p>`)}
+function kitMenu(){return chipMenu('kit',`${ic('kits','sm')}<span class="mut">Style</span>`,esc(S.kitOn[S.kit]?KITS[S.kit][0]:'None'),`<h4>Style kits</h4>${KITS.map((k,i)=>`<button class="mi" data-a="setkit" data-v="${i}"><span>${k[0]}<small>${k[2]}</small></span></button>`).join('')}<div class="hr"></div><button class="mi" data-a="go" data-v="kits">${ic('edit','sm')}<span>Manage style kits</span></button>`)}
+function guideMenu(){return `<span class="pw"><button class="chip" data-a="menu" data-v="guide" aria-haspopup="true" aria-expanded="${S.menu==='guide'}">${ic('plus','sm')}Guide</button>${S.menu==='guide'?`<div class="pop" style="width:330px" role="menu">${GUIDES.map(g=>`<h4>${g[0]}</h4>${g[1].map(x=>`<button class="mi" data-a="guide" data-v="${x[0]}">${ic(S.guides.includes(x[0])?'check':'plus','sm')}<span class="b">${x[1]}<small>${x[2]}</small></span></button>`).join('')}`).join('')}</div>`:''}</span>`}
+const GN={controlnet:'ControlNet',start:'Start from image',reference:'Reference image',style:'Style reference',identity:'Identity',photomaker:'PhotoMaker'};
+function composer(mode){const run=!!running();const v=mode==='video';
+const ph={image:'Describe the image you want to create...',edit:'Describe what should appear in the masked area...',video:'Describe the motion and scene...'}[mode];
+return `<div class="comp">${pin(3)}<textarea class="prompt" id="prompt" data-in="prompt" rows="2" aria-label="Prompt" placeholder="${ph}">${esc(S.prompt)}</textarea>
+${S.neg?`<textarea class="prompt neg" rows="1" aria-label="Negative prompt" placeholder="Negative prompt: blurry, low quality, text, watermark">blurry, low quality, text, watermark</textarea>`:''}
+<div class="chips">${modelMenu(v)}${seg(['Fast','Balanced','Quality'],S.preset,'preset')}${sizeMenu(v)}${v?`<button class="chip" data-a="insp">${ic('clock','sm')}<span class="mut">Length</span><b data-dur2>${(S.frames/S.fps).toFixed(1)} s</b></button>`:`<span class="chip" style="padding:0 4px"><span class="mut" style="padding-left:6px">Count</span><button class="ibtn" style="width:22px;height:22px" data-a="count" data-v="-1" aria-label="Fewer">${ic('min','sm')}</button><b style="min-width:12px;text-align:center">${S.count}</b><button class="ibtn" style="width:22px;height:22px" data-a="count" data-v="1" aria-label="More">${ic('plus','sm')}</button></span>`}
+${kitMenu()}${mode==='image'?guideMenu():''}${mode==='image'?S.guides.map(g=>`<button class="chip on" data-a="guide" data-v="${g}" aria-label="Remove ${GN[g]}">${GN[g]}<span class="x">${ic('x','sm')}</span></button>`).join(''):''}
+<button class="chip hide-m" data-a="neg" aria-pressed="${S.neg}">${S.neg?'Hide':'Add'} negative prompt</button></div>
+<div class="chips" style="justify-content:flex-end;margin-top:10px"><div class="cact">${run?`<button class="btn ghost" data-a="cancel">Cancel</button><button class="btn" data-a="queue">${ic('plus','sm')}Queue another</button><div class="btn pri lg prog" role="status"><i data-bar2 style="width:${S.pct}%"></i><span><i class="spin" style="position:static;background:none;inset:auto;display:inline-block;width:12px;height:12px;border-color:rgba(128,128,128,.5);border-top-color:currentColor"></i><span data-pct2>${S.pct}% - ~${Math.round((100-S.pct)*.48)}s</span></span></div>`:`<button class="btn pri lg" data-a="gen">${ic('zap')}${v?'Generate video':'Generate'} <kbd class="hide-m">Ctrl+Enter</kbd></button>`}</div></div></div>`}
+function lora(n,s,d){return `<div class="lora"><div class="row"><b>${n}</b><span class="mono" data-out="${n}">${s}</span></div><input class="rng" type="range" min="0" max="1.5" step=".05" value="${s}" data-in="${n}" aria-label="${n} strength" style="margin:6px 0 0"></div>`}
+function insp(mode){const v=mode==='video',lo=!v||VMODELS[S.vm][2];
+const sl=(k,l,min,max,step,val)=>`<div class="row"><span class="lbl">${l}</span><output class="mono" data-out="${k}">${val}</output></div><input class="rng" type="range" data-in="${k}" min="${min}" max="${max}" step="${step}" value="${val}" aria-label="${l}">`;
+return `<aside class="insp" aria-label="Inspector">${pin(6)}<div class="sheethd"><b>Settings</b><button class="btn xs" data-a="insp">Done</button></div>
+<div class="sec"><h3>Basic ${mode==='edit'?'<span class="badge">Edit</span>':''}</h3>${sl('steps','Steps',1,60,1,S.steps)}${sl('cfg','Guidance (CFG)',1,15,.5,S.cfg)}${mode==='edit'?sl('str','Edit strength',0,1,.05,.75)+sl('blur','Mask blur',0,32,1,8):''}${v?sl('flex','Motion strength',0,1,.05,.6):''}
+<div class="row"><span class="lbl">Seed</span><span class="mut sm">${S.lock?'Locked: same result each run':'Random each run'}</span></div><div class="row" style="margin:6px 0 4px"><input class="in mono" value="${S.seed}" aria-label="Seed"><button class="btn xs" data-a="lock" aria-pressed="${S.lock}" title="Lock seed">${ic('lock','sm')}${S.lock?'Locked':'Lock'}</button><button class="btn xs" data-a="dice" title="Randomize seed">${ic('dice','sm')}</button></div>
+<p class="mut sm">Preset: ${S.preset}. Edit values to override; <button style="text-decoration:underline" data-a="preset" data-v="Balanced">reset</button>.</p></div>
+<details class="dis" data-k="adv" ${S.adv?'open':''}><summary>Advanced ${ic('down','sm')}</summary><div>
+<div class="lbl" style="margin-bottom:4px">Sampler</div><select class="in" aria-label="Sampler"><option>euler_a</option><option>dpm++2m</option><option>heun</option></select>
+<div class="lbl" style="margin:10px 0 4px">Scheduler</div><select class="in" aria-label="Scheduler"><option>karras</option><option>simple</option><option>discrete</option></select>
+<div class="row" style="margin:12px 0"><span class="lbl">CLIP skip</span><span class="seg">${[1,2,3].map(n=>`<button class="${n===2?'on':''}">${n}</button>`).join('')}</span></div>
+<div class="row" style="margin-bottom:12px"><span><span class="lbl">VAE tiling</span><br><span class="mut sm">Saves VRAM on large sizes</span></span><button class="sw2 on" role="switch" aria-checked="true" aria-label="VAE tiling" data-a="sw"></button></div>
+${lo?`<div class="lbl" style="margin-bottom:6px">LoRAs</div>${lora('pixel-art-v2',.8)}${lora('soft-light',.4)}<button class="btn xs" style="margin-bottom:12px">${ic('plus','sm')}Add LoRA</button><div class="lbl" style="margin-bottom:6px">Embeddings</div><div class="chips" style="margin:0"><span class="chip">easynegative${ic('x','sm')}</span><button class="chip">${ic('plus','sm')}Add</button></div>`:`<div class="card pad sm mut" style="border-style:dashed">${ic('info','sm')} LoRA and embeddings are hidden: ${VMODELS[S.vm][0]} does not support them.</div>`}
+</div></details></aside>`}
+function studioTop(mode,title){return `<div class="stop">${pin(1)}${seg([['image','Image'],['edit','Edit'],['video','Video']],mode,'go')}<span class="t">${esc(title)}</span><span class="grow"></span><button class="btn ${S.insp?'on':''}" data-a="insp" aria-pressed="${S.insp}">${ic('sliders')}<span>${mob()?'Settings':'Inspector'}</span></button><button class="btn ghost hide-m" data-a="help-ctx" aria-label="Help about this studio" title="Help">${ic('help')}</button></div>`}
+function actionBar(mode){const v=mode==='video';return `<div class="abar">${pin(2)}<button class="btn pri">${ic('dl')}Save</button><button class="btn">${ic('sliders')}Reuse settings</button><button class="btn" data-a="go" data-v="${v?'edit':'edit'}">${ic('edit')}${v?'Edit frame':'Edit'}</button>${v?'':`<button class="btn" data-a="go" data-v="video">${ic('video')}Animate</button>`}<span class="pw"><button class="btn" data-a="menu" data-v="board">${ic('boards')}Add to board</button>${S.menu==='board'?`<div class="pop" role="menu"><h4>Add to board</h4>${['Cabin campaign','Game sprites','Moodboard: Winter'].map(b=>`<button class="mi" data-a="menu" data-v="">${b}</button>`).join('')}<div class="hr"></div><button class="mi" data-a="menu" data-v="">${ic('plus','sm')}New board</button></div>`:''}</span>
+<span class="pw"><button class="btn" data-a="menu" data-v="more" aria-label="More actions">${ic('more')}<span class="hide-m">More</span></button>${S.menu==='more'?`<div class="pop r" role="menu"><button class="mi" data-a="menu" data-v="">${ic('copy','sm')}Copy prompt</button><button class="mi" data-a="menu" data-v="">${ic('folder','sm')}Show in folder</button><div class="hr"></div><button class="mi dng" data-a="menu" data-v="">${ic('trash','sm')}Delete image</button></div>`:''}</span></div>`}
+const film=()=>`<div class="film" aria-label="Session results">${[0,1,2,3,4,5].map(i=>`<button class="th ${i===0?'on':''}" aria-label="Result ${i+1}">${art(i)}</button>`).join('')}<span class="mut sm" style="margin-left:6px">This session - 6</span></div>`;
+function image(){const j=running();return `<div class="studio"><div class="scol">${studioTop('image','Session: '+S.prompt.slice(0,50)+'...')}<div class="sscroll"><div class="canvas"><div class="cimg">${art(0)}${j?`<div class="ov"><i class="spin"></i><span>Image ${S.img} of ${j.n} - step ${Math.round(S.pct*.28)}/28</span></div>`:''}${pin(2)}</div></div>${actionBar('image')}${film()}</div>${composer('image')}</div>${S.insp?insp('image'):''}</div>`}
+function edit(){const em=S.variant.edit==='empty';return `<div class="studio"><div class="scol">${studioTop('edit','Edit - '+(em?'no image':'cabin-001.png'))}<div class="sscroll">
+${em?`<div class="canvas"><div class="drop">${pin(2)}<div class="tile t-edit" style="width:44px;height:44px;border-radius:14px">${ic('up','lg')}</div><h2 style="font-size:16px">Drop an image or pick from Gallery</h2><p class="mut">PNG, JPG or WebP. Then paint a mask to change just that part.</p><div class="acts" style="justify-content:center"><button class="btn pri" data-a="variant2">${ic('up')}Browse files</button><button class="btn" data-a="variant2">${ic('gallery')}Pick from Gallery</button></div></div></div>`:
+`<div class="row" style="padding:10px 16px;flex:none;flex-wrap:wrap;justify-content:flex-start;gap:12px;position:relative">${pin(1)}<span class="lbl">Edit mode</span>${seg(['Inpaint','Restyle','Expand'],S.emode,'emode')}<span class="mut sm">${{Inpaint:'Paint over what to change, then describe it.',Restyle:'Re-draw the whole image in a new look.',Expand:'Extend the canvas beyond its borders.'}[S.emode]}</span></div>
+<div class="canvas"><div class="ftool" role="toolbar" aria-label="Mask tools">${pin(3)}${[['Brush','brush'],['Erase','eraser']].map(t=>`<button class="btn ${S.tool===t[0]?'on':''}" data-a="tool" data-v="${t[0]}">${ic(t[1],'sm')}${t[0]}</button>`).join('')}<span class="v"></span><label class="row" style="gap:6px;font-size:12px;padding:0 4px">Size<input class="rng" type="range" min="4" max="120" value="${S.brush}" data-in="brush" style="width:90px;margin:0" aria-label="Brush size"><output class="mono" data-out="brush">${S.brush}</output></label><span class="v"></span><button class="btn">${ic('invert','sm')}Invert</button><button class="btn">${ic('x','sm')}Clear mask</button><button class="btn">${ic('undo','sm')}Undo</button><span class="v"></span><button class="btn" data-a="variant2">${ic('trash','sm')}Remove image</button></div>
+<div class="cimg">${art(0)}<div style="position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse 18% 20% at 52% 62%,rgba(236,72,153,.6) 0 90%,transparent 92%);outline:2px dashed #ec4899;outline-offset:-2px;outline-style:none"></div></div></div>
+${actionBar('edit')}`}</div>${composer('edit')}</div>${S.insp?insp('edit'):''}</div>`}
+function video(){const fr=S.frames,d=(fr/S.fps).toFixed(1);return `<div class="studio"><div class="scol">${studioTop('video','Video - '+S.prompt.slice(0,40)+'...')}<div class="sscroll"><div class="canvas" style="gap:14px"><div class="hide-m" style="display:flex;flex-direction:column;gap:10px;position:relative">${pin(1)}<div class="slot"><div class="ar">${art(0)}</div><div class="row" style="padding:6px 8px"><b class="sm">Start frame</b><button class="btn xs ghost">Replace</button></div></div><button class="slot empty">${ic('plus','lg')}<div class="b sm" style="color:var(--fg)">End frame</div><div class="sm">Optional</div></button></div>
+<div class="cimg w">${art(3)}<div style="position:absolute;inset:0;display:grid;place-items:center;z-index:3"><span style="width:52px;height:52px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center">${ic('play','lg')}</span></div><div class="ov" style="right:10px;left:10px;border-radius:12px;justify-content:space-between"><span>0:00</span><span style="flex:1;height:4px;border-radius:9px;background:rgba(255,255,255,.35)"></span><span data-dur3>0:0${Math.round(d)}</span></div></div></div>
+${actionBar('video')}
+<div class="card pad" style="margin:0 16px 12px;flex:none;display:flex;gap:18px;flex-wrap:wrap;align-items:center">${pin(2)}<div><div class="lbl" style="margin-bottom:4px">Duration</div><div class="row" style="gap:10px"><button class="btn xs" data-a="frames" data-v="-4" aria-label="Fewer frames">${ic('min','sm')}</button><span class="mono" data-frames style="min-width:62px;text-align:center">${fr} frames</span><button class="btn xs" data-a="frames" data-v="4" aria-label="More frames">${ic('plus','sm')}</button><select class="in" style="width:92px" data-in="fps" aria-label="Frames per second">${[8,12,16,24].map(f=>`<option ${f===S.fps?'selected':''} value="${f}">${f} fps</option>`).join('')}</select></div></div>
+<div class="badge pri" style="height:30px;font-size:12px" data-dur>${fr} frames - ${S.fps} fps = ${d} s</div><div class="mut sm" style="max-width:150px">${pin(3)}Snaps to 4n+1 frames (49, 53...)</div><div style="margin-left:auto"><div class="lbl" style="margin-bottom:4px">Motion</div>${seg(['Still','Gentle','Dynamic','Orbit'],S.motion,'motion')}</div></div></div>${composer('video')}</div>${S.insp?insp('video'):''}</div>`}
+
+/* ---------- Recipes ---------- */
+function recipes(){const L=RECIPES.map((r,i)=>[r,i]).filter(([r])=>(S.cat==='All'||r[2]===S.cat)&&(!S.q||(r[0]+r[1]).toLowerCase().includes(S.q.toLowerCase())));
+return page('Recipes','Ready-made multi-step flows for game assets, products and portraits.',`<button class="btn pri">${ic('plus')}New recipe</button>`,`${pin(1)}
+<div class="gtool"><div class="sf" style="flex:1;min-width:200px;max-width:340px">${ic('search')}<input class="in" data-in="rq" value="${esc(S.q)}" placeholder="Search recipes" aria-label="Search recipes"></div><div class="chips" style="margin:0;position:relative">${pin(2)}${['All','Game assets','Product','Portrait','Mine'].map(c=>`<button class="chip ${S.cat===c?'on':''}" data-a="cat" data-v="${c}" aria-pressed="${S.cat===c}">${c}</button>`).join('')}</div></div>
+<div class="grid g4" id="rgrid" style="position:relative">${pin(4)}${L.map(([r,i])=>recipeCard(r,i)).join('')||'<p class="mut">No recipes match.</p>'}</div>`)}
+function runView(){const r=RECIPES[S.recipe],j=running();return page(`<button class="btn xs ghost" data-a="go" data-v="recipes" style="margin-left:-10px">${ic('left','sm')}Recipes</button><br>${r[0]}`,r[1],`<button class="btn" data-a="go" data-v="builder">${ic('edit')}Edit recipe</button><button class="btn pri" data-a="run">${ic('play')}${S.ran?'Run again':'Run recipe'}</button>`,`<div class="split"><div class="l card pad" style="position:relative;width:320px">${pin(1,'run')}<h3 class="b" style="margin-bottom:12px">Inputs</h3>
+<div class="lbl" style="margin-bottom:4px">Character description</div><textarea class="in" rows="3" data-in="rp">low-poly fox in a green scarf, friendly, idle pose</textarea>
+<div class="lbl" style="margin:12px 0 4px">Style kit</div><select class="in"><option>Pixel Tavern</option><option>Clean Product</option></select>
+<div class="lbl" style="margin:12px 0 4px">Variants per pose</div><select class="in"><option>1</option><option>2</option><option>4</option></select>
+<div class="hr" style="margin:16px 0"></div><div class="lbl" style="margin-bottom:6px;position:relative">Save to ${pin(3,'run')}</div>${seg([['device','This device'],['team','Team library']],S.saveTo,'saveto')}
+<p class="mut sm" style="margin-top:8px">${S.saveTo==='device'?'Only you can use this recipe, and it stays on this computer.':'Everyone on your team sees this recipe and its results.'}</p><p class="mut sm" style="margin-top:12px">Estimated 2 min on your GPU.</p></div>
+<div class="r"><div class="row" style="margin-bottom:10px;position:relative"><h3 class="b">Steps ${pin(2,'run')}</h3><span class="mut sm">${r[3]} steps</span></div>${STEPS.slice(0,r[3]).map((s,i)=>`<div class="step" style="${S.ran&&running()&&i===1?'border-color:var(--fg)':''}"><span class="n">${i+1}</span><span class="th2">${art(i+2)}</span><span class="grow"><b>${s[0]}</b><br><span class="mut sm">${s[1]}</span></span>${S.ran?`<span class="badge ${i<2?'ok':''}">${i<2?'Done':'Waiting'}</span>`:''}</div>`).join('')}
+${S.ran?`<div class="h2" style="position:relative">Results ${pin(5,'run')}<span class="acts"><button class="btn xs">${ic('boards','sm')}Add all to board</button><button class="btn xs">${ic('dl','sm')}Save all</button></span></div><div class="grid g4" style="grid-template-columns:repeat(4,1fr)">${[5,6,7,1].map(i=>`<div class="ar">${art(i)}</div>`).join('')}</div>`:`<div class="empty" style="padding:30px;margin-top:10px"><p class="mut">Results will appear here after you run the recipe.</p></div>`}</div></div>`)}
+function builder(){const r=RECIPES[S.recipe],cur=S.bstep;return page(`<button class="btn xs ghost" data-a="go" data-v="run" style="margin-left:-10px">${ic('left','sm')}${r[0]}</button><br>Edit recipe`,'Chain steps; each step can use values from the form or the previous result.',`<select class="in" style="width:160px" aria-label="Save to"><option>Save to: This device</option><option>Save to: Team library</option></select><button class="btn pri" data-a="go" data-v="run">${ic('check')}Save recipe</button>`,`<div class="split"><div class="l" style="width:360px;position:relative">${pin(1,'builder')}<div class="row" style="margin-bottom:10px"><h3 class="b">Steps</h3><span class="pw"><button class="btn xs" data-a="menu" data-v="addstep">${ic('plus','sm')}Add step</button>${S.menu==='addstep'?`<div class="pop dn r"><h4>Step type</h4>${[['image','Generate image'],['edit','Edit or inpaint'],['video','Make video'],['dl','Upscale'],['dl','Save or export']].map(x=>`<button class="mi" data-a="menu" data-v="">${ic(x[0],'sm')}${x[1]}</button>`).join('')}</div>`:''}</span></div>
+${STEPS.map((s,i)=>`<button class="step ${cur===i?'on':''}" data-a="bstep" data-v="${i}"><span style="color:var(--mfg)">${ic('grip','sm')}</span><span class="n">${i+1}</span><span class="grow"><b>${s[0]}</b><br><span class="mut sm">${s[1]}</span></span></button>`).join('')}<p class="mut sm" style="margin-top:6px">${pin(2,'builder')}Drag the handle to reorder.</p></div>
+<div class="r card pad" style="position:relative">${pin(3,'builder')}<div class="row"><h3 class="b">Step ${cur+1}: ${STEPS[cur][0]}</h3><button class="btn xs dng">${ic('trash','sm')}Remove step</button></div>
+<div class="fgrid"><span class="lbl">Step name</span><input class="in" value="${STEPS[cur][0]}"><span class="lbl">Prompt template</span><textarea class="in" rows="3">{character}, full body, {style}, plain background</textarea><span class="lbl">Model</span><select class="in"><option>Flux.1 Schnell Q4</option></select><span class="lbl">Size</span><select class="in"><option>1:1 - 1024 x 1024</option></select><span class="lbl">Images</span><select class="in"><option>1</option><option>4</option></select></div>
+<div class="h2" style="position:relative">Shown in the form ${pin(4,'builder')}</div><div class="chips" style="margin:0"><span class="chip on">character ${ic('x','sm')}</span><span class="chip on">style ${ic('x','sm')}</span><span class="chip on">variants ${ic('x','sm')}</span><button class="chip">${ic('plus','sm')}Add input</button></div></div></div>`)}
+
+/* ---------- Gallery ---------- */
+const meta=i=>({p:PROMPTS[i%8],seed:1000000+(i*7919)%900000,model:MODELS[i%3][0],size:SIZES[i%5][1],steps:[28,20,32][i%3],vid:i%6===2,fav:i%5===0});
+function gallery(){const empty=S.variant.gallery==='empty';const m=S.sel!=null?meta(S.sel):null;
+const items=[...Array(24).keys()].filter(i=>{const x=meta(i);return (!S.gf.Videos||x.vid)&&(!S.gf.Favorites||x.fav)&&(!S.gq||x.p.includes(S.gq.toLowerCase())||String(x.seed).includes(S.gq))});
+const grp=[['Today',0,8],['Yesterday',8,16],['Oct 18',16,24]];
+const gi=i=>{const x=meta(i),on=S.selected.includes(i);return `<button class="gi ${on?'sel':''}" data-a="${S.selmode?'pick':'open'}" data-v="${i}" aria-label="${x.vid?'Video':'Image'}: ${esc(x.p)}" aria-pressed="${on}">${art(i)}${x.vid?`<span class="vd">${ic('play','sm')}0:03</span>`:''}<span class="go"><span style="display:flex;justify-content:space-between">${S.selmode?`<span class="ck">${ic('check')}</span>`:'<span></span>'}<span>${ic('star','sm')}</span></span><span class="bot">${esc(x.p.slice(0,34))}...</span></span></button>`};
+const body=empty?`<div class="empty" style="position:relative">${pin(6)}<div class="tile t-image" style="width:48px;height:48px;border-radius:14px">${ic('image','lg')}</div><h2 style="font-size:16px">Nothing here yet</h2><p class="mut" style="max-width:340px">Everything you generate is saved here automatically, with its prompt and settings.</p><button class="btn pri lg" data-a="go" data-v="image">${ic('zap')}Create your first image</button></div>`:
+(S.gview==='grid'?grp.map(g=>{const L=items.filter(i=>i>=g[1]&&i<g[2]);return L.length?`<div class="gd">${g[0]} - ${L.length}</div><div class="gg" style="--cell:${S.dens}px">${L.map(gi).join('')}</div>`:''}).join(''):`<div>${items.map(i=>{const x=meta(i);return `<button class="lrow" data-a="${S.selmode?'pick':'open'}" data-v="${i}"><span class="ar">${art(i)}</span><span class="grow"><b>${esc(x.p)}</b><br><span class="mut sm">${x.model} - ${x.size} - seed ${x.seed}</span></span><span class="mut sm hide-m">Oct ${21-Math.floor(i/8)*1}</span></button>`}).join('')}</div>`);
+return `<div class="gal"><div class="gcol"><div class="page" style="padding-bottom:90px"><div class="wrap" style="max-width:none">
+<header class="ph"><div><h1>Gallery</h1><p>${empty?'0':'248'} images and 12 videos, newest first. History lives here now.</p></div><div class="acts"><button class="btn ${S.selmode?'pri':''}" data-a="selmode" aria-pressed="${S.selmode}">${ic('check')}${S.selmode?'Done selecting':'Select'}</button><select class="in" style="width:140px" aria-label="Sort"><option>Newest first</option><option>Oldest first</option><option>Favorites first</option></select></div></header>${libtabs('gallery')}
+${empty?'':`<div class="gtool">${pin(1)}<div class="sf" style="flex:1;min-width:220px;max-width:380px">${ic('search')}<input class="in" data-in="gq" value="${esc(S.gq)}" placeholder="Search prompts, seeds, models" aria-label="Search gallery"></div>
+<div class="chips" style="margin:0;position:relative">${pin(2)}${['Images','Videos','Favorites'].map(c=>`<button class="chip ${S.gf[c]?'on':''}" data-a="gf" data-v="${c}" aria-pressed="${S.gf[c]}">${c}</button>`).join('')}<button class="chip">Model ${ic('down','sm')}</button><button class="chip">Date ${ic('down','sm')}</button></div>
+<span class="grow"></span><label class="row hide-m" style="gap:8px">${ic('image','sm')}<input class="rng" type="range" min="110" max="260" value="${S.dens}" data-in="dens" style="width:90px;margin:0" aria-label="Grid density">${ic('image','lg')}</label>${seg([['grid','Grid'],['list','List']],S.gview,'gview')}</div>`}
+<div class="${S.selmode?'selmode':''}" style="position:relative">${pin(3)}${body}</div></div></div>
+${S.selmode&&!empty?`<div class="bulk" role="toolbar" aria-label="Bulk actions">${pin(4)}<b>${S.selected.length} selected</b><button class="btn">${ic('boards','sm')}Add to board</button><button class="btn">${ic('dl','sm')}Download</button><span style="width:1px;height:18px;background:currentColor;opacity:.4;margin:0 4px"></span><button class="btn dng">${ic('trash','sm')}Delete</button></div>`:''}</div>
+${m&&!empty?`<aside class="drawer" aria-label="Details">${pin(5)}<div class="row" style="margin-bottom:10px"><b>${m.vid?'Video':'Image'} details</b><button class="ibtn" data-a="close" aria-label="Close details">${ic('x')}</button></div><div class="ar" style="border-radius:14px">${art(S.sel)}</div>
+<p style="margin:12px 0;font-size:13px">${esc(m.p)}</p><dl class="kv"><dt>Seed</dt><dd>${m.seed}</dd><dt>Model</dt><dd>${m.model}</dd><dt>Size</dt><dd>${m.size}</dd><dt>Steps</dt><dd>${m.steps} - euler_a</dd><dt>Created</dt><dd>Today 12:0${S.sel%9}</dd></dl>
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn pri">${ic('sliders','sm')}Reuse settings</button><button class="btn" data-a="go" data-v="edit">${ic('edit','sm')}Edit</button><button class="btn" data-a="go" data-v="video">${ic('video','sm')}Animate</button><button class="btn">${ic('expand','sm')}Upscale</button></div>
+<div class="acts" style="margin-top:10px"><button class="btn xs ghost">${ic('copy','sm')}Copy prompt</button><button class="btn xs ghost">${ic('folder','sm')}Show in folder</button><button class="btn xs ghost">${ic('boards','sm')}Add to board</button></div>
+<div class="danger"><div class="b sm" style="color:var(--dg)">Danger zone</div><p class="sm" style="margin:4px 0 8px">Deletes the file from disk. This cannot be undone.</p><button class="btn dng xs">${ic('trash','sm')}Delete permanently</button></div></aside>`:''}</div>`}
+
+/* ---------- Boards ---------- */
+const BOARDS=[['Cabin campaign',12,true,[0,1,2,3]],['Game sprites',24,false,[5,6,7,1]],['Mug mockups',8,true,[2,4,5,0]],['Moodboard: Winter',31,false,[3,0,6,2]]];
+function boards(){return page('Boards','Collect results and review them with your team.',`<button class="btn pri">${ic('plus')}New board</button>`,`${libtabs('boards')}<div class="grid g4" style="position:relative">${pin(3)}${BOARDS.map((b,i)=>`<button class="card cardlink" data-a="board" data-v="${i}"><div class="mosaic" style="grid-template-rows:1fr 1fr;aspect-ratio:1.6">${b[3].map(k=>`<div>${art(k)}</div>`).join('')}</div><div class="cbody"><h3>${b[0]}</h3><div class="row"><span class="mut sm">${b[1]} items</span><span class="badge ${b[2]?'pri':''}" tabindex="0" data-tip="${b[2]?'Shared: your team sees this board and can comment and review.':'This device: only you can see this board; it is stored locally.'}" style="position:relative">${ic(b[2]?'users':'db','sm')}${b[2]?'Shared':'This device'}</span></div></div></button>`).join('')}<span style="position:absolute;top:-30px;right:0">${pin(1)}</span></div><p class="mut sm" style="margin-top:14px;position:relative">${pin(4)}Boards on a phone are reached through Library.</p>`)}
+function boardView(){const cols=[['review','To review'],['approved','Approved'],['changes','Needs changes'],['rejected','Rejected']],b=BOARDS[S.board];
+return page(`<button class="btn xs ghost" data-a="go" data-v="boards" style="margin-left:-10px">${ic('left','sm')}Boards</button><br>${b[0]}`,`${b[1]} items - ${b[2]?'Shared with team':'This device only'}`,`<button class="btn pri" data-a="gal-add">${ic('plus')}Add from Gallery</button><button class="btn">${ic('send')}Share link</button>`,`<div class="cols" style="position:relative">${pin(1,'board')}${cols.map(c=>{const L=S.cards.filter(x=>x[1]===c[0]);return `<section class="col" aria-label="${c[1]}"><h3>${c[1]}<span class="badge">${L.length}</span></h3>${L.map(x=>`<div class="rc"><div class="ar">${art(x[0])}</div><div class="cbody"><div class="row sm"><span>${esc(PROMPTS[x[0]%8].slice(0,26))}...</span><span class="mut" style="display:flex;gap:4px;align-items:center">${ic('msg','sm')}${x[2]}</span></div>
+<div class="rbtn" style="position:relative">${x[1]==='review'&&x[0]===1?pin(2,'board'):''}${x[1]==='review'?`<button class="btn xs" data-a="mv" data-v="${x[0]}:approved">${ic('check','sm')}Approve</button><button class="btn xs" data-a="mv" data-v="${x[0]}:changes">Needs changes</button><button class="btn xs dng" data-a="mv" data-v="${x[0]}:rejected">Reject</button>`:`<button class="btn xs" data-a="mv" data-v="${x[0]}:review">${ic('retry','sm')}Back to review</button>`}</div></div></div>`).join('')||'<p class="mut sm" style="padding:8px">Nothing here.</p>'}</section>`}).join('')}</div><button class="btn" style="margin-top:14px;position:relative" data-a="gal-add">${pin(3,'board')}${ic('gallery')}Add from Gallery</button><span style="position:relative;display:inline-block;width:1px">${pin(4,'board')}</span>`)}
+
+/* ---------- Style kits ---------- */
+function kits(){const k=KITS[S.kitSel],on=S.kitOn[S.kitSel];
+return page('Style kits','Reusable looks: prompt rules, colors, sizes and LoRAs.',`<button class="btn pri">${ic('plus')}New kit</button>`,`${libtabs('kits')}<div class="split"><div class="l" style="position:relative">${pin(4)}${KITS.map((x,i)=>`<button class="li ${i===S.kitSel?'on':''}" data-a="kitsel" data-v="${i}"><span class="ar" style="width:40px;border-radius:10px">${art(i+2)}</span><span class="grow b">${x[0]}<br><span class="mut sm" style="font-weight:400">${x[2]}</span></span>${S.kitOn[i]?'<span class="badge ok">Active</span>':''}</button>`).join('')}</div>
+<div class="r"><div class="banner" style="${on?'':'border-color:var(--bd2);background:var(--card)'}">${pin(1)}${ic(on?'check':'info','lg')}<div class="grow"><b>${on?'Active - applied to every generation':'Not active'}</b><br><span class="sm">${on?'Image, Edit and Video all add this kit automatically. Turn it off to generate without a style.':'Switch on to add this kit to all new generations.'}</span></div><button class="sw2 ${on?'on':''}" role="switch" aria-checked="${on}" aria-label="Active" data-a="kiton"></button></div>
+<div class="split" style="gap:16px"><div class="grow card pad" style="position:relative;max-width:240px;width:240px;flex:none">${pin(2)}<div class="ar">${art(S.kitSel+2)}</div><p class="sm b" style="margin-top:8px">Live preview</p><p class="sm mut">"${esc(PROMPTS[0].slice(0,34))}..." + ${k[0]}</p></div>
+<div class="grow" style="min-width:0;position:relative">${pin(3)}<details class="card acc" open><summary>Prompt rules ${ic('down','sm')}</summary><div><div class="lbl" style="margin-bottom:4px">Add before prompt</div><input class="in" value="cozy illustration, warm light,"><div class="lbl" style="margin:10px 0 4px">Add after prompt</div><input class="in" value="soft snow, muted palette, high detail"><div class="lbl" style="margin:10px 0 4px">Negative prompt</div><input class="in" value="harsh shadows, oversaturated"></div></details>
+<details class="card acc"><summary>Colors ${ic('down','sm')}</summary><div class="chips" style="margin:0">${['#d9822b','#f4e2c1','#2f4858','#5b7b7a','#a23b2a'].map(c=>`<span class="swc" style="background:${c}" title="${c}"></span>`).join('')}<button class="chip">${ic('plus','sm')}Add color</button></div></details>
+<details class="card acc"><summary>Sizes ${ic('down','sm')}</summary><div class="chips" style="margin:0"><span class="chip">1:1 1024 x 1024</span><span class="chip">16:9 1344 x 768</span><button class="chip">${ic('plus','sm')}Add size</button></div></details>
+<details class="card acc"><summary>LoRAs ${ic('down','sm')}</summary><div>${lora('soft-light',.4)}<button class="btn xs">${ic('plus','sm')}Add LoRA</button></div></details></div></div></div></div>`)}
+
+/* ---------- Models ---------- */
+function models(){const t=S.mtab;let body='';
+const dl=(i,n,tot,spd)=>{const p=S.dlp[i];return `<div class="jb" style="align-items:center"><div class="grow"><b>${n}</b><div class="bar"><i style="width:${i?35:56}%;${p?'opacity:.5':''}"></i></div><span class="mut sm">${p?'Paused':spd} - ${i?'120 MB / 335 MB':'1.9 GB / '+tot} ${p?'':'- ETA 1m 22s'}</span></div><button class="btn xs" data-a="dlp" data-v="${i}">${ic(p?'play':'pause','sm')}${p?'Resume':'Pause'}</button></div>`};
+const inst=[['Flux.1 Schnell Q4','Image','6.8 GB','8 GB',true],['Juggernaut XL v9','Image','6.6 GB','8 GB'],['Wan 2.1 T2V 1.3B Q8','Video','1.5 GB','8 GB'],['pixel-art-v2','LoRA','144 MB','-']];
+if(t==='Installed')body=`<div class="card" style="position:relative">${pin(4)}<div class="mrow mut sm b hide-m" style="font-size:11px"><span>NAME</span><span>TYPE</span><span>SIZE</span><span>VRAM</span><span></span></div>${inst.map(m=>`<div class="mrow"><b>${m[0]} ${m[4]?'<span class="badge pri">Default</span>':''}</b><span class="hm"><span class="badge">${m[1]}</span></span><span class="hm mono sm">${m[2]}</span><span class="hm mono sm">${m[3]}</span><span style="text-align:right">${m[4]?'':'<button class="btn xs">Set default</button>'}</span></div>`).join('')}</div>
+<div class="card pad" style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">${ic('folder','lg')}<div class="grow"><b>Model folder</b><br><span class="mono sm">D:\\Flaxeo\\models</span> <span class="mut sm">- 17.3 GB used, 212 GB free</span></div><button class="btn xs">Open folder</button><button class="btn xs">Change</button></div>`;
+if(t==='Discover')body=`<div class="banner" style="background:var(--card);border-color:var(--bd)">${ic('models','lg')}<div class="grow"><b>Your GPU: RTX 4070 - 12 GB VRAM</b><br><span class="sm mut">We mark models that run comfortably on it.</span></div></div>
+<div class="gtool"><div class="chips" style="margin:0">${['All','Image','Video','VAE','LoRA'].map((c,i)=>`<button class="chip ${i?'':'on'}">${c}</button>`).join('')}</div></div>
+<div class="grid g3" style="position:relative">${pin(2)}${[['Flux.1 Dev Q4_K_S','Image','6.9 GB','10 GB',true],['Wan 2.2 TI2V 5B Q4','Video','3.4 GB','8 GB',true],['SD 3.5 Medium Q5','Image','3.4 GB','6 GB',false],['Qwen-Image-Edit Q4','Edit','13 GB','16 GB',false,true]].map((m,i)=>`<div class="card pad"><div class="row" style="align-items:flex-start"><div><b>${m[0]}</b><br><span class="mut sm">${m[1]} model</span></div><div class="tile t-${m[1]==='Video'?'video':m[1]==='Edit'?'edit':'image'}" style="width:30px;height:30px;border-radius:9px">${ic(m[1]==='Video'?'video':'image')}</div></div><div class="chips" style="margin:12px 0"><span class="badge">${m[2]}</span><span class="badge ${m[5]?'wn':''}">${m[3]} VRAM</span>${m[4]?`<span class="badge ok">${ic('check','sm')}Recommended for your GPU</span>`:''}${m[5]?'<span class="badge wn">Needs more VRAM</span>':''}</div><button class="btn ${m[4]?'pri':''}" style="width:100%" ${m[5]?'':''}>${ic('dl','sm')}Download</button></div>`).join('')}</div>
+<div class="h2" style="position:relative">Downloads ${pin(3)}<span class="mut sm">Saving to D:\\Flaxeo\\models</span></div>${dl(0,'Wan 2.2 TI2V 5B Q4','3.4 GB','18.4 MB/s')}${dl(1,'ae.safetensors (VAE)','335 MB','')}`;
+if(t==='Convert')body=`<div class="split"><div class="card pad grow" style="max-width:520px"><div class="lbl" style="margin-bottom:4px">Source model</div><select class="in"><option>Juggernaut XL v9 (safetensors, 6.6 GB)</option></select><div class="lbl" style="margin:14px 0 6px">Precision</div>${seg(['Q8_0','Q5_K_M','Q4_K_M','Q3_K'],'Q4_K_M','noop')}
+<div class="card pad" style="margin-top:14px;background:var(--bg)"><div class="row"><span>Estimated size</span><b class="mono">6.6 GB to 3.4 GB</b></div><div class="row" style="margin-top:6px"><span>Quality</span><b>Good for most uses</b></div></div>
+<div class="lbl" style="margin:14px 0 4px">Save as</div><input class="in mono" value="D:\\Flaxeo\\models\\juggernaut-xl-v9-q4_k_m.gguf"><button class="btn pri" style="margin-top:16px">${ic('zap')}Convert</button></div><div class="grow card pad mut" style="max-width:340px">${ic('info')} Converting makes a smaller GGUF copy that uses less VRAM. Desktop only; takes 2-5 minutes.</div></div>`;
+return page('Models','Install, discover and convert the models that power generation.',`<button class="btn" data-a="go" data-v="settings">${ic('folder')}Model folder</button>`,`<div class="tabs" role="tablist" style="position:relative">${pin(1)}${['Installed','Discover','Convert'].map(x=>`<button role="tab" class="${t===x?'on':''}" aria-selected="${t===x}" data-a="mtab" data-v="${x}">${x==='Discover'?'Discover (Hub)':x}</button>`).join('')}</div>${body}`)}
+
+/* ---------- Settings ---------- */
+const SECS=[['Backend','sliders'],['Installation','box'],['Network & LAN','globe'],['Storage','db'],['Team','users'],['Appearance','sun'],['About','info']];
+function settings(){const s=S.sec;const f=(l,h,c)=>`<div class="fgrid"><div><div class="lbl">${l}</div><div class="mut sm">${h}</div></div><div>${c}</div></div>`;let b='';
+if(s==='Backend')b=f('Mode','Server keeps the model loaded between jobs. CLI starts fresh each time.',seg([['server','Server'],['cli','CLI']],S.cli?'cli':'server','mode'))+f('Binary path','The sd-server program that does the work.',`<input class="in mono" value="C:\\Flaxeo\\bin\\sd-server.exe">`)+f('Device','Which GPU to use.',`<select class="in"><option>CUDA 0 - RTX 4070 (12 GB)</option><option>CPU only</option></select>`)+f('Server port','Change only if 1234 is busy.',`<input class="in mono" value="1234" style="max-width:120px">`)+f('Flash attention','Faster and lighter on VRAM. Turn off if images look broken.',`<button class="sw2 on" role="switch" aria-checked="true" aria-label="Flash attention" data-a="sw"></button>`)+f('Start on launch','Start sd-server when the app opens.',`<button class="sw2 on" role="switch" aria-checked="true" aria-label="Start on launch" data-a="sw"></button>`);
+else if(s==='Appearance')b=f('Theme','Follows your system by default.',seg([['light','Light'],['dark','Dark']],'light','theme'))+f('Density','Space between controls.',seg(['Comfortable','Compact'],'Comfortable','noop'));
+else if(s==='Storage')b=f('Output folder','Where generated files go.',`<input class="in mono" value="D:\\Flaxeo\\outputs">`)+f('Compress old outputs','Saves disk space; originals stay viewable.',`<button class="sw2" role="switch" aria-checked="false" aria-label="Compress" data-a="sw"></button>`)+f('Cache','Thumbnails and temp files: 1.2 GB',`<button class="btn xs">Clear cache</button>`);
+else if(s==='Network & LAN')b=f('Allow other devices','Lets phones and laptops on your Wi-Fi use this studio.',`<button class="sw2" role="switch" aria-checked="false" aria-label="LAN" data-a="sw"></button>`)+f('Access code','Required by other devices.',`<input class="in mono" value="482-913" style="max-width:160px">`);
+else if(s==='Team')b=f('Team library','Share recipes, boards and style kits.',`<span class="badge ok">Connected - 3 members</span>`)+f('Your role','',`<span class="badge">Editor</span>`);
+else if(s==='Installation')b=f('Components','Everything the studio needs.',`<span class="badge ok">All installed</span> <button class="btn xs">Re-run setup</button>`)+f('sd.cpp version','','<span class="mono sm">master-5d2f1c9</span>');
+else b=f('Version','',`<span class="mono">0.7.8</span>`)+f('Updates','You are up to date.',`<button class="btn xs">Check for updates</button>`);
+return page('Settings','Backend, storage, network and appearance.',S.sec==='Backend'&&S.srv?`<span class="badge ok"><i class="dot"></i>Server running</span>`:'',`<div class="split"><div class="l" style="width:230px;position:relative">${pin(1)}<div class="sf" style="margin-bottom:10px">${pin(2)}${ic('search')}<input class="in" placeholder="Search settings" aria-label="Search settings"></div>${SECS.map(x=>`<button class="li ${s===x[0]?'on':''}" data-a="sec" data-v="${x[0]}">${ic(x[1],'sm')}${x[0]}</button>`).join('')}</div>
+<div class="r card" style="padding:6px 20px;position:relative">${pin(3)}<div class="row" style="padding:12px 0;border-bottom:1px solid var(--bd)"><h2 style="font-size:15px">${s}</h2><span class="mut sm">${pin(4)}Changes apply instantly</span></div>${b}</div></div>`)}
+
+/* ---------- Help ---------- */
+const HELP=[['Getting started','Install a model, write a prompt, press Generate.'],['Writing prompts','Describe subject, light and style.'],['Inpainting with masks','Change one part of an image.'],['Make video from images','Start and end frames, duration.'],['Models and VRAM','Which model fits your GPU.'],['Recipes','Chain steps into one click.'],['Troubleshooting','Out of VRAM, black images, slow runs.']];
+function help(){const h=HELP[S.helpI];return page('Help','Guides and answers. Look for the ? icon next to any control to jump to its article.',`<span class="badge">${ic('help','sm')}Opened from: Mask tools</span>`,`<div class="split"><div class="l" style="position:relative">${pin(1)}<div class="sf" style="margin-bottom:10px">${ic('search')}<input class="in" placeholder="Search help" aria-label="Search help"></div>${HELP.map((x,i)=>`<button class="li ${i===S.helpI?'on':''}" data-a="hi" data-v="${i}">${ic('book','sm')}${x[0]}</button>`).join('')}</div>
+<article class="r card pad prose" style="position:relative;padding:24px">${pin(2)}<h2>${h[0]}</h2><p class="mut">${h[1]}</p><div class="chips" style="position:relative">${pin(3)}<span class="badge">5 min read</span><span class="badge">Updated for v0.7.8</span></div>
+${S.helpI===2?`<h3>Steps</h3><ol><li>Open <b>Edit</b> and drop in an image, or pick one from Gallery.</li><li>Choose <b>Inpaint</b> in the Edit mode control.</li><li>Use <b>Brush</b> to paint the area you want to change. Use <b>Erase</b> to fix mistakes.</li><li>Describe the new content in the prompt, for example "a red scarf".</li><li>Press <b>Generate</b>. Lower Edit strength keeps more of the original.</li></ol><h3>Tips</h3><p>Paint slightly outside the object; a soft mask blur blends the edges.</p>`:`<h3>Overview</h3><p>This article explains the basics in a few short steps. Use the topics on the left or search to find something specific.</p><ol><li>Open the studio you need.</li><li>Pick a preset before changing raw values.</li><li>Check Activity for progress.</li></ol>`}
+<div class="card pad" style="margin-top:16px;background:var(--bg)"><b>Was this helpful?</b> <button class="btn xs" style="margin-left:8px">Yes</button> <button class="btn xs">No</button></div></article></div>`)}
+
+/* ---------- Activity ---------- */
+function activity(){const j=running();const q=S.jobs.filter(x=>x.st==='queued'),rec=S.jobs.filter(x=>x.st==='done'||x.st==='failed');
+const stt=s=>({running:'<span class="badge pri">Running</span>',queued:'<span class="badge">Queued</span>',done:'<span class="badge ok">Done</span>',failed:'<span class="badge dg">Failed</span>'})[s];
+return `<div class="scrim" data-a="actclose"></div><aside class="actp" role="dialog" aria-label="Activity"><div class="hd"><div><b style="font-size:15px">Activity</b><br><span class="mut sm">Queue and recent history</span></div><button class="ibtn" data-a="actclose" aria-label="Close activity">${ic('x')}</button></div><div class="bd">
+<div style="display:flex;gap:8px;position:relative">${pin(2,'activity')}<button class="btn dng" style="flex:1" data-a="cancel" ${j?'':'disabled'}>${ic('x','sm')}Cancel current</button><button class="btn" style="flex:1" data-a="clearq" ${q.length?'':'disabled'}>${ic('trash','sm')}Clear queue</button></div>
+${j?`<div class="jb" style="margin-top:12px;position:relative">${pin(1,'activity')}<span class="ar" style="width:56px;flex:none;border-radius:10px">${art(j.i)}</span><div class="grow"><div class="row">${stt('running')}<b class="mono sm" data-pill2>${S.pct}% - ~${Math.round((100-S.pct)*.48)}s</b></div><p style="margin:4px 0">${esc(j.t.slice(0,60))}</p><div class="bar"><i data-bar3 style="width:${S.pct}%"></i></div><span class="mut sm">${j.m} - image ${S.img} of ${j.n}</span></div></div>`:'<p class="mut" style="margin-top:12px">Nothing running.</p>'}
+<div class="h2" style="position:relative;margin-top:20px">Up next (${q.length})${pin(4,'activity')}<span class="mut sm">Drag to reorder</span></div>
+<div id="qlist">${q.map(x=>`<div class="jb" draggable="true" data-jid="${x.id}"><span style="color:var(--mfg);margin-top:2px">${ic('grip','sm')}</span><span class="ar" style="width:44px;flex:none;border-radius:8px">${art(x.i)}</span><div class="grow"><div class="row">${stt('queued')}<button class="btn xs" data-a="next" data-v="${x.id}">Run next</button></div><p style="margin-top:4px">${esc(x.t.slice(0,50))}</p><span class="mut sm">${x.m}</span></div></div>`).join('')||'<p class="mut sm">Queue is empty.</p>'}</div>
+<div class="h2" style="position:relative;margin-top:20px">Recent${pin(3,'activity')}</div>${rec.map(x=>`<div class="jb"><span class="ar" style="width:44px;flex:none;border-radius:8px">${art(x.i)}</span><div class="grow"><div class="row">${stt(x.st)}${x.st==='failed'?`<button class="btn xs" data-a="retry" data-v="${x.id}">${ic('retry','sm')}Retry</button>`:`<button class="btn xs" data-a="go" data-v="gallery">Open</button>`}</div><p style="margin-top:4px">${esc(x.t.slice(0,50))}</p><span class="${x.st==='failed'?'':'mut'} sm" style="${x.st==='failed'?'color:var(--dg)':''}">${x.m}</span></div></div>`).join('')}</div></aside>`}
+
+function palette(){const A=[['image','Create an image'],['gallery','Go to Gallery'],['recipes','Browse recipes'],['models','Open Models'],['settings','Open Settings'],['act','Open Activity'],['theme','Toggle theme'],['srv','Start or stop sd-server']];
+return `<div class="scrim" data-a="palx"></div><div class="pal" role="dialog" aria-label="Command palette"><div class="sf">${ic('search')}<input class="in" id="pq" data-in="pq" placeholder="Search or run a command" autofocus aria-label="Command"></div><div style="margin-top:6px" id="plist">${A.map(a=>`<button class="mi" data-a="palrun" data-v="${a[0]}">${ic('right','sm')}<span>${a[1]}</span></button>`).join('')}</div></div>`}
+
+/* ---------- render ---------- */
+const SCREENS={home,image,edit,video,recipes,run:runView,builder,gallery,boards,board:boardView,kits,models,settings,help};
+function app(){const m=mob();return `${titlebar()}<div class="body">${m?'':sidebar()}<main class="main" id="main">${SCREENS[S.screen]()}</main></div>${m?mnav():''}${S.act?activity():''}${S.pal?palette():''}${S.menu==='more'?moreSheet():''}`}
+const SW=[['home','Home'],['image','Image'],['edit','Edit'],['video','Video'],['recipes','Recipes'],['gallery','Gallery'],['boards','Boards'],['kits','Style kits'],['models','Models'],['settings','Settings'],['help','Help'],['activity','Activity']];
+function render(){const f=$('#frame');f.className='frame'+(mob()?' mobile':'');document.body.classList.toggle('notes',S.notes);
+const sc=document.querySelector('.page,.sscroll,.gcol .page'),st=sc?sc.scrollTop:0;
+$('#app').innerHTML=app();
+const sc2=document.querySelector('.page,.sscroll,.gcol .page');if(sc2)sc2.scrollTop=st;
+const cur=NAVMAP[S.screen]||S.screen;
+$('#sw').innerHTML=SW.map(x=>`<button class="cb ${(x[0]==='activity'?S.act:(!S.act&&cur===x[0]))?'on':''}" data-a="${x[0]==='activity'?'act':'go'}" data-v="${x[0]}">${x[1]}</button>`).join('');
+$('#cbD').classList.toggle('on',!mob());$('#cbM').classList.toggle('on',mob());$('#cbN').classList.toggle('on',S.notes);$('#cbN').textContent=S.notes?'Hide UX notes':'Show UX notes';
+const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);$('#cbTheme').innerHTML=(dark?'Dark':'Light')+' - switch';
+const vb=$('#cbV'),vv={home:['home','setup','ready'],gallery:['gallery','full','empty'],edit:['edit','loaded','empty']}[S.screen];vb.hidden=!vv;if(vv)vb.textContent='State: '+S.variant[S.screen];
+const n=S.note;$('#noteBox').innerHTML=n&&S.notes?`<div class="note" role="status"><b>${n.n}</b><p>${esc(NOTES[n.k][n.n-1]||'')}</p><button data-a="pinx">Close</button></div>`:'';}
+const go=(v)=>{S.screen=v;S.menu=null;S.act=false;S.pal=false;S.note=null;if(['image','edit','video'].includes(v)){S.mode=v}if(v==='gallery')S.sel=null;};
+const addJob=(t,st)=>{const j=S.jobs.find(x=>x.st==='running');S.jobs.push({id:S.jid++,st:j?'queued':'running',t,m:`${S.screen==='video'?'Video':'Image'} - ${S.count} images`,n:S.screen==='video'?1:S.count,i:Math.floor(Math.random()*8)});if(!j){S.pct=0;S.img=1}};
+const ACT={
+go:v=>go(v),theme:()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=d?'light':'dark'},
+dev:v=>{S.dev=v;S.insp=v==='desktop';S.menu=null;S.sel=null},notes:()=>{S.notes=!S.notes;S.note=null},
+variant:()=>{const k=S.screen,o={home:['setup','ready'],gallery:['full','empty'],edit:['loaded','empty']}[k];if(o)S.variant[k]=S.variant[k]===o[0]?o[1]:o[0]},variant2:()=>{S.variant.edit=S.variant.edit==='empty'?'loaded':'empty'},
+pin:v=>{const [k,n]=v.split(':');S.note=S.note&&S.note.k===k&&S.note.n==+n?null:{k,n:+n}},pinx:()=>{S.note=null},
+menu:v=>{S.menu=(S.menu===v||v==='')?null:v},mode:v=>{S.cli=v==='cli'},srv:()=>{S.srv=!S.srv},sw:(v,el)=>{el.classList.toggle('on');el.setAttribute('aria-checked',el.classList.contains('on'));return 'noop'},
+pal:()=>{S.pal=true;S.menu=null},palx:()=>{S.pal=false},palrun:v=>{S.pal=false;if(v==='act')S.act=true;else if(v==='theme')ACT.theme();else if(v==='srv')S.srv=!S.srv;else go(v)},
+act:()=>{S.act=true;S.menu=null},actclose:()=>{S.act=false},
+hmode:v=>{S.hmode=v},fill:v=>{S.hp=PROMPTS[v];},homegen:()=>{S.prompt=S.hp||S.prompt;go(S.hmode);addJob(S.prompt)},
+dl:v=>{const ids=v==='all'?['vae','video']:[v];ids.forEach(i=>{if(S.setup[i][0]==='missing')S.setup[i]=['dl',0]})},
+open:v=>{S.sel=+v;if(S.screen!=='gallery')S.screen='gallery'},close:()=>{S.sel=null},
+preset:v=>{S.preset=v;S.steps={Fast:12,Balanced:28,Quality:40}[v];S.cfg=v==='Fast'?2:4.5},setmodel:v=>{if(S.screen==='video')S.vm=+v;else S.model=+v;S.menu=null},setsize:v=>{if(S.screen==='video')S.vsize=+v;else S.size=+v},setkit:v=>{S.kit=+v;S.kitOn[v]=true;S.menu=null},
+guide:v=>{S.guides=S.guides.includes(v)?S.guides.filter(x=>x!==v):[...S.guides,v];if(S.menu==='guide'){}},neg:()=>{S.neg=!S.neg},count:v=>{S.count=Math.max(1,Math.min(8,S.count+ +v))},
+insp:()=>{S.insp=!S.insp},lock:()=>{S.lock=!S.lock},dice:()=>{S.seed=Math.floor(Math.random()*9e8)},'help-ctx':()=>{S.helpI=2;go('help')},
+gen:()=>{addJob(S.prompt)},queue:()=>{addJob(S.prompt)},cancel:()=>{const j=running();if(!j)return;j.st='failed';j.m='Failed - Cancelled by you';const n=S.jobs.find(x=>x.st==='queued');if(n){n.st='running';S.pct=0;S.img=1}},
+clearq:()=>{S.jobs=S.jobs.filter(x=>x.st!=='queued')},next:v=>{const i=S.jobs.findIndex(x=>x.id==+v),[j]=S.jobs.splice(i,1),k=S.jobs.findIndex(x=>x.st==='queued');S.jobs.splice(k,0,j)},retry:v=>{const j=S.jobs.find(x=>x.id==+v);j.st=running()?'queued':'running';j.m='Retrying';if(j.st==='running'){S.pct=0;S.img=1}},
+emode:v=>{S.emode=v},tool:v=>{S.tool=v},frames:v=>{S.frames=Math.max(9,Math.min(129,S.frames+ +v))},motion:v=>{S.motion=v},
+recipe:v=>{S.recipe=+v;S.ran=false;go('run')},cat:v=>{S.cat=v},run:()=>{S.ran=true;addJob('Recipe: '+RECIPES[S.recipe][0])},saveto:v=>{S.saveTo=v},bstep:v=>{S.bstep=+v},
+selmode:()=>{S.selmode=!S.selmode;S.selected=[]},pick:v=>{v=+v;S.selected=S.selected.includes(v)?S.selected.filter(x=>x!==v):[...S.selected,v]},gf:v=>{S.gf[v]=!S.gf[v]},gview:v=>{S.gview=v},
+board:v=>{S.board=+v;go('board')},mv:v=>{const [i,c]=v.split(':');const x=S.cards.find(a=>a[0]==+i);x[1]=c},'gal-add':()=>{go('gallery');S.selmode=true},
+kitsel:v=>{S.kitSel=+v},kiton:()=>{S.kitOn[S.kitSel]=!S.kitOn[S.kitSel]},mtab:v=>{S.mtab=v},dlp:v=>{S.dlp[v]=!S.dlp[v]},sec:v=>{S.sec=v},hi:v=>{S.helpI=+v},noop:()=>{}
+};
+document.addEventListener('click',e=>{
+ if(S.menu&&!e.target.closest('.pop')&&!e.target.closest('[data-a="menu"]')&&!e.target.closest('.sheet')){S.menu=null;render();}
+ const t=e.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v;const f=ACT[a];if(!f)return;
+ if(a==='sw'){f(v,t);return}
+ if(a==='go'&&S.dev&&v==='gallery'){}
+ f(v,t);
+ if(a==='dev'||a==='theme'||a==='go'||true)render();
+});
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;const v=t.value;
+ if(k==='prompt')S.prompt=v;else if(k==='hp')S.hp=v;else if(k==='gq'){S.gq=v;render();const i=$('[data-in=gq]');i.focus();i.setSelectionRange(v.length,v.length);return}
+ else if(k==='rq'){S.q=v;render();const i=$('[data-in=rq]');i.focus();i.setSelectionRange(v.length,v.length);return}
+ else if(k==='dens'){S.dens=+v;document.querySelectorAll('.gg').forEach(g=>g.style.setProperty('--cell',v+'px'))}
+ else if(k==='fps'){S.fps=+v;vid()}
+ else if(k==='pq'){document.querySelectorAll('#plist .mi').forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(v.toLowerCase()))}
+ else{if(k==='steps')S.steps=+v;if(k==='cfg')S.cfg=+v;if(k==='brush')S.brush=+v;const o=document.querySelector(`[data-out="${k}"]`);if(o)o.textContent=v}
+});
+function vid(){const d=(S.frames/S.fps).toFixed(1);document.querySelectorAll('[data-dur]').forEach(n=>n.textContent=`${S.frames} frames - ${S.fps} fps = ${d} s`);document.querySelectorAll('[data-frames]').forEach(n=>n.textContent=S.frames+' frames');document.querySelectorAll('[data-dur2]').forEach(n=>n.textContent=d+' s')}
+const _f=ACT.frames;ACT.frames=v=>{_f(v);};
+document.addEventListener('toggle',e=>{if(e.target.dataset&&e.target.dataset.k==='adv')S.adv=e.target.open},true);
+document.addEventListener('keydown',e=>{
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();S.pal=!S.pal;render();if(S.pal)setTimeout(()=>{const p=$('#pq');p&&p.focus()},0)}
+ else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&['image','edit','video'].includes(S.screen)){e.preventDefault();addJob(S.prompt);render()}
+ else if(e.key==='Escape'){S.menu=null;S.pal=false;S.act=false;S.note=null;render()}
+ else if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('pin')){e.preventDefault();e.target.click()}
+});
+/* drag reorder in Activity */
+let dragId=null;
+document.addEventListener('dragstart',e=>{const j=e.target.closest&&e.target.closest('[data-jid]');if(j){dragId=+j.dataset.jid;j.classList.add('drag')}});
+document.addEventListener('dragover',e=>{if(dragId&&e.target.closest('[data-jid]'))e.preventDefault()});
+document.addEventListener('drop',e=>{const j=e.target.closest('[data-jid]');if(!j||!dragId)return;e.preventDefault();const to=+j.dataset.jid;const a=S.jobs.findIndex(x=>x.id===dragId),[it]=S.jobs.splice(a,1),b=S.jobs.findIndex(x=>x.id===to);S.jobs.splice(b,0,it);dragId=null;render()});
+document.addEventListener('dragend',()=>{dragId=null;render()});
+/* live job ticker */
+setInterval(()=>{
+ S.jobs.forEach(()=>{});const j=running();let struct=false;
+ Object.keys(S.setup).forEach(k=>{const s=S.setup[k];if(s[0]==='dl'){s[1]+=12;if(s[1]>=100){S.setup[k]=['ok',100];struct=true}else{document.querySelectorAll(`[data-dlp="${k}"]`).forEach(n=>n.textContent=s[1]);document.querySelectorAll(`[data-dlb="${k}"]`).forEach(n=>n.style.width=s[1]+'%')}}});
+ if(j){S.pct+=4;if(S.pct>=100){S.pct=0;S.img++;if(S.img>j.n){j.st='done';j.m='Done just now - '+j.n+' images';const n=S.jobs.find(x=>x.st==='queued');if(n)n.st='running';S.img=1;struct=true}}
+  const eta=Math.round((100-S.pct)*.48);
+  document.querySelectorAll('[data-pill]').forEach(n=>n.textContent=pill());
+  document.querySelectorAll('[data-bar],[data-bar2],[data-bar3]').forEach(n=>n.style.width=S.pct+'%');
+  document.querySelectorAll('[data-pct2],[data-pill2]').forEach(n=>n.textContent=`${S.pct}% - ~${eta}s`);}
+ if(struct&&!document.activeElement.matches?.('textarea,input'))render();
+},700);
+render();
+</script>
+</body>
+</html>

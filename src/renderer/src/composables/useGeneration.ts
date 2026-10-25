@@ -4,7 +4,13 @@ import { requestOpenLogs } from '@/lib/appEvents'
 import type { useToast } from '@/composables/useToast'
 import { useRemoteSession } from '@/composables/useRemoteSession'
 
-export type GenerationSurface = 'text2image' | 'edit' | 'video' | 'upscale' | 'adetailer'
+export type GenerationSurface =
+  | 'text2image'
+  | 'edit'
+  | 'video'
+  | 'upscale'
+  | 'adetailer'
+  | 'workflow'
 
 /**
  * Module-level busy flags shared across workspaces (single-flight client side).
@@ -16,7 +22,8 @@ const generationStatus: Record<GenerationSurface, Ref<boolean>> = {
   edit: ref(false),
   video: ref(false),
   upscale: ref(false),
-  adetailer: ref(false)
+  adetailer: ref(false),
+  workflow: ref(false)
 }
 
 export function useGenerationStatus(surface: GenerationSurface) {

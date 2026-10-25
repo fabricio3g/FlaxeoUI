@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flaxeo Image - Studio redesign v2 mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*:has(>.pin){position:relative}
+:root{--bg:#fff;--fg:#000;--card:#fafafa;--mut:#f5f5f5;--mfg:#525252;--bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.28);--hov:rgba(0,0,0,.04);--hov2:rgba(0,0,0,.08);
+--ok:oklch(.46 .12 150);--okbg:oklch(.95 .045 150);--wn:oklch(.45 .11 70);--wnbg:oklch(.96 .05 85);--dg:oklch(.5 .22 27);--dgbg:oklch(.96 .03 25);
+--sh:0 8px 30px rgba(0,0,0,.14);--mono:'Geist Mono',ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--card:#0a0a0a;--mut:#111;--mfg:#b3b3b3;--bd:rgba(255,255,255,.12);--bd2:rgba(255,255,255,.3);--hov:rgba(255,255,255,.06);--hov2:rgba(255,255,255,.12);
+--ok:oklch(.78 .13 155);--okbg:oklch(.27 .05 150);--wn:oklch(.82 .12 85);--wnbg:oklch(.28 .05 80);--dg:oklch(.75 .17 22);--dgbg:oklch(.28 .07 25);--sh:0 8px 30px rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--card:#0a0a0a;--mut:#111;--mfg:#b3b3b3;--bd:rgba(255,255,255,.12);--bd2:rgba(255,255,255,.3);--hov:rgba(255,255,255,.06);--hov2:rgba(255,255,255,.12);
+--ok:oklch(.78 .13 155);--okbg:oklch(.27 .05 150);--wn:oklch(.82 .12 85);--wnbg:oklch(.28 .05 80);--dg:oklch(.75 .17 22);--dgbg:oklch(.28 .07 25);--sh:0 8px 30px rgba(0,0,0,.7)}
+*{box-sizing:border-box;margin:0}[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg);font:13px/1.45 'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.sm{width:14px;height:14px}.ic.lg{width:20px;height:20px}
+kbd{font:500 11px var(--mono);border:1px solid var(--bd2);border-radius:6px;padding:0 5px;color:var(--mfg);background:var(--bg)}
+.mono{font-family:var(--mono)}.mut{color:var(--mfg)}.sm{font-size:12px}.b{font-weight:600}.grow{flex:1;min-width:0}
+.ok-t{color:var(--ok)}.wn-t{color:var(--wn)}.dg-t{color:var(--dg)}
+.lnk{text-decoration:underline;text-underline-offset:2px;font-weight:500}
+/* mockup chrome */
+.chrome{position:sticky;top:0;z-index:100;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;background:var(--mut);border-bottom:1px solid var(--bd2)}
+.chrome .cb{height:28px;padding:0 11px;border-radius:99px;border:1px solid var(--bd);background:var(--bg);font-size:12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chrome .cb:hover{background:var(--hov2)}.chrome .cb.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chrome .sep{width:1px;height:20px;background:var(--bd2);margin:0 4px}.chrome .sw{display:flex;gap:4px;flex-wrap:wrap}
+.chrome .sub{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;align-items:center}.chrome .sub small{color:var(--mfg);font-size:11px;margin-right:4px}
+.stage{padding:14px;display:flex;justify-content:center;position:relative}
+.frame{width:min(1440px,100%);height:min(900px,calc(100vh - 110px));min-height:660px;border:1px solid var(--bd2);border-radius:14px;overflow:hidden;background:var(--bg);position:relative;transform:translateZ(0)}
+.frame.mobile{width:390px;height:min(812px,calc(100vh - 110px));min-height:720px;border-radius:34px;border:8px solid var(--fg)}
+#app{height:100%;display:flex;flex-direction:column;position:relative}
+.note{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:200;width:min(520px,calc(100vw - 24px));background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;gap:10px;box-shadow:var(--sh)}
+.note b{flex:none;width:22px;height:22px;border-radius:99px;background:#1d4ed8;color:#fff;display:grid;place-items:center;font-size:12px}
+.note p{flex:1;font-size:13px}.note button{color:var(--bg);text-decoration:underline;font-size:12px}
+.pin{display:none;position:absolute;top:4px;right:4px;z-index:60;width:22px;height:22px;border-radius:99px;background:#1d4ed8;color:#fff;font:600 11px var(--mono);place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;padding:0;text-align:center}
+.pin.l{right:auto;left:4px}.pin.b{top:auto;bottom:4px}
+body.notes .pin{display:grid}.pin.on{background:#be123c;transform:scale(1.15)}
+.toast{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:120;background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 16px;font-size:13px;box-shadow:var(--sh);max-width:calc(100% - 24px);display:flex;gap:8px;align-items:center}
+/* titlebar: mirrors Titlebar.vue (h-10, no border, drag region) */
+.tb{height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:relative;z-index:50;user-select:none}
+.tb-l{display:flex;align-items:center;gap:6px;padding:0 8px;height:100%;min-width:0}
+.tb-c{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.tb-r{display:flex;align-items:center;height:100%;gap:2px}
+.tbi{height:32px;min-width:32px;padding:0 6px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--fg)}
+.tbi:hover,.tbi.on{background:var(--hov2)}
+.tbb{height:32px;padding:0 8px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500}
+.tbb:hover,.tbb.on{background:var(--hov2)}
+.tbb.hub{height:28px;padding:0 12px}
+.cnt{min-width:16px;padding:0 4px;border-radius:6px;background:var(--fg);color:var(--bg);font-size:12px;font-weight:500;text-align:center;line-height:16px}
+.setup{height:28px;padding:0 8px;border-radius:8px;background:var(--wnbg);color:var(--wn);font-size:12px;font-weight:500;display:inline-flex;gap:6px;align-items:center;margin-right:2px}
+.setup:hover{filter:brightness(.96)}.setup i{width:6px;height:6px;border-radius:9px;background:var(--wn)}
+.wb{width:44px;height:100%;display:grid;place-items:center;color:var(--mfg)}.wb:hover{background:var(--hov2);color:var(--fg)}.wb.x:hover{background:var(--dg);color:#fff}
+.dotc{width:10px;height:10px;border-radius:9px;background:var(--ok);display:inline-block}.dotc.wn{background:var(--wn)}.dotc.dg{background:var(--dg)}
+.tbg{position:relative}.tbg .pop{display:none;top:calc(100% + 6px);bottom:auto;width:272px}.tbg:hover .pop,.tbg:focus-within .pop{display:block}
+.dot{width:7px;height:7px;border-radius:9px;background:var(--ok);display:inline-block}.dot.off{background:var(--wn)}
+.body{flex:1;display:flex;min-height:0}
+.side{width:224px;flex:none;border-right:1px solid var(--bd);border-top:1px solid var(--bd);display:flex;flex-direction:column;padding:10px;gap:1px;overflow-y:auto}
+.gl{font-size:11px;font-weight:500;color:var(--mfg);padding:14px 10px 4px;letter-spacing:.04em;text-transform:uppercase}
+.nav{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border-radius:8px;width:100%;font-size:13px}
+.nav:hover{background:var(--hov)}.nav.on{background:var(--hov2);font-weight:600}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;border-top:1px solid var(--bd)}
+.page{flex:1;overflow:auto;padding:24px 28px 56px}.wrap{max-width:1180px;margin:0 auto}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.ph h1{font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.3}.ph p{color:var(--mfg);margin-top:2px;font-size:13px}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* flat sections */
+.sec{border-top:1px solid var(--bd);margin-top:24px;padding-top:20px}.sec.first{border:0;margin-top:0;padding-top:0}
+.sh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.sh h2,.sh h3{font-size:13px;font-weight:600}.sh p{color:var(--mfg);font-size:12px;margin-top:1px}
+.tr{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--bd);width:100%;text-align:left}
+.tr.h{font-size:11px;font-weight:500;color:var(--mfg);text-transform:uppercase;letter-spacing:.04em;padding-top:6px;padding-bottom:6px}
+button.tr:hover,.tr.hv:hover{background:var(--hov)}.tr.on{background:var(--hov2)}.tr:last-child{border-bottom:0}
+.tr .r{text-align:right;justify-content:flex-end;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tr .nm{min-width:0;overflow-wrap:anywhere}
+.opt{display:flex;gap:12px;padding:12px 8px;border-bottom:1px solid var(--bd);align-items:flex-start;width:100%;text-align:left;cursor:pointer}
+.opt:hover{background:var(--hov)}.opt:last-child{border-bottom:0}.opt.dis{opacity:.55;cursor:not-allowed}.opt.dis:hover{background:none}
+.rd{display:inline-block;width:16px;height:16px;border-radius:99px;border:1.5px solid var(--bd2);flex:none;margin-top:2px;position:relative;background:var(--bg)}
+.rd.on{border-color:var(--fg)}.rd.on::after{content:"";position:absolute;inset:3px;border-radius:99px;background:var(--fg)}
+.fr{display:grid;grid-template-columns:200px 1fr;gap:8px 20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)}.fr:last-child{border:0}
+.msg{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:13px}
+.msg.wn{background:var(--wnbg);color:var(--wn)}.msg.ok{background:var(--okbg);color:var(--ok)}.msg.dg{background:var(--dgbg);color:var(--dg)}.msg.n{background:var(--hov)}
+.msg .ic{margin-top:2px}.msg .grow b{font-weight:600}
+.btn{height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg);display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;white-space:nowrap;justify-content:center}
+.btn:hover{background:var(--hov2)}.btn.pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}.btn.pri:hover{opacity:.85}
+.btn.lg{height:40px;padding:0 20px}.btn.xs{height:26px;padding:0 10px;font-size:12px}
+.btn.ghost{border-color:transparent;background:transparent}.btn.ghost:hover{background:var(--hov2)}
+.btn.dng{color:var(--dg);border-color:color-mix(in srgb,var(--dg) 50%,transparent)}.btn.dng:hover{background:var(--dgbg)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn kbd{color:inherit;opacity:.85;border-color:currentColor;background:transparent}
+.chip{height:28px;padding:0 11px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg);display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;flex:none}
+.chip:hover{background:var(--hov2)}.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.chip .mut{font-size:12px}.chip.on .mut{color:inherit;opacity:.8}
+.chip .x{opacity:.7}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:99px;padding:2px;background:var(--bg);flex:none}
+.seg button{height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:var(--mfg);white-space:nowrap}
+.seg button:hover{color:var(--fg)}.seg button.on{background:var(--fg);color:var(--bg)}
+.seg.sm button{height:22px;padding:0 10px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:500;background:var(--hov2);white-space:nowrap}
+.badge.ok{background:var(--okbg);color:var(--ok)}.badge.wn{background:var(--wnbg);color:var(--wn)}.badge.dg{background:var(--dgbg);color:var(--dg)}.badge.pri{background:var(--fg);color:var(--bg)}
+.in{height:34px;border:1px solid var(--bd2);border-radius:99px;background:var(--bg);padding:0 12px;min-width:0;width:100%}
+select.in{appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+select.in.s{height:28px;font-size:12px}
+textarea.in{height:auto;border-radius:14px;padding:10px 12px;resize:none}
+.sf{position:relative;display:flex;align-items:center}.sf .ic{position:absolute;left:12px;color:var(--mfg)}.sf .in{padding-left:34px}
+.rng{width:100%;accent-color:var(--fg);height:18px;margin:2px 0 6px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
+.lbl{font-size:12px;font-weight:500}
+.sw2{width:36px;height:20px;border-radius:99px;background:var(--bd2);position:relative;flex:none;transition:.15s}.sw2::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:9px;background:var(--bg);transition:.15s}
+.sw2.on{background:var(--fg)}.sw2.on::after{left:18px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.art{position:relative;overflow:hidden;width:100%;height:100%;background:radial-gradient(circle at var(--s),var(--c) 0 7%,transparent 7.5%),linear-gradient(165deg,var(--a),var(--b))}
+.art::after{content:"";position:absolute;inset:auto 0 0;height:46%;background:linear-gradient(180deg,color-mix(in srgb,var(--b) 75%,#000),rgba(0,0,0,.7));clip-path:polygon(0 100%,0 55%,22% 22%,40% 52%,62% 12%,82% 48%,100% 30%,100% 100%)}
+.art::before{content:"";position:absolute;left:46%;bottom:20%;width:15%;height:13%;background:var(--c);z-index:1;clip-path:polygon(0 100%,0 42%,50% 0,100% 42%,100% 100%)}
+.ar{aspect-ratio:1;overflow:hidden;border-radius:12px;position:relative}
+.th32{width:32px;height:32px;border-radius:8px;overflow:hidden;flex:none;position:relative}
+.pop{position:absolute;z-index:40;bottom:calc(100% + 8px);left:0;min-width:270px;background:var(--bg);border:1px solid var(--bd2);border-radius:14px;box-shadow:var(--sh);padding:8px;max-height:460px;overflow:auto;text-align:left}
+.pop.dn{top:calc(100% + 6px);bottom:auto}.pop.r{left:auto;right:0}
+.pop h4{font-size:11px;font-weight:500;color:var(--mfg);text-transform:uppercase;letter-spacing:.04em;padding:8px 8px 4px}
+.mi{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:8px;width:100%;font-size:13px}.mi:hover{background:var(--hov2)}
+.mi small{display:block;color:var(--mfg);font-size:12px;font-weight:400}.mi.dng{color:var(--dg)}
+.hr{height:1px;background:var(--bd);margin:6px 0}
+.pw{position:relative;display:inline-flex}
+.mono-box{font:12px/1.6 var(--mono);background:var(--mut);border-radius:8px;padding:10px 12px;color:var(--fg);overflow:auto}
+.bar{height:5px;border-radius:9px;background:var(--hov2);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--fg);border-radius:9px;transition:width .6s linear}
+.bar.pz i{opacity:.45}
+.spin{width:12px;height:12px;border-radius:9px;border:2px solid var(--bd2);border-top-color:var(--fg);animation:sp 1s linear infinite;flex:none}@keyframes sp{to{transform:rotate(360deg)}}
+/* studio */
+.studio{flex:1;display:flex;min-height:0;position:relative}
+.scol{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.sscroll{flex:1;min-height:0;display:flex;flex-direction:column}
+.stop{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bd);flex:none}
+.stop .t{font-size:13px;color:var(--mfg);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.canvas{flex:1;min-height:150px;container-type:size;display:flex;align-items:center;justify-content:center;padding:14px;position:relative;background:var(--card)}
+.cimg{width:calc(100cqmin);height:calc(100cqmin);border-radius:10px;overflow:hidden;position:relative;box-shadow:0 0 0 1px var(--bd);flex:none}
+.cimg.w{width:min(100cqw,calc(100cqh*1.7778));height:auto;aspect-ratio:16/9}
+.ov{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(0,0,0,.72);color:#fff;border-radius:99px;padding:5px 11px;font-size:12px;display:flex;gap:8px;align-items:center}
+.abar{display:flex;gap:6px;justify-content:center;padding:10px 12px;flex-wrap:wrap;flex:none;border-top:1px solid var(--bd)}
+.film{display:flex;gap:8px;padding:8px 16px;overflow-x:auto;flex:none;border-top:1px solid var(--bd);align-items:center}
+.th{width:44px;height:44px;border-radius:8px;overflow:hidden;flex:none;border:2px solid transparent;padding:0}.th.on{border-color:var(--fg)}
+.comp{margin:0 16px 14px;padding:12px 12px 10px;border-radius:20px;flex:none;border:1px solid var(--bd2);background:var(--bg)}
+.prompt{width:100%;border:0;background:transparent;resize:none;outline:0;font-size:14px;line-height:1.5;min-height:42px;padding:2px 4px}
+.prompt.neg{border-top:1px dashed var(--bd2);margin-top:4px;padding-top:8px;font-size:13px}
+.ptok{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 4px 4px}
+.tk{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px 0 3px;border-radius:99px;background:var(--hov2);font-size:12px;font-weight:500}
+.tk .th32{width:18px;height:18px;border-radius:99px}.tk.w{padding-left:8px;background:transparent;border:1px dashed var(--bd2);font-weight:400;color:var(--mfg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.comp .chip{border-color:transparent;background:var(--hov)}.comp .chip:hover{background:var(--hov2)}.comp .chip.on{background:var(--fg)}
+.comp .seg{border-color:transparent;background:var(--hov)}
+.cact{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-left:auto}
+.prog{position:relative;overflow:hidden;min-width:190px;cursor:default}.prog i.f{position:absolute;inset:0 auto 0 0;background:rgba(128,128,128,.4);transition:width .6s linear}.prog span{position:relative;display:flex;gap:8px;align-items:center}
+.insp{width:300px;flex:none;border-left:1px solid var(--bd);overflow:auto;padding:16px;background:var(--bg)}
+.insp h3{font-size:13px;font-weight:600}
+.insp .sec{margin-top:16px;padding-top:16px}
+.insp .sheethd{display:none}
+.lr{padding:10px 0;border-bottom:1px solid var(--bd)}.lr:last-of-type{border-bottom:0}.lr.dim{opacity:.6}
+.dsum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600}
+.dsum::-webkit-details-marker{display:none}details[open]>.dsum .ic{transform:rotate(180deg)}
+details.dd>div{padding-top:12px}
+.ftool{position:absolute;top:22px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bd2);border-radius:99px;padding:4px;box-shadow:var(--sh);max-width:calc(100% - 20px)}
+.ftool .btn{height:28px;padding:0 10px;font-size:12px;border:0}.ftool .btn.on{background:var(--fg);color:var(--bg)}.ftool .v{width:1px;height:18px;background:var(--bd2);margin:0 4px}
+.drop{border:1.5px dashed var(--bd2);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;width:100%}
+.slot{width:112px;border-radius:12px;border:1px solid var(--bd2);background:var(--bg);overflow:hidden}.slot .ar{border-radius:0;aspect-ratio:16/10}.slot.empty{border-style:dashed;text-align:center;padding:12px 6px;color:var(--mfg)}
+/* gallery */
+.gal{flex:1;display:flex;min-height:0;position:relative}
+.gcol{flex:1;min-width:0;display:flex;flex-direction:column}
+.gtool{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cell,170px),1fr));gap:10px}
+.gi{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;display:block;border:2px solid transparent;padding:0}
+.gi:hover,.gi:focus-visible{border-color:var(--fg)}.gi.sel{border-color:#1d4ed8}
+.gi .go{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 40%,rgba(0,0,0,.6));opacity:0;transition:.12s;color:#fff;z-index:2;padding:8px;display:flex;flex-direction:column;justify-content:space-between;font-size:11px}
+.gi:hover .go,.gi:focus-visible .go,.selmode .gi .go{opacity:1}
+.gi .ck{width:20px;height:20px;border-radius:7px;border:1.5px solid #fff;background:rgba(0,0,0,.35);display:grid;place-items:center}.gi.sel .ck{background:#1d4ed8;border-color:#1d4ed8}
+.gi .ck .ic{width:13px;height:13px;stroke-width:2.5;opacity:0}.gi.sel .ck .ic{opacity:1}
+.gi .vd{position:absolute;right:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.7);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.gi .fv{position:absolute;left:8px;top:8px;z-index:3;color:#fde047}.gi .fv .ic{fill:#fde047}
+.gd{font-size:12px;font-weight:500;color:var(--mfg);margin:18px 0 8px;position:sticky;top:-24px;background:var(--bg);padding:4px 0;z-index:2}
+.drawer{width:340px;flex:none;border-left:1px solid var(--bd);overflow:auto;padding:16px;background:var(--bg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px}.kv dt{color:var(--mfg)}.kv dd{margin:0;font-family:var(--mono);font-size:12px;word-break:break-all}
+.bulk{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:20;background:var(--fg);color:var(--bg);border-radius:99px;padding:6px 8px 6px 16px;display:flex;gap:6px;align-items:center;box-shadow:var(--sh);max-width:calc(100% - 16px);flex-wrap:wrap;justify-content:center}
+.bulk .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 40%,transparent);height:30px}.bulk .btn:hover{background:rgba(128,128,128,.35)}.bulk .btn.dng{color:#b91c1c}
+:root[data-theme="dark"] .bulk .btn.dng{color:#b91c1c}
+.dzone{margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)}
+.lrow{display:flex;align-items:center;gap:12px;padding:6px;border-radius:10px;width:100%}.lrow:hover{background:var(--hov)}.lrow .ar{width:44px;flex:none;border-radius:8px}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:70px 20px}
+.cardlink{display:block;width:100%;overflow:hidden;border:1px solid var(--bd);border-radius:14px;transition:.12s}.cardlink:hover{border-color:var(--bd2);background:var(--hov)}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;gap:2px;aspect-ratio:2/1;overflow:hidden}.mosaic>*{aspect-ratio:auto;min-height:0;overflow:hidden;height:100%}
+.cbody{padding:12px 14px}.cbody h3{font-size:14px;font-weight:600;margin-bottom:2px}
+.split{display:flex;gap:28px;align-items:flex-start}.split>.l{width:260px;flex:none}.split>.r{flex:1;min-width:0}
+.li{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px}.li:hover{background:var(--hov)}.li.on{background:var(--hov2);font-weight:600}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:20px;overflow-x:auto}
+.tabs button{padding:8px 14px;font-weight:500;color:var(--mfg);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}.tabs button.on{color:var(--fg);border-color:var(--fg)}
+.tabs .n{margin-left:6px}
+.stp{display:flex;gap:8px;align-items:center;margin:4px 0 12px;flex-wrap:wrap}
+.stp .s{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mfg)}.stp .s .n{width:20px;height:20px;border-radius:99px;border:1.5px solid var(--bd2);display:grid;place-items:center;font-size:11px;font-weight:600}
+.stp .s.on{color:var(--fg);font-weight:600}.stp .s.on .n{border-color:var(--fg)}.stp .s.dn{color:var(--fg)}.stp .s.dn .n{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.stp .ln{width:24px;height:1px;background:var(--bd2)}
+.cols3{display:grid;grid-template-columns:184px minmax(0,1fr);gap:0}
+.cols3.d{grid-template-columns:184px minmax(0,1fr) 300px}
+.lcol{border-right:1px solid var(--bd);padding-right:12px;margin-right:20px}
+.mcol{min-width:0}
+.rcol{border-left:1px solid var(--bd);padding-left:20px;margin-left:20px;position:sticky;top:0;align-self:start}
+.tree{font-size:12px}.tree .tn{display:flex;align-items:center;gap:6px;padding:3px 0;color:var(--fg)}.tree .tn .ct{margin-left:auto;color:var(--mfg);font-family:var(--mono);font-size:11px}
+.tree .tn .ic{color:var(--mfg)}
+.modal{position:absolute;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bd2);border-radius:16px;box-shadow:var(--sh)}
+.modal .mh{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.modal .mb{padding:20px;overflow:auto;flex:1}.modal .mf{padding:12px 20px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap}
+.rsheet{position:absolute;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--bg);border-left:1px solid var(--bd2);z-index:90;display:flex;flex-direction:column;box-shadow:var(--sh)}
+.rsheet .hd{padding:16px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--bd)}.rsheet .bd{flex:1;overflow:auto;padding:8px 16px 16px}.rsheet .ft{padding:12px 16px;border-top:1px solid var(--bd)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:85}
+.qj{display:flex;gap:10px;align-items:flex-start;padding:10px 4px;border-bottom:1px solid var(--bd)}.qj:last-child{border:0}
+.logs{flex:none;height:190px;border-top:1px solid var(--bd);display:flex;flex-direction:column}.logs .mono-box{flex:1;border-radius:0;overflow:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:90;background:var(--bg);border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh);padding:12px 12px 20px}
+.mnav{height:60px;flex:none;border-top:1px solid var(--bd);display:flex;background:var(--bg)}
+.mnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--mfg);font-weight:500}.mnav button.on{color:var(--fg);font-weight:600}.mnav .ic{width:20px;height:20px}
+.prose h2{font-size:18px;font-weight:600;margin-bottom:6px}.prose h3{font-size:14px;margin:18px 0 6px}.prose p,.prose li{font-size:14px;line-height:1.65;margin-bottom:6px}.prose ol{padding-left:20px}
+.hero{padding:16px;border:1px solid var(--bd2);border-radius:20px}.hero .prompt{font-size:16px;min-height:72px}
+.hero .chip,.hero .seg{border-color:transparent;background:var(--hov)}
+.swc{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd2)}
+.stepr{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--bd);width:100%}.stepr .n{width:24px;height:24px;border-radius:99px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.stepr.on{background:var(--hov2)}.stepr .th2{width:52px;height:40px;border-radius:6px;overflow:hidden;flex:none}
+.fgrid{display:grid;grid-template-columns:160px 1fr;gap:12px 20px;align-items:center;padding:12px 0}
+/* mobile */
+.mobile .side,.mobile .wb,.mobile .tb-c{display:none}
+.mobile .tb-l{padding:0 6px}.mobile .page{padding:14px 14px 28px}.mobile .tbg{display:none}
+.mobile .ph{margin-bottom:14px}.mobile .acts{width:100%}
+.mobile .g4{grid-template-columns:1fr}.mobile .g4.two{grid-template-columns:1fr 1fr}
+.mobile .studio{flex-direction:column}.mobile .sscroll{overflow:auto;padding-bottom:250px}
+.mobile .canvas{flex:none;height:300px}
+.mobile .stop{padding:8px 12px}.mobile .stop .t{display:none}
+.mobile .comp{position:absolute;left:0;right:0;bottom:0;margin:0;border-radius:24px 24px 0 0;z-index:30;box-shadow:var(--sh);padding-top:14px}
+.mobile .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.mobile .cact{width:100%;margin-top:6px}.mobile .cact .btn{flex:1}.mobile .prog{min-width:0;flex:2}
+.mobile .ptok{flex-wrap:nowrap;overflow-x:auto}
+.mobile .abar{display:grid;grid-template-columns:repeat(3,1fr)}.mobile .abar .btn{padding:0 6px}
+.mobile .insp{position:absolute;left:0;right:0;bottom:0;top:22%;width:auto;z-index:95;border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh)}
+.mobile .insp .sheethd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mobile .pop,.mobile .tbg .pop{position:fixed;left:8px;right:8px;bottom:8px;top:auto;width:auto;max-height:70%;z-index:100}.mobile .pop.dn,.mobile .pop.r{left:8px;right:8px;top:auto}
+.mobile .drawer,.mobile .rcol.sheetm{position:absolute;inset:auto 0 0 0;top:20%;width:auto;z-index:60;border-radius:24px 24px 0 0;border:1px solid var(--bd2);box-shadow:var(--sh);background:var(--bg);padding:16px;overflow:auto;margin:0}
+.mobile .gg{--cell:140px!important}.mobile .gi .go{opacity:1;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 40%)}.mobile .gi .go .bot{display:none}
+.mobile .split{flex-direction:column;gap:16px}.mobile .split>.l{width:100%}
+.mobile .tr[style*="minmax"]{grid-template-columns:minmax(0,1fr)!important;gap:6px}.mobile .tr .hm{display:none}.mobile .tr.h{display:none}.mobile .tr .r{justify-content:flex-start}.mobile .setnav{display:flex;overflow-x:auto;gap:6px;width:100%}.mobile .setnav .li{width:auto;white-space:nowrap}
+.mobile .fr,.mobile .fgrid{grid-template-columns:1fr}
+.mobile .cols3,.mobile .cols3.d{grid-template-columns:1fr}.mobile .lcol{border:0;padding:0;margin:0 0 12px;display:flex;overflow-x:auto;gap:6px}
+.mobile .lcol .li{width:auto;white-space:nowrap;border:1px solid var(--bd);border-radius:99px}.mobile .lcol .li .mut{display:none}.mobile .lcol .li.on{border-color:var(--fg)}
+.mobile .rcol{border:0;padding:0;margin:16px 0 0;position:static}
+.mobile .ftool{overflow-x:auto;top:10px}.mobile .bulk{bottom:10px}.mobile .note{bottom:10px}
+.mobile .hide-m{display:none!important}
+.mobile .hero .prompt{font-size:15px}
+.mobile .modal{top:12px;transform:translateX(-50%);left:50%;max-height:calc(100% - 24px)}
+.mobile .rsheet{width:100%}
+.mobile .mf{justify-content:stretch}
+.mobile .tabs{margin-bottom:14px}
+.mobile .m1{grid-template-columns:1fr!important}
+.ibtn{width:32px;height:32px;border-radius:99px;display:grid;place-items:center}.ibtn:hover{background:var(--hov2)}.ibtn[disabled]{opacity:.35}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></symbol>
+<symbol id="i-recipes" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M9 6h5a3 3 0 0 1 3 3v6"/></symbol>
+<symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-kits" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M12 21c-1.5 0-2-1-2-2 0-2 3-2 3-4 0-1-1-1.5-2-1.5"/></symbol>
+<symbol id="i-models" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3.3 7 12 12l8.7-5M12 22V12"/></symbol>
+<symbol id="i-cpu" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+<symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m6 3 14 9-14 9z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r=".6"/><circle cx="16" cy="16" r=".6"/><circle cx="12" cy="12" r=".6"/><circle cx="16" cy="8" r=".6"/><circle cx="8" cy="16" r=".6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-brush" viewBox="0 0 24 24"><path d="m9.1 11.9 8-8a2.8 2.8 0 1 1 4 4l-8 8.1M7 15c-1.7 0-3 1.3-3 3 0 1.3-2.5 1.5-2 2 1.1 1.1 2.5 2 4 2 2.2 0 4-1.8 4-4a3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21M22 21H7M5 11l9 9"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+<symbol id="i-invert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+<symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3zM12 9v4M12 17h.01"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+<symbol id="i-up2" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+</defs></svg>
+
+<div class="chrome" id="chrome">
+  <b style="margin-right:6px">Flaxeo Image redesign v2</b>
+  <div class="sw" id="sw"></div>
+  <span class="sep"></span>
+  <button class="cb" id="cbTheme" data-a="theme">Theme</button>
+  <div class="sw"><button class="cb" data-a="dev" data-v="desktop" id="cbD">Desktop</button><button class="cb" data-a="dev" data-v="mobile" id="cbM">Mobile</button></div>
+  <button class="cb" data-a="notes" id="cbN">Show UX notes</button>
+  <button class="cb" data-a="variant" id="cbV" hidden></button>
+  <div class="sub" id="sub" hidden></div>
+</div>
+<div class="stage"><div class="frame" id="frame"><div id="app"></div></div></div>
+<div id="noteBox"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const ic=(n,c='')=>`<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const ROOT='D:\\Flaxeo\\models';
+const PROMPTS=['isometric cozy cabin in snowy forest, warm window light','cyberpunk street market at night, neon rain, 35mm','ceramic coffee mug product shot, soft studio light, pastel backdrop','portrait of an elderly fisherman, golden hour, film grain','pixel art tavern interior, warm lanterns','low-poly fox character sprite, game asset','watercolor mountain lake at dawn, soft mist','minimal flat vector logo of a fox'];
+const HUES=[210,25,150,280,340,45,190,100];
+const art=(i,x='')=>{const h=HUES[((i%8)+8)%8];return `<div class="art ${x}" style="--a:hsl(${h} 52% 40%);--b:hsl(${(h+45)%360} 58% 13%);--c:hsl(${(h+25)%360} 80% 66%);--s:${55+(i*7)%30}% ${16+(i*5)%16}%"></div>`};
+const SIZES=[['1:1','1024 x 1024'],['3:4','896 x 1152'],['4:3','1152 x 896'],['16:9','1344 x 768'],['9:16','768 x 1344']];
+const KITS=[['Cozy Winter','Warm light, soft snow, muted palette'],['Pixel Tavern','16-bit pixel art, limited palette'],['Clean Product','Soft studio light, pastel seamless'],['Film Portrait','35mm grain, golden hour, shallow focus']];
+const GUIDES=[['Structure',[['controlnet','ControlNet','Follow the pose, edges or depth of a picture.'],['start','Start from image','Use a picture as the starting point (img2img).']]],['Look and subject',[['reference','Reference image','Borrow subject and composition from a photo.'],['style','Style reference','Match the look and colors of another image.']]],['People',[['identity','Identity','Keep one face consistent across images.'],['photomaker','PhotoMaker','Create new scenes of a person from 1-4 photos.']]]];
+const GN={controlnet:'ControlNet',start:'Start from image',reference:'Reference image',style:'Style reference',identity:'Identity',photomaker:'PhotoMaker'};
+const RECIPES=[['Sprite sheet pack','Generate one character in four poses with matching style.','Game assets',5],['Isometric tile set','Seamless terrain tiles for top-down or isometric maps.','Game assets',4],['Product shot on pastel','Clean packshot from a photo of your product.','Product',4],['Mug mockup variants','Show one design on five mug colors.','Product',3],['Studio portrait polish','Restyle and upscale a portrait photo.','Portrait',4],['Headshot set','Six consistent headshots from one reference.','Portrait',3],['Cabin four seasons','Same scene in spring, summer, autumn and winter.','Mine',3],['Icon pack x8','Matching app icons from one concept.','Game assets',3]];
+const STEPS=[['Generate base character','Image - Flux.1 dev - 1024 x 1024'],['Remove background','Edit - Restyle - transparent'],['Pose variants x4','Image - ControlNet pose - 4 images'],['Upscale 2x','Edit - Upscale - 2048 px'],['Export sprite sheet','Save - PNG 4096 x 4096']];
+
+/* ---------- model data ---------- */
+const TN={diff:'Diffusion model',ckpt:'Checkpoint',vae:'VAE',clip_l:'CLIP-L',clip_g:'CLIP-G',t5:'T5XXL',umt5:'UMT5-XXL',llm:'LLM',llmv:'LLM vision',lora:'LoRA',emb:'Embedding',cn:'ControlNet',up:'Upscaler',id:'Identity',taesd:'Preview decoder',clipv:'CLIP vision',unk:'Unsorted'};
+const GRPOF={diff:'diff',ckpt:'ckpt',vae:'vae',clip_l:'te',clip_g:'te',t5:'te',umt5:'te',llm:'te',llmv:'te',lora:'lora',emb:'emb',cn:'cn',up:'up',id:'id',taesd:'taesd',clipv:'vx',unk:'unk'};
+const GROUPS=[['all','All files',''],['diff','Diffusion models',''],['ckpt','Checkpoints',''],['vae','VAE',''],['te','Text encoders','CLIP-L/G, T5XXL, UMT5, LLM'],['lora','LoRAs',''],['emb','Embeddings',''],['cn','ControlNet',''],['up','Upscalers',''],['id','Identity','PhotoMaker, IP-Adapter, PuLID'],['taesd','Preview decoders','TAESD'],['vx','Video extras','CLIP vision, audio VAE'],['unk','Unsorted','Type not detected']];
+const DEST={diff:'diffusion_models/',ckpt:'checkpoints/',vae:'vae/',clip_l:'text_encoders/clip/',clip_g:'text_encoders/clip/',t5:'text_encoders/t5xxl/',umt5:'text_encoders/t5xxl/',llm:'text_encoders/llm/',llmv:'text_encoders/llm_vision/',lora:'loras/',emb:'embeddings/',cn:'controlnet/',up:'upscale/',id:'identity/',taesd:'taesd/',clipv:'video/clip_vision/',unk:''};
+const RAW=[
+['flux1-dev-Q8_0.gguf','diff','Flux.1','GGUF Q8_0',12390,'diffusion_models/'],
+['flux1-schnell-Q4_K.gguf','diff','Flux.1','GGUF Q4_K',6554,'diffusion_models/'],
+['flux1-kontext-dev-Q4_K.gguf','diff','Flux.1','GGUF Q4_K',6900,'diffusion_models/'],
+['z_image_turbo-Q8_0.gguf','diff','Z-Image','GGUF Q8_0',6860,'diffusion_models/'],
+['chroma1-hd-Q8_0.gguf','diff','Chroma','GGUF Q8_0',9300,'diffusion_models/'],
+['qwen-image-edit-2509-Q4_K.gguf','diff','Qwen-Image','GGUF Q4_K',13100,'diffusion_models/qwen/'],
+['wan2.2_t2v_high_noise_14B_Q4_K.gguf','diff','Wan 2.2','GGUF Q4_K',9000,'diffusion_models/wan/'],
+['wan2.2_t2v_low_noise_14B_Q4_K.gguf','diff','Wan 2.2','GGUF Q4_K',9000,'diffusion_models/wan/'],
+['wan2.1_i2v_480p_14B-Q4_K.gguf','diff','Wan 2.1','GGUF Q4_K',9500,'diffusion_models/wan/'],
+['juggernautXL_v9.safetensors','ckpt','SDXL','safetensors fp16',6760,'checkpoints/'],
+['v1-5-pruned-emaonly.safetensors','ckpt','SD1.x','safetensors fp16',4270,'checkpoints/'],
+['ae.safetensors','vae',['Flux.1','Chroma','Z-Image'],'safetensors fp32',335,'vae/'],
+['sdxl_vae-fp16-fix.safetensors','vae','SDXL','safetensors fp16',335,'vae/'],
+['wan_2.1_vae.safetensors','vae',['Wan 2.1','Wan 2.2'],'safetensors fp16',254,'vae/'],
+['qwen_image_vae.safetensors','vae','Qwen-Image','safetensors fp16',254,'vae/'],
+['clip_l.safetensors','clip_l',['Flux.1','SD3.5'],'safetensors fp16',246,'text_encoders/clip/'],
+['t5xxl_fp16.safetensors','t5',['Flux.1','SD3.5','Chroma'],'safetensors fp16',9790,'text_encoders/t5xxl/'],
+['umt5-xxl-encoder-Q8_0.gguf','umt5',['Wan 2.1','Wan 2.2'],'GGUF Q8_0',6100,'text_encoders/t5xxl/'],
+['Qwen3-4B-Q8_0.gguf','llm','Z-Image','GGUF Q8_0',4280,'text_encoders/llm/'],
+['Qwen2.5-VL-7B-Instruct-Q4_K.gguf','llm','Qwen-Image','GGUF Q4_K',4680,'text_encoders/llm/'],
+['clip_vision_h.safetensors','clipv','Wan 2.1','safetensors fp16',1260,'video/clip_vision/'],
+['pixel-art-xl.safetensors','lora','SDXL','safetensors',163,'loras/styles/',{trig:['pixel art','pixelart'],str:.8}],
+['detail-tweaker-xl.safetensors','lora','SDXL','safetensors',228,'loras/styles/',{trig:[],str:1}],
+['flux-realism.safetensors','lora','Flux.1','safetensors',164,'loras/styles/',{trig:['realism photo'],str:.9}],
+['cozy-winter-flux.safetensors','lora','Flux.1','safetensors',98,'loras/styles/',{trig:['cozywinter'],str:.7}],
+['fox-character-flux.safetensors','lora','Flux.1','safetensors',120,'loras/characters/',{trig:['foxy_char'],str:1}],
+['wan-orbit-camera.safetensors','lora','Wan 2.2','safetensors',310,'loras/',{trig:['orbit shot'],str:1}],
+['easynegative.pt','emb',['SD1.x','SDXL'],'pt',0.02,'embeddings/'],
+['control-canny-sdxl.safetensors','cn','SDXL','safetensors fp16',2500,'controlnet/'],
+['RealESRGAN_x4plus.pth','up','any','pth',64,'upscale/'],
+['photomaker-v1.safetensors','id','SDXL','safetensors',934,'identity/photomaker/'],
+['taesdxl.safetensors','taesd','SDXL','safetensors',5,'taesd/'],
+['flux1-dev.safetensors','diff','Flux.1','safetensors fp16',22700,'diffusion_models/'],
+['mystery_model_v2.safetensors','unk','-','safetensors',2100,'(root)'],
+['final_final.ckpt','unk','-','ckpt',4000,'(root)']];
+let F=RAW.map(a=>({n:a[0],t:a[1],fam:[].concat(a[2]),fmt:a[3],mb:a[4],dir:a[5],x:a[6]||{}}));
+const byN=n=>F.find(f=>f.n===n);
+const fi=n=>F.findIndex(f=>f.n===n);
+const szs=mb=>mb>=1024?(mb/1024).toFixed(1)+' GB':mb>=1?Math.round(mb)+' MB':Math.round(mb*1000)+' KB';
+const famL=f=>f.fam[0]==='-'?'-':f.fam[0]==='any'?'Any':f.fam[0]+(f.fam.length>1?' +'+(f.fam.length-1):'');
+const base=n=>n.replace(/\.(safetensors|gguf|pt|pth|ckpt)$/,'');
+const FAMS=[
+{id:'sd1',name:'SD 1.x',fam:'SD1.x',kind:'image',vram:'~3 GB',slots:[['Checkpoint',1,'ckpt'],['VAE',0,'vae']],def:{steps:20,cfg:'7',sampler:'euler_a',shift:'-'}},
+{id:'sdxl',name:'SDXL',fam:'SDXL',kind:'image',vram:'~7 GB',slots:[['Checkpoint',1,'ckpt'],['VAE',1,'vae']],def:{steps:28,cfg:'5.5',sampler:'dpm++2m karras',shift:'-'}},
+{id:'sd35',name:'SD 3.5',fam:'SD3.5',kind:'image',vram:'~9 GB',slots:[['Diffusion model',1,'diff'],['CLIP-L',1,'clip_l'],['CLIP-G',1,'clip_g'],['T5XXL',1,'t5']],def:{steps:28,cfg:'4.5',sampler:'euler',shift:'3.0'}},
+{id:'flux',name:'Flux.1 dev / schnell',fam:'Flux.1',kind:'image',vram:'~11.8 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['CLIP-L',1,'clip_l'],['T5XXL',1,'t5']],def:{steps:28,cfg:'1.0 (guidance 3.5)',sampler:'euler',shift:'1.15'}},
+{id:'kontext',name:'Flux.1 Kontext',fam:'Flux.1',kind:'edit',vram:'~8 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['CLIP-L',1,'clip_l'],['T5XXL',1,'t5']],def:{steps:28,cfg:'1.0 (guidance 2.5)',sampler:'euler',shift:'1.15'},note:'Adds a reference image.'},
+{id:'chroma',name:'Chroma',fam:'Chroma',kind:'image',vram:'~10 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['T5XXL',1,'t5']],def:{steps:26,cfg:'4.0',sampler:'euler',shift:'1.0'}},
+{id:'qwen',name:'Qwen-Image Edit',fam:'Qwen-Image',kind:'edit',vram:'~12.5 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['LLM (Qwen2.5-VL)',1,'llm'],['LLM vision',1,'llmv']],def:{steps:30,cfg:'2.5',sampler:'euler',shift:'3.0'}},
+{id:'zimg',name:'Z-Image Turbo',fam:'Z-Image',kind:'image',vram:'~7.5 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['LLM (Qwen3 4B)',1,'llm']],def:{steps:8,cfg:'1.0',sampler:'euler',shift:'3.0'}},
+{id:'wan21',name:'Wan 2.1 I2V',fam:'Wan 2.1',kind:'video',vram:'~11 GB',slots:[['Diffusion model',1,'diff'],['VAE',1,'vae'],['UMT5-XXL',1,'umt5'],['CLIP vision',1,'clipv']],def:{steps:30,cfg:'6.0',sampler:'euler',shift:'5.0'}},
+{id:'wan22',name:'Wan 2.2 A14B',fam:'Wan 2.2',kind:'video',vram:'~11.5 GB',slots:[['Low-noise diffusion',1,'diff'],['High-noise diffusion',1,'diff'],['VAE',1,'vae'],['UMT5-XXL',1,'umt5']],def:{steps:30,cfg:'4.0 high / 3.0 low',sampler:'euler',shift:'5.0'}}];
+const TPL=id=>FAMS.find(t=>t.id===id);
+const SETUPS=[
+{id:'s1',tpl:'flux',name:'Flux.1 dev',pick:['flux1-dev-Q8_0.gguf','ae.safetensors','clip_l.safetensors','t5xxl_fp16.safetensors']},
+{id:'s2',tpl:'sdxl',name:'SDXL Juggernaut v9',pick:['juggernautXL_v9.safetensors','sdxl_vae-fp16-fix.safetensors']},
+{id:'s3',tpl:'zimg',name:'Z-Image Turbo',pick:['z_image_turbo-Q8_0.gguf','ae.safetensors','Qwen3-4B-Q8_0.gguf']},
+{id:'s4',tpl:'chroma',name:'Chroma1 HD',pick:['chroma1-hd-Q8_0.gguf',null,null]},
+{id:'s5',tpl:'qwen',name:'Qwen-Image Edit 2509',pick:['qwen-image-edit-2509-Q4_K.gguf','qwen_image_vae.safetensors','Qwen2.5-VL-7B-Instruct-Q4_K.gguf',null]},
+{id:'s6',tpl:'kontext',name:'Flux.1 Kontext dev',pick:['flux1-kontext-dev-Q4_K.gguf','ae.safetensors','clip_l.safetensors','t5xxl_fp16.safetensors']},
+{id:'s7',tpl:'wan22',name:'Wan 2.2 A14B T2V',pick:['wan2.2_t2v_low_noise_14B_Q4_K.gguf','wan2.2_t2v_high_noise_14B_Q4_K.gguf','wan_2.1_vae.safetensors','umt5-xxl-encoder-Q8_0.gguf']},
+{id:'s8',tpl:'wan21',name:'Wan 2.1 I2V 14B',pick:['wan2.1_i2v_480p_14B-Q4_K.gguf','wan_2.1_vae.safetensors','umt5-xxl-encoder-Q8_0.gguf','clip_vision_h.safetensors']}];
+const miss=s=>TPL(s.tpl).slots.filter((sl,i)=>sl[1]&&!s.pick[i]).map(sl=>sl[0].replace(/ \(.*\)/,''));
+const opts=(tpl,sl)=>F.filter(f=>f.t===sl[2]&&(f.fam.includes(tpl.fam)||f.fam.includes('any')));
+const usedBy=n=>SETUPS.filter(s=>s.pick.includes(n));
+const PACKS=[
+{id:'zimg',name:'Z-Image Turbo',fam:'Z-Image',kind:'Image',def:'Q8_0',q:[['Q8_0',6.7,8,'yes'],['Q4_K',4.1,6,'yes']],shared:[['ae.safetensors','335 MB'],['Qwen3-4B-Q8_0.gguf','4.3 GB']],extra:4.6,note:'Fast 8-step model, great at text in images.'},
+{id:'flux',name:'Flux.1 dev',fam:'Flux.1',kind:'Image',def:'Q4_K',q:[['Q8_0',12.1,14,'tight'],['Q4_K',6.4,9,'yes'],['Q3_K',4.9,7,'yes']],shared:[['ae.safetensors','335 MB'],['clip_l.safetensors','246 MB'],['t5xxl_fp16.safetensors','9.8 GB']],extra:10.4,note:'Top quality photoreal and prompt following.'},
+{id:'sdxl',name:'SDXL Juggernaut v9',fam:'SDXL',kind:'Image',def:'fp16',q:[['fp16',6.6,7,'yes']],shared:[['sdxl_vae-fp16-fix.safetensors','335 MB']],extra:.3,note:'Fast, huge LoRA ecosystem.'},
+{id:'qwen',name:'Qwen-Image Edit 2509',fam:'Qwen-Image',kind:'Edit',def:'Q3_K',q:[['Q4_K',12.8,15,'no'],['Q3_K',9.7,12,'tight']],shared:[['qwen_image_vae.safetensors','254 MB'],['Qwen2.5-VL-7B-Q4_K.gguf','4.7 GB'],['mmproj-Qwen2.5-VL.gguf','1.4 GB']],extra:6.4,note:'Instruction-based editing of existing images.'},
+{id:'wan',name:'Wan 2.2 A14B T2V',fam:'Wan 2.2',kind:'Video',def:'Q4_K',q:[['Q8_0',29.6,32,'no'],['Q4_K',17.6,11.5,'tight'],['Q3_K',14,10,'yes']],shared:[['wan_2.1_vae.safetensors','254 MB'],['umt5-xxl-encoder-Q8_0.gguf','6.1 GB']],extra:6.4,note:'Two-expert video model: high and low noise files.'}];
+const FITL={yes:['ok','Fits your GPU'],tight:['wn','Tight: offloads to CPU'],no:['dg','Needs more VRAM']};
+const NOTES={
+home:['Prompt box really generates: it opens the studio with your prompt and starts. Fixes audit: prompt only navigated.','Mode segmented replaces Create tiles that duplicated the sidebar.','Checklist appears only while something is missing; each row has one action.','Recent outputs are real buttons that open the item.','Recipes row replaces Apps, Workflows and Game assets tiles.','Titlebar is the real app bar: status, CLI/Server, Model Hub, Queue, Setup, Downloads, Logs, theme. No search, no Activity dock.'],
+image:['Model chip now picks a Setup (a bundle), never raw files, and shows Ready or Missing.','Generate is disabled up front with "Missing VAE - Fix" instead of failing after the run.','LoRAs show as chips inside the prompt; raw <lora:> text stays editable behind a toggle.','Inspector is a plain column: sections with dividers, no boxes inside boxes.','LoRA rows: thumbnail, strength slider, trigger-word toggle, remove. Wan branch select only for Wan 2.2.','Apply mode lives in Advanced with plain-language helper; server-mode LoRA loading is automatic.','Labeled action bar; Favorite replaces Add to board; Delete is isolated in the menu.'],
+edit:['One Mode control (Inpaint, Restyle, Expand) replaces two selectors.','Edit setups only list models that can edit; Qwen shows what is missing.','Canvas tools are labeled and floating on the image.','Same composer and flat inspector as Image: no duplicated settings.','Favorite replaces boards; Delete stays in the overflow menu.'],
+video:['Wan 2.2 setups expose a LoRA branch (low, high, both); other setups hide it.','Duration shows frames at fps = seconds, live.','Frames snap to 4n+1 as the model requires.','Start and End frame slots are optional and explained.','Duration and motion are plain rows, not a card.'],
+recipes:['One Recipes page merges Workflows and Game assets; category chips replace a second destination.','Import recipe (.json) and Export live in the header; saving is this device only.','Search finds recipes by name or purpose; "Mine" collects your own.','Cards show step count so effort is clear before opening.'],
+run:['Left column lists only the inputs this recipe needs.','Steps are flat rows with thumbnails, not stacked cards.','No team save: the recipe stays on this device; export shares a .json.','Run is the single primary action; Edit recipe is secondary.','Results can be favorited or saved all at once.'],
+builder:['Builder is its own view with a clear back path.','Steps are a reorderable list; Add step offers typed blocks.','Step settings use the same names as the studios.','Choose which values become form inputs.'],
+gallery:['Search covers prompts, seeds and models; chips filter images, videos and favorites.','Favorites replace boards: one star, one filter, no extra screen.','Import images adds your own files to Gallery or to an Edit input.','Select mode adds a bulk bar: Favorite, Download, Delete.','Detail column is plain: labeled actions, Delete isolated at the bottom.','Empty state links straight to Create.'],
+kits:['Active row states the global effect: applied to every generation.','Sections with dividers replace collapsible cards.','Import and Export .json share kits as files, not accounts.','Live preview shows the kit on a sample prompt.','Kit list stays visible while editing.'],
+'m-Library':['Library lists real files on disk with detected family, format and size. Folders are shown relative.','Type filter on the left covers every sd.cpp part, with counts. Unsorted files get one-click Identify.','Detail column: path, type and family with Change override, used-by setups.','LoRA detail adds preview, editable trigger words, default strength and compatible families.','Add files, Add folder and Rescan sit in one toolbar. Delete is its own row at the bottom.','Folders summary here; the full structure and default targets live in Settings > Storage.'],
+'m-Setups':['A Setup is a family recipe with named slots, replacing Standard/Flow load modes.','List shows Ready or exactly what is missing, with VRAM estimate and one action.','Slot selects only list compatible files, so wrong VAE or encoder picks cannot happen.','Recommended defaults per family are shown read-only, with Edit defaults.','New setup picks a family and auto-fills slots with best matches.','The studio Model chip picks from these setups.'],
+'m-Discover':['Flat list rows with family, size and minimum VRAM instead of card grids.','"Recommended for your GPU" uses the detected RTX 4070, 12 GB.','Quant select changes size and fit live: Q8_0, Q4_K, Q3_K.','"Download & create setup" fetches files and builds the bundle in one go.','Add from URL accepts Hugging Face or direct links; a token is only for gated models.'],
+'m-Downloads':['Every row shows destination folder, size, speed and ETA.','Pause, Resume and Cancel are always visible text buttons.','Failed rows explain why and Retry resumes where they stopped.','The titlebar Downloads popover mirrors this list; no second manager.'],
+'m-Convert':['Convert replaces Quantize: pick a source from Library, then a target.','Each target shows resulting size and a plain quality hint.','Output folder defaults to the diffusion_models folder.','Progress and result appear in place, then the file shows in Library.'],
+backend:['Engine shows what is running and verified, with an update banner when newer exists.','Run mode is one choice shared with the titlebar CLI | Server control, each option explained.','Server controls appear only in Server mode; a stale-setup warning offers Restart.','Runtimes is a table with Use and Remove; previous versions stay for rollback; custom binary supported.','Install a runtime detects hardware, recommends a build and disables impossible ones with a reason.','Install runs as a stepper you can leave; progress also shows in titlebar Downloads.','Advanced device assignment hides until needed.'],
+storage:['Full folder structure as a tree plus a table: type, path, file count, default target.','Subfolders are scanned recursively, so existing layouts keep working.','Extra library folders scan other apps (ComfyUI, A1111) read-only; files are never moved.','Layout detection previews how their folders map to Flaxeo types before adding.'],
+settings:['Settings is a real page with plain sections.','No Team and no Installation section: install moved into Backend.','Changes apply instantly.'],
+help:['Searchable docs with topics on the left.','Articles use numbered steps and short paragraphs.','New article explains Models, Setups and LoRAs.'],
+wizard:['Opened from the titlebar Setup pill; shown once, three steps.','Step 1 detects hardware and chooses the runtime for you.','Step 2 offers 2-3 packs that fit your GPU; one click downloads and creates the setup.','Step 3 ends in the studio with a ready setup.'],
+lora:['Side sheet keeps the studio visible; search and folder filter handle large LoRA collections.','Incompatible families are dimmed with the exact reason.','Each row shows preview, trigger words and default strength before you add.','Embeddings use the same picker, trigger is the filename.','Footer states which setup the compatibility is judged against.'],
+files:['Drop files or folders; each is probed for type and family.','Type is overridable per file; destination follows the type.','Move, Copy or Keep in place (link) per file; duplicates are flagged.','Sidecar .json/.txt and preview images attach to LoRAs automatically.','Also accepts recipe .json, style kit .json and images for Gallery.']};
+
+/* ---------- state ---------- */
+const S={screen:'home',dev:'desktop',notes:false,note:null,menu:null,ov:null,toast:'',
+mode:'server',srvRun:true,valid:true,setupNeeded:true,logs:false,stale:true,
+prompt:PROMPTS[0],hp:'',hmode:'image',neg:false,insp:true,adv:false,preset:'Balanced',size:0,vsize:3,count:4,kit:0,guides:['reference'],
+steps:28,cfg:4.5,seed:482913077,lock:false,emode:'Inpaint',tool:'Brush',brush:42,frames:49,fps:16,motion:'Gentle',raw:false,applyMode:'Auto',fcur:false,
+use:{image:'s1',edit:'s6',video:'s7'},
+lo:{image:[{n:'flux-realism.safetensors',s:.9,trig:true},{n:'cozy-winter-flux.safetensors',s:.6,trig:false}],edit:[],video:[{n:'wan-orbit-camera.safetensors',s:1,trig:true,br:'Both'}]},
+cat:'All',q:'',recipe:0,ran:false,bstep:1,
+sel:3,selmode:false,selected:[],gview:'grid',dens:170,gf:{Images:true,Videos:false,Favorites:false},gq:'',favs:[0,5,10,15],
+kitSel:0,kitOn:[true,false,false,false],
+mtab:'Library',lf:'all',lq:'',fsel:'flux-realism.safetensors',chg:false,setupSel:'s1',qsel:{},dlf:'All',url:false,newMenu:false,
+conv:{src:'flux1-dev.safetensors',tgt:'Q4_K',run:false,pct:0},
+dls:[{id:1,file:'wan2.2_t2v_low_noise_14B_Q4_K.gguf',dest:'diffusion_models/wan/',total:9000,done:5200,spd:18.4,st:'run'},{id:2,file:'umt5-xxl-encoder-Q8_0.gguf',dest:'text_encoders/t5xxl/',total:6100,done:1500,spd:0,st:'pause'},{id:3,file:'control-canny-sdxl.safetensors',dest:'controlnet/',total:2500,done:1550,spd:0,st:'fail',why:'Connection reset at 62% (server returned 503). Retry resumes from 1.5 GB.'},{id:4,file:'ae.safetensors',dest:'vae/',total:335,done:335,spd:0,st:'done'}],did:10,
+sec:'Backend',build:'vulkan',ver:'latest',inst:null,advB:false,upd:true,
+rts:[{id:1,v:'master-982',b:'CUDA 12',d:'2026-10-20',act:true},{id:2,v:'master-975',b:'CUDA 12',d:'2026-10-02'},{id:3,v:'master-982',b:'Vulkan',d:'2026-10-20'},{id:4,v:'Custom',b:'Custom',d:'D:\\tools\\sd-cpp\\build\\bin',custom:true}],
+dtarget:'diffusion_models',xp:false,extras:[{p:'E:\\AI\\stable-diffusion-webui\\models',l:'AUTOMATIC1111',c:61}],
+dev1:{diffusion:'cuda0',te:'cpu',vae:'cuda0'},
+pq:'',pf:'all',ptab:'LoRAs',pview:'list',
+af:[{n:'4x-UltraSharp.pth',t:'up',fam:'any',sz:'64 MB',act:'Move'},{n:'cinematic-lora.safetensors',t:'lora',fam:'Flux.1',sz:'144 MB',act:'Copy',side:true,prev:true},{n:'t5xxl_fp16.safetensors',t:'t5',fam:'Flux.1',sz:'9.8 GB',act:'Keep',dup:true}],
+wz:{step:1,pick:'zimg',st:'idle',pct:0,sub:0},helpI:0,img:2,pct:62,
+jobs:[{id:1,st:'running',t:PROMPTS[0],m:'Image - 1024 x 1024 - 4 images',n:4,i:0},{id:2,st:'queued',t:PROMPTS[1],m:'Image - 1344 x 768 - 2 images',n:2,i:1},{id:3,st:'queued',t:'Recipe: Sprite sheet pack',m:'Recipe - step 2 of 5',n:1,i:5},{id:4,st:'queued',t:'Pine forest timelapse',m:'Video - 49 frames - 16 fps',n:1,i:6},{id:5,st:'done',t:PROMPTS[2],m:'Done 2 min ago - 4 images',n:4,i:2},{id:6,st:'failed',t:PROMPTS[3],m:'Failed: out of VRAM at step 3. Try the Fast preset.',n:2,i:3}],jid:10};
+const running=()=>S.jobs.find(j=>j.st==='running');
+const mob=()=>S.dev==='mobile';
+const nk=()=>S.ov||({models:'m-'+S.mtab,settings:S.sec==='Backend'?'backend':S.sec==='Storage'?'storage':'settings'}[S.screen])||S.screen;
+const pin=(n,k)=>{k=k||nk();return `<span class="pin" role="button" tabindex="0" data-a="pin" data-v="${k}:${n}" aria-label="UX note ${n}">${n}</span>`};
+const seg=(items,cur,a,cls='')=>`<div class="seg ${cls}" role="group">${items.map(x=>{const v=Array.isArray(x)?x[0]:x,l=Array.isArray(x)?x[1]:x;return `<button class="${v===cur?'on':''}" data-a="${a}" data-v="${v}" aria-pressed="${v===cur}">${l}</button>`}).join('')}</div>`;
+const page=(t,s,a,b,wide)=>`<div class="page"><div class="wrap" ${wide?'style="max-width:1320px"':''}><header class="ph"><div><h1>${t}</h1><p>${s}</p></div><div class="acts">${a}</div></header>${b}</div></div>`;
+const sw2=(on,a,v='',lab='')=>`<button class="sw2 ${on?'on':''}" role="switch" aria-checked="${on}" aria-label="${lab}" data-a="${a}" data-v="${v}"></button>`;
+const sec=(h,d,a,b,first)=>`<section class="sec ${first?'first':''}"><div class="sh"><div><h2>${h}</h2>${d?`<p>${d}</p>`:''}</div><div class="acts">${a||''}</div></div>${b}</section>`;
+const dotAll=n=>n;
+
+/* ---------- titlebar (mirrors Titlebar.vue) ---------- */
+function statusPop(){const cli=S.mode==='cli',run=S.srvRun;
+const hint=!S.valid?'Backend binary is not valid.':cli?'CLI mode: ready. A fresh process starts for each job.':run?'Server mode active. The model stays loaded between jobs.':'Server mode is selected but sd-server is not running.';
+return `<div class="pop" role="tooltip"><div class="row" style="padding:0 0 8px;border-bottom:1px solid var(--bd);justify-content:flex-start"><i class="dotc ${cli||run?'':'wn'}" style="width:8px;height:8px"></i><b>Runtime status</b></div>
+<div class="mut sm" style="display:grid;gap:6px;padding:8px 0"><div class="row"><span>Server</span><b class="${cli?'':run?'ok-t':'wn-t'}">${cli?'Not used in CLI mode':run?'Online':'Offline'}</b></div><div class="row"><span>Backend</span><b style="color:var(--fg)">master-982 · CUDA 12</b></div><div class="row"><span>Mode</span><b style="color:var(--fg)">${cli?'CLI':'SERVER'}</b></div></div>
+<p class="mut sm" style="border-top:1px solid var(--bd);padding-top:8px">${hint}</p>${!cli&&!run?`<button class="btn xs pri" style="margin-top:8px" data-a="srv">${ic('play','sm')}Start server</button>`:''}</div>`}
+function queuePop(){const j=running(),q=S.jobs.filter(x=>x.st==='queued'),rec=S.jobs.filter(x=>x.st==='done'||x.st==='failed');
+const st={running:'<span class="badge pri">Running</span>',queued:'<span class="badge">Queued</span>',done:'<span class="badge ok">Done</span>',failed:'<span class="badge dg">Failed</span>'};
+return `<div class="pop dn r" style="width:410px;max-height:560px" role="dialog" aria-label="Job queue"><div class="row" style="padding:4px 4px 8px"><span><b style="font-size:14px">Queue</b> <span class="mut">${j?1:0} running · ${q.length} queued</span></span><span class="acts" style="gap:6px"><button class="btn xs dng" data-a="cancel" ${j?'':'disabled'}>Cancel current</button><button class="btn xs" data-a="clearq" ${q.length?'':'disabled'}>Clear queue</button></span></div>
+${j?`<div class="qj"><span class="th32" style="width:40px;height:40px">${art(j.i)}</span><div class="grow">${st.running} <b class="mono sm" data-pt="job">${jobT()}</b><p class="sm" style="margin:3px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.t)}</p><div class="bar"><i data-pb="job" style="width:${S.pct}%"></i></div><span class="mut sm">${j.m}</span></div></div>`:'<p class="mut sm" style="padding:8px 4px">Nothing running.</p>'}
+${q.map((x,k)=>`<div class="qj"><span class="th32" style="width:40px;height:40px">${art(x.i)}</span><div class="grow">${st.queued}<p class="sm" style="margin:3px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.t)}</p><span class="mut sm">${x.m}</span></div><span style="display:flex;flex-direction:column"><button class="ibtn" style="width:24px;height:20px;display:grid;place-items:center" data-a="jmove" data-v="${x.id}:-1" aria-label="Move up" ${k?'':'disabled'}>${ic('up2','sm')}</button><button class="ibtn" style="width:24px;height:20px;display:grid;place-items:center" data-a="jmove" data-v="${x.id}:1" aria-label="Move down" ${k<q.length-1?'':'disabled'}>${ic('down','sm')}</button></span></div>`).join('')}
+${rec.length?'<h4 style="padding:10px 4px 2px;font-size:11px;color:var(--mfg);font-weight:500;text-transform:uppercase;letter-spacing:.04em">Recent</h4>':''}
+${rec.map(x=>`<div class="qj"><span class="th32" style="width:40px;height:40px">${art(x.i)}</span><div class="grow">${st[x.st]}<p class="sm" style="margin:3px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.t)}</p><span class="sm ${x.st==='failed'?'dg-t':'mut'}">${x.m}</span></div>${x.st==='failed'?`<button class="btn xs" data-a="retry" data-v="${x.id}">${ic('retry','sm')}Retry</button>`:`<button class="btn xs" data-a="go" data-v="gallery">Open</button>`}</div>`).join('')}</div>`}
+const eta=d=>{const s=d.spd>0?Math.max(1,Math.round((d.total-d.done)/d.spd)):0;return s>=60?Math.floor(s/60)+'m '+(s%60)+'s':s+'s'};
+const dlT=d=>d.st==='run'?`${szs(d.done)} / ${szs(d.total)} · ${d.spd.toFixed(1)} MB/s · ETA ${eta(d)}`:d.st==='pause'?`${szs(d.done)} / ${szs(d.total)} · Paused`:d.st==='fail'?`${szs(d.done)} / ${szs(d.total)} · Failed`:`${szs(d.total)} · Done`;
+function dlPop(){const L=S.dls;return `<div class="pop dn r" style="width:400px" role="dialog" aria-label="Downloads"><div class="row" style="padding:4px 4px 8px"><b style="font-size:14px">Downloads</b><button class="btn xs" data-a="mtabgo" data-v="Downloads">Open in Models ${ic('arrow','sm')}</button></div>${L.slice(0,4).map(d=>`<div class="qj"><div class="grow"><b class="sm">${d.file}</b><div class="bar ${d.st==='pause'?'pz':''}"><i data-pb="dl:${d.id}" style="width:${Math.round(d.done/d.total*100)}%"></i></div><span class="mut sm" data-pt="dl:${d.id}">${dlT(d)}</span></div></div>`).join('')}</div>`}
+function installingLabel(){return S.inst?'':''}
+function titlebar(){const m=mob(),stu=['image','edit','video'].includes(S.screen);
+const q=S.jobs.filter(j=>j.st==='queued').length+(running()?1:0),dls=S.dls.filter(d=>d.st==='run').length;
+const dc=!S.valid?'dg':(S.mode==='cli'||S.srvRun)?'':'wn';
+return `<header class="tb"><div class="tb-l"><div class="tbg hide-m"><button class="tbi" aria-label="Runtime status"><i class="dotc ${dc}"></i></button>${statusPop()}</div>
+${seg([['cli','CLI'],['server','Server']],S.mode,'mode','sm').replace('role="group"','role="group" aria-label="Backend mode"')}</div>
+<div class="tb-c hide-m"><button class="tbb hub" data-a="hub">Model Hub</button>${S.screen==='home'?pin(6):''}</div>
+<div class="tb-r"><span class="pw"><button class="tbb ${S.menu==='queue'||q?'on':''}" data-a="menu" data-v="queue" aria-expanded="${S.menu==='queue'}" aria-label="Job queue">Queue${q?`<span class="cnt">${q}</span>`:''}</button>${S.menu==='queue'?queuePop():''}</span>
+${stu&&m?`<button class="tbi" data-a="insp" aria-label="Open settings">${ic('sliders')}</button>`:''}
+${S.setupNeeded?`<button class="setup" data-a="wizard" title="Open setup wizard"><i></i>Setup</button>`:''}
+<span class="pw hide-m"><button class="tbi ${S.menu==='dl'||dls?'on':''}" data-a="menu" data-v="dl" aria-expanded="${S.menu==='dl'}" aria-label="Open download manager${dls?', '+dls+' active':''}">${ic('dl')}${dls?`<span class="cnt">${dls}</span>`:''}</button>${S.menu==='dl'?dlPop():''}</span>
+<button class="tbi ${S.logs?'on':''}" data-a="logs" aria-label="Open server logs">${ic('term')}</button>
+<button class="tbi" data-a="theme" aria-label="Toggle theme">${ic('sun')}</button>
+<button class="wb" aria-label="Minimize">${ic('min','sm')}</button><button class="wb" aria-label="Maximize">${ic('max','sm')}</button><button class="wb x" aria-label="Close">${ic('x')}</button></div></header>`}
+const jobT=()=>`${S.pct}% · ~${Math.round((100-S.pct)*.48)}s`;
+function nav(id,t,i){const on=S.screen===id||(id==='recipes'&&['run','builder'].includes(S.screen));return `<button class="nav ${on?'on':''}" data-a="go" data-v="${id}" ${on?'aria-current="page"':''}>${ic(i)}${t}</button>`}
+function sidebar(){return `<nav class="side" aria-label="Main">${nav('home','Home','home')}
+<div class="gl">Create</div>${nav('image','Image','image')}${nav('edit','Edit','edit')}${nav('video','Video','video')}
+<div style="height:8px"></div>${nav('recipes','Recipes','recipes')}
+<div class="gl">Library</div>${nav('gallery','Gallery','gallery')}${nav('kits','Style kits','kits')}
+<div style="height:8px"></div>${nav('models','Models','models')}
+<div class="grow"></div>${nav('help','Help','help')}${nav('settings','Settings','settings')}</nav>`}
+function mnav(){const c=S.screen,cur=['image','edit','video'].includes(c)?'create':['recipes','run','builder'].includes(c)?'recipes':['models','settings','help','kits'].includes(c)?'more':c;
+return `<nav class="mnav" aria-label="Main">${[['home','home','Home','home'],['create','image','Create','image'],['recipes','recipes','Recipes','recipes'],['gallery','gallery','Gallery','gallery'],['more','menu','More','more']].map(x=>`<button class="${cur===x[0]?'on':''}" data-a="${x[0]==='more'?'menu':'go'}" data-v="${x[3]}">${ic(x[1])}${x[2]}</button>`).join('')}</nav>`}
+function moreSheet(){return `<div class="scrim" data-a="menu" data-v=""></div><div class="sheet" role="dialog" aria-label="More"><h4 class="mut sm" style="padding:6px 8px">MORE</h4>${[['models','models','Models','Library, Setups, Discover, Downloads'],['kits','kits','Style kits','Reusable looks'],['settings','settings','Settings','Backend, storage, network'],['help','help','Help','Docs and shortcuts']].map(x=>`<button class="mi" data-a="go" data-v="${x[0]}">${ic(x[1],'lg')}<span class="b">${x[2]}<small>${x[3]}</small></span></button>`).join('')}</div>`}
+
+/* ---------- Home ---------- */
+const zdl=()=>S.dls.some(d=>d.pk==='zimg');
+function home(){
+const row=(ok,t,sub,act)=>`<div class="tr" style="--cols:24px 1fr auto"><span class="badge ${ok?'ok':'wn'}" style="width:22px;height:22px;padding:0;justify-content:center">${ok?ic('check','sm'):ic('alert','sm')}</span><span><b>${t}</b><br><span class="mut sm">${sub}</span></span><span class="r">${act}</span></div>`;
+return page('Good evening, Fabricio','Describe an idea, or pick up where you left off.',`<button class="btn" data-a="go" data-v="gallery">${ic('gallery')}Open Gallery</button>`,`
+<section class="hero">${pin(1)}<textarea class="prompt" data-in="hp" rows="3" aria-label="Prompt" placeholder="Describe what you want to see... e.g. ${esc(PROMPTS[0])}">${esc(S.hp)}</textarea>
+<div class="chips" style="justify-content:space-between;margin-top:10px"><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative">${pin(2)}${seg([['image','Image'],['edit','Edit'],['video','Video']],S.hmode,'hmode')}<button class="chip" data-a="fill" data-v="0">Try: cozy cabin</button><button class="chip hide-m" data-a="fill" data-v="4">Try: pixel tavern</button></span>
+<button class="btn pri lg" data-a="homegen">${ic('zap')}Generate <kbd class="hide-m">Ctrl+Enter</kbd></button></div></section>
+${S.setupNeeded?sec('Get set up',`1 of 2 ready. Files save to <span class="mono">${ROOT}</span>`,`<button class="btn" data-a="wizard">Open setup wizard</button>${pin(3)}`,
+row(true,'Engine runtime','master-982 · CUDA 12 · verified','<span class="badge ok">Installed</span>')+row(false,'A model setup','Z-Image Turbo fits your RTX 4070 (11.3 GB in total)',zdl()?'<span class="badge">Downloading, see Downloads</span>':`<button class="btn xs pri" data-a="packdl" data-v="zimg">${ic('dl','sm')}Download recommended setup</button>`)):''}
+${sec('Continue','Your latest outputs',`<button class="btn ghost xs" data-a="go" data-v="gallery">View all ${ic('right','sm')}</button>`,`<div class="grid g4 two" style="position:relative;grid-template-columns:repeat(auto-fill,minmax(${mob()?130:150}px,1fr))">${pin(4)}${[0,1,2,3,4,5].slice(0,mob()?4:6).map(i=>`<button class="ar gi" style="border-radius:12px" data-a="open" data-v="${i}" aria-label="Open image ${i+1}: ${esc(PROMPTS[i])}">${art(i)}<span class="go"><span></span><span class="bot">${esc(PROMPTS[i].slice(0,28))}...</span></span></button>`).join('')}</div>`)}
+${sec('Recipes','Ready-made multi-step flows',`<button class="btn ghost xs" data-a="go" data-v="recipes">All recipes ${ic('right','sm')}</button>${pin(5)}`,`<div class="grid g4">${RECIPES.slice(0,4).map((r,i)=>recipeCard(r,i)).join('')}</div>`)}`)}
+const recipeCard=(r,i)=>`<button class="cardlink" data-a="recipe" data-v="${i}"><div class="mosaic">${[i,i+3,i+5,i+1].map(k=>`<div>${art(k)}</div>`).join('')}</div><div class="cbody"><h3>${r[0]}</h3><p class="mut sm" style="min-height:34px">${r[1]}</p><div class="row" style="margin-top:8px"><span class="badge">${r[2]}</span><span class="mut sm">${r[3]} steps</span></div></div></button>`;
+
+/* ---------- Studio ---------- */
+const curSet=m=>SETUPS.find(s=>s.id===S.use[m]);
+function chipMenu(key,label,val,body,cls=''){return `<span class="pw"><button class="chip ${cls}" data-a="menu" data-v="${key}" aria-haspopup="true" aria-expanded="${S.menu===key}">${label}${val?`<b>${val}</b>`:''}${ic('down','sm')}</button>${S.menu===key?`<div class="pop" role="menu">${body}</div>`:''}</span>`}
+function setupMenu(mode){const L=SETUPS.filter(s=>TPL(s.tpl).kind===mode),cur=curSet(mode),ms=miss(cur);
+return chipMenu('setup',`${ic('models','sm')}<span class="mut">Setup</span>`,`${esc(cur.name)}`+(ms.length?` <span class="badge wn">Missing ${ms.length}</span>`:` <span class="badge ok">Ready</span>`),`<h4>Choose a setup</h4>${L.map(s=>{const m=miss(s);return `<button class="mi" data-a="useset" data-v="${s.id}"><svg class="ic sm" style="opacity:${s.id===cur.id?1:0}"><use href="#i-check"/></svg><span>${esc(s.name)}<small>${TPL(s.tpl).fam} · ${TPL(s.tpl).vram}${m.length?` · <span class="wn-t">Missing ${m.join(', ')}</span>`:' · Ready'}</small></span></button>`}).join('')}<div class="hr"></div><button class="mi" data-a="mtabgo" data-v="Setups">${ic('sliders','sm')}<span>Manage setups<small>Models > Setups</small></span></button>`)}
+function sizeMenu(video){const L=video?[['16:9','832 x 480'],['9:16','480 x 832'],['1:1','640 x 640']]:SIZES;const c=video?S.vsize%3:S.size;const cur=L[c]||L[0];
+return chipMenu('size',`${ic('expand','sm')}<span class="mut">Size</span>`,`${cur[0]} <span class="mut">${cur[1]}</span>`,`<h4>Aspect ratio</h4><div class="chips" style="padding:0 6px 6px">${L.map((s,i)=>`<button class="chip ${i===c?'on':''}" data-a="setsize" data-v="${i}">${s[0]}</button>`).join('')}</div><p class="mut sm" style="padding:0 8px 6px">Multiples of 64. Larger sizes need more VRAM.</p>`)}
+function kitMenu(){return chipMenu('kit',`${ic('kits','sm')}<span class="mut">Style</span>`,esc(S.kitOn[S.kit]?KITS[S.kit][0]:'None'),`<h4>Style kits</h4>${KITS.map((k,i)=>`<button class="mi" data-a="setkit" data-v="${i}"><span>${k[0]}<small>${k[1]}</small></span></button>`).join('')}<div class="hr"></div><button class="mi" data-a="go" data-v="kits">${ic('edit','sm')}<span>Manage style kits</span></button>`)}
+function guideMenu(){return `<span class="pw"><button class="chip" data-a="menu" data-v="guide" aria-haspopup="true" aria-expanded="${S.menu==='guide'}">${ic('plus','sm')}Guide</button>${S.menu==='guide'?`<div class="pop" style="width:330px" role="menu">${GUIDES.map(g=>`<h4>${g[0]}</h4>${g[1].map(x=>`<button class="mi" data-a="guide" data-v="${x[0]}">${ic(S.guides.includes(x[0])?'check':'plus','sm')}<span class="b">${x[1]}<small>${x[2]}</small></span></button>`).join('')}`).join('')}</div>`:''}</span>`}
+function ptoks(mode,pn){const L=S.lo[mode];if(!L.length)return '';const tpl=TPL(curSet(mode).tpl);
+if(S.raw)return `<div class="ptok"><textarea class="prompt mono" rows="1" aria-label="Raw LoRA syntax" style="font-size:12px;min-height:26px">${esc(L.map(l=>`<lora:${base(l.n)}:${l.s}>`).join(' '))}</textarea><button class="lnk sm mut" data-a="raw">Show chips</button></div>`;
+return `<div class="ptok" aria-label="LoRAs in prompt">${pn||''}${L.map((l,i)=>{const f=byN(l.n),ok=f.fam.includes(tpl.fam);return `<span class="tk" ${ok?'':'style="background:var(--wnbg);color:var(--wn)" title="Made for '+f.fam[0]+'"'}><span class="th32">${art(fi(l.n))}</span>${base(l.n)} <span class="${ok?'mut':''} mono" data-out="tk:${mode}:${i}">${l.s}</span><button data-a="lorarm" data-v="${mode}:${i}" aria-label="Remove ${base(l.n)}">${ic('x','sm')}</button></span>${l.trig&&ok&&f.x.trig&&f.x.trig.length?f.x.trig.map(w=>`<span class="tk w" title="Trigger word added to the prompt">${esc(w)}</span>`).join(''):''}`}).join('')}<button class="lnk sm mut" data-a="raw">Edit raw text</button></div>`}
+function composer(mode){const run=!!running(),v=mode==='video',set=curSet(mode),ms=miss(set);
+const ph={image:'Describe the image you want to create...',edit:'Describe what should appear in the masked area...',video:'Describe the motion and scene...'}[mode];
+const go=ms.length?`<span class="sm wn-t" role="alert" style="display:inline-flex;gap:6px;align-items:center">${ic('alert','sm')}Missing ${ms.join(', ')} · <button class="lnk" data-a="fix" data-v="${set.id}">Fix</button></span><button class="btn pri lg" disabled aria-disabled="true">${ic('zap')}Generate</button>`:
+run?`<button class="btn ghost" data-a="cancel">Cancel</button><button class="btn" data-a="queue">${ic('plus','sm')}Queue another</button><div class="btn pri lg prog" role="status"><i class="f" data-pb="job" style="width:${S.pct}%"></i><span><i class="spin" style="border-color:rgba(128,128,128,.5);border-top-color:currentColor"></i><span data-pt="job">${jobT()}</span></span></div>`:
+`<button class="btn pri lg" data-a="gen">${ic('zap')}${v?'Generate video':'Generate'} <kbd class="hide-m">Ctrl+Enter</kbd></button>`;
+const P=mode==='image'?[1,2,3]:mode==='edit'?[2,0,0]:[0,0,0],pp=n=>n?pin(n):'';
+return `<div class="comp">${pp(P[0])}<textarea class="prompt" id="prompt" data-in="prompt" rows="2" aria-label="Prompt" placeholder="${ph}">${esc(S.prompt)}</textarea>${ptoks(mode,pp(P[2]))}
+${S.neg?`<textarea class="prompt neg" rows="1" aria-label="Negative prompt" placeholder="Negative prompt">blurry, low quality, text, watermark</textarea>`:''}
+<div class="chips">${setupMenu(mode)}${seg(['Fast','Balanced','Quality'],S.preset,'preset')}${sizeMenu(v)}${v?`<button class="chip" data-a="insp">${ic('clock','sm')}<span class="mut">Length</span><b data-dur2>${(S.frames/S.fps).toFixed(1)} s</b></button>`:`<span class="chip" style="padding:0 4px"><span class="mut" style="padding-left:6px">Count</span><button class="ibtn" style="width:22px;height:22px" data-a="count" data-v="-1" aria-label="Fewer">${ic('min','sm')}</button><b style="min-width:12px;text-align:center">${S.count}</b><button class="ibtn" style="width:22px;height:22px" data-a="count" data-v="1" aria-label="More">${ic('plus','sm')}</button></span>`}
+${kitMenu()}${mode==='image'?guideMenu():''}${mode==='image'?S.guides.map(g=>`<button class="chip on" data-a="guide" data-v="${g}" aria-label="Remove ${GN[g]}">${GN[g]}<span class="x">${ic('x','sm')}</span></button>`).join(''):''}
+<button class="chip" data-a="lorapick" data-v="LoRAs">${ic('plus','sm')}LoRA</button><button class="chip hide-m" data-a="neg" aria-pressed="${S.neg}">${S.neg?'Hide':'Add'} negative prompt</button></div>
+<div class="chips" style="justify-content:flex-end;margin-top:10px"><div class="cact">${pp(P[1])}${go}</div></div></div>`}
+function loraRow(mode,l,i,set){const f=byN(l.n),tpl=TPL(set.tpl),ok=f.fam.includes(tpl.fam),w22=tpl.id==='wan22',nt=f.x.trig&&f.x.trig.length;
+return `<div class="lr ${ok?'':'dim'}"><div class="row" style="gap:10px"><span class="th32">${art(fi(l.n))}</span><span class="grow"><b>${base(l.n)}</b><br><span class="mut sm">${f.fam[0]} · ${szs(f.mb)}</span></span><button class="tbi" style="width:28px;height:28px;min-width:28px" data-a="lorarm" data-v="${mode}:${i}" aria-label="Remove ${base(l.n)}">${ic('x','sm')}</button></div>
+${ok?`<div class="row" style="margin-top:8px;gap:10px"><input class="rng" type="range" min="0" max="2" step=".05" value="${l.s}" data-in="lo:${mode}:${i}" aria-label="${base(l.n)} strength" style="margin:0"><input class="in mono" type="number" min="0" max="2" step=".05" value="${l.s}" data-in="lon:${mode}:${i}" aria-label="Strength value" style="width:64px;height:28px;border-radius:8px;padding:0 6px"></div>
+<div class="row" style="margin-top:8px"><span>${nt?'Insert trigger words':'No trigger words'}${nt?` <span class="mut mono">${esc(f.x.trig.join(', '))}</span>`:''}</span>${nt?sw2(l.trig,'lotrig',mode+':'+i,'Insert trigger words'):''}</div>
+${w22?`<div class="row" style="margin-top:8px"><label class="lbl" for="br${i}">Branch</label><select class="in s" id="br${i}" style="width:140px" data-in="br:${mode}:${i}">${['Low noise','High noise','Both'].map(o=>`<option ${l.br===o?'selected':''}>${o}</option>`).join('')}</select></div>`:''}`:
+`<p class="sm wn-t" style="margin-top:6px">Made for ${f.fam[0]}, current setup is ${tpl.fam}. Ignored until you switch setups.</p>`}</div>`}
+function insp(mode){const v=mode==='video',set=curSet(mode),tpl=TPL(set.tpl),L=S.lo[mode];
+const sl=(k,l,min,max,step,val)=>`<div class="row"><span class="lbl">${l}</span><output class="mono" data-out="${k}">${val}</output></div><input class="rng" type="range" data-in="${k}" min="${min}" max="${max}" step="${step}" value="${val}" aria-label="${l}">`;
+const helper={Auto:`Picks for you: runtime for quantized GGUF like ${tpl.id==='flux'?'Q8_0':'this setup'}, immediate otherwise.`,Immediately:'Faster, but less compatible with GGUF quantized models.','At runtime':'Works with quantized models, a little slower.'}[S.applyMode];
+return `<aside class="insp" aria-label="Inspector">${v?'':pin(4)}<div class="sheethd"><b>Settings</b><button class="btn xs" data-a="insp">Done</button></div>
+<h3 style="margin-bottom:8px">Quality</h3>${sl('steps','Steps',1,60,1,S.steps)}${sl('cfg','Guidance (CFG)',1,15,.5,S.cfg)}${mode==='edit'?sl('str','Edit strength',0,1,.05,.75):''}${v?sl('mot','Motion strength',0,1,.05,.6):''}
+<div class="row"><span class="lbl">Seed</span><span class="mut sm">${S.lock?'Locked: same result each run':'Random each run'}</span></div><div class="row" style="margin:6px 0 4px"><input class="in mono" value="${S.seed}" aria-label="Seed"><button class="btn xs" data-a="lock" aria-pressed="${S.lock}">${ic('lock','sm')}${S.lock?'Locked':'Lock'}</button><button class="btn xs" data-a="dice" aria-label="Randomize seed">${ic('dice','sm')}</button></div>
+<div class="sec" style="position:relative">${pin(v?1:5)}<div class="sh" style="margin-bottom:4px"><div><h3>LoRAs</h3><p>${L.length?L.length+' active':'None added'} · ${tpl.fam} setup</p></div><button class="btn xs" data-a="lorapick" data-v="LoRAs">${ic('plus','sm')}Add LoRA</button></div>
+${L.map((l,i)=>loraRow(mode,l,i,set)).join('')||'<p class="mut sm" style="padding:6px 0">Add a LoRA to steer style or character. Only ones made for '+tpl.fam+' can be used.</p>'}
+<div class="row" style="padding:10px 0 0;border-top:1px solid var(--bd);margin-top:4px"><span><b>Embeddings</b> <span class="mut">easynegative</span></span><button class="btn xs" data-a="lorapick" data-v="Embeddings">${ic('plus','sm')}Add</button></div></div>
+<details class="sec dd" data-k="adv" ${S.adv?'open':''}><summary class="dsum">${v?'':pin(6)}Advanced ${ic('down','sm')}</summary><div>
+<label class="lbl" for="smp">Sampler</label><select class="in" id="smp" style="margin:4px 0 10px"><option>${tpl.def.sampler.split(' ')[0]}</option><option>euler_a</option><option>dpm++2m</option><option>heun</option></select>
+<label class="lbl" for="sch">Scheduler</label><select class="in" id="sch" style="margin:4px 0 10px"><option>simple</option><option>karras</option><option>discrete</option></select>
+${tpl.def.shift!=='-'?`<div class="row" style="margin:4px 0 12px"><span class="lbl">Flow shift</span><span class="mono">${tpl.def.shift}</span></div>`:''}
+<label class="lbl" for="apm">LoRA apply mode</label><select class="in" id="apm" style="margin:4px 0 4px" data-in="apm">${['Auto','Immediately','At runtime'].map(o=>`<option ${o===S.applyMode?'selected':''}>${o}${o==='Auto'?' (recommended)':''}</option>`).join('')}</select><p class="mut sm" style="margin-bottom:10px">${helper}</p>
+${S.mode==='server'?`<p class="mut sm" style="margin-bottom:10px">${ic('info','sm')} The LoRA folder is loaded when the server starts. Nothing to do.</p>`:''}
+<div class="row"><span><span class="lbl">VAE tiling</span><br><span class="mut sm">Saves VRAM on large sizes</span></span>${sw2(true,'sw','','VAE tiling')}</div></div></details></aside>`}
+function studioTop(mode,title){return `<div class="stop">${seg([['image','Image'],['edit','Edit'],['video','Video']],mode,'go')}<span class="t">${esc(title)}</span><button class="btn ${S.insp?'on':''}" data-a="insp" aria-pressed="${S.insp}">${ic('sliders')}<span>${mob()?'Settings':'Inspector'}</span></button></div>`}
+function actionBar(mode){const v=mode==='video',fv=S.fcur;return `<div class="abar">${{image:pin(7),edit:pin(5)}[mode]||''}<button class="btn pri">${ic('dl')}Save</button><button class="btn">${ic('sliders')}Reuse settings</button><button class="btn" data-a="go" data-v="edit">${ic('edit')}${v?'Edit frame':'Edit'}</button>${v?'':`<button class="btn" data-a="go" data-v="video">${ic('video')}Animate</button>`}<button class="btn" data-a="favcur" aria-pressed="${fv}">${ic('star')}${fv?'Favorited':'Favorite'}</button>
+<span class="pw"><button class="btn" data-a="menu" data-v="more" aria-label="More actions">${ic('more')}<span class="hide-m">More</span></button>${S.menu==='more'?`<div class="pop r" role="menu"><button class="mi" data-a="menu" data-v="">${ic('copy','sm')}Copy prompt</button><button class="mi" data-a="menu" data-v="">${ic('folder','sm')}Show in folder</button><div class="hr"></div><button class="mi dng" data-a="menu" data-v="">${ic('trash','sm')}Delete image</button></div>`:''}</span></div>`}
+const film=()=>`<div class="film" aria-label="Session results">${[0,1,2,3,4,5].map(i=>`<button class="th ${i===0?'on':''}" aria-label="Result ${i+1}">${art(i)}</button>`).join('')}<span class="mut sm" style="margin-left:6px">This session · 6</span></div>`;
+function image(){const j=running();return `<div class="studio"><div class="scol">${studioTop('image','Session: '+S.prompt.slice(0,50)+'...')}<div class="sscroll"><div class="canvas"><div class="cimg">${art(0)}${j?`<div class="ov"><i class="spin"></i><span>Image ${S.img} of ${j.n} · step ${Math.round(S.pct*.28)}/28</span></div>`:''}</div></div>${actionBar('image')}${film()}</div>${composer('image')}</div>${S.insp?insp('image'):''}</div>`}
+function edit(){return `<div class="studio"><div class="scol">${studioTop('edit','Edit · cabin-001.png')}<div class="sscroll">
+<div class="row" style="padding:10px 16px;flex:none;flex-wrap:wrap;justify-content:flex-start;gap:12px;position:relative">${pin(1)}<span class="lbl">Edit mode</span>${seg(['Inpaint','Restyle','Expand'],S.emode,'emode')}<span class="mut sm">${{Inpaint:'Paint over what to change, then describe it.',Restyle:'Re-draw the whole image in a new look.',Expand:'Extend the canvas beyond its borders.'}[S.emode]}</span></div>
+<div class="canvas"><div class="ftool" role="toolbar" aria-label="Mask tools">${pin(3)}${[['Brush','brush'],['Erase','eraser']].map(t=>`<button class="btn ${S.tool===t[0]?'on':''}" data-a="tool" data-v="${t[0]}">${ic(t[1],'sm')}${t[0]}</button>`).join('')}<span class="v"></span><label class="row" style="gap:6px;font-size:12px;padding:0 4px">Size<input class="rng" type="range" min="4" max="120" value="${S.brush}" data-in="brush" style="width:90px;margin:0" aria-label="Brush size"><output class="mono" data-out="brush">${S.brush}</output></label><span class="v"></span><button class="btn">${ic('invert','sm')}Invert</button><button class="btn">${ic('x','sm')}Clear mask</button><button class="btn">${ic('undo','sm')}Undo</button></div>
+<div class="cimg">${art(0)}<div style="position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse 18% 20% at 52% 62%,rgba(236,72,153,.6) 0 90%,transparent 92%)"></div></div></div>${actionBar('edit')}</div>${composer('edit')}</div>${S.insp?insp('edit'):''}</div>`}
+function video(){const fr=S.frames,d=(fr/S.fps).toFixed(1);return `<div class="studio"><div class="scol">${studioTop('video','Video · '+S.prompt.slice(0,40)+'...')}<div class="sscroll"><div class="canvas" style="gap:14px"><div class="hide-m" style="display:flex;flex-direction:column;gap:10px;position:relative">${pin(4)}<div class="slot"><div class="ar">${art(0)}</div><div class="row" style="padding:6px 8px"><b class="sm">Start frame</b></div></div><button class="slot empty">${ic('plus','lg')}<div class="b sm" style="color:var(--fg)">End frame</div><div class="sm">Optional</div></button></div>
+<div class="cimg w">${art(3)}<div style="position:absolute;inset:0;display:grid;place-items:center;z-index:3"><span style="width:52px;height:52px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center">${ic('play','lg')}</span></div></div></div>
+${actionBar('video')}
+<div class="row" style="margin:0 16px 12px;flex:none;gap:18px;flex-wrap:wrap;justify-content:flex-start;padding-top:12px;border-top:1px solid var(--bd);position:relative">${pin(2)}<div><div class="lbl" style="margin-bottom:4px">Duration</div><div class="row" style="gap:10px"><button class="btn xs" data-a="frames" data-v="-4" aria-label="Fewer frames">${ic('min','sm')}</button><span class="mono" data-frames style="min-width:62px;text-align:center">${fr} frames</span><button class="btn xs" data-a="frames" data-v="4" aria-label="More frames">${ic('plus','sm')}</button><select class="in" style="width:92px" data-in="fps" aria-label="Frames per second">${[8,12,16,24].map(f=>`<option ${f===S.fps?'selected':''} value="${f}">${f} fps</option>`).join('')}</select></div></div>
+<div class="badge pri" style="height:30px;font-size:12px" data-dur>${fr} frames at ${S.fps} fps = ${d} s</div><div class="mut sm" style="max-width:160px">${pin(3)}Snaps to 4n+1 frames (49, 53...)</div><div style="margin-left:auto">${pin(5)}<div class="lbl" style="margin-bottom:4px">Motion</div>${seg(['Still','Gentle','Dynamic','Orbit'],S.motion,'motion')}</div></div></div>${composer('video')}</div>${S.insp?insp('video'):''}</div>`}
+
+/* ---------- Recipes ---------- */
+function recipes(){const L=RECIPES.map((r,i)=>[r,i]).filter(([r])=>(S.cat==='All'||r[2]===S.cat)&&(!S.q||(r[0]+r[1]).toLowerCase().includes(S.q.toLowerCase())));
+return page('Recipes','Ready-made multi-step flows for game assets, products and portraits.',`<button class="btn" data-a="toast" data-v="Pick a recipe .json file to import">${ic('up')}Import recipe (.json)</button><button class="btn pri">${ic('plus')}New recipe</button>${pin(1)}`,`
+<div class="gtool"><div class="sf" style="flex:1;min-width:200px;max-width:340px">${pin(3)}${ic('search')}<input class="in" data-in="rq" value="${esc(S.q)}" placeholder="Search recipes" aria-label="Search recipes"></div><div class="chips" style="margin:0;position:relative">${pin(2)}${['All','Game assets','Product','Portrait','Mine'].map(c=>`<button class="chip ${S.cat===c?'on':''}" data-a="cat" data-v="${c}" aria-pressed="${S.cat===c}">${c}</button>`).join('')}</div></div>
+<div class="grid g4" style="position:relative">${pin(4)}${L.map(([r,i])=>recipeCard(r,i)).join('')||'<p class="mut">No recipes match.</p>'}</div>`)}
+function runView(){const r=RECIPES[S.recipe];return page(`<button class="btn xs ghost" data-a="go" data-v="recipes" style="margin-left:-10px">${ic('left','sm')}Recipes</button><br>${r[0]}`,r[1],`<button class="btn" data-a="toast" data-v="Exported ${r[0]}.json">${ic('dl')}Export .json</button><button class="btn" data-a="go" data-v="builder">${ic('edit')}Edit recipe</button><button class="btn pri" data-a="run">${ic('play')}${S.ran?'Run again':'Run recipe'}</button>`,`<div class="split"><div class="l" style="width:300px;position:relative">${pin(1)}<h2 class="b" style="font-size:13px;margin-bottom:12px">Inputs</h2>
+<div class="lbl" style="margin-bottom:4px">Character description</div><textarea class="in" rows="3">low-poly fox in a green scarf, friendly, idle pose</textarea>
+<div class="lbl" style="margin:12px 0 4px">Style kit</div><select class="in"><option>Pixel Tavern</option><option>Clean Product</option></select>
+<div class="lbl" style="margin:12px 0 4px">Variants per pose</div><select class="in"><option>1</option><option>2</option><option>4</option></select>
+<p class="mut sm" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);position:relative">${pin(3)}Saved on this device only. Export a .json to share it. Estimated 2 min on your GPU.</p></div>
+<div class="r"><div class="row" style="margin-bottom:6px;position:relative"><h2 class="b" style="font-size:13px">Steps ${pin(2)}</h2><span class="mut sm">${r[3]} steps</span></div>${STEPS.slice(0,r[3]).map((s,i)=>`<div class="stepr"><span class="n">${i+1}</span><span class="th2">${art(i+2)}</span><span class="grow"><b>${s[0]}</b><br><span class="mut sm">${s[1]}</span></span>${S.ran?`<span class="badge ${i<2?'ok':''}">${i<2?'Done':'Waiting'}</span>`:''}</div>`).join('')}
+${S.ran?sec('Results','',`<button class="btn xs" data-a="toast" data-v="Added 4 images to favorites">${ic('star','sm')}Favorite all</button><button class="btn xs">${ic('dl','sm')}Save all</button>${pin(5)}`,`<div class="grid" style="grid-template-columns:repeat(4,1fr)">${[5,6,7,1].map(i=>`<div class="ar">${art(i)}</div>`).join('')}</div>`):`<p class="mut" style="padding:24px 0;border-top:1px solid var(--bd);margin-top:8px">Results will appear here after you run the recipe.</p>`}</div></div>`)}
+function builder(){const r=RECIPES[S.recipe],cur=S.bstep;return page(`<button class="btn xs ghost" data-a="go" data-v="run" style="margin-left:-10px">${ic('left','sm')}${r[0]}</button><br>Edit recipe`,'Chain steps; each step can use values from the form or the previous result.',`<button class="btn pri" data-a="go" data-v="run">${ic('check')}Save on this device</button>`,`<div class="split"><div class="l" style="width:340px;position:relative">${pin(1)}<div class="row" style="margin-bottom:8px"><h2 class="b" style="font-size:13px">Steps</h2><span class="pw"><button class="btn xs" data-a="menu" data-v="addstep">${ic('plus','sm')}Add step</button>${S.menu==='addstep'?`<div class="pop dn r"><h4>Step type</h4>${[['image','Generate image'],['edit','Edit or inpaint'],['video','Make video'],['dl','Upscale'],['dl','Save or export']].map(x=>`<button class="mi" data-a="menu" data-v="">${ic(x[0],'sm')}${x[1]}</button>`).join('')}</div>`:''}</span></div>
+${STEPS.map((s,i)=>`<button class="stepr ${cur===i?'on':''}" data-a="bstep" data-v="${i}"><span class="mut">${ic('grip','sm')}</span><span class="n">${i+1}</span><span class="grow"><b>${s[0]}</b><br><span class="mut sm">${s[1]}</span></span></button>`).join('')}<p class="mut sm" style="margin-top:8px;position:relative">${pin(2)}Drag the handle to reorder.</p></div>
+<div class="r" style="position:relative">${pin(3)}<div class="row"><h2 class="b" style="font-size:13px">Step ${cur+1}: ${STEPS[cur][0]}</h2><button class="btn xs dng">${ic('trash','sm')}Remove step</button></div>
+<div class="fgrid"><span class="lbl">Step name</span><input class="in" value="${STEPS[cur][0]}"><span class="lbl">Prompt template</span><textarea class="in" rows="3">{character}, full body, {style}, plain background</textarea><span class="lbl">Setup</span><select class="in"><option>Flux.1 dev</option></select><span class="lbl">Size</span><select class="in"><option>1:1 - 1024 x 1024</option></select></div>
+${sec('Shown in the form','',pin(4),`<div class="chips" style="margin:0"><span class="chip on">character ${ic('x','sm')}</span><span class="chip on">style ${ic('x','sm')}</span><span class="chip on">variants ${ic('x','sm')}</span><button class="chip">${ic('plus','sm')}Add input</button></div>`)}</div></div>`)}
+
+/* ---------- Gallery ---------- */
+const meta=i=>({p:PROMPTS[i%8],seed:1000000+(i*7919)%900000,model:['Flux.1 dev','SDXL Juggernaut v9','Z-Image Turbo'][i%3],size:SIZES[i%5][1],steps:[28,20,8][i%3],vid:i%6===2,fav:S.favs.includes(i),lora:i%3===0?'flux-realism 0.9':i%3===1?'pixel-art-xl 0.8':'none'});
+function gallery(){const m=S.sel!=null?meta(S.sel):null;
+const items=[...Array(24).keys()].filter(i=>{const x=meta(i);return (!S.gf.Videos||x.vid)&&(!S.gf.Favorites||x.fav)&&(!S.gq||x.p.includes(S.gq.toLowerCase())||String(x.seed).includes(S.gq))});
+const grp=[['Today',0,8],['Yesterday',8,16],['Oct 18',16,24]];
+const gi=i=>{const x=meta(i),on=S.selected.includes(i);return `<button class="gi ${on?'sel':''}" data-a="${S.selmode?'pick':'open'}" data-v="${i}" aria-label="${x.vid?'Video':'Image'}: ${esc(x.p)}" aria-pressed="${on}">${art(i)}${x.vid?`<span class="vd">${ic('play','sm')}0:03</span>`:''}${x.fav?`<span class="fv">${ic('star','sm')}</span>`:''}<span class="go"><span style="display:flex;justify-content:space-between">${S.selmode?`<span class="ck">${ic('check')}</span>`:'<span></span>'}<span></span></span><span class="bot">${esc(x.p.slice(0,34))}...</span></span></button>`};
+const body=S.gview==='grid'?grp.map(g=>{const L=items.filter(i=>i>=g[1]&&i<g[2]);return L.length?`<div class="gd">${g[0]} · ${L.length}</div><div class="gg" style="--cell:${S.dens}px">${L.map(gi).join('')}</div>`:''}).join('')||'<p class="mut">No matches.</p>':`<div>${items.map(i=>{const x=meta(i);return `<button class="lrow" data-a="${S.selmode?'pick':'open'}" data-v="${i}"><span class="ar">${art(i)}</span><span class="grow"><b>${esc(x.p)}</b><br><span class="mut sm">${x.model} · ${x.size} · seed ${x.seed}</span></span></button>`}).join('')}</div>`;
+return `<div class="gal"><div class="gcol"><div class="page" style="padding-bottom:90px"><div class="wrap" style="max-width:none">
+<header class="ph"><div><h1>Gallery</h1><p>248 images and 12 videos, newest first. History lives here.</p></div><div class="acts">${pin(3)}<button class="btn" data-a="import">${ic('up')}Import images</button>${S.selmode?'':pin(4)}<button class="btn ${S.selmode?'pri':''}" data-a="selmode" aria-pressed="${S.selmode}">${ic('check')}${S.selmode?'Done selecting':'Select'}</button></div></header>
+<div class="gtool"><div class="sf" style="flex:1;min-width:220px;max-width:380px">${pin(1)}${ic('search')}<input class="in" data-in="gq" value="${esc(S.gq)}" placeholder="Search prompts, seeds, models" aria-label="Search gallery"></div>
+<div class="chips" style="margin:0;position:relative">${pin(2)}${['Images','Videos','Favorites'].map(c=>`<button class="chip ${S.gf[c]?'on':''}" data-a="gf" data-v="${c}" aria-pressed="${S.gf[c]}">${c==='Favorites'?ic('star','sm'):''}${c}</button>`).join('')}<button class="chip">Model ${ic('down','sm')}</button><button class="chip">Date ${ic('down','sm')}</button></div>
+<span class="grow"></span><label class="row hide-m" style="gap:8px">${ic('image','sm')}<input class="rng" type="range" min="110" max="260" value="${S.dens}" data-in="dens" style="width:90px;margin:0" aria-label="Grid density">${ic('image','lg')}</label>${seg([['grid','Grid'],['list','List']],S.gview,'gview')}</div>
+<div class="${S.selmode?'selmode':''}" style="position:relative">${body}</div></div></div>
+${S.selmode?`<div class="bulk" role="toolbar" aria-label="Bulk actions">${pin(4)}<b>${S.selected.length} selected</b><button class="btn" data-a="bulkfav">${ic('star','sm')}Favorite</button><button class="btn">${ic('dl','sm')}Download</button><span style="width:1px;height:18px;background:currentColor;opacity:.4;margin:0 4px"></span><button class="btn dng">${ic('trash','sm')}Delete</button></div>`:''}</div>
+${m?`<aside class="drawer" aria-label="Details">${pin(5)}<div class="row" style="margin-bottom:10px"><b>${m.vid?'Video':'Image'} details</b><button class="tbi" data-a="close" aria-label="Close details">${ic('x')}</button></div><div class="ar" style="border-radius:10px">${art(S.sel)}</div>
+<p style="margin:12px 0;font-size:13px">${esc(m.p)}</p><dl class="kv"><dt>Seed</dt><dd>${m.seed}</dd><dt>Setup</dt><dd>${m.model}</dd><dt>Size</dt><dd>${m.size}</dd><dt>Steps</dt><dd>${m.steps} · euler</dd><dt>LoRAs</dt><dd>${m.lora}</dd><dt>Created</dt><dd>Today 12:0${S.sel%9}</dd></dl>
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn pri">${ic('sliders','sm')}Reuse settings</button><button class="btn" data-a="go" data-v="edit">${ic('edit','sm')}Edit</button><button class="btn" data-a="go" data-v="video">${ic('video','sm')}Animate</button><button class="btn" data-a="favsel">${ic('star','sm')}${m.fav?'Unfavorite':'Favorite'}</button></div>
+<div class="acts" style="margin-top:10px"><button class="btn xs ghost">${ic('expand','sm')}Upscale</button><button class="btn xs ghost">${ic('copy','sm')}Copy prompt</button><button class="btn xs ghost">${ic('folder','sm')}Show in folder</button></div>
+<div class="dzone"><div class="row"><span><b>Delete</b><br><span class="mut sm">Removes the file from disk. Cannot be undone.</span></span><button class="btn dng xs">${ic('trash','sm')}Delete</button></div></div></aside>`:''}</div>`}
+
+/* ---------- Style kits ---------- */
+function lora2(n,s){return `<div class="tr" style="--cols:32px 1fr 70px 28px"><span class="th32">${art(fi(n))}</span><b>${base(n)}</b><span class="mono">${s}</span><span>${ic('x','sm')}</span></div>`}
+function kits(){const k=KITS[S.kitSel],on=S.kitOn[S.kitSel];
+return page('Style kits','Reusable looks: prompt rules, colors, sizes and LoRAs.',`<button class="btn" data-a="toast" data-v="Pick a style kit .json file to import">${ic('up')}Import .json</button><button class="btn" data-a="toast" data-v="Exported ${k[0]}.json">${ic('dl')}Export</button><button class="btn pri">${ic('plus')}New kit</button>${pin(3)}`,`<div class="split"><div class="l" style="position:relative">${pin(4)}${KITS.map((x,i)=>`<button class="li ${i===S.kitSel?'on':''}" data-a="kitsel" data-v="${i}"><span class="ar" style="width:40px;border-radius:8px">${art(i+2)}</span><span class="grow b">${x[0]}<br><span class="mut sm" style="font-weight:400">${x[1]}</span></span>${S.kitOn[i]?'<span class="badge ok">Active</span>':''}</button>`).join('')}</div>
+<div class="r"><div class="row" style="padding-bottom:16px;border-bottom:1px solid var(--bd);position:relative;gap:14px">${pin(1)}<span class="grow"><b style="font-size:14px">${on?'Active: applied to every generation':'Not active'}</b><br><span class="sm mut">${on?'Image, Edit and Video add this kit automatically. Turn it off to generate without a style.':'Switch on to add this kit to all new generations.'}</span></span>${sw2(on,'kiton','','Active')}</div>
+${sec('Prompt rules','Added around your prompt',pin(5),`<div class="split" style="gap:24px"><div style="width:200px;flex:none;position:relative"><div class="ar">${art(S.kitSel+2)}</div><p class="sm b" style="margin-top:8px">${pin(2)}Live preview</p><p class="sm mut">"${esc(PROMPTS[0].slice(0,34))}..." + ${k[0]}</p></div><div class="grow"><div class="lbl" style="margin-bottom:4px">Add before prompt</div><input class="in" value="cozy illustration, warm light,"><div class="lbl" style="margin:10px 0 4px">Add after prompt</div><input class="in" value="soft snow, muted palette, high detail"><div class="lbl" style="margin:10px 0 4px">Negative prompt</div><input class="in" value="harsh shadows, oversaturated"></div></div>`)}
+${sec('Colors','',`<button class="btn xs">${ic('plus','sm')}Add color</button>`,`<div class="chips" style="margin:0">${['#d9822b','#f4e2c1','#2f4858','#5b7b7a','#a23b2a'].map(c=>`<span class="swc" style="background:${c}" title="${c}"></span>`).join('')}</div>`)}
+${sec('Sizes','',`<button class="btn xs">${ic('plus','sm')}Add size</button>`,`<div class="chips" style="margin:0"><span class="chip">1:1 · 1024 x 1024</span><span class="chip">16:9 · 1344 x 768</span></div>`)}
+${sec('LoRAs','Applied with this kit',`<button class="btn xs" data-a="lorapick" data-v="LoRAs">${ic('plus','sm')}Add LoRA</button>`,lora2('cozy-winter-flux.safetensors',.6)+lora2('flux-realism.safetensors',.4))}</div></div>`)}
+
+/* ---------- Models ---------- */
+const TREE=[[0,'diffusion_models/'],[1,'qwen/'],[1,'wan/'],[0,'checkpoints/'],[0,'vae/'],[0,'text_encoders/'],[1,'clip/'],[1,'t5xxl/'],[1,'llm/'],[1,'llm_vision/'],[0,'loras/'],[1,'styles/'],[1,'characters/'],[0,'embeddings/'],[0,'controlnet/'],[0,'upscale/'],[0,'identity/'],[1,'photomaker/'],[1,'ip_adapter/'],[1,'pulid/'],[0,'taesd/'],[0,'video/'],[1,'clip_vision/'],[1,'audio_vae/'],[1,'animatediff/']];
+function tree(compact){let par='';const rows=TREE.map(([d,n])=>{if(d===0)par=n;const path=d===0?n:par+n;const c=F.filter(f=>f.dir.startsWith(path)).length;return {d,n,c}}).filter(r=>!compact||r.d===0);
+return `<div class="tree" role="tree" aria-label="Models folder"><div class="tn b" style="padding-bottom:6px">${ic('folder','sm')}models/ <span class="ct">${F.length} files</span></div>${rows.map(r=>`<div class="tn" role="treeitem" style="padding-left:${14+r.d*16}px">${ic('folder','sm')}<span>${r.n}</span><span class="ct">${r.c||'-'}</span></div>`).join('')}</div>`}
+const attDot=()=>'';
+function detail(f){if(!f)return `<p class="mut">Select a file to see where it lives, what uses it and its settings.</p>`;
+const ub=usedBy(f.n),isl=f.t==='lora';
+return `<div class="row" style="align-items:flex-start;margin-bottom:12px"><span class="grow"><b style="font-size:14px;overflow-wrap:anywhere">${f.n}</b><br><span class="mut sm">${szs(f.mb)} · ${f.fmt}</span></span><button class="tbi" data-a="fclose" aria-label="Close details" style="min-width:28px;height:28px">${ic('x')}</button></div>
+${isl?`<div class="ar" style="border-radius:10px;margin-bottom:14px;aspect-ratio:16/10;position:relative">${art(fi(f.n))}</div>`:''}
+<dl class="kv"><dt>Path</dt><dd>${ROOT}\\${f.dir.replace(/\//g,'\\')}${f.n}</dd><dt>Type</dt><dd style="font-family:inherit">${TN[f.t]}</dd><dt>Family</dt><dd style="font-family:inherit">${f.fam.join(', ')}</dd></dl>
+<div class="acts" style="margin:10px 0">${pin(3)}<button class="btn xs">${ic('folder','sm')}Reveal</button><button class="btn xs" data-a="chg">${S.chg?'Cancel':'Change type or family'}</button></div>
+${S.chg?`<div style="display:grid;gap:8px;margin-bottom:10px"><label class="lbl" for="ctp">Type</label><select class="in s" id="ctp" data-in="ftype">${Object.keys(TN).map(k=>`<option value="${k}" ${k===f.t?'selected':''}>${TN[k]}</option>`).join('')}</select><label class="lbl" for="cfm">Family</label><select class="in s" id="cfm" data-in="ffam">${['Flux.1','SDXL','SD1.x','SD3.5','Chroma','Qwen-Image','Z-Image','Wan 2.1','Wan 2.2','any'].map(k=>`<option ${f.fam[0]===k?'selected':''}>${k}</option>`).join('')}</select><p class="mut sm">Overrides what was detected. Existing setups keep working.</p></div>`:''}
+<div style="border-top:1px solid var(--bd);padding-top:12px"><div class="lbl" style="margin-bottom:6px">Used by setups</div>${ub.length?ub.map(s=>`<span class="badge" style="margin:0 4px 4px 0">${esc(s.name)}</span>`).join(''):'<span class="mut sm">Not used by any setup yet.</span>'}</div>
+${isl?`<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:12px"><div class="lbl" style="margin-bottom:6px;position:relative">${pin(4)}Trigger words</div><div class="chips" style="margin:0 0 8px">${(f.x.trig||[]).map((w,i)=>`<span class="chip">${esc(w)}<button data-a="trigrm" data-v="${i}" aria-label="Remove ${esc(w)}" class="x">${ic('x','sm')}</button></span>`).join('')||'<span class="mut sm">None. Add words that activate this LoRA.</span>'}</div>
+<div class="row" style="gap:6px"><input class="in" id="tw" placeholder="Add a trigger word" aria-label="Add trigger word" style="height:30px"><button class="btn xs" data-a="trigadd">Add</button></div>
+<div class="row" style="margin:14px 0 4px"><span class="lbl">Default strength</span><output class="mono" data-out="dstr">${f.x.str||1}</output></div><input class="rng" type="range" min="0" max="2" step=".05" value="${f.x.str||1}" data-in="dstr" aria-label="Default strength">
+<div class="lbl" style="margin:8px 0 6px">Compatible families</div>${f.fam.map(x=>`<span class="badge ok">${x}</span>`).join(' ')}<p class="mut sm" style="margin-top:6px">Sidecar preview and words saved next to the file as .json.</p></div>`:''}
+<div class="dzone"><div class="row"><span><b>Delete file</b><br><span class="mut sm">Removes it from disk.${ub.length?' Used by '+ub.length+' setup'+(ub.length>1?'s':'')+'.':''}</span></span><button class="btn dng xs">${ic('trash','sm')}Delete</button></div></div>`}
+function mLibrary(){const cnt=g=>g==='all'?F.length:F.filter(f=>GRPOF[f.t]===g).length;
+const list=F.filter(f=>(S.lf==='all'||GRPOF[f.t]===S.lf)&&(!S.lq||(f.n+f.dir).toLowerCase().includes(S.lq.toLowerCase())));
+const unk=F.filter(f=>f.t==='unk').length,sel=byN(S.fsel);
+const showDet=!!sel&&list.some(f=>f.n===sel.n);
+return `<div class="cols3 ${showDet?'d':''}"><nav class="lcol" aria-label="File types" style="position:relative">${pin(2)}${GROUPS.map(g=>`<button class="li ${S.lf===g[0]?'on':''}" data-a="lf" data-v="${g[0]}" ${g[2]?`title="${g[2]}"`:''}><span class="grow">${g[1]}</span><span class="mut mono sm">${cnt(g[0])}</span></button>`).join('')}</nav>
+<div class="mcol"><div class="gtool" style="position:relative">${pin(5)}<div class="sf" style="flex:1;min-width:180px;max-width:320px">${ic('search')}<input class="in" data-in="lq" value="${esc(S.lq)}" placeholder="Filter files" aria-label="Filter files"></div><span class="grow"></span><button class="btn pri" data-a="ov" data-v="files">${ic('plus')}Add files...</button><button class="btn" data-a="toast" data-v="Pick a folder to scan (read-only)">${ic('folder')}Add folder...</button><button class="btn" data-a="toast" data-v="Rescan finished: no changes">${ic('retry')}Rescan</button></div>
+${unk&&(S.lf==='all'||S.lf==='unk')?`<div class="msg wn" style="margin-bottom:12px">${ic('alert')}<span class="grow"><b>${unk} files could not be identified.</b> They stay unused until they have a type.</span><button class="btn xs" data-a="identall">Identify all</button></div>`:''}
+<div class="tr h" style="--cols:minmax(0,1fr) 84px 92px 100px 62px;position:relative">${pin(1)}<span>Name and folder</span><span>Family</span><span class="hm">Type</span><span class="hm">Format</span><span>Size</span></div>
+${list.map(f=>`<div class="tr hv ${S.fsel===f.n?'on':''}" role="button" tabindex="0" aria-pressed="${S.fsel===f.n}" style="--cols:minmax(0,1fr) 84px 92px 100px 62px;cursor:pointer" data-a="fsel" data-v="${f.n}"><span class="nm"><b>${f.n}</b><br><span class="mono mut" style="font-size:11px">${f.dir}</span></span>${f.t==='unk'?`<button class="btn xs pri" data-a="ident" data-v="${f.n}">Identify</button>`:`<span><span class="badge">${famL(f)}</span></span>`}<span class="hm sm">${TN[f.t]}</span><span class="hm sm mono">${f.fmt}</span><span class="mono sm">${szs(f.mb)}</span></div>`).join('')||'<p class="mut" style="padding:20px 8px">No files match.</p>'}
+${sec('Folders',`Models root <span class="mono">${ROOT}</span>. Subfolders are scanned recursively.`,`<button class="btn xs" data-a="settab" data-v="Storage">Manage in Settings &gt; Storage ${ic('arrow','sm')}</button>${pin(6)}`,`<div class="split" style="gap:32px"><div style="width:230px;flex:none">${tree(true)}</div><div class="grow"><div class="lbl" style="margin-bottom:6px">Extra library folders</div>${S.extras.map(x=>`<div class="tr" style="--cols:minmax(0,1fr) auto"><span class="nm mono sm">${x.p}<br><span class="mut" style="font-family:'Geist'">${x.l} layout · ${x.c} files · read-only</span></span><span class="badge ok">${ic('check','sm')}Scanned</span></div>`).join('')}<p class="mut sm" style="margin-top:8px">Files in extra folders appear in Library too. They are never moved or changed.</p></div></div>`)}
+</div>${showDet?`<aside class="rcol ${mob()?'sheetm':''}" aria-label="File details">${detail(sel)}</aside>`:''}</div>`}
+
+function slotOpts(s,i){const tpl=TPL(s.tpl),sl=tpl.slots[i],o=opts(tpl,sl);return `<select class="in s" data-in="slot:${s.id}:${i}" aria-label="${sl[0]} file"><option value="">Choose a file...</option>${o.map(f=>`<option value="${f.n}" ${s.pick[i]===f.n?'selected':''}>${f.n} · ${szs(f.mb)}</option>`).join('')}</select>`}
+function mSetups(){const sel=SETUPS.find(s=>s.id===S.setupSel)||SETUPS[0],tpl=TPL(sel.tpl),stat=s=>{const m=miss(s);return m.length?`<span class="wn-t">Missing: ${m.join(', ')}</span>`:'<span class="ok-t">Ready</span>'};
+const canFill=s=>{const t=TPL(s.tpl);return t.slots.every((sl,i)=>s.pick[i]||!sl[1]||opts(t,sl).length)};
+return `${sec('Setups','A setup is a model family with named slots, filled from your Library. The studio picks setups, not files.',`<span class="pw">${pin(5)}<button class="btn pri" data-a="menu" data-v="newset">${ic('plus')}New setup</button>${S.menu==='newset'?`<div class="pop dn r" style="width:300px" role="menu"><h4>Pick a family</h4>${FAMS.map(t=>`<button class="mi" data-a="newsetup" data-v="${t.id}"><span>${t.name}<small>${t.slots.map(x=>x[0].replace(/ \(.*\)/,'')).join(' + ')}</small></span></button>`).join('')}</div>`:''}</span>`,
+`<div class="tr h" style="--cols:minmax(0,1.3fr) 100px minmax(0,1.3fr) 90px 130px"><span>${pin(1)}Setup</span><span class="hm">Family</span><span>Status</span><span class="hm">VRAM</span><span></span></div>
+${SETUPS.map((s,ix)=>{const t=TPL(s.tpl),m=miss(s);return `<div class="tr hv ${s.id===sel.id?'on':''}" role="button" tabindex="0" style="--cols:minmax(0,1.3fr) 100px minmax(0,1.3fr) 90px 130px;cursor:pointer" data-a="setupsel" data-v="${s.id}"><span class="nm"><b>${esc(s.name)}</b><br><span class="mut sm">${t.kind==='image'?'Image':t.kind==='edit'?'Edit':'Video'}${S.use[t.kind]===s.id?' · in use':''}</span></span><span class="hm"><span class="badge">${t.fam}</span></span><span class="sm">${ix===0?pin(2):''}${stat(s)}</span><span class="hm mono sm">${t.vram}</span><span class="r">${ix===0?pin(6):''}${m.length?`<button class="btn xs pri" data-a="fetchmiss" data-v="${s.id}">${canFill(s)?'Fill from Library':'Fetch missing'}</button>`:S.use[t.kind]===s.id?'<span class="badge ok">In use</span>':`<button class="btn xs" data-a="useset2" data-v="${s.id}">Use</button>`}</span></div>`}).join('')}`,true)}
+${sec(esc(sel.name),`${tpl.fam} · slots and the files that fill them. Pickers list only compatible files.${tpl.note?' '+tpl.note:''}`,pin(3),`<div class="tr h" style="--cols:minmax(0,1fr) 90px minmax(0,2fr) 90px"><span>Slot</span><span class="hm">Needed</span><span>File</span><span>Status</span></div>
+${tpl.slots.map((sl,i)=>{const ok=!!sel.pick[i];return `<div class="tr" style="--cols:minmax(0,1fr) 90px minmax(0,2fr) 90px"><span><b>${sl[0]}</b><br><span class="mut sm">${opts(tpl,sl).length} compatible</span></span><span class="hm sm">${sl[1]?'Required':'Optional'}</span>${slotOpts(sel,i)}<span>${ok?'<span class="badge ok">Ready</span>':sl[1]?'<span class="badge wn">Missing</span>':'<span class="badge">Optional</span>'}</span></div>`}).join('')}`)}
+${sec('Recommended defaults','Applied when this setup is selected. Read-only here.',`<button class="btn xs" data-a="toast" data-v="Defaults editor opens here">Edit defaults</button>${pin(4)}`,`<dl class="kv" style="grid-template-columns:repeat(4,auto);justify-content:start;gap:6px 28px"><dt>Steps</dt><dt>CFG</dt><dt>Sampler</dt><dt>Flow shift</dt><dd>${tpl.def.steps}</dd><dd>${tpl.def.cfg}</dd><dd>${tpl.def.sampler}</dd><dd>${tpl.def.shift}</dd></dl><p class="mut sm" style="margin-top:10px">Estimated VRAM ${tpl.vram} on your RTX 4070 (12 GB).</p>`)}`}
+
+function packRow(pk,ix){const qn=S.qsel[pk.id]||pk.def,q=pk.q.find(x=>x[0]===qn)||pk.q[0],tot=q[1]+pk.extra,fit=FITL[q[3]],rec=pk.id==='zimg'||(pk.id==='flux'&&q[0]==='Q4_K');
+return `<div class="tr" style="--cols:minmax(0,1.7fr) 86px 80px 84px 150px 210px;align-items:start"><span class="nm"><b>${pk.name}</b> <span class="badge">${pk.kind}</span> ${rec&&q[3]!=='no'?`<span class="badge ok">${ic('check','sm')}Recommended for your GPU</span>`:''}<br><span class="mut sm">${pk.note}</span>
+<details class="dd"><summary class="lnk sm">Files included (${pk.shared.length+1})</summary><div style="padding-top:6px" class="sm mut"><div class="mono">${pk.name.replace(/ /g,'-').toLowerCase()}-${q[0]}.gguf · ${q[1]} GB</div>${pk.shared.map(s=>`<div class="mono">${s[0]} · ${s[1]}</div>`).join('')}</div></details></span>
+<span class="hm"><span class="badge">${pk.fam}</span></span><span class="mono sm">${tot.toFixed(1)} GB</span><span class="hm mono sm">${q[2]} GB min</span>
+<span>${ix===0?pin(3):''}<select class="in s" data-in="quant:${pk.id}" aria-label="Quantization for ${pk.name}">${pk.q.map(x=>`<option ${x[0]===qn?'selected':''} value="${x[0]}">${x[0]} · ${x[1]} GB</option>`).join('')}</select><span class="badge ${fit[0]}" style="margin-top:6px">${fit[1]}</span></span>
+<span class="r">${ix===0?pin(4):''}<button class="btn xs ${q[3]==='no'?'':'pri'}" data-a="packdl" data-v="${pk.id}" ${q[3]==='no'?'disabled':''}>${ic('dl','sm')}Download &amp; create setup</button></span></div>`}
+function mDiscover(){const L=PACKS.filter(pk=>{const qn=S.qsel[pk.id]||pk.def,q=pk.q.find(x=>x[0]===qn)||pk.q[0];return S.dlf==='All'||(S.dlf==='Fits my GPU'?q[3]!=='no':pk.kind===S.dlf)});
+return `<div class="msg n" style="margin-bottom:16px">${pin(2)}${ic('cpu')}<span class="grow"><b>Your GPU: NVIDIA GeForce RTX 4070 · 12 GB</b><br><span class="mut">Fit is judged against 12 GB VRAM. Tight means text encoders run on the CPU.</span></span></div>
+<div class="gtool" style="position:relative">${pin(1)}<div class="chips" style="margin:0">${['All','Image','Edit','Video','Fits my GPU'].map(c=>`<button class="chip ${S.dlf===c?'on':''}" data-a="dlf" data-v="${c}" aria-pressed="${S.dlf===c}">${c}</button>`).join('')}</div><span class="grow"></span><span class="pw">${pin(5)}<button class="btn" data-a="url" aria-expanded="${S.url}">${ic('link')}Add from URL</button></span></div>
+${S.url?`<div style="padding:4px 0 16px;border-bottom:1px solid var(--bd);margin-bottom:8px;position:relative"><div class="row" style="gap:8px"><input class="in" value="https://huggingface.co/city96/FLUX.1-dev-gguf/resolve/main/flux1-dev-Q4_K_S.gguf" aria-label="Hugging Face or direct link"><button class="btn pri" data-a="urldl">${ic('dl','sm')}Probe &amp; download</button></div><p class="mut sm" style="margin-top:6px">Hugging Face or direct links. The file is probed for type and family first. A token is only needed for gated models: <button class="lnk" data-a="toast" data-v="Paste a Hugging Face token in Settings (stored locally)">add a Hugging Face token</button>.</p></div>`:''}
+<div class="tr h" style="--cols:minmax(0,1.7fr) 86px 80px 84px 150px 210px"><span>Pack</span><span class="hm">Family</span><span>Total</span><span class="hm">Min VRAM</span><span>Quantization</span><span></span></div>${L.map((p,ix)=>packRow(p,ix)).join('')||'<p class="mut" style="padding:20px 8px">Nothing matches this filter.</p>'}`}
+function mDownloads(){const L=S.dls;
+return `${sec('Downloads','Files being fetched into your models folder. Pause and resume any time.',`<button class="btn" data-a="clrdl" ${L.some(d=>d.st==='done')?'':'disabled'}>Clear completed</button>${pin(1)}`,L.length?`<div class="tr h" style="--cols:minmax(0,1.2fr) minmax(0,1.6fr) 170px"><span>${pin(4)}File and destination</span><span>Progress</span><span></span></div>`+L.map(d=>`<div class="tr" style="--cols:minmax(0,1.2fr) minmax(0,1.6fr) 170px"><span class="nm"><b>${d.file}</b><br><span class="mono mut" style="font-size:11px">${ROOT}\\${d.dest.replace(/\//g,'\\')}</span></span>
+<span>${d.st==='done'?'<span class="badge ok">'+ic('check','sm')+'Done</span> <span class="mut sm mono">'+szs(d.total)+'</span>':`<div class="bar ${d.st==='pause'?'pz':''}" style="margin:0 0 4px"><i data-pb="dl:${d.id}" style="width:${Math.round(d.done/d.total*100)}%;${d.st==='fail'?'background:var(--dg)':''}"></i></div><span class="sm mut mono" data-pt="dl:${d.id}">${dlT(d)}</span>`}${d.st==='fail'?`<br><span class="sm dg-t" role="alert">${d.why}</span>`:''}</span>
+<span class="r">${d.st==='run'?`${pin(2)}<button class="btn xs" data-a="dlpause" data-v="${d.id}">${ic('pause','sm')}Pause</button><button class="btn xs ghost" data-a="dlcancel" data-v="${d.id}">Cancel</button>`:d.st==='pause'?`<button class="btn xs" data-a="dlpause" data-v="${d.id}">${ic('play','sm')}Resume</button><button class="btn xs ghost" data-a="dlcancel" data-v="${d.id}">Cancel</button>`:d.st==='fail'?`${pin(3)}<button class="btn xs pri" data-a="dlretry" data-v="${d.id}">${ic('retry','sm')}Retry</button><button class="btn xs ghost" data-a="dlcancel" data-v="${d.id}">Remove</button>`:''}</span></div>`).join(''):`<p class="mut" style="padding:30px 8px">No downloads. Start one from Discover.</p>`,true)}`}
+const CT=[['F16',1,'Best quality, biggest file'],['Q8_0',.53,'Near-identical to F16'],['Q5_K',.38,'Very good, balanced'],['Q4_K',.28,'Good for most uses'],['Q3_K',.22,'Visible quality loss, smallest that still works']];
+function mConvert(){const src=byN(S.conv.src),tg=S.conv.tgt,srcGB=src.mb/1024,out=`${ROOT}\\${src.t==='ckpt'?'checkpoints':'diffusion_models'}\\${base(src.n)}-${tg}.gguf`,c=S.conv;
+return `${sec('Source','Pick a model from your Library to make a smaller copy.',pin(1),`<label class="lbl" for="csrc">Source file</label><select class="in" id="csrc" style="max-width:520px;margin-top:4px" data-in="csrc">${F.filter(f=>['diff','ckpt'].includes(f.t)&&!f.n.endsWith('.gguf')).map(f=>`<option value="${f.n}" ${f.n===c.src?'selected':''}>${f.n} · ${szs(f.mb)}</option>`).join('')}</select>`,true)}
+${sec('Target type','Smaller files need less VRAM but lose some detail.',pin(2),CT.map(t=>{const gb=srcGB*t[1],fit=gb<=8?FITL.yes:gb<=12.5?FITL.tight:FITL.no;return `<button class="opt" role="radio" aria-checked="${tg===t[0]}" data-a="ctgt" data-v="${t[0]}"><span class="rd ${tg===t[0]?'on':''}"></span><span class="grow"><b>${t[0]}</b> <span class="mut">· ${t[2]}</span></span><span class="mono">${gb.toFixed(1)} GB</span><span class="badge ${fit[0]}" style="width:150px;justify-content:center">${fit[1]}</span></button>`}).join(''))}
+${sec('Output','The new file appears in Library when finished.',pin(3),`<label class="lbl" for="cout">Save as</label><input class="in mono" id="cout" style="margin:4px 0 14px" value="${esc(out)}"><div class="acts" style="position:relative">${pin(4)}<button class="btn pri" data-a="convgo" ${c.run?'disabled':''}>${ic('zap')}${c.run?'Converting...':'Convert'}</button>${c.run?`<div style="width:260px"><div class="bar" style="margin:0 0 4px"><i data-pb="conv" style="width:${c.pct}%"></i></div><span class="sm mut mono" data-pt="conv">${c.pct}%</span></div>`:''}</div>`)}`}
+function models(){const t=S.mtab,nd=S.dls.filter(d=>d.st!=='done').length;
+return page('Models','Files, setups and downloads that power generation.',`<span class="badge">${ic('cpu','sm')}NVIDIA GeForce RTX 4070 · 12 GB</span>`,`<div class="tabs" role="tablist">${['Library','Setups','Discover','Downloads','Convert'].map(x=>`<button role="tab" class="${t===x?'on':''}" aria-selected="${t===x}" data-a="mtab" data-v="${x}">${x}${x==='Downloads'&&nd?`<span class="cnt n">${nd}</span>`:''}</button>`).join('')}</div>${{Library:mLibrary,Setups:mSetups,Discover:mDiscover,Downloads:mDownloads,Convert:mConvert}[t]()}`,true)}
+
+/* ---------- Settings ---------- */
+const SECS=[['Backend','sliders'],['Storage','db'],['Network & LAN','globe'],['Appearance','sun'],['About','info']];
+const BUILDS=[['cuda','CUDA 12','Fastest on NVIDIA. Includes the CUDA runtime, nothing else to install.',184,1],['vulkan','Vulkan','Works on any modern GPU (NVIDIA, AMD, Intel). A little slower than CUDA.',42,1],['rocm','ROCm','For AMD Radeon GPUs.',96,0,'No AMD GPU detected'],['cpu','CPU','Slow, but always works. Use it to test or when no GPU is available.',28,1]];
+const VERS=[['latest','Latest: master-982 (2026-10-20)'],['master-975','master-975 (2026-10-02)'],['master-960','master-960 (2026-09-14)']];
+const instT=()=>{const i=S.inst;if(!i)return '';const b=BUILDS.find(x=>x[0]===i.b),done=Math.round(b[3]*i.pct/100);return i.step===0?`Download · ${done} of ${b[3]} MB · 12 MB/s · ETA ${Math.max(1,Math.round((100-i.pct)*b[3]/100/12))}s`:i.step===1?'Extracting files...':i.step===2?'Running sd-cli --list-devices: found NVIDIA GeForce RTX 4070 (CUDA0)':`${b[1]} installed and verified.`};
+function stepper(i,names){return `<ol class="stp" style="list-style:none;padding:0" aria-label="Install progress">${names.map((n,k)=>`<li class="s ${k<i.step?'dn':k===i.step?(i.step===names.length-1?'dn':'on'):''}"><span class="n">${k<i.step||(k===i.step&&i.step===names.length-1)?ic('check','sm'):k+1}</span>${n}</li>${k<names.length-1?'<span class="ln"></span>':''}`).join('')}</ol>`}
+function backend(){const srv=S.mode==='server',run=S.srvRun,sel=BUILDS.find(b=>b[0]===S.build);
+const installed=b=>S.rts.some(r=>r.b===BUILDS.find(x=>x[0]===b)[1]);
+return `${sec('Engine','What generates your images.',`<button class="btn xs" data-a="toast" data-v="Verified: sd-cli and sd-server respond">Verify again</button>${pin(1)}`,`<div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap;font-size:13px"><b>stable-diffusion.cpp master-982</b><span class="mut">CUDA 12 · Windows x64</span><span class="badge ok">${ic('check','sm')}Verified</span></div>
+<div style="margin-top:8px"><div class="tr" style="--cols:24px 1fr auto"><span>${ic('cpu')}</span><span><b>GPU0</b> NVIDIA GeForce RTX 4070 · 12 GB</span><span class="badge ok">CUDA</span></div><div class="tr" style="--cols:24px 1fr auto"><span>${ic('cpu')}</span><span><b>CPU</b> 16 threads</span><span class="badge">Available</span></div></div>
+${S.upd?`<div class="msg wn" style="margin-top:12px">${ic('alert')}<span class="grow"><b>master-990 is available.</b> Newer builds fix LoRA loading with Wan 2.2 and speed up server restarts. <button class="lnk" data-a="toast" data-v="Opens the changelog">Changelog</button></span><button class="btn xs pri" data-a="update">Update</button></div>`:''}`,true)}
+${sec('Run mode','Same choice as the CLI | Server control in the titlebar.',pin(2),`<div role="radiogroup" aria-label="Run mode"><button class="opt" role="radio" aria-checked="${!srv}" data-a="mode" data-v="cli"><span class="rd ${!srv?'on':''}"></span><span class="grow"><b>CLI</b><br><span class="mut">Starts a fresh process for each job. Lowest idle memory. Supports every feature.</span></span></button>
+<button class="opt" role="radio" aria-checked="${srv}" data-a="mode" data-v="server"><span class="rd ${srv?'on':''}"></span><span class="grow"><b>Server</b><br><span class="mut">Keeps the model loaded between jobs, so repeats are faster. Batches, ControlNet, PhotoMaker and img2img fall back to CLI automatically.</span></span></button></div>
+${srv?`<div style="padding:12px 8px 0 36px;position:relative">${pin(3)}<div class="acts" style="margin-bottom:12px"><span class="badge ${run?'ok':'wn'}"><i class="dot ${run?'':'off'}"></i>${run?'Running on port 1234':'Stopped'}</span><button class="btn xs ${run?'':'pri'}" data-a="srv">${run?ic('x','sm')+'Stop':ic('play','sm')+'Start'}</button><button class="btn xs" data-a="restart" ${run?'':'disabled'}>${ic('retry','sm')}Restart</button><span class="grow"></span><label class="row" style="gap:8px">Port <input class="in mono" value="1234" style="width:80px;height:28px" aria-label="Server port"></label></div>
+<div class="row" style="padding:6px 0"><span><span class="lbl">Restart automatically when the setup changes</span><br><span class="mut sm">Keeps the loaded model in sync with the studio.</span></span>${sw2(true,'sw','','Restart automatically')}</div>
+${S.stale&&run?`<div class="msg wn" style="margin-top:8px">${ic('alert')}<span class="grow"><b>Loaded setup is out of date.</b> The server still has Flux.1 dev with the old LoRA folder.</span><button class="btn xs pri" data-a="restart">Restart</button></div>`:''}</div>`:''}`)}
+${sec('Runtimes','Installed engine builds. Previous versions are kept so you can roll back.',pin(4),`<div class="tr h" style="--cols:minmax(0,1.1fr) 90px minmax(0,1.3fr) 100px 150px"><span>Version</span><span>Build</span><span class="hm">Installed</span><span>Status</span><span></span></div>
+${S.rts.map(r=>`<div class="tr" style="--cols:minmax(0,1.1fr) 90px minmax(0,1.3fr) 100px 150px"><span class="nm"><b>${r.v}</b></span><span><span class="badge">${r.b}</span></span><span class="hm mut sm ${r.custom?'mono':''}">${r.d}</span><span>${r.act?'<span class="badge pri">Active</span>':'<span class="mut sm">Installed</span>'}</span><span class="r">${r.act?'':`<button class="btn xs" data-a="rtuse" data-v="${r.id}">Use</button><button class="btn xs ghost" data-a="rtrm" data-v="${r.id}">Remove</button>`}</span></div>`).join('')}
+<div class="row" style="padding:14px 8px 0;gap:8px;flex-wrap:wrap;justify-content:flex-start"><span class="lbl">Custom binary</span><input class="in mono" value="D:\\tools\\sd-cpp\\build\\bin" aria-label="Folder containing sd-cli and sd-server" style="flex:1;min-width:200px;max-width:420px"><button class="btn xs">Browse...</button><span class="badge ok">${ic('check','sm')}sd-cli.exe</span><span class="badge ok">${ic('check','sm')}sd-server.exe</span></div>`)}
+${sec('Install a runtime','Add another build or an older version. You can leave this page while it installs.',pin(5),`<div class="msg n" style="margin-bottom:8px">${ic('cpu')}<span class="grow"><b>Hardware detected:</b> NVIDIA GeForce RTX 4070 · 12 GB · driver 560.94</span></div>
+<div class="lbl" style="padding:10px 8px 2px">Build</div><div role="radiogroup" aria-label="Build">${BUILDS.map(b=>`<button class="opt ${b[4]?'':'dis'}" role="radio" aria-checked="${S.build===b[0]}" ${b[4]?`data-a="build" data-v="${b[0]}"`:'aria-disabled="true"'}><span class="rd ${S.build===b[0]?'on':''}"></span><span class="grow"><b>${b[1]}</b> ${b[0]==='cuda'?'<span class="badge ok">Recommended for NVIDIA</span>':''} ${installed(b[0])?'<span class="badge">Installed</span>':''}<br><span class="mut">${b[4]?b[2]:b[2]+' <span class="wn-t">Unavailable: '+b[5]+'.</span>'}</span></span><span class="mono mut sm">${b[3]} MB</span></button>`).join('')}</div>
+<div class="row" style="padding:12px 8px;justify-content:flex-start;gap:12px;flex-wrap:wrap;position:relative">${pin(6)}<label class="lbl" for="ver">Version</label><select class="in" id="ver" style="width:280px" data-in="ver">${VERS.map(v=>`<option value="${v[0]}" ${S.ver===v[0]?'selected':''}>${v[1]}</option>`).join('')}</select><button class="btn pri" data-a="install" ${S.inst&&S.inst.step<3?'disabled':''}>${ic('dl','sm')}Install ${sel[1]}</button></div>
+${S.inst?`<div style="padding:4px 8px">${stepper(S.inst,['Download','Extract','Verify devices','Ready'])}<div class="bar" style="margin:0 0 6px;max-width:520px"><i data-pb="inst" style="width:${S.inst.step===3?100:S.inst.pct}%"></i></div><span class="sm ${S.inst.step===3?'ok-t':'mut'}" data-pt="inst">${instT()}</span>${S.inst.step<3?'<p class="mut sm" style="margin-top:4px">Progress also shows in the titlebar Downloads.</p>':''}</div>`:''}`)}
+<details class="sec dd" ${S.advB?'open':''} data-k="advB"><summary class="dsum">${pin(7)}<span>Advanced<br><span class="mut sm" style="font-weight:400">Device assignment and memory options for power users.</span></span>${ic('down','sm')}</summary><div>
+<div class="lbl" style="margin-bottom:6px">Which device runs which part</div>
+${[['diffusion','Diffusion model'],['te','Text encoders'],['vae','VAE']].map(p=>`<div class="tr" style="--cols:minmax(0,1fr) 180px"><span>${p[1]}</span><select class="in s" data-in="dev:${p[0]}" aria-label="${p[1]} device">${['cuda0','cpu'].map(d=>`<option ${S.dev1[p[0]]===d?'selected':''}>${d}</option>`).join('')}</select></div>`).join('')}
+${[['Max VRAM','Limit memory the engine may use','<input class="in mono" value="auto" style="width:100px;height:28px" aria-label="Max VRAM">'],['Offload to CPU','Move idle weights to system RAM',sw2(false,'sw','','Offload to CPU')],['CLIP on CPU','Saves about 1 GB VRAM',sw2(true,'sw','','CLIP on CPU')],['VAE tiling','Decode large images in tiles',sw2(true,'sw','','VAE tiling')],['Flash attention','Faster and lighter on VRAM',sw2(true,'sw','','Flash attention')],['Threads','CPU threads for CPU work','<input class="in mono" value="8" style="width:100px;height:28px" aria-label="Threads">']].map(r=>`<div class="tr" style="--cols:minmax(0,1fr) auto"><span><span class="lbl">${r[0]}</span><br><span class="mut sm">${r[1]}</span></span><span>${r[2]}</span></div>`).join('')}</div></details>`}
+function storage(){
+const TYPES=[['Diffusion models','diffusion_models/'],['Checkpoints','checkpoints/'],['VAE','vae/'],['Text encoders','text_encoders/'],['LoRAs','loras/'],['Embeddings','embeddings/'],['ControlNet','controlnet/'],['Upscalers','upscale/'],['Identity','identity/'],['Preview decoders','taesd/'],['Video extras','video/']];
+const MAPS=[['checkpoints','Checkpoints'],['diffusion_models','Diffusion models'],['vae','VAE'],['text_encoders + clip','Text encoders'],['loras','LoRAs'],['controlnet','ControlNet'],['upscale_models','Upscalers'],['embeddings','Embeddings'],['clip_vision','Video extras']];
+return `${sec('Models folder','Everything below lives under this root.',`<button class="btn xs">Open</button><button class="btn xs">Change...</button>`,`<div class="row" style="justify-content:flex-start;gap:12px;flex-wrap:wrap"><span class="mono">${ROOT}</span><span class="mut sm">${F.length} files · 98.6 GB used · 212 GB free</span></div>`,true)}
+${sec('Folder structure','Subfolders are scanned recursively, so your own organisation is kept.',pin(1),`<div class="split" style="gap:32px"><div style="width:250px;flex:none">${tree(false)}</div><div class="grow" style="position:relative">${pin(2)}<div class="tr h" style="--cols:minmax(0,1.1fr) minmax(0,1.1fr) 50px 80px auto"><span>Type</span><span>Folder</span><span>Files</span><span title="Used when a download type cannot be detected">Default target</span><span></span></div>
+${TYPES.map(t=>{const c=F.filter(f=>f.dir.startsWith(t[1])).length,k=t[1].replace('/','');return `<div class="tr" style="--cols:minmax(0,1.1fr) minmax(0,1.1fr) 50px 80px auto"><b>${t[0]}</b><span class="mono sm mut nm">${t[1]}</span><span class="mono sm">${c}</span><button role="radio" aria-checked="${S.dtarget===k}" aria-label="Default target ${t[0]}" data-a="dtarget" data-v="${k}"><span class="rd ${S.dtarget===k?'on':''}" style="margin:0"></span></button><span class="r"><button class="btn xs ghost">Open</button><button class="btn xs ghost">Change</button></span></div>`}).join('')}</div></div>`)}
+${sec('Extra library folders','Scan model folders from other apps. Read-only: files are never moved or changed.',`<button class="btn" data-a="xp">${ic('plus')}Add folder...</button>${pin(3)}`,`${S.extras.map(x=>`<div class="tr" style="--cols:minmax(0,1.4fr) minmax(0,1fr) 70px auto"><span class="mono sm nm">${x.p}</span><span class="sm">${x.l} layout ${ic('check','sm')}</span><span class="mono sm">${x.c} files</span><span class="r">${pin(4)}<button class="btn xs ghost" data-a="toast" data-v="Rescanned ${x.p}">Rescan</button><button class="btn xs ghost" data-a="xrm" data-v="${esc(x.p)}">Remove</button></span></div>`).join('')}
+${S.xp?`<div style="padding:16px 8px 0;position:relative"><div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><input class="in mono" value="D:\\ComfyUI\\models" aria-label="Folder to scan" style="max-width:380px"><span class="badge ok">${ic('check','sm')}Detected layout: ComfyUI</span></div><div class="lbl" style="margin:12px 0 4px">How its folders map to Flaxeo</div><div style="max-width:520px">${MAPS.map(m=>`<div class="tr" style="--cols:1fr 20px 1fr;padding:6px 8px"><span class="mono sm">${m[0]}/</span>${ic('arrow','sm')}<span class="sm">${m[1]}</span></div>`).join('')}</div><div class="acts" style="margin-top:12px"><button class="btn pri" data-a="xadd">Scan 124 files (read-only)</button><button class="btn" data-a="xp">Cancel</button></div></div>`:''}`)}
+${sec('Outputs and cache','','',`<div class="fr"><div><div class="lbl">Output folder</div><div class="mut sm">Where generated files go.</div></div><input class="in mono" value="D:\\Flaxeo\\outputs"></div><div class="fr"><div><div class="lbl">Compress old outputs</div><div class="mut sm">Saves disk space; originals stay viewable.</div></div><div>${sw2(false,'sw','','Compress')}</div></div><div class="fr"><div><div class="lbl">Cache</div><div class="mut sm">Thumbnails and temp files: 1.2 GB</div></div><div><button class="btn xs">Clear cache</button></div></div>`)}`}
+function settings(){const s=S.sec;const f=(l,h,c)=>`<div class="fr"><div><div class="lbl">${l}</div><div class="mut sm">${h}</div></div><div>${c}</div></div>`;let b='';
+if(s==='Backend')b=backend();else if(s==='Storage')b=storage();
+else if(s==='Appearance')b=f('Theme','Follows your system by default.',seg([['light','Light'],['dark','Dark']],'light','theme'))+f('Density','Space between controls.',seg(['Comfortable','Compact'],'Comfortable','noop'));
+else if(s==='Network & LAN')b=f('Allow other devices','Lets phones and laptops on your Wi-Fi use this studio.',sw2(false,'sw','','LAN'))+f('Access code','Required by other devices.','<input class="in mono" value="482-913" style="max-width:160px">')+f('Remote access','Only while this PC is on and awake.','<span class="badge">Off</span>');
+else b=f('Version','',`<span class="mono">0.8.0</span>`)+f('Engine','',`<span class="mono">master-982 · CUDA 12</span>`)+f('Updates','You are up to date.',`<button class="btn xs">Check for updates</button>`);
+return page('Settings','Backend, storage, network and appearance.',s==='Backend'?`<span class="badge ${S.mode==='cli'||S.srvRun?'ok':'wn'}"><i class="dot ${S.mode==='cli'||S.srvRun?'':'off'}"></i>${S.mode==='cli'?'CLI mode':S.srvRun?'Server running':'Server stopped'}</span>`:'',`<div class="split"><div class="l setnav" style="width:200px;position:relative">${pin(1,'settings')}${SECS.map(x=>`<button class="li ${s===x[0]?'on':''}" data-a="sec" data-v="${x[0]}">${ic(x[1],'sm')}${x[0]}</button>`).join('')}</div><div class="r" style="position:relative">${pin(2,'settings')}${b}</div></div>`)}
+
+/* ---------- Help ---------- */
+const HELP=[['Getting started','Install a runtime, add a setup, press Generate.'],['Writing prompts','Describe subject, light and style.'],['Inpainting with masks','Change one part of an image.'],['Models, setups and LoRAs','What each file is for and how to load it.'],['Make video from images','Start and end frames, duration.'],['Troubleshooting','Out of VRAM, black images, slow runs.']];
+function help(){const h=HELP[S.helpI];return page('Help','Guides and answers.',`<span class="badge">${ic('help','sm')}Opened from: Mask tools</span>`,`<div class="split"><div class="l" style="position:relative">${pin(1)}<div class="sf" style="margin-bottom:10px">${ic('search')}<input class="in" placeholder="Search help" aria-label="Search help"></div>${HELP.map((x,i)=>`<button class="li ${i===S.helpI?'on':''}" data-a="hi" data-v="${i}">${ic('book','sm')}${x[0]}</button>`).join('')}</div>
+<article class="r prose" style="position:relative;max-width:720px">${pin(2)}<h2>${pin(3)}${h[0]}</h2><p class="mut">${h[1]}</p>
+${S.helpI===3?`<h3>The idea</h3><p>Your <b>Library</b> holds files. A <b>Setup</b> picks the right files for one model family. The studio only asks you to choose a setup.</p><ol><li>Open <b>Models</b> and check <b>Library</b> for what is installed.</li><li>In <b>Setups</b>, pick a family and fill its slots, or use Discover to download a ready pack.</li><li>In the studio, choose the setup in the Setup chip.</li><li>Add a LoRA with <b>+ LoRA</b>. Only LoRAs made for the same family are selectable.</li></ol><h3>LoRA tips</h3><p>Insert trigger words keeps them in the prompt for you. Strength around 0.6 to 1.0 suits most LoRAs.</p>`:S.helpI===2?`<h3>Steps</h3><ol><li>Open <b>Edit</b> and drop in an image, or pick one from Gallery.</li><li>Choose <b>Inpaint</b> in the Edit mode control.</li><li>Use <b>Brush</b> to paint the area you want to change.</li><li>Describe the new content in the prompt.</li><li>Press <b>Generate</b>.</li></ol>`:`<h3>Overview</h3><p>This article explains the basics in a few short steps. Use the topics on the left or search to find something specific.</p><ol><li>Open the studio you need.</li><li>Pick a preset before changing raw values.</li><li>Check the Queue in the titlebar for progress.</li></ol>`}</article></div>`)}
+
+/* ---------- overlays ---------- */
+function loraPicker(){const mode=['image','edit','video'].includes(S.screen)?S.screen:'image',set=curSet(mode),tpl=TPL(set.tpl),emb=S.ptab==='Embeddings',cur=S.lo[mode];
+const all=F.filter(f=>f.t===(emb?'emb':'lora')),dirs=[...new Set(all.map(f=>f.dir))];
+const L=all.filter(f=>(S.pf==='all'||f.dir===S.pf)&&(!S.pq||f.n.toLowerCase().includes(S.pq.toLowerCase())||(f.x.trig||[]).join(' ').toLowerCase().includes(S.pq.toLowerCase())));
+const rowH=f=>{const ok=f.fam.includes(tpl.fam)||f.fam.includes('any'),added=cur.some(l=>l.n===f.n);
+return `<button class="tr" style="--cols:44px 1fr auto;align-items:start;${ok?'':'cursor:default'}" ${ok?`data-a="loraadd" data-v="${f.n}"`:'aria-disabled="true"'}><span class="th32 ${ok?'':'dimimg'}" style="width:44px;height:44px;${ok?'':'opacity:.45'}">${art(fi(f.n))}</span><span class="nm"><b style="${ok?'':'color:var(--mfg)'}">${base(f.n)}</b> <span class="badge">${f.fam[0]}</span> <span class="mut sm">${szs(f.mb)} · ${f.dir}</span><br>${ok?`<span class="mut sm">${emb?'Trigger: '+base(f.n):(f.x.trig&&f.x.trig.length?'Trigger words: <span class="mono">'+esc(f.x.trig.join(', '))+'</span>':'No trigger words')+' · default strength '+(f.x.str||1)}</span>`:`<span class="sm wn-t">Made for ${f.fam[0]}; current setup is ${tpl.fam}.</span>`}</span><span>${ok?(added?'<span class="badge ok">'+ic('check','sm')+'Added</span>':'<span class="btn xs">'+ic('plus','sm')+'Add</span>'):''}</span></button>`};
+const tile=f=>{const ok=f.fam.includes(tpl.fam);return `<button class="${ok?'':'dim'}" style="text-align:left;${ok?'':'opacity:.55'}" ${ok?`data-a="loraadd" data-v="${f.n}"`:'aria-disabled="true"'}><div class="ar" style="aspect-ratio:1">${art(fi(f.n))}</div><b class="sm" style="display:block;margin-top:4px">${base(f.n)}</b><span class="mut sm">${f.fam[0]}</span></button>`};
+return `<div class="scrim" data-a="ovx"></div><aside class="rsheet" role="dialog" aria-label="Add ${emb?'embedding':'LoRA'}"><div class="hd">${pin(1,'lora')}<div><b style="font-size:15px">Add ${emb?'embedding':'LoRA'}</b><br><span class="mut sm">Judged against: ${esc(set.name)} (${tpl.fam})</span></div><button class="tbi" data-a="ovx" aria-label="Close">${ic('x')}</button></div>
+<div class="bd"><div style="display:grid;gap:10px;padding:8px 0 4px"><div style="position:relative;justify-self:start">${pin(4,'lora')}${seg(['LoRAs','Embeddings'],S.ptab,'ptab')}</div><div class="row" style="gap:8px"><div class="sf grow" style="position:relative">${pin(2,'lora')}${ic('search')}<input class="in" data-in="pq" value="${esc(S.pq)}" placeholder="Search name or trigger word" aria-label="Search"></div>${seg([['list','List'],['grid','Grid']],S.pview,'pview')}</div>
+<select class="in s" aria-label="Folder" data-in="pf"><option value="all">All folders</option>${dirs.map(d=>`<option value="${d}" ${S.pf===d?'selected':''}>${d}</option>`).join('')}</select></div>
+${S.pview==='list'?`<div style="position:relative">${pin(3,'lora')}${L.map(rowH).join('')||'<p class="mut" style="padding:20px 4px">Nothing found.</p>'}</div>`:`<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;padding-top:8px">${L.map(tile).join('')}</div>`}</div>
+<div class="ft"><p class="mut sm" style="position:relative">${pin(5,'lora')}Dimmed items were made for another family. Switch setup in the studio to use them.</p><div class="acts" style="margin-top:8px"><button class="btn pri" data-a="ovx">Done${cur.length?' ('+cur.length+' active)':''}</button><button class="btn" data-a="ov" data-v="files">${ic('up','sm')}Add my own...</button></div></div></aside>`}
+function filesDlg(){const ok=S.af.filter(f=>!f.dup).length,TYPES=Object.keys(TN);
+return `<div class="scrim" data-a="ovx"></div><div class="modal" role="dialog" aria-label="Add your own files"><div class="mh"><div><b style="font-size:16px">Add your own files</b><br><span class="mut">Flaxeo checks each file, then puts it where it belongs.</span></div><button class="tbi" data-a="ovx" aria-label="Close">${ic('x')}</button></div>
+<div class="mb"><div class="drop" style="position:relative;padding:20px">${pin(1,'files')}${ic('up','lg')}<b>Drop model files or folders here</b><span class="mut sm">.safetensors .gguf .ckpt .pt .pth .bin</span><button class="btn">Browse...</button></div>
+<div class="sh" style="margin:20px 0 4px"><div><h2>3 files found</h2><p>Check what was detected, then import.</p></div></div>
+<div class="tr h" style="--cols:minmax(0,1.3fr) 130px 90px minmax(0,1fr) 220px;position:relative">${pin(2,'files')}<span>File</span><span>Type</span><span class="hm">Family</span><span class="hm">Goes to</span><span>Action</span></div>
+${S.af.map((f,i)=>`<div class="tr" style="--cols:minmax(0,1.3fr) 130px 90px minmax(0,1fr) 220px;align-items:start"><span class="nm"><b>${f.n}</b><br><span class="mut sm">${f.sz}${f.side?' · found cinematic-lora.json (trigger words)':''}${f.prev?' + preview.png':''}</span>${f.dup?`<br><span class="sm wn-t">${ic('alert','sm')} Same file already in text_encoders/t5xxl/. It will be skipped.</span>`:''}</span>
+<select class="in s" data-in="aft:${i}" aria-label="Type of ${f.n}">${TYPES.filter(t=>t!=='unk').map(t=>`<option value="${t}" ${f.t===t?'selected':''}>${TN[t]}</option>`).join('')}</select><span class="hm"><span class="badge">${f.fam==='any'?'Any':f.fam}</span></span><span class="hm mono sm mut nm">${DEST[f.t]}</span>
+<span style="position:relative">${i===1?pin(3,'files'):''}${seg([['Move','Move'],['Copy','Copy'],['Keep','Keep in place']],f.act,'afact:'+i,'sm')}</span></div>`).join('')}
+<p class="mut sm" style="margin-top:12px;position:relative">${pin(4,'files')}Keep in place links the file from its current folder, so nothing is duplicated on disk.</p>
+<p class="mut sm" style="margin-top:8px;position:relative">${pin(5,'files')}Also accepted: LoRA preview images and trigger-word sidecars (.json or .txt next to the file), recipe .json, style kit .json, and images for Gallery or an Edit input.</p></div>
+<div class="mf"><span class="mut sm grow">${ok} will be imported, ${S.af.length-ok} skipped</span><button class="btn" data-a="ovx">Cancel</button><button class="btn pri" data-a="afimp">Import ${ok} files</button></div></div>`}
+function wizard(){const w=S.wz,pk=PACKS.filter(p=>['zimg','flux','sdxl'].includes(p.id)),sp=PACKS.find(p=>p.id===w.pick);const nm=['Hardware and runtime','First model setup','Done'];
+let b='';
+if(w.step===1)b=`<div class="msg n">${ic('cpu')}<span class="grow"><b>NVIDIA GeForce RTX 4070 · 12 GB</b> · driver 560.94 · Windows x64<br><span class="mut">Detected automatically.</span></span></div>
+<div class="sh" style="margin:20px 0 6px;position:relative">${pin(2,'wizard')}<div><h2>Recommended runtime</h2><p>CUDA 12 · master-982 · 184 MB. Includes the CUDA runtime.</p></div></div>
+${w.st==='idle'?`<button class="btn pri" data-a="wzinst">${ic('dl','sm')}Install CUDA 12</button>`:`${stepper({step:w.sub},['Download','Extract','Verify devices','Ready'])}<div class="bar" style="margin:0 0 6px"><i data-pb="wz" style="width:${w.sub===3?100:w.pct}%"></i></div><span class="sm ${w.st==='done'?'ok-t':'mut'}" data-pt="wz">${wzT()}</span>`}`;
+else if(w.step===2)b=`<p class="mut" style="margin-bottom:8px">These fit your 12 GB GPU. You can add more later in Models > Discover.</p><div role="radiogroup" style="position:relative">${pin(3,'wizard')}${pk.map(p=>{const qn=p.def,q=p.q.find(x=>x[0]===qn),tot=q[1]+p.extra;return `<button class="opt" role="radio" aria-checked="${w.pick===p.id}" data-a="wzpick" data-v="${p.id}"><span class="rd ${w.pick===p.id?'on':''}"></span><span class="grow"><b>${p.name}</b> ${p.id==='zimg'?'<span class="badge ok">Recommended for your GPU</span>':''}<br><span class="mut">${p.note}</span></span><span class="mono sm">${tot.toFixed(1)} GB<br><span class="mut">${qn}</span></span></button>`}).join('')}</div>`;
+else b=`<div class="msg ok">${ic('check')}<span class="grow"><b>You are set.</b> Downloads continue in the background; the setup is created automatically.</span></div>
+<div style="margin-top:12px"><div class="tr" style="--cols:1fr auto"><span><b>Runtime</b><br><span class="mut sm">CUDA 12 · master-982</span></span><span class="badge ok">Ready</span></div><div class="tr" style="--cols:1fr auto"><span><b>Setup</b><br><span class="mut sm">${sp.name} · ${sp.q.find(x=>x[0]===sp.def)[0]} · ${(sp.q.find(x=>x[0]===sp.def)[1]+sp.extra).toFixed(1)} GB downloading</span></span><span class="badge">Downloading</span></div></div>`;
+return `<div class="scrim" data-a="ovx"></div><div class="modal" style="width:min(640px,calc(100% - 24px))" role="dialog" aria-label="Setup wizard"><div class="mh"><div><b style="font-size:16px">Set up Flaxeo Image</b><br><span class="mut">Step ${w.step} of 3 · ${nm[w.step-1]}</span></div><button class="tbi" data-a="ovx" aria-label="Close">${ic('x')}</button></div>
+<div class="mb" style="position:relative">${pin(1,'wizard')}${stepper({step:w.step-1},nm.map((n,i)=>(i+1)+'. '+n)).replace(/<span class="n">.*?<\/span>/g,'')}${b}</div>
+<div class="mf">${w.step>1?'<button class="btn" data-a="wzback">Back</button>':'<button class="btn ghost" data-a="ovx">Skip for now</button>'}<span class="grow"></span>${w.step<3?'<button class="btn pri" data-a="wznext">Next</button>':`<button class="btn pri" data-a="wzdone">${pin(4,'wizard')}Open Image studio</button>`}</div></div>`}
+const wzT=()=>{const w=S.wz;return w.sub===0?`Download · ${Math.round(184*w.pct/100)} of 184 MB · 12 MB/s`:w.sub===1?'Extracting files...':w.sub===2?'Verifying devices: NVIDIA GeForce RTX 4070 (CUDA0)':'CUDA 12 installed and verified.'};
+function logsPanel(){return `<div class="logs" role="region" aria-label="Logs"><div class="row" style="padding:6px 12px;border-top:0"><b>Logs</b><span class="acts"><span class="seg sm"><button class="on">Server</button><button>Generation</button></span><button class="tbi" style="min-width:28px;height:28px" data-a="logs" aria-label="Close logs">${ic('x')}</button></span></div><div class="mono-box">[12:04:11] sd-server master-982 listening on 127.0.0.1:1234<br>[12:04:11] loaded flux1-dev-Q8_0.gguf + ae + clip_l + t5xxl_fp16<br>[12:04:12] lora folder: ${esc(ROOT)}\\loras<br>[12:04:41] image 1/4 done 29.1s<br>[12:04:42] sampling 28 steps</div></div>`}
+
+/* ---------- render ---------- */
+const SCREENS={home,image,edit,video,recipes,run:runView,builder,gallery,kits,models,settings,help};
+function app(){const m=mob();return `${titlebar()}<div class="body">${m?'':sidebar()}<main class="main" id="main">${SCREENS[S.screen]()}</main></div>${S.logs?logsPanel():''}${m?mnav():''}${S.menu==='more'?moreSheet():''}${S.ov==='lora'?loraPicker():''}${S.ov==='files'?filesDlg():''}${S.ov==='wizard'?wizard():''}${S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:''}`}
+const SW=[['home','Home'],['image','Image'],['edit','Edit'],['video','Video'],['recipes','Recipes'],['gallery','Gallery'],['kits','Style kits'],['models','Models'],['backend','Settings > Backend'],['storage','Settings > Storage'],['help','Help'],['wizard','Setup wizard'],['lora','LoRA picker'],['files','Add files dialog']];
+const swOn=k=>{if(k==='wizard'||k==='lora'||k==='files')return S.ov===k;if(S.ov)return false;if(k==='backend')return S.screen==='settings'&&S.sec==='Backend';if(k==='storage')return S.screen==='settings'&&S.sec==='Storage';if(k==='recipes')return ['recipes','run','builder'].includes(S.screen);return S.screen===k};
+function render(){const f=$('#frame');f.className='frame'+(mob()?' mobile':'');document.body.classList.toggle('notes',S.notes);
+const sels=['.page','.sscroll','.insp','.rsheet .bd','.modal .mb','.drawer'];const keep=sels.map(s=>{const e=document.querySelector(s);return e?e.scrollTop:0});
+$('#app').innerHTML=app();
+sels.forEach((s,i)=>{const e=document.querySelector(s);if(e)e.scrollTop=keep[i]});
+$('#sw').innerHTML=SW.map(x=>`<button class="cb ${swOn(x[0])?'on':''}" data-a="swgo" data-v="${x[0]}">${x[1]}</button>`).join('');
+const sub=$('#sub');sub.hidden=S.screen!=='models'||!!S.ov;if(!sub.hidden)sub.innerHTML='<small>Models tabs:</small>'+['Library','Setups','Discover','Downloads','Convert'].map(x=>`<button class="cb ${S.mtab===x?'on':''}" data-a="mtab" data-v="${x}">${x}</button>`).join('');
+$('#cbD').classList.toggle('on',!mob());$('#cbM').classList.toggle('on',mob());$('#cbN').classList.toggle('on',S.notes);$('#cbN').textContent=S.notes?'Hide UX notes':'Show UX notes';
+const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);$('#cbTheme').textContent=(dark?'Dark':'Light')+' - switch';
+const vb=$('#cbV');vb.hidden=S.screen!=='home';vb.textContent='State: '+(S.setupNeeded?'Setup needed':'Ready');
+const n=S.note;$('#noteBox').innerHTML=n&&S.notes?`<div class="note" role="status"><b>${n.n}</b><p>${esc((NOTES[n.k]||[])[n.n-1]||'')}</p><button data-a="pinx">Close</button></div>`:'';}
+let tt=null;const toast=t=>{S.toast=t;clearTimeout(tt);tt=setTimeout(()=>{S.toast='';render()},2600)};
+const go=v=>{S.screen=v;S.menu=null;S.ov=null;S.note=null};
+const addJob=t=>{const j=running();S.jobs.push({id:S.jid++,st:j?'queued':'running',t,m:`${S.screen==='video'?'Video':'Image'} - ${S.count} images`,n:S.screen==='video'?1:S.count,i:Math.floor(Math.random()*8)});if(!j){S.pct=0;S.img=1}};
+const startDl=(file,dest,mb,pk)=>{S.dls.push({id:S.did++,file,dest,total:mb,done:0,spd:16+Math.random()*6,st:'run',pk})};
+const mbOf=s=>{const m=/([\d.]+) (GB|MB)/.exec(s);return m?(m[2]==='GB'?+m[1]*1024:+m[1]):100};
+const ACT={
+go:v=>go(v),swgo:v=>{S.ov=null;S.menu=null;S.note=null;
+ if(v==='backend'){S.screen='settings';S.sec='Backend'}else if(v==='storage'){S.screen='settings';S.sec='Storage'}
+ else if(v==='wizard'){S.setupNeeded=true;S.wz={step:1,pick:'zimg',st:'idle',pct:0,sub:0};S.ov='wizard'}
+ else if(v==='lora'){S.screen='image';S.ov='lora';S.ptab='LoRAs'}else if(v==='files'){S.screen='models';S.mtab='Library';S.ov='files'}
+ else go(v)},
+theme:()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=d?'light':'dark'},
+dev:v=>{S.dev=v;S.insp=v==='desktop';S.menu=null;S.sel=null;S.fsel=v==='desktop'?S.fsel||'flux-realism.safetensors':null},notes:()=>{S.notes=!S.notes;S.note=null},
+variant:()=>{S.setupNeeded=!S.setupNeeded},
+pin:v=>{const [k,n]=v.split(':');S.note=S.note&&S.note.k===k&&S.note.n==+n?null:{k,n:+n}},pinx:()=>{S.note=null},
+menu:v=>{S.menu=(S.menu===v||v==='')?null:v},mode:v=>{S.mode=v},srv:()=>{S.srvRun=!S.srvRun;if(S.srvRun)S.stale=false},restart:()=>{S.stale=false;toast('Server restarted with the current setup')},
+sw:(v,el)=>{el.classList.toggle('on');el.setAttribute('aria-checked',el.classList.contains('on'));return 'noop'},
+logs:()=>{S.logs=!S.logs;S.menu=null},hub:()=>{S.screen='models';S.mtab='Discover';S.ov=null;S.menu=null},wizard:()=>{S.wz={step:1,pick:'zimg',st:'idle',pct:0,sub:0};S.ov='wizard';S.menu=null},
+ov:v=>{S.ov=v;S.menu=null},ovx:()=>{S.ov=null},toast:v=>toast(v),
+hmode:v=>{S.hmode=v},fill:v=>{S.hp=PROMPTS[v]},homegen:()=>{S.prompt=S.hp||S.prompt;go(S.hmode);addJob(S.prompt)},
+open:v=>{S.sel=+v;S.screen='gallery'},close:()=>{S.sel=null},
+preset:v=>{S.preset=v;S.steps={Fast:12,Balanced:28,Quality:40}[v];S.cfg=v==='Fast'?2:4.5},useset:v=>{const m=['image','edit','video'].includes(S.screen)?S.screen:'image';S.use[m]=v;S.menu=null},setsize:v=>{if(S.screen==='video')S.vsize=+v;else S.size=+v},setkit:v=>{S.kit=+v;S.kitOn[v]=true;S.menu=null},
+guide:v=>{S.guides=S.guides.includes(v)?S.guides.filter(x=>x!==v):[...S.guides,v]},neg:()=>{S.neg=!S.neg},count:v=>{S.count=Math.max(1,Math.min(8,S.count+ +v))},raw:()=>{S.raw=!S.raw},favcur:()=>{S.fcur=!S.fcur;if(S.fcur)toast('Added to favorites')},
+insp:()=>{S.insp=!S.insp},lock:()=>{S.lock=!S.lock},dice:()=>{S.seed=Math.floor(Math.random()*9e8)},
+fix:v=>{S.setupSel=v;S.mtab='Setups';S.screen='models';S.menu=null},
+gen:()=>addJob(S.prompt),queue:()=>addJob(S.prompt),cancel:()=>{const j=running();if(!j)return;j.st='failed';j.m='Failed: cancelled by you';const n=S.jobs.find(x=>x.st==='queued');if(n){n.st='running';S.pct=0;S.img=1}},
+clearq:()=>{S.jobs=S.jobs.filter(x=>x.st!=='queued')},retry:v=>{const j=S.jobs.find(x=>x.id==+v);j.st=running()?'queued':'running';j.m='Retrying';if(j.st==='running'){S.pct=0;S.img=1}},
+jmove:v=>{const [id,d]=v.split(':').map(Number);const q=S.jobs.filter(x=>x.st==='queued'),k=q.findIndex(x=>x.id===id),o=q[k+d];if(!o)return;const a=S.jobs.indexOf(q[k]),b=S.jobs.indexOf(o);[S.jobs[a],S.jobs[b]]=[S.jobs[b],S.jobs[a]]},
+emode:v=>{S.emode=v},tool:v=>{S.tool=v},frames:v=>{S.frames=Math.max(9,Math.min(129,S.frames+ +v))},motion:v=>{S.motion=v},
+recipe:v=>{S.recipe=+v;S.ran=false;go('run')},cat:v=>{S.cat=v},run:()=>{S.ran=true;addJob('Recipe: '+RECIPES[S.recipe][0])},bstep:v=>{S.bstep=+v},
+selmode:()=>{S.selmode=!S.selmode;S.selected=[]},pick:v=>{v=+v;S.selected=S.selected.includes(v)?S.selected.filter(x=>x!==v):[...S.selected,v]},gf:v=>{S.gf[v]=!S.gf[v]},gview:v=>{S.gview=v},
+bulkfav:()=>{S.selected.forEach(i=>{if(!S.favs.includes(i))S.favs.push(i)});toast(S.selected.length+' added to favorites')},favsel:()=>{const i=S.sel;S.favs=S.favs.includes(i)?S.favs.filter(x=>x!==i):[...S.favs,i]},import:()=>{S.ov='files'},
+kitsel:v=>{S.kitSel=+v},kiton:()=>{S.kitOn[S.kitSel]=!S.kitOn[S.kitSel]},
+/* models */
+mtab:v=>{S.mtab=v;S.screen='models';S.ov=null;S.menu=null},mtabgo:v=>{S.mtab=v;S.screen='models';S.menu=null},settab:v=>{S.screen='settings';S.sec=v},
+lf:v=>{S.lf=v},fsel:v=>{S.fsel=v;S.chg=false},fclose:()=>{S.fsel=null},chg:()=>{S.chg=!S.chg},
+ident:v=>{const f=byN(v);f.t='ckpt';f.fam=[v.startsWith('final')?'SD1.x':'SDXL'];f.dir='checkpoints/';toast('Identified '+v+' as Checkpoint ('+f.fam[0]+')')},
+identall:()=>{F.filter(f=>f.t==='unk').forEach(f=>{f.t='ckpt';f.fam=[f.n.startsWith('final')?'SD1.x':'SDXL'];f.dir='checkpoints/'});toast('Identified 2 files')},
+trigrm:v=>{byN(S.fsel).x.trig.splice(+v,1)},trigadd:()=>{const i=$('#tw'),w=i&&i.value.trim();if(w){const f=byN(S.fsel);(f.x.trig=f.x.trig||[]).push(w)}},
+setupsel:v=>{S.setupSel=v},useset2:(v)=>{const s=SETUPS.find(x=>x.id===v);S.use[TPL(s.tpl).kind]=v;toast(s.name+' is now used by the '+TPL(s.tpl).kind+' studio')},
+fetchmiss:v=>{const s=SETUPS.find(x=>x.id===v),t=TPL(s.tpl);let dl=0;t.slots.forEach((sl,i)=>{if(!s.pick[i]&&sl[1]){const o=opts(t,sl);if(o.length)s.pick[i]=o[0].n;else{startDl(sl[0].replace(/ \(.*\)/,'')==='LLM vision'?'mmproj-Qwen2.5-VL-7B-F16.gguf':'missing-file.gguf','text_encoders/llm_vision/',1400);dl++}}});toast(dl?'Added '+dl+' file to Downloads':'Slots filled from your Library')},
+newsetup:v=>{const t=TPL(v),id='s'+(SETUPS.length+1),s={id,tpl:v,name:t.name+' (new)',pick:t.slots.map(sl=>{const o=opts(t,sl);return o.length?o[0].n:null})};SETUPS.push(s);S.setupSel=id;S.menu=null;toast('Slots auto-filled with best matches')},
+dlf:v=>{S.dlf=v},url:()=>{S.url=!S.url},urldl:()=>{startDl('flux1-dev-Q4_K_S.gguf','diffusion_models/',6900);S.mtab='Downloads';toast('Probed: Diffusion model, Flux.1. Downloading.')},
+packdl:v=>{const pk=PACKS.find(p=>p.id===v),qn=S.qsel[v]||pk.def,q=pk.q.find(x=>x[0]===qn);startDl(pk.name.replace(/ /g,'-').toLowerCase()+'-'+qn+'.gguf','diffusion_models/',q[1]*1024,v);pk.shared.forEach(s=>startDl(s[0],'vae/',mbOf(s[1]),v));toast('Added '+(pk.shared.length+1)+' files to Downloads. The setup is created when done.')},
+dlpause:v=>{const d=S.dls.find(x=>x.id==+v);d.st=d.st==='run'?'pause':'run';d.spd=d.st==='run'?17.2:0},dlcancel:v=>{S.dls=S.dls.filter(x=>x.id!=+v)},dlretry:v=>{const d=S.dls.find(x=>x.id==+v);d.st='run';d.spd=15.8;delete d.why},clrdl:()=>{S.dls=S.dls.filter(d=>d.st!=='done')},
+ctgt:v=>{S.conv.tgt=v},convgo:()=>{S.conv.run=true;S.conv.pct=0},
+/* settings */
+sec:v=>{S.sec=v},build:v=>{S.build=v},install:()=>{S.inst={step:0,pct:0,b:S.build,v:S.ver}},update:()=>{S.upd=false;toast('Updating to master-990: see Downloads');startDl('sd-master-990-bin-win-cuda12-x64.zip','runtimes/',184)},
+rtuse:v=>{S.rts.forEach(r=>r.act=r.id==+v);S.stale=true;toast('Runtime switched. Restart the server to apply.')},rtrm:v=>{S.rts=S.rts.filter(r=>r.id!=+v)},
+dtarget:v=>{S.dtarget=v},xp:()=>{S.xp=!S.xp},xadd:()=>{S.extras.push({p:'D:\\ComfyUI\\models',l:'ComfyUI',c:124});S.xp=false;toast('Scanning D:\\ComfyUI\\models (read-only)')},xrm:v=>{S.extras=S.extras.filter(x=>x.p!==v)},
+hi:v=>{S.helpI=+v},noop:()=>{},
+/* overlays */
+ptab:v=>{S.ptab=v;S.pf='all'},pview:v=>{S.pview=v},
+loraadd:v=>{const mode=['image','edit','video'].includes(S.screen)?S.screen:'image',f=byN(v);if(f.t==='emb'){toast('Embedding '+base(v)+' added');return}const L=S.lo[mode],k=L.findIndex(l=>l.n===v);if(k>=0)L.splice(k,1);else L.push({n:v,s:f.x.str||1,trig:true,br:'Both'})},
+lorarm:v=>{const [m,i]=v.split(':');S.lo[m].splice(+i,1)},lotrig:v=>{const [m,i]=v.split(':');S.lo[m][+i].trig=!S.lo[m][+i].trig},lorapick:v=>{S.ptab=v;S.pf='all';S.pq='';S.ov='lora'},
+afimp:()=>{S.ov=null;toast('Imported '+S.af.filter(f=>!f.dup).length+' files')},
+wzinst:()=>{S.wz.st='run';S.wz.pct=0;S.wz.sub=0},wzpick:v=>{S.wz.pick=v},wznext:()=>{S.wz.step++},wzback:()=>{S.wz.step--},
+wzdone:()=>{packdl(S.wz.pick);S.setupNeeded=false;S.ov=null;S.screen='image'}
+};
+const packdl=v=>ACT.packdl(v);
+document.addEventListener('click',e=>{
+ if(S.menu&&!e.target.closest('.pop')&&!e.target.closest('[data-a="menu"]')&&!e.target.closest('.sheet')){S.menu=null;render();}
+ const t=e.target.closest('[data-a]');if(!t)return;let a=t.dataset.a,v=t.dataset.v;
+ if(a.startsWith('afact:')){S.af[+a.split(':')[1]].act=v;render();return}
+ const f=ACT[a];if(!f)return;
+ if(a==='sw'){f(v,t);return}
+ f(v,t);render();
+});
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;const v=t.value;
+ const RR=['gq','rq','lq','pq'];
+ if(RR.includes(k)){S[{gq:'gq',rq:'q',lq:'lq',pq:'pq'}[k]]=v;render();const i=$(`[data-in=${k}]`);if(i){i.focus();i.setSelectionRange(v.length,v.length)}return}
+ if(k==='prompt')S.prompt=v;else if(k==='hp')S.hp=v;
+ else if(k==='dens'){S.dens=+v;document.querySelectorAll('.gg').forEach(g=>g.style.setProperty('--cell',v+'px'))}
+ else if(k==='fps'){S.fps=+v;vid()}
+ else if(k.startsWith('lo:')||k.startsWith('lon:')){const [p,m,i]=k.split(':');S.lo[m][+i].s=+v;document.querySelectorAll(`[data-in="${p==='lo'?'lon':'lo'}:${m}:${i}"]`).forEach(n=>n.value=v);document.querySelectorAll(`[data-out="tk:${m}:${i}"]`).forEach(n=>n.textContent=v)}
+ else if(k.startsWith('br:')){const [p,m,i]=k.split(':');S.lo[m][+i].br=v}
+ else if(k==='apm'){S.applyMode=v.replace(' (recommended)','');render()}
+ else if(k.startsWith('slot:')){const [p,id,i]=k.split(':');SETUPS.find(s=>s.id===id).pick[+i]=v||null;render()}
+ else if(k.startsWith('quant:')){S.qsel[k.split(':')[1]]=v;render()}
+ else if(k.startsWith('aft:')){const f=S.af[+k.split(':')[1]];f.t=v;render()}
+ else if(k==='ftype'){const f=byN(S.fsel);f.t=v;render()}else if(k==='ffam'){byN(S.fsel).fam=[v];render()}
+ else if(k==='csrc'){S.conv.src=v;render()}else if(k==='ver'){S.ver=v}else if(k==='pf'){S.pf=v;render()}
+ else if(k.startsWith('dev:')){S.dev1[k.split(':')[1]]=v}
+ else if(k==='dstr'){byN(S.fsel).x.str=+v;const o=document.querySelector('[data-out="dstr"]');if(o)o.textContent=v}
+ else{if(k==='steps')S.steps=+v;if(k==='cfg')S.cfg=+v;if(k==='brush')S.brush=+v;const o=document.querySelector(`[data-out="${k}"]`);if(o)o.textContent=v}
+});
+function vid(){const d=(S.frames/S.fps).toFixed(1);document.querySelectorAll('[data-dur]').forEach(n=>n.textContent=`${S.frames} frames at ${S.fps} fps = ${d} s`);document.querySelectorAll('[data-frames]').forEach(n=>n.textContent=S.frames+' frames');document.querySelectorAll('[data-dur2]').forEach(n=>n.textContent=d+' s')}
+document.addEventListener('toggle',e=>{if(e.target.dataset&&e.target.dataset.k)S[e.target.dataset.k]=e.target.open},true);
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){S.menu=null;S.ov=null;S.note=null;render()}
+ else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&['image','edit','video'].includes(S.screen)){e.preventDefault();addJob(S.prompt);render()}
+ else if(e.key==='Enter'&&e.target.id==='tw'){e.preventDefault();ACT.trigadd();render()}
+ else if((e.key==='Enter'||e.key===' ')&&e.target.getAttribute&&e.target.getAttribute('role')==='button'&&e.target.tagName!=='BUTTON'){e.preventDefault();e.target.click()}
+});
+/* live ticker: updates bars in place, re-renders only on structural change */
+function pv(key){if(key==='job')return {pct:S.pct,t:jobT()};if(key==='inst'){const i=S.inst;return i?{pct:i.step===3?100:i.pct,t:instT()}:null}if(key==='wz')return {pct:S.wz.sub===3?100:S.wz.pct,t:wzT()};if(key==='conv')return {pct:S.conv.pct,t:S.conv.pct+'%'};if(key.startsWith('dl:')){const d=S.dls.find(x=>x.id==key.slice(3));return d?{pct:Math.round(d.done/d.total*100),t:dlT(d)}:null}return null}
+setInterval(()=>{let struct=false;
+ const j=running();if(j){S.pct+=4;if(S.pct>=100){S.pct=0;S.img++;if(S.img>j.n){j.st='done';j.m='Done just now - '+j.n+' images';const n=S.jobs.find(x=>x.st==='queued');if(n)n.st='running';S.img=1;struct=true}}}
+ S.dls.forEach(d=>{if(d.st==='run'){d.done+=d.spd*5;if(d.done>=d.total){d.done=d.total;d.st='done';d.spd=0;struct=true;if(d.pk){const pn=d.file;}}}});
+ const i=S.inst;if(i&&i.step<3){if(i.step===0){i.pct+=9;if(i.pct>=100){i.step=1;i.pct=0;struct=true}}else if(i.step===1){i.pct+=34;if(i.pct>=100){i.step=2;i.pct=0;struct=true}}else{i.pct+=50;if(i.pct>=100){i.step=3;struct=true;const bn=BUILDS.find(x=>x[0]===i.b)[1];if(!S.rts.some(r=>r.b===bn&&r.v==='master-982'))S.rts.splice(S.rts.length-1,0,{id:S.rts.length+10,v:'master-982',b:bn,d:'2026-10-21'})}}}
+ const w=S.wz;if(S.ov==='wizard'&&w.st==='run'){if(w.sub===0){w.pct+=9;if(w.pct>=100){w.sub=1;w.pct=0;struct=true}}else if(w.sub===1){w.pct+=34;if(w.pct>=100){w.sub=2;w.pct=0;struct=true}}else if(w.sub===2){w.pct+=50;if(w.pct>=100){w.sub=3;w.st='done';struct=true}}}
+ if(S.conv.run){S.conv.pct+=7;if(S.conv.pct>=100){S.conv.run=false;const s=byN(S.conv.src);F.push({n:base(s.n)+'-'+S.conv.tgt+'.gguf',t:s.t,fam:s.fam,fmt:'GGUF '+S.conv.tgt,mb:Math.round(s.mb*(CT.find(c=>c[0]===S.conv.tgt)[1])),dir:s.t==='ckpt'?'checkpoints/':'diffusion_models/',x:{}});toast('Converted: new file is in Library');struct=true}}
+ document.querySelectorAll('[data-pb],[data-pt]').forEach(n=>{const k=n.dataset.pb||n.dataset.pt,p=pv(k);if(!p)return;if(n.dataset.pb)n.style.width=p.pct+'%';else n.textContent=p.t});
+ if(struct&&!document.activeElement.matches?.('textarea,input,select'))render();
+},700);
+render();
+</script>
+</body>
+</html>

@@ -1,32 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { History, Play, SlidersHorizontal, Square, X } from '@/lib/icons'
-import Titlebar from './components/layout/Titlebar.vue'
+import Titlebar, { type PanelAnchor } from './components/layout/Titlebar.vue'
 import Sidebar from './components/layout/Sidebar.vue'
-import ConfigPanel from './components/layout/ConfigPanel.vue'
 import MobileNav from './components/layout/MobileNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import FloatingLogPanel from './components/FloatingLogPanel.vue'
 import { apiGet, apiPost, initializeApi, isRemoteBrowser } from './services/api'
-import { useSetup, STRIP_DISMISS_KEY } from './composables/useSetup'
+import { useSetup } from './composables/useSetup'
 import SetupWizard from './components/SetupWizard.vue'
-import OnboardingStrip from './components/OnboardingStrip.vue'
 import QueuePanel from './components/QueuePanel.vue'
-import HistoryPanel from './components/HistoryPanel.vue'
-import { useGenerationHistory } from './composables/useGenerationHistory'
-import { useConfigStore } from './stores/config'
-import Select from './components/ui/Select.vue'
-import Tooltip from './components/ui/Tooltip.vue'
-import { useRuntimeStatus } from './composables/useRuntimeStatus'
-import { useServerControls } from './composables/useServerControls'
 import { useModels } from './composables/useModels'
 import { useBackendCapabilities } from './composables/useBackendCapabilities'
 import { setRemoteAccessLevel, useRemoteSession } from './composables/useRemoteSession'
-import { onOpenLogs, onOpenHistory, requestStarterPrompt } from './lib/appEvents'
-import Settings from './views/Settings.vue'
+import { onOpenLogs } from './lib/appEvents'
+import { TOOL_ROUTES } from './lib/tools'
+import { useSessionsStore } from './stores/sessions'
 import CommandPalette from './components/CommandPalette.vue'
 import type { CommandItem } from './lib/commandPalette'
 import {
@@ -42,216 +32,92 @@ const STARTER_PROMPT =
 
 const route = useRoute()
 const router = useRouter()
-const configStore = useConfigStore()
-const { config } = storeToRefs(configStore)
-const { sdServerRunning, backendValid, fetchRuntimeStatus } = useRuntimeStatus()
-const { isBooting, startServer, stopServer } = useServerControls(config, fetchRuntimeStatus)
-const { models, error: modelsError, fetchModels } = useModels()
+const { fetchModels } = useModels()
 const { fetchCapabilities } = useBackendCapabilities()
 const { isRemote, canViewGallery, canControl } = useRemoteSession()
-const {
-  isSetupNeeded,
-  checklistComplete,
-  skipped,
-  loadState,
-  skipForNow,
-  completeSetup,
-  reopenSetup
-} = useSetup()
+const { isSetupNeeded, loadState, skipForNow, completeSetup, reopenSetup } = useSetup()
 
-const showMobileConfig = ref(false)
-type WorkspaceConfigPanel = 'model' | 'generation' | 'lora' | 'embedding'
-const activeConfigPanel = ref<WorkspaceConfigPanel | null>(null)
 const showFloatingLogs = ref(false)
-const showSettings = ref(false)
 const showCommandPalette = ref(false)
-/** Deep-link into Settings category from command palette */
-const settingsInitialCategory = ref<
-  'backend' | 'installation' | 'network' | 'storage' | 'appearance' | 'about' | null
->(null)
-const sidebarCollapsed = ref(localStorage.getItem('flaxeo-sidebar-collapsed') === 'true')
-const stripDismissed = ref(
-  typeof localStorage !== 'undefined' && localStorage.getItem(STRIP_DISMISS_KEY) === '1'
-)
 const showQueuePanel = ref(false)
-const showHistoryPanel = ref(false)
+const SIDEBAR_KEY = 'flaxeo-sidebar-collapsed'
+const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY))
+const peeking = ref(false)
+let peekTimer = 0
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function setSidebarCollapsed(value: boolean): void {
+  sidebarCollapsed.value = value
+  peeking.value = false
+  try {
+    localStorage.setItem(SIDEBAR_KEY, String(value))
+  } catch {
+    /* per-device convenience only */
+  }
+}
+
+/** Show at once; hide after a short delay so the pointer can travel into the preview. */
+function setPeek(show: boolean): void {
+  window.clearTimeout(peekTimer)
+  if (show) peeking.value = true
+  else peekTimer = window.setTimeout(() => (peeking.value = false), 250)
+}
+/** Phone width: the same sidebar as a drawer (sessions, workflows, settings pages). */
+const drawerOpen = ref(false)
+const sessionsStore = useSessionsStore()
+watch(
+  () => [route.fullPath, sessionsStore.activeId],
+  () => (drawerOpen.value = false)
+)
+
+const queueAnchor = ref<PanelAnchor | null>(null)
 const remoteAuthBlocked = ref(isRemote)
 const remotePairingCode = ref('')
+const REMOTE_NAME_KEY = 'flaxeo-remote-member-name'
+const remotePairingName = ref(readStoredRemoteName())
+
+function readStoredRemoteName(): string {
+  try {
+    return localStorage.getItem(REMOTE_NAME_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function rememberRemoteName(): string {
+  const name = remotePairingName.value.trim().slice(0, 40)
+  try {
+    if (name) localStorage.setItem(REMOTE_NAME_KEY, name)
+  } catch {
+    /* ignore */
+  }
+  return name
+}
 const remotePairingError = ref('')
 const remotePairingBusy = ref(false)
 const remoteTransport = ref<LanTransport>('https')
 const remoteOfferedAccess = ref<LanAccessLevel>('generation')
-const historyBtnRef = ref<HTMLElement | null>(null)
-const queueAnchor = ref<{
-  top: number
-  left: number
-  right: number
-  bottom: number
-  width: number
-} | null>(null)
-const historyAnchor = ref<{
-  top: number
-  left: number
-  right: number
-  bottom: number
-  width: number
-} | null>(null)
-const { entries: historyEntries } = useGenerationHistory()
-
-/** Optional tip bar — never after skip, permanent dismiss, only while checklist incomplete */
-const showOnboardingStrip = computed(
-  () =>
-    !isRemote &&
-    !isSetupNeeded.value &&
-    !skipped.value &&
-    !checklistComplete.value &&
-    !stripDismissed.value
-)
-
-const historyCount = computed(() => historyEntries.value.length)
-
-function rectFromEl(el: HTMLElement | null) {
-  if (!el) return null
-  const r = el.getBoundingClientRect()
-  return {
-    top: r.top,
-    left: r.left,
-    right: r.right,
-    bottom: r.bottom,
-    width: r.width
-  }
-}
-
-function updateHistoryAnchor(): void {
-  historyAnchor.value = rectFromEl(historyBtnRef.value)
-}
-
-function onToggleQueue(
-  anchor: {
-    top: number
-    left: number
-    right: number
-    bottom: number
-    width: number
-  } | null
-): void {
-  if (!showQueuePanel.value) {
-    showHistoryPanel.value = false
-    queueAnchor.value = anchor
-    showQueuePanel.value = true
-  } else {
-    showQueuePanel.value = false
-  }
-}
-
-function toggleHistoryPanel(): void {
-  if (!showHistoryPanel.value) {
-    showQueuePanel.value = false
-    updateHistoryAnchor()
-    showHistoryPanel.value = true
-  } else {
-    showHistoryPanel.value = false
-  }
-}
-
-function openHistoryPanel(
-  anchor?: {
-    top: number
-    left: number
-    right: number
-    bottom: number
-    width: number
-  } | null
-): void {
-  showQueuePanel.value = false
-  if (anchor) {
-    historyAnchor.value = anchor
-  } else {
-    updateHistoryAnchor()
-  }
-  // Fallback if no command-strip History button (e.g. Gallery) and no anchor passed
-  if (!historyAnchor.value && typeof window !== 'undefined') {
-    historyAnchor.value = {
-      top: 48,
-      left: Math.max(8, window.innerWidth - 380),
-      right: window.innerWidth - 16,
-      bottom: 96,
-      width: 120
-    }
-  }
-  showHistoryPanel.value = true
-}
-
-function toggleSidebar(): void {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-  localStorage.setItem('flaxeo-sidebar-collapsed', String(sidebarCollapsed.value))
-}
-
-const activeModelValue = computed(() =>
-  config.value.loadMode === 'standard' ? config.value.standardModel : config.value.diffusionModel
-)
-const modelOptions = computed(() => [
-  {
-    label: modelsError.value
-      ? 'Models unavailable'
-      : models.value.diffusion.length
-        ? 'No model'
-        : 'No models',
-    value: ''
-  },
-  ...models.value.diffusion.map((model) => ({
-    label: model.split(/[\\/]/).pop() || model,
-    value: model
-  }))
-])
 
 const currentTab = computed(() => {
   const name = route.name as string
-  return name?.toLowerCase() || 'text2image'
+  return name?.toLowerCase() || 'create'
 })
 
-const showWorkspaceControls = computed(() =>
-  ['text2image', 'edit', 'video'].includes(currentTab.value)
-)
-
-const configPanelVisible = computed(
-  () => showWorkspaceControls.value && (activeConfigPanel.value !== null || showMobileConfig.value)
-)
-
-const routeMap: Record<string, string> = {
-  text2image: 'Text2Image',
-  edit: 'Edit',
-  video: 'Video',
-  gallery: 'Gallery',
-  quantization: 'Quantization',
-  help: 'Help'
+function onToggleQueue(anchor: PanelAnchor | null): void {
+  queueAnchor.value = anchor
+  showQueuePanel.value = !showQueuePanel.value
 }
 
 function navigateToTab(tab: string): void {
-  if (tab === 'gallery' && !canViewGallery.value) return
-  if (tab === 'settings') {
-    openSettingsCategory(null)
-    return
-  }
-
-  const routeName = routeMap[tab] || tab
-  router.push({ name: routeName })
-}
-
-function openConfigPanel(panel: WorkspaceConfigPanel): void {
-  const isMobileViewport = window.matchMedia('(max-width: 767px)').matches
-  showMobileConfig.value = isMobileViewport
-  activeConfigPanel.value = panel
-}
-
-function closeConfigPanel(): void {
-  activeConfigPanel.value = null
-  showMobileConfig.value = false
-}
-
-function closeSettings(): void {
-  showSettings.value = false
-  settingsInitialCategory.value = null
+  if (tab === 'assets' && !canViewGallery.value) return
+  router.push({ name: TOOL_ROUTES[tab] || tab })
 }
 
 function openCommandPalette(): void {
@@ -262,12 +128,8 @@ function closeCommandPalette(): void {
   showCommandPalette.value = false
 }
 
-function openSettingsCategory(
-  category?: 'backend' | 'installation' | 'network' | 'storage' | 'appearance' | 'about' | null
-): void {
-  closeConfigPanel()
-  settingsInitialCategory.value = category ?? null
-  showSettings.value = true
+function openSettingsCategory(category?: string | null): void {
+  void router.push({ name: 'Settings', query: category ? { category } : {} })
 }
 
 function runCommand(item: CommandItem): void {
@@ -275,16 +137,7 @@ function runCommand(item: CommandItem): void {
   if (action.type === 'tab') {
     navigateToTab(action.tab)
   } else if (action.type === 'settings') {
-    openSettingsCategory(
-      (action.category as
-        | 'backend'
-        | 'installation'
-        | 'network'
-        | 'storage'
-        | 'appearance'
-        | 'about'
-        | undefined) ?? null
-    )
+    openSettingsCategory(action.category ?? null)
   } else if (action.type === 'folder') {
     if (action.which === 'models') window.electronAPI?.openModelsFolder()
     else window.electronAPI?.openGalleryFolder()
@@ -292,54 +145,12 @@ function runCommand(item: CommandItem): void {
   closeCommandPalette()
 }
 
-function selectModel(value: string): void {
-  if (!value) {
-    configStore.updateConfig({ standardModel: '', diffusionModel: '' })
-    return
-  }
-
-  configStore.updateConfig(
-    config.value.loadMode === 'standard' ? { standardModel: value } : { diffusionModel: value }
-  )
-  openConfigPanel('model')
-}
-
-function handleBackendMode(value: string): void {
-  if (value === 'cli' || value === 'server') {
-    configStore.updateConfig({ backendMode: value })
-    if (value === 'server' && !sdServerRunning.value) {
-      // Nudge user — server must be running for warm path
-      console.info('[Flaxeo] Server mode selected. Start the sd-server process for warm multi-gen.')
-    }
-  }
-}
-
-function dismissOnboardingStrip(): void {
-  stripDismissed.value = true
-  try {
-    localStorage.setItem(STRIP_DISMISS_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
 async function handleSkipSetup(): Promise<void> {
   await skipForNow()
-  stripDismissed.value = true
 }
 
 function queueStarterPrompt(): void {
-  try {
-    sessionStorage.setItem('text2imagePrompt', STARTER_PROMPT)
-    sessionStorage.setItem('flaxeo-onboarding-sample', '1')
-  } catch {
-    /* ignore */
-  }
-  // keep-alive Text2Image may already be mounted — fire event so prompt applies now
-  requestStarterPrompt({ prompt: STARTER_PROMPT, fromOnboarding: true })
-  showSettings.value = false
-  closeConfigPanel()
-  router.push({ name: 'Text2Image' })
+  void router.push({ name: 'Create', query: { mode: 'image', prompt: STARTER_PROMPT } })
 }
 
 function onSetupDone(payload?: { action?: 'sample' | 'hub' | 'done' }): void {
@@ -350,23 +161,9 @@ function onSetupDone(payload?: { action?: 'sample' | 'hub' | 'done' }): void {
     return
   }
   if (action === 'hub') {
-    sessionStorage.setItem('flaxeo-open-model-hub', '1')
-    openConfigPanel('model')
+    router.push({ name: 'Models' })
     return
   }
-}
-
-function onStripFixBackend(): void {
-  reopenSetup()
-}
-
-function onStripFixModels(): void {
-  sessionStorage.setItem('flaxeo-open-model-hub', '1')
-  openConfigPanel('model')
-}
-
-function onStripFirstImage(): void {
-  queueStarterPrompt()
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
@@ -377,20 +174,18 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
     else openCommandPalette()
     return
   }
+  // Sidebar: Ctrl/Cmd + backslash
+  if ((event.ctrlKey || event.metaKey) && event.key === '\\') {
+    event.preventDefault()
+    setSidebarCollapsed(!sidebarCollapsed.value)
+    return
+  }
   if (event.key !== 'Escape') return
   if (showCommandPalette.value) closeCommandPalette()
-  else if (showHistoryPanel.value) showHistoryPanel.value = false
   else if (showQueuePanel.value) showQueuePanel.value = false
-  else if (showSettings.value) closeSettings()
-  else if (configPanelVisible.value) closeConfigPanel()
-}
-
-function onWindowResize(): void {
-  updateHistoryAnchor()
 }
 
 let unsubscribeOpenLogs: (() => void) | null = null
-let unsubscribeOpenHistory: (() => void) | null = null
 let remoteAuthTimer: number | null = null
 
 function requireRemotePairing(): void {
@@ -402,8 +197,11 @@ function requireRemotePairing(): void {
 
 function redirectUnauthorizedRemoteRoute(): void {
   if (!isRemote || remoteAuthBlocked.value) return
-  if (route.name === 'Quantization' || (route.name === 'Gallery' && !canViewGallery.value)) {
-    void router.replace('/text2image')
+  if (
+    ['Quantization', 'Models', 'Settings'].includes(route.name as string) ||
+    (route.name === 'Assets' && !canViewGallery.value)
+  ) {
+    void router.replace('/create')
   }
 }
 
@@ -413,9 +211,9 @@ async function pairRemoteBrowser(code: string): Promise<void> {
   try {
     remotePairingBusy.value = true
     remotePairingError.value = ''
-    await apiPost('/api/auth/pair', { code: code.trim() })
+    await apiPost('/api/auth/pair', { code: code.trim(), name: rememberRemoteName() })
     // Cookie is set; reload so session state and routes initialize cleanly.
-    location.hash = '#/text2image'
+    location.hash = '#/create'
     location.reload()
   } catch (error) {
     remotePairingError.value = error instanceof Error ? error.message : 'Pairing failed.'
@@ -430,7 +228,7 @@ async function ensureRemoteAuthentication(): Promise<boolean> {
   let pairedFromFragment = false
   if (pairingCode) {
     try {
-      await apiPost('/api/auth/pair', { code: pairingCode })
+      await apiPost('/api/auth/pair', { code: pairingCode, name: rememberRemoteName() })
       pairedFromFragment = true
     } catch (error) {
       remotePairingError.value = error instanceof Error ? error.message : 'Pairing failed.'
@@ -450,12 +248,9 @@ async function ensureRemoteAuthentication(): Promise<boolean> {
       setRemoteAccessLevel(remoteOfferedAccess.value)
       // Drop the one-time pair query while keeping a real hash route.
       if (pairedFromFragment || extractLanPairingCode(location)) {
-        await router.replace({ path: '/text2image', query: {} })
-      } else if (
-        route.name === 'Quantization' ||
-        (route.name === 'Gallery' && !canViewGallery.value)
-      ) {
-        await router.replace('/text2image')
+        await router.replace({ path: '/create', query: {} })
+      } else {
+        redirectUnauthorizedRemoteRoute()
       }
       remoteAuthBlocked.value = false
       return true
@@ -465,7 +260,7 @@ async function ensureRemoteAuthentication(): Promise<boolean> {
   }
   // Failed pair from QR: leave a clean route so the form is usable.
   if (pairingCode) {
-    await router.replace({ path: '/text2image', query: {} }).catch(() => undefined)
+    await router.replace({ path: '/create', query: {} }).catch(() => undefined)
   }
   remoteAuthBlocked.value = true
   setRemoteAccessLevel(null)
@@ -500,22 +295,15 @@ onMounted(async () => {
   await fetchModels()
   fetchCapabilities().catch(() => undefined)
   window.addEventListener('keydown', handleGlobalKeydown)
-  window.addEventListener('resize', onWindowResize)
   unsubscribeOpenLogs = onOpenLogs(() => {
     if (canControl.value) showFloatingLogs.value = true
-  })
-  unsubscribeOpenHistory = onOpenHistory((detail) => {
-    openHistoryPanel(detail.anchor ?? null)
   })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
-  window.removeEventListener('resize', onWindowResize)
   unsubscribeOpenLogs?.()
   unsubscribeOpenLogs = null
-  unsubscribeOpenHistory?.()
-  unsubscribeOpenHistory = null
   window.removeEventListener('flaxeo-auth-required', requireRemotePairing)
   if (remoteAuthTimer !== null) window.clearInterval(remoteAuthTimer)
 })
@@ -547,12 +335,20 @@ onUnmounted(() => {
           </span>
         </p>
         <input
+          v-model="remotePairingName"
+          autocomplete="nickname"
+          maxlength="40"
+          placeholder="Your name (shown to the team)"
+          aria-label="Your name"
+          class="mt-5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+        />
+        <input
           v-model="remotePairingCode"
           required
           autocomplete="one-time-code"
           spellcheck="false"
           placeholder="Pairing code"
-          class="mt-5 h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+          class="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
         />
         <p v-if="remotePairingError" class="mt-3 text-xs text-destructive">
           {{ remotePairingError }}
@@ -569,271 +365,114 @@ onUnmounted(() => {
 
     <template v-else>
       <Sidebar
+        v-if="!sidebarCollapsed"
         class="hidden md:flex"
-        :current-tab="showSettings ? 'settings' : currentTab"
-        :collapsed="sidebarCollapsed"
+        :current-tab="currentTab"
         @navigate="navigateToTab"
-        @toggle-collapse="toggleSidebar"
-        @open-search="openCommandPalette"
+        @toggle="setSidebarCollapsed(true)"
       />
 
-      <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-        <Titlebar
-          :current-tab="currentTab"
-          :setup-needed="isSetupNeeded"
-          :collapsed="sidebarCollapsed"
-          :queue-open="showQueuePanel"
-          @toggle-sidebar="toggleSidebar"
-          @toggle-mobile-config="showMobileConfig = !showMobileConfig"
-          @toggle-logs="showFloatingLogs = !showFloatingLogs"
-          @open-setup="reopenSetup"
-          @update:backend-mode="handleBackendMode"
-          @toggle-queue="onToggleQueue"
-        />
-
-        <OnboardingStrip
-          v-if="showOnboardingStrip"
-          @dismiss="dismissOnboardingStrip"
-          @fix-backend="onStripFixBackend"
-          @fix-models="onStripFixModels"
-          @first-image="onStripFirstImage"
-        />
-
+      <div
+        class="flex min-h-0 min-w-0 flex-1 flex-col md:py-2 md:pr-2"
+        :class="sidebarCollapsed && 'md:pl-2'"
+      >
         <div
-          class="aui-workspace-surface relative flex min-h-0 flex-1 overflow-hidden rounded-tl-xl border-l border-t border-border/70 bg-background dark:border-white/10"
+          class="aui-workspace-surface relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl md:border md:border-border"
         >
-          <div
-            class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-            :class="{ 'bg-background': !showWorkspaceControls }"
-          >
-            <div
-              v-if="showWorkspaceControls"
-              class="aui-command-strip no-scrollbar absolute left-3 top-1.5 z-30 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 overflow-x-auto whitespace-nowrap titlebar-no-drag md:left-4 md:max-w-[calc(100%-2rem)]"
-              @click.stop
-            >
-              <span
-                v-if="modelsError"
-                class="max-w-[12rem] truncate text-xs text-destructive"
-                :title="modelsError"
-              >
-                {{ modelsError }}
-              </span>
-              <Select
-                :model-value="activeModelValue"
-                :options="modelOptions"
-                size="sm"
-                placeholder="No model"
-                aria-label="Select diffusion model"
-                class="min-w-[11rem] border-0 bg-transparent shadow-none hover:bg-accent md:min-w-[12rem]"
-                @update:model-value="selectModel"
-              />
-              <Tooltip text="Generation history for this session" position="bottom">
-                <button
-                  ref="historyBtnRef"
-                  type="button"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
-                  :class="showHistoryPanel || historyCount ? 'bg-accent/80 text-foreground' : ''"
-                  :aria-expanded="showHistoryPanel"
-                  aria-label="Generation history"
-                  @click="toggleHistoryPanel"
-                >
-                  <History class="h-3.5 w-3.5" />
-                  <span>History</span>
-                  <span
-                    v-if="historyCount"
-                    class="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1 text-xs font-medium tabular-nums text-muted-foreground"
-                  >
-                    {{ historyCount > 99 ? '99+' : historyCount }}
-                  </span>
-                </button>
-              </Tooltip>
-              <Tooltip text="Open generation settings panel" position="bottom">
-                <button
-                  type="button"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                  :aria-expanded="activeConfigPanel === 'generation'"
-                  aria-label="Generation settings panel"
-                  @click="openConfigPanel('generation')"
-                >
-                  <SlidersHorizontal class="h-3.5 w-3.5" />
-                  <span>Generation</span>
-                </button>
-              </Tooltip>
-              <Tooltip text="Manage LoRA weights" position="bottom">
-                <button
-                  type="button"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                  :class="
-                    activeConfigPanel === 'lora' || config.loras.length ? 'text-foreground' : ''
-                  "
-                  :aria-expanded="activeConfigPanel === 'lora'"
-                  aria-label="LoRA panel"
-                  @click="openConfigPanel('lora')"
-                >
-                  <span>LoRA</span>
-                  <span v-if="config.loras.length" class="font-mono text-xs">
-                    {{ config.loras.length }}
-                  </span>
-                </button>
-              </Tooltip>
-              <Tooltip text="Manage embeddings / textual inversion" position="bottom">
-                <button
-                  type="button"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                  :class="
-                    activeConfigPanel === 'embedding' || config.embeddings.length
-                      ? 'text-foreground'
-                      : ''
-                  "
-                  :aria-expanded="activeConfigPanel === 'embedding'"
-                  aria-label="Embeddings panel"
-                  @click="openConfigPanel('embedding')"
-                >
-                  <span>Embedding</span>
-                  <span v-if="config.embeddings.length" class="font-mono text-xs">
-                    {{ config.embeddings.length }}
-                  </span>
-                </button>
-              </Tooltip>
-              <div
-                v-if="config.backendMode === 'server' && canControl"
-                class="aui-status-badge inline-flex items-center gap-0.5 rounded-lg bg-muted/70 p-0.5"
-              >
-                <Tooltip text="Start sd-server (warm Text2Image)" position="bottom">
-                  <button
-                    type="button"
-                    :disabled="sdServerRunning || isBooting || !backendValid"
-                    class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                    :class="
-                      sdServerRunning || isBooting || !backendValid
-                        ? 'text-muted-foreground'
-                        : 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                    "
-                    aria-label="Start sd-server"
-                    @click="startServer"
-                  >
-                    <Play class="h-3 w-3" />
-                    {{ isBooting ? 'Booting' : 'Start' }}
-                  </button>
-                </Tooltip>
-                <Tooltip text="Stop sd-server" position="bottom">
-                  <button
-                    type="button"
-                    :disabled="!sdServerRunning || isBooting"
-                    class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                    :class="
-                      sdServerRunning
-                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                        : 'text-muted-foreground'
-                    "
-                    aria-label="Stop sd-server"
-                    @click="stopServer"
-                  >
-                    <Square class="h-3 w-3" />
-                    Stop
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
+          <Titlebar
+            :setup-needed="isSetupNeeded"
+            :queue-open="showQueuePanel"
+            :sidebar-collapsed="sidebarCollapsed"
+            @expand-sidebar="setSidebarCollapsed(false)"
+            @open-drawer="drawerOpen = true"
+            @peek="setPeek"
+            @toggle-logs="showFloatingLogs = !showFloatingLogs"
+            @open-setup="reopenSetup"
+            @open-engine="openSettingsCategory('engine')"
+            @toggle-queue="onToggleQueue"
+          />
 
-            <Teleport to="body">
-              <Transition name="modal">
-                <div
-                  v-if="configPanelVisible"
-                  class="aui-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-2 backdrop-blur-lg duration-150 dark:bg-black/55 md:p-4"
-                  @click.self="closeConfigPanel"
-                >
-                  <Transition name="modal-surface" appear>
-                    <div
-                      v-if="configPanelVisible"
-                      class="aui-dialog-surface flex h-[min(88vh,760px)] w-[min(64rem,calc(100vw-1rem))] max-w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl shadow-black/15 dark:shadow-black/40 md:w-[min(64rem,calc(100vw-2rem))]"
-                      @click.stop
-                    >
-                      <ConfigPanel
-                        :collapsed="false"
-                        :focus="activeConfigPanel || 'generation'"
-                        @close="closeConfigPanel"
-                        @expand="activeConfigPanel = 'generation'"
-                      />
-                    </div>
-                  </Transition>
-                </div>
-              </Transition>
-            </Teleport>
-
-            <Teleport to="body">
-              <Transition name="modal">
-                <div
-                  v-if="showSettings"
-                  class="aui-dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-foreground/35 p-3 backdrop-blur-sm titlebar-no-drag sm:p-5"
-                  @click.self="closeSettings"
-                >
-                  <Transition name="modal-surface" appear>
-                    <div
-                      v-if="showSettings"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-labelledby="settings-title"
-                      class="aui-dialog-surface relative flex h-[min(82vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-xl shadow-black/15 dark:shadow-black/40"
-                      @click.stop
-                    >
-                      <button
-                        type="button"
-                        class="aui-icon-button absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                        aria-label="Close settings"
-                        autofocus
-                        @click="closeSettings"
-                      >
-                        <X class="size-4" />
-                      </button>
-                      <Settings :initial-category="settingsInitialCategory" />
-                    </div>
-                  </Transition>
-                </div>
-              </Transition>
-            </Teleport>
-
-            <CommandPalette
-              :open="showCommandPalette"
-              @close="closeCommandPalette"
-              @select="runCommand"
-            />
-
-            <main
-              class="relative flex w-full min-h-0 flex-1 flex-col overflow-hidden"
-              :class="showWorkspaceControls ? 'pt-11' : ''"
-            >
-              <router-view v-slot="{ Component, route }">
-                <keep-alive>
-                  <component :is="Component" :key="route.fullPath" />
-                </keep-alive>
-              </router-view>
-            </main>
-          </div>
+          <main class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+            <router-view v-slot="{ Component, route: viewRoute }">
+              <keep-alive :include="['Create', 'Workflows']">
+                <component :is="Component" :key="viewRoute.name" />
+              </keep-alive>
+            </router-view>
+          </main>
         </div>
 
-        <MobileNav
-          class="md:hidden"
-          :current-tab="showSettings ? 'settings' : currentTab"
-          @navigate="navigateToTab"
-        />
+        <MobileNav class="md:hidden" :current-tab="currentTab" @navigate="navigateToTab" />
       </div>
 
+      <!-- Collapsed: hovering the show-sidebar button previews it without moving the page -->
+      <Transition
+        enter-from-class="-translate-x-3 opacity-0"
+        leave-to-class="-translate-x-3 opacity-0"
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-100 ease-in"
+      >
+        <div
+          v-if="sidebarCollapsed && peeking"
+          class="fixed bottom-2 left-2 top-[3.75rem] z-40 hidden titlebar-no-drag md:block"
+          @pointerenter="setPeek(true)"
+          @pointerleave="setPeek(false)"
+        >
+          <Sidebar floating :current-tab="currentTab" @navigate="navigateToTab" />
+        </div>
+      </Transition>
+
+      <!-- Phone width: the sidebar as a drawer -->
+      <Transition
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+        enter-active-class="transition-opacity duration-150"
+        leave-active-class="transition-opacity duration-100"
+      >
+        <div
+          v-if="drawerOpen"
+          class="fixed inset-0 z-50 bg-black/50 md:hidden"
+          aria-hidden="true"
+          @click="drawerOpen = false"
+        />
+      </Transition>
+      <Transition
+        enter-from-class="-translate-x-full"
+        leave-to-class="-translate-x-full"
+        enter-active-class="transition-transform duration-200 ease-out"
+        leave-active-class="transition-transform duration-150 ease-in"
+      >
+        <div
+          v-if="drawerOpen"
+          class="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] p-2 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          @keydown.esc="drawerOpen = false"
+        >
+          <Sidebar
+            floating
+            closable
+            class="w-full"
+            :current-tab="currentTab"
+            @navigate="navigateToTab"
+            @toggle="drawerOpen = false"
+          />
+        </div>
+      </Transition>
+
+      <CommandPalette
+        :open="showCommandPalette"
+        @close="closeCommandPalette"
+        @select="runCommand"
+      />
       <ToastContainer />
       <ConfirmDialog />
-
       <FloatingLogPanel v-if="canControl" v-model="showFloatingLogs" />
-
       <SetupWizard v-if="isSetupNeeded" @done="onSetupDone" @skip="handleSkipSetup" />
       <QueuePanel
         :open="showQueuePanel"
         :anchor="queueAnchor || undefined"
         @close="showQueuePanel = false"
-      />
-      <HistoryPanel
-        :open="showHistoryPanel"
-        :anchor="historyAnchor || undefined"
-        @close="showHistoryPanel = false"
       />
     </template>
   </div>

@@ -96,6 +96,59 @@ export function addOptionalArgs(args: string[], body: Record<string, unknown>): 
   pushArg(args, '--cache-option', body.cacheOption)
   pushArg(args, '--scm-mask', body.scmMask)
   pushArg(args, '--scm-policy', body.scmPolicy)
+  // NitroFusion timestep shift; LTX temporal VAE tiling; Qwen Image Layered layer count
+  pushNumericArg(args, '--timestep-shift', body.timestepShift, (value) => value > 0)
+  pushBoolArg(args, '--temporal-tiling', body.temporalTiling)
+  pushNumericArg(args, '--qwen-image-layers', body.qwenImageLayers, (value) => value > 0)
+}
+
+/** sd-cli built-in highres-fix upscalers; anything else names a file under --hires-upscalers-dir. */
+export const HIRES_BUILTIN_UPSCALERS = Object.freeze([
+  'Latent',
+  'Latent (nearest)',
+  'Latent (nearest-exact)',
+  'Latent (antialiased)',
+  'Latent (bicubic)',
+  'Latent (bicubic antialiased)',
+  'Lanczos',
+  'Nearest'
+])
+
+export function isHiresModelUpscaler(name: unknown): boolean {
+  const value = typeof name === 'string' ? name.trim() : ''
+  return !!value && !HIRES_BUILTIN_UPSCALERS.includes(value)
+}
+
+/**
+ * Highres fix (--hires): second sampling pass at a larger size.
+ * A fixed target (hiresWidth + hiresHeight) wins over hiresScale, matching sd-cli.
+ */
+export function addHiresArgs(args: string[], body: Record<string, unknown>): void {
+  if (!asBool(body.hiresEnabled ?? body.hires)) return
+  args.push('--hires')
+  const upscaler = typeof body.hiresUpscaler === 'string' ? body.hiresUpscaler.trim() : ''
+  if (upscaler) args.push('--hires-upscaler', upscaler)
+  const width = Number(body.hiresWidth)
+  const height = Number(body.hiresHeight)
+  if (width > 0 && height > 0) {
+    args.push('--hires-width', String(width), '--hires-height', String(height))
+  } else {
+    pushNumericArg(args, '--hires-scale', body.hiresScale, (value) => value > 0)
+  }
+  pushNumericArg(args, '--hires-steps', body.hiresSteps, (value) => value > 0)
+  pushNumericArg(
+    args,
+    '--hires-denoising-strength',
+    body.hiresDenoise,
+    (value) => value >= 0 && value <= 1
+  )
+}
+
+/** Output count for one sd-cli image call: batch × (Qwen layers + 1). */
+export function expectedImageOutputs(body: Record<string, unknown>): number {
+  const batch = Math.max(1, parseInt(String(body.batchCount ?? 1), 10) || 1)
+  const layers = Math.max(0, parseInt(String(body.qwenImageLayers ?? 0), 10) || 0)
+  return batch * (layers > 0 ? layers + 1 : 1)
 }
 
 /**
@@ -275,6 +328,12 @@ export function addHardwareArgs(
     pushArg(args, '--params-backend', body.paramsBackendAssignment)
   }
   pushBoolArg(args, '--auto-fit', body.autoFit)
+  pushBoolArg(args, '--eager-load', body.eagerLoad)
+  // RPC offload: host:port list; devices then appear as RPC0, RPC1… for --backend
+  const rpcServers = typeof body.rpcServers === 'string' ? body.rpcServers.trim() : ''
+  if (rpcServers && /^[\w.:\-[\],\s]+$/.test(rpcServers)) {
+    args.push('--rpc-servers', rpcServers.replace(/\s+/g, ''))
+  }
   // --split-mode is llama.cpp-only; do not pass to sd-cli
   pushNumericArg(args, '--threads', body.threads, (value) => value > 0)
   pushNumericArg(args, '--max-vram', body.maxVram, (value) => value !== 0)

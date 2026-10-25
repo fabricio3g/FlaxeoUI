@@ -4,8 +4,11 @@ import {
   addAdetailerArgs,
   addGenerationArgs,
   addHardwareArgs,
+  addHiresArgs,
   addOptionalArgs,
-  buildExtraAdArgs
+  buildExtraAdArgs,
+  expectedImageOutputs,
+  isHiresModelUpscaler
 } from './sdArgHelpers.ts'
 
 describe('addGenerationArgs', () => {
@@ -259,5 +262,64 @@ describe('buildExtraAdArgs / addAdetailerArgs', () => {
       { requireEnabled: false }
     )
     assert.equal(args[0], '--ad-model')
+  })
+})
+
+describe('new sd.cpp flags', () => {
+  it('emits hires fix with scale, upscaler, steps and denoise', () => {
+    const args: string[] = []
+    addHiresArgs(args, {
+      hiresEnabled: true,
+      hiresUpscaler: 'Latent (bicubic)',
+      hiresScale: 1.5,
+      hiresSteps: 12,
+      hiresDenoise: 0.45
+    })
+    assert.deepEqual(args, [
+      '--hires',
+      '--hires-upscaler',
+      'Latent (bicubic)',
+      '--hires-scale',
+      '1.5',
+      '--hires-steps',
+      '12',
+      '--hires-denoising-strength',
+      '0.45'
+    ])
+  })
+
+  it('prefers an explicit hires target size and stays silent when off', () => {
+    const args: string[] = []
+    addHiresArgs(args, { hiresEnabled: true, hiresWidth: 2048, hiresHeight: 1536, hiresScale: 2 })
+    assert.ok(args.includes('--hires-width'))
+    assert.ok(!args.includes('--hires-scale'))
+    const off: string[] = []
+    addHiresArgs(off, { hiresEnabled: false, hiresScale: 2 })
+    assert.deepEqual(off, [])
+  })
+
+  it('separates built-in hires upscalers from model files', () => {
+    assert.equal(isHiresModelUpscaler('Latent'), false)
+    assert.equal(isHiresModelUpscaler('4x_foolhardy.safetensors'), true)
+    assert.equal(isHiresModelUpscaler(''), false)
+  })
+
+  it('passes timestep shift, temporal tiling and Qwen layers', () => {
+    const args: string[] = []
+    addOptionalArgs(args, { timestepShift: 250, temporalTiling: true, qwenImageLayers: 3 })
+    assert.ok(args.join(' ').includes('--timestep-shift 250'))
+    assert.ok(args.includes('--temporal-tiling'))
+    assert.ok(args.join(' ').includes('--qwen-image-layers 3'))
+    assert.equal(expectedImageOutputs({ batchCount: 2, qwenImageLayers: 3 }), 8)
+  })
+
+  it('passes RPC servers and eager load, rejecting shell-ish input', () => {
+    const args: string[] = []
+    addHardwareArgs(args, { rpcServers: '192.168.1.10:50052, 192.168.1.11:50052', eagerLoad: true })
+    assert.ok(args.join(' ').includes('--rpc-servers 192.168.1.10:50052,192.168.1.11:50052'))
+    assert.ok(args.includes('--eager-load'))
+    const bad: string[] = []
+    addHardwareArgs(bad, { rpcServers: 'host;rm -rf /' })
+    assert.ok(!bad.includes('--rpc-servers'))
   })
 })

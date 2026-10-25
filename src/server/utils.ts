@@ -165,6 +165,10 @@ export function downloadFile(
   options: {
     onProgress?: (receivedBytes: number, totalBytes: number | null) => void
     registerCancel?: (cancel: () => void) => void
+    /** Hugging Face access token for gated repos — sent to huggingface.co only, never to CDNs */
+    huggingFaceToken?: string
+    /** Civitai API key for models that need a login — sent to civitai.com only */
+    civitaiToken?: string
   } = {}
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -215,66 +219,82 @@ export function downloadFile(
       }
 
       const transport = parsed.protocol === 'http:' ? http : https
+      const headers: Record<string, string> = {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: '*/*'
+      }
+      if (
+        options.huggingFaceToken &&
+        parsed.protocol === 'https:' &&
+        parsed.hostname === 'huggingface.co'
+      ) {
+        headers.Authorization = `Bearer ${options.huggingFaceToken}`
+      }
+      if (
+        options.civitaiToken &&
+        parsed.protocol === 'https:' &&
+        (parsed.hostname === 'civitai.com' || parsed.hostname.endsWith('.civitai.com'))
+      ) {
+        headers.Authorization = `Bearer ${options.civitaiToken}`
+      }
       activeRequest = transport
-        .get(
-          parsed,
-          {
-            headers: {
-              'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              Accept: '*/*'
-            }
-          },
-          (response) => {
-            activeResponse = response
-            const code = response.statusCode || 0
+        .get(parsed, { headers }, (response) => {
+          activeResponse = response
+          const code = response.statusCode || 0
 
-            if (REDIRECT_STATUSES.has(code) && response.headers.location) {
-              response.resume()
-              let nextUrl: string
-              try {
-                nextUrl = new URL(response.headers.location, parsed).toString()
-              } catch {
-                fail(new Error(`Download failed: bad redirect location`))
-                return
-              }
-              doDownload(nextUrl, redirectDepth + 1)
-              return
-            }
-
-            if (code !== 200) {
-              response.resume()
-              fail(new Error(`Download failed: HTTP ${code}`))
-              return
-            }
-
-            const total = response.headers['content-length']
-              ? parseInt(response.headers['content-length'], 10)
-              : null
-            let received = 0
+          if (REDIRECT_STATUSES.has(code) && response.headers.location) {
+            response.resume()
+            let nextUrl: string
             try {
-              fs.mkdirSync(path.dirname(destPath), { recursive: true })
+              nextUrl = new URL(response.headers.location, parsed).toString()
             } catch {
-              /* parent may already exist */
+              fail(new Error(`Download failed: bad redirect location`))
+              return
             }
-            file = fs.createWriteStream(destPath)
-            response.on('data', (chunk: Buffer) => {
-              received += chunk.length
-              options.onProgress?.(received, Number.isFinite(total) ? total : null)
-            })
-            response.on('error', (error) => fail(error))
-            response.pipe(file)
-            file.on('finish', () => {
-              file?.close()
-              if (settled) return
-              settled = true
-              resolve(destPath)
-            })
-            file.on('error', (error) => {
-              fail(error)
-            })
+            doDownload(nextUrl, redirectDepth + 1)
+            return
           }
-        )
+
+          if (code !== 200) {
+            response.resume()
+            const gated = (code === 401 || code === 403) && parsed.hostname === 'huggingface.co'
+            fail(
+              new Error(
+                gated
+                  ? `Download failed: HTTP ${code} — this Hugging Face repo is gated. Accept its license on huggingface.co and add an access token on the Models page.`
+                  : `Download failed: HTTP ${code}`
+              )
+            )
+            return
+          }
+
+          const total = response.headers['content-length']
+            ? parseInt(response.headers['content-length'], 10)
+            : null
+          let received = 0
+          try {
+            fs.mkdirSync(path.dirname(destPath), { recursive: true })
+          } catch {
+            /* parent may already exist */
+          }
+          file = fs.createWriteStream(destPath)
+          response.on('data', (chunk: Buffer) => {
+            received += chunk.length
+            options.onProgress?.(received, Number.isFinite(total) ? total : null)
+          })
+          response.on('error', (error) => fail(error))
+          response.pipe(file)
+          file.on('finish', () => {
+            file?.close()
+            if (settled) return
+            settled = true
+            resolve(destPath)
+          })
+          file.on('error', (error) => {
+            fail(error)
+          })
+        })
         .on('error', fail)
     }
 

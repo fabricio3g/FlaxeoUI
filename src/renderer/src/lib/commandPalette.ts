@@ -2,18 +2,8 @@
  * Command palette catalog — jump to screens, settings, and folder actions.
  */
 import type { Component } from 'vue'
-import {
-  Binary,
-  BookOpen,
-  Brush,
-  Database,
-  FolderOpen,
-  ImageIcon,
-  Images,
-  Info,
-  Settings,
-  Video
-} from '@/lib/icons'
+import { Binary, Cpu, Database, FolderOpen, Settings, Share2 } from '@/lib/icons'
+import { NAV_FOOTER, NAV_ITEMS } from '@/lib/tools'
 
 export type CommandGroup = 'Navigate' | 'Settings' | 'Actions'
 
@@ -32,127 +22,75 @@ export interface CommandItem {
   action: CommandAction
 }
 
+const NAV_KEYWORDS: Record<string, string[]> = {
+  create: ['image', 'edit', 'video', 'generate', 'session', 'inpaint', 'img2img', 'prompt'],
+  workflows: ['pipeline', 'chain', 'nodes', 'graph', 'automation'],
+  assets: ['gallery', 'outputs', 'images', 'history'],
+  models: ['download', 'hub', 'lora', 'vae', 'checkpoint'],
+  settings: ['preferences', 'options', 'config'],
+  help: ['docs', 'guide', 'manual', 'how']
+}
+
 export const COMMAND_PALETTE_ITEMS: CommandItem[] = [
-  {
-    id: 'nav-image',
-    label: 'Image',
-    subtitle: 'Text to image',
-    keywords: ['text2image', 't2i', 'generate', 'picture'],
-    group: 'Navigate',
-    icon: ImageIcon,
-    action: { type: 'tab', tab: 'text2image' }
-  },
-  {
-    id: 'nav-edit',
-    label: 'Edit',
-    subtitle: 'Inpaint, Img2Img, Ref Edit',
-    keywords: ['inpaint', 'img2img', 'ref', 'mask'],
-    group: 'Navigate',
-    icon: Brush,
-    action: { type: 'tab', tab: 'edit' }
-  },
-  {
-    id: 'nav-video',
-    label: 'Video',
-    subtitle: 'T2V, I2V, FLF2V',
-    keywords: ['t2v', 'i2v', 'movie', 'clip'],
-    group: 'Navigate',
-    icon: Video,
-    action: { type: 'tab', tab: 'video' }
-  },
-  {
-    id: 'nav-gallery',
-    label: 'Gallery',
-    subtitle: 'Browse outputs',
-    keywords: ['outputs', 'images', 'history', 'library'],
-    group: 'Navigate',
-    icon: Images,
-    action: { type: 'tab', tab: 'gallery' }
-  },
+  ...[...NAV_ITEMS, ...NAV_FOOTER]
+    .filter((item) => item.id !== 'settings')
+    .map((item) => ({
+      id: `nav-${item.id}`,
+      label: item.label,
+      subtitle: item.description,
+      keywords: NAV_KEYWORDS[item.id] || [],
+      group: 'Navigate' as const,
+      icon: item.icon,
+      action: { type: 'tab' as const, tab: item.id }
+    })),
   {
     id: 'nav-quantize',
-    label: 'Quantize',
-    subtitle: 'Convert models',
+    label: 'Convert a model',
+    subtitle: 'Quantize to GGUF',
     keywords: ['gguf', 'quantize', 'convert'],
     group: 'Navigate',
     icon: Binary,
     action: { type: 'tab', tab: 'quantization' }
   },
   {
-    id: 'nav-help',
-    label: 'Help',
-    subtitle: 'Guides and tips',
-    keywords: ['docs', 'guide', 'manual', 'how'],
-    group: 'Navigate',
-    icon: BookOpen,
-    action: { type: 'tab', tab: 'help' }
-  },
-  {
-    id: 'settings-root',
-    label: 'Settings',
-    subtitle: 'Open settings',
-    keywords: ['preferences', 'options', 'config'],
+    id: 'settings-general',
+    label: 'General',
+    subtitle: 'Settings · Name, theme, version',
+    keywords: ['theme', 'dark', 'light', 'name', 'version', 'about'],
     group: 'Settings',
     icon: Settings,
-    action: { type: 'settings' }
+    action: { type: 'settings', category: 'general' }
   },
   {
-    id: 'settings-backend',
-    label: 'Backend',
-    subtitle: 'Settings · Runtime',
-    keywords: ['sd-cli', 'binary', 'runtime', 'api'],
+    id: 'settings-engine',
+    label: 'Engine & performance',
+    subtitle: 'Settings · sd.cpp, GPUs, memory',
+    keywords: ['sd-cli', 'install', 'release', 'gpu', 'vram', 'offload', 'rpc', 'device'],
     group: 'Settings',
-    icon: Database,
-    action: { type: 'settings', category: 'backend' }
+    icon: Cpu,
+    action: { type: 'settings', category: 'engine' }
   },
   {
-    id: 'settings-installation',
-    label: 'Installation',
-    subtitle: 'Settings · Install releases',
-    keywords: ['download', 'install', 'release', 'update'],
+    id: 'settings-sharing',
+    label: 'Sharing',
+    subtitle: 'Settings · Other devices on your network',
+    keywords: ['lan', 'remote', 'pair', 'share', 'phone', 'qr'],
     group: 'Settings',
-    icon: Settings,
-    action: { type: 'settings', category: 'installation' }
-  },
-  {
-    id: 'settings-network',
-    label: 'Network',
-    subtitle: 'Settings · LAN sharing',
-    keywords: ['lan', 'remote', 'pair', 'share'],
-    group: 'Settings',
-    icon: Settings,
-    action: { type: 'settings', category: 'network' }
+    icon: Share2,
+    action: { type: 'settings', category: 'sharing' }
   },
   {
     id: 'settings-storage',
     label: 'Storage',
-    subtitle: 'Settings · Paths',
+    subtitle: 'Settings · Folders',
     keywords: ['folder', 'disk', 'models root', 'output', 'path'],
     group: 'Settings',
     icon: FolderOpen,
     action: { type: 'settings', category: 'storage' }
   },
   {
-    id: 'settings-appearance',
-    label: 'Appearance',
-    subtitle: 'Settings · Theme',
-    keywords: ['theme', 'dark', 'light', 'ui'],
-    group: 'Settings',
-    icon: Settings,
-    action: { type: 'settings', category: 'appearance' }
-  },
-  {
-    id: 'settings-about',
-    label: 'About',
-    subtitle: 'Settings · Version and build',
-    keywords: ['version', 'build', 'release', 'update', 'changelog'],
-    group: 'Settings',
-    icon: Info,
-    action: { type: 'settings', category: 'about' }
-  },
-  {
     id: 'action-models-folder',
-    label: 'Open Models folder',
+    label: 'Open models folder',
     subtitle: 'Show models on disk',
     keywords: ['models', 'directory', 'explorer', 'finder'],
     group: 'Actions',
@@ -161,8 +99,8 @@ export const COMMAND_PALETTE_ITEMS: CommandItem[] = [
   },
   {
     id: 'action-gallery-folder',
-    label: 'Open Gallery folder',
-    subtitle: 'Show outputs on disk',
+    label: 'Open output folder',
+    subtitle: 'Show your images on disk',
     keywords: ['outputs', 'directory', 'explorer', 'finder'],
     group: 'Actions',
     icon: FolderOpen,

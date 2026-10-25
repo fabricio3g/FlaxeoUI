@@ -11,7 +11,8 @@ import {
 } from '../shared/sdArgHelpers'
 import { listLoraFiles, loraLookupNames, normalizeLoraName } from '../shared/loraFiles'
 import { backendPlatformMismatch } from '../shared/backendRelease'
-import { hasFlagCached } from './capabilitiesCache'
+import { cachedHelp, hasFlagCached } from './capabilitiesCache'
+import { appendCliOptions } from '../shared/sdOptionCatalog'
 
 export function getSdCliPath(ctx: AppContext): string {
   return getBackendBinaryPath(ctx, 'sd-cli')
@@ -85,6 +86,8 @@ export function addModelArgs(ctx: AppContext, args: string[], body: JsonObject):
       firstString(body.embeddingsConnectors, body.embeddings_connectors)
     ],
     ['--audio-vae', 'audio_vae', firstString(body.audioVae, body.audio_vae)],
+    // Families whose LLM vocabulary differs from the embedded one (MOSS, Ming, LLaDA, PiD)
+    ['--tokenizer', 'tokenizers', firstString(body.tokenizerModel, body.tokenizer)],
     ['--vae', 'vae', vae]
   ]
   companions.forEach(([flag, subdir, file]) => pushModelArg(ctx, args, flag, subdir, file))
@@ -248,4 +251,21 @@ export function addPromptModelExtras(
   }
   pushArg(args, '--type', body.quantizationType)
   pushArg(args, '--tensor-type-rules', body.tensorTypeRules)
+  addCliOptions(args, body)
+}
+
+/** Options without a named control (setup.cliOptions), checked against the installed sd-cli. */
+function addCliOptions(args: string[], body: JsonObject): void {
+  let values = body.cliOptions
+  if (typeof values === 'string') {
+    try {
+      values = JSON.parse(values) // multipart bodies carry objects as JSON text
+    } catch {
+      throw new Error('cliOptions must be a JSON object.')
+    }
+  }
+  if (!values || typeof values !== 'object' || !Object.keys(values).length) return
+  const help = cachedHelp()
+  if (!help) throw new Error('The installed sd.cpp options could not be read; try again.')
+  appendCliOptions(args, values, help)
 }

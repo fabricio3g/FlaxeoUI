@@ -11,6 +11,8 @@ esbuild
     outfile: 'out/server/index.js',
     // Native / path-sensitive packages must not be bundled (sharp uses createRequire).
     external: ['electron', 'sharp'],
+    // sd-cli-help.txt is bundled as the option list when no sd-cli is installed
+    loader: { '.txt': 'text' },
     format: 'cjs',
     sourcemap: false,
     minify: true
